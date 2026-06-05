@@ -1,0 +1,13 @@
+{
+  "name": "kora",
+  "description": "Kora Framework — fastest JVM framework with compile-time DI. Zero reflection, zero proxies, zero runtime magic. Simple & easy: HTTP/REST, JDBC/Redis/Kafka, OpenAPI, validation, caching, resilience, scheduling, observability.",
+  "version": "1.0.0",
+  "author": {
+    "name": "Kora Framework",
+    "email": "goodforgod.dev@gmail.com"
+  },
+  "homepage": "https://kora-projects.github.io/kora-docs",
+  "repository": "https://github.com/kora-projects/kora-skills",
+  "license": "Apache 2.0",
+  "skills": "./skills"
+}

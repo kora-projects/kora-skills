@@ -1,0 +1,29 @@
+# Drop into application.conf alongside other config.
+
+# ---- Caffeine cache (matches @Cache("orders.cache")) ----
+orders.cache.config {
+  expireAfterWrite  = "10m"             # delete N after put (optional)
+  expireAfterAccess = "5m"              # delete N after last read (optional)
+  initialSize       = 100               # pre-allocated (optional)
+  maximumSize       = 10000             # eviction threshold (default 100000)
+}
+
+# ---- Redis driver (one Lettuce connection shared across all RedisCache instances) ----
+# Uncomment when using cache-redis + RedisCacheModule.
+#
+# lettuce {
+#   uri              = ${REDIS_URL}                        # rediss:// for TLS, comma-separated for cluster
+#   user             = ${?REDIS_USER}
+#   password         = ${?REDIS_PASSWORD}
+#   database         = 0
+#   protocol         = "RESP3"
+#   socketTimeout    = "5s"
+#   commandTimeout   = "5s"
+# }
+
+# ---- Redis cache (matches @Cache("orders.redis.cache") on a RedisCache<K,V>) ----
+# orders.redis.cache.config {
+#   expireAfterWrite  = "1h"
+#   expireAfterAccess = "30m"
+#   keyPrefix         = "orders"        # REQUIRED — empty string disables prefixing (collision risk)
+# }

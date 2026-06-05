@@ -1,0 +1,50 @@
+package ${package};
+
+import ru.tinkoff.kora.json.common.annotation.Json;
+
+/**
+ * Request DTO for ${operation_description}.
+ *
+ * <p>Used as a request body in HTTP client methods.</p>
+ *
+ * <p>Features:</p>
+ * <ul>
+ *   <li>@Json annotation for automatic serialization</li>
+ *   <li>Record for immutability and conciseness</li>
+ *   <li>Explicit field types for validation</li>
+ * </ul>
+ *
+ * @param ${field1_name} ${field1_description}
+ * @param ${field2_name} ${field2_description}
+ */
+@Json
+public record ${dto_name}(
+    /**
+     * ${field1_name}: ${field1_description}
+     */
+    String ${field1_name},
+
+    /**
+     * ${field2_name}: ${field2_description}
+     */
+    String ${field2_name},
+
+    /**
+     * ${field3_name}: ${field3_description} (optional)
+     */
+    @Nullable
+    Integer ${field3_name}
+) {
+    /**
+     * Request data validation.
+     * Called automatically when the record is created.
+     */
+    public ${dto_name} {
+        if (${field1_name} == null || ${field1_name}.isBlank()) {
+            throw new IllegalArgumentException("${field1_name} is required");
+        }
+        if (${field2_name} == null || ${field2_name}.isBlank()) {
+            throw new IllegalArgumentException("${field2_name} is required");
+        }
+    }
+}

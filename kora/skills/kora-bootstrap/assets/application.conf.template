@@ -1,0 +1,13 @@
+# Kora Application Configuration (HOCON format)
+# Documentation: https://github.com/lightbend/config/blob/master/HOCON.md
+# Kora Config: .kora-agent/kora-docs/mkdocs/docs/en/documentation/config.md
+
+app {
+  name = ${APP_NAME}
+  version = ${APP_VERSION}
+  environment = ${APP_ENV}
+}
+
+logging {
+  level = ${LOG_LEVEL:"INFO"}
+}

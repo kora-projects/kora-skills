@@ -1,0 +1,99 @@
+package ${package};
+
+import java.net.URI;
+import java.nio.file.Paths;
+import java.time.Duration;
+import org.slf4j.LoggerFactory;
+import org.testcontainers.containers.GenericContainer;
+import org.testcontainers.containers.output.Slf4jLogConsumer;
+import org.testcontainers.containers.wait.strategy.Wait;
+import org.testcontainers.images.builder.ImageFromDockerfile;
+import org.testcontainers.utility.DockerImageName;
+
+/**
+ * AppContainer for black-box testing of Kora applications.
+ *
+ * Runs the application in a Docker container for realistic testing via the HTTP API.
+ *
+ * <h2>Features</h2>
+ * <ul>
+ *   <li>Two ports: <b>8080</b> (API) and <b>8085</b> (system endpoints)</li>
+ *   <li>System endpoints: {@code /health}, {@code /readiness}, {@code /liveness}, {@code /metrics}</li>
+ *   <li>Support for the {@code APP_IMAGE} variable to use a pre-built Docker image</li>
+ * </ul>
+ *
+ * <h2>Environment variables for CI/CD</h2>
+ *
+ * <table>
+ *   <tr><th>Variable</th><th>Description</th><th>Example</th></tr>
+ *   <tr><td>{@code APP_IMAGE}</td><td>Name of the Docker image to use for testing</td><td>{@code myregistry/myapp:1.2.3}</td></tr>
+ * </table>
+ *
+ * <p>If the variable is not set, the image is built locally from the Dockerfile.</p>
+ */
+public final class AppContainer extends GenericContainer<AppContainer> {
+
+    private AppContainer() {
+        super(new ImageFromDockerfile("${dockerImageName}")
+                .withDockerfile(Paths.get("Dockerfile").toAbsolutePath()));
+    }
+
+    private AppContainer(DockerImageName image) {
+        super(image);
+    }
+
+    /**
+     * Creates an application container.
+     *
+     * If the {@code APP_IMAGE} variable is set, the pre-built Docker image is used.
+     * Otherwise, the image is built locally from the Dockerfile.
+     *
+     * @return a new AppContainer instance
+     */
+    public static AppContainer build() {
+        String appImage = System.getenv("APP_IMAGE");
+        return (appImage != null && !appImage.isBlank())
+                ? new AppContainer(DockerImageName.parse(appImage))
+                : new AppContainer();
+    }
+
+    @Override
+    protected void configure() {
+        super.configure();
+        // 8080 - main API, 8085 - system endpoints (health, metrics)
+        withExposedPorts(8080, 8085);
+        withStartupTimeout(Duration.ofSeconds(120));
+        withLogConsumer(new Slf4jLogConsumer(LoggerFactory.getLogger(getClass())));
+        waitingFor(Wait.forHttp("/readiness")
+                .forPort(8085)
+                .forStatusCode(200));
+    }
+
+    /**
+     * @return port of the main API (8080)
+     */
+    public int getPort() {
+        return getMappedPort(8080);
+    }
+
+    /**
+     * @return port of the system endpoints (8085)
+     */
+    public int getSystemPort() {
+        return getMappedPort(8085);
+    }
+
+    /**
+     * @return URI of the main API
+     */
+    public URI getURI() {
+        return URI.create(String.format("http://%s:%s", getHost(), getPort()));
+    }
+
+    /**
+     * @return URI of the system endpoints (/health, /readiness, /liveness, /metrics)
+     */
+    public URI getSystemURI() {
+        return URI.create(String.format("http://%s:%s", getHost(), getSystemPort()));
+    }
+}

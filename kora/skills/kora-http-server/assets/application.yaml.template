@@ -1,0 +1,51 @@
+# Kora HTTP Server Configuration (YAML)
+# See: https://kora.tinkoff.ru/documentation/en/http-server/configuration
+
+httpServer:
+  # Host for the HTTP server
+  host: "0.0.0.0"
+
+  # Port for the public API
+  publicApiHttpPort: 8080
+
+  # Port for the admin API (health, metrics)
+  adminApiHttpPort: 8081
+
+  # Number of threads for request processing
+  workerThreads: 16
+
+  # Maximum number of connections
+  maxConnections: 10000
+
+  # Read timeout (ms)
+  readTimeout: 30000
+
+  # Write timeout (ms)
+  writeTimeout: 30000
+
+  # Buffer size (bytes)
+  requestBufferSize: 16384
+  responseBufferSize: 16384
+
+  # Maximum request body size (bytes)
+  maxRequestSize: 10485760  # 10 MB
+
+telemetry:
+  common:
+    tracing:
+      enabled: true
+    metrics:
+      enabled: true
+
+logging:
+  level:
+    # Log level for the HTTP server
+    ru.tinkoff.kora.http.server: INFO
+    # Log level for your application
+    ${package}: DEBUG
+
+jackson:
+  # JSON formatting (for debugging)
+  prettyPrint: false
+  # Serialization of null values
+  serializationInclusion: "ALWAYS"

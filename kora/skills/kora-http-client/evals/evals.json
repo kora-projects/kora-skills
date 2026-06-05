@@ -1,0 +1,191 @@
+{
+  "skill_name": "kora-http-client",
+  "evals": [
+    {
+      "id": 1,
+      "name": "declarative-crud-client",
+      "prompt": "Create a declarative HTTP client for the User API in a Kora application. The client must have the methods: getUser(id) GET /users/{id}, createUser(request) POST /users, updateUser(id, request) PUT /users/{id}, deleteUser(id) DELETE /users/{id}. Use @HttpClient, @HttpRoute, and @Json annotations. Method signatures must be synchronous.",
+      "expected_output": "Interface with @HttpClient(\"user-api\"), @HttpRoute for CRUD operations, @Json for DTOs, synchronous return types",
+      "files": [],
+      "assertions": [
+        {"name": "has_http_client_annotation", "type": "code_contains", "expected": "@HttpClient"},
+        {"name": "has_http_route_annotations", "type": "code_contains", "expected": "@HttpRoute"},
+        {"name": "has_json_annotations", "type": "code_contains", "expected": "@Json"},
+        {"name": "has_get_method", "type": "code_contains", "expected": "HttpMethod.GET"},
+        {"name": "has_post_method", "type": "code_contains", "expected": "HttpMethod.POST"},
+        {"name": "has_put_method", "type": "code_contains", "expected": "HttpMethod.PUT"},
+        {"name": "has_delete_method", "type": "code_contains", "expected": "HttpMethod.DELETE"},
+        {"name": "has_path_parameter", "type": "code_contains", "expected": "@Path"},
+        {"name": "sync_signature", "type": "not_contains", "expected": "CompletionStage"}
+      ]
+    },
+    {
+      "id": 2,
+      "name": "imperative-client",
+      "prompt": "Create an imperative HTTP client for an External API. The client must use the HttpClient interface directly, have methods for GET/POST requests, and include basic error handling. Method signatures must return CompletionStage for asynchronous processing.",
+      "expected_output": "Class with @Component, HttpClient injected via @Tag, methods returning CompletionStage, manual HttpClientRequest construction",
+      "files": [],
+      "assertions": [
+        {"name": "has_component_annotation", "type": "code_contains", "expected": "@Component"},
+        {"name": "has_http_client_injection", "type": "code_contains", "expected": "HttpClient"},
+        {"name": "has_tag_annotation", "type": "code_contains", "expected": "@Tag"},
+        {"name": "has_completion_stage", "type": "code_contains", "expected": "CompletionStage"},
+        {"name": "uses_http_client_request", "type": "code_contains", "expected": "HttpClientRequest"},
+        {"name": "calls_execute", "type": "code_contains", "expected": "httpClient.execute"},
+        {"name": "has_http_method", "type": "code_contains", "expected": "HttpMethod"}
+      ]
+    },
+    {
+      "id": 3,
+      "name": "basic-auth-interceptor",
+      "prompt": "Create an HttpClientInterceptor for Basic Authentication. The interceptor must add the Authorization: Basic <credentials> header to every request. Credentials must be Base64-encoded from username:password. Use CompletionStage for the method signature.",
+      "expected_output": "Class implementing HttpClientInterceptor, adding Authorization header, Base64 encoding, CompletionStage return type",
+      "files": [],
+      "assertions": [
+        {"name": "implements_interceptor", "type": "code_contains", "expected": "HttpClientInterceptor"},
+        {"name": "has_basic_auth_header", "type": "code_contains", "expected": "Authorization"},
+        {"name": "has_basic_prefix", "type": "code_contains", "expected": "Basic"},
+        {"name": "uses_base64", "type": "code_contains", "expected": "Base64"},
+        {"name": "has_completion_stage", "type": "code_contains", "expected": "CompletionStage"},
+        {"name": "calls_chain_process", "type": "code_contains", "expected": "chain.process"},
+        {"name": "uses_to_builder", "type": "code_contains", "expected": "toBuilder()"}
+      ]
+    },
+    {
+      "id": 4,
+      "name": "api-key-auth-interceptor",
+      "prompt": "Create an HttpClientInterceptor for API Key authentication. The interceptor must add a custom header (for example X-API-Key or Authorization: Bearer) containing the API key value. The header name and key value must be configurable via the constructor.",
+      "expected_output": "Class implementing HttpClientInterceptor, adding the API key header, flexible configuration via constructor",
+      "files": [],
+      "assertions": [
+        {"name": "implements_interceptor", "type": "code_contains", "expected": "HttpClientInterceptor"},
+        {"name": "has_api_key_header", "type": "regex", "expected": "(X-API-Key|Authorization|api-key)"},
+        {"name": "has_constructor_params", "type": "regex", "expected": "(apiKey|headerName)"},
+        {"name": "has_completion_stage", "type": "code_contains", "expected": "CompletionStage"},
+        {"name": "calls_chain_process", "type": "code_contains", "expected": "chain.process"}
+      ]
+    },
+    {
+      "id": 5,
+      "name": "bearer-token-interceptor",
+      "prompt": "Create an HttpClientInterceptor for Bearer Token authentication. The token must be obtained dynamically via Supplier<String> (to support token refresh). Add the Authorization: Bearer <token> header to every request.",
+      "expected_output": "Class implementing HttpClientInterceptor, Supplier<String> for the token, Authorization: Bearer header",
+      "files": [],
+      "assertions": [
+        {"name": "implements_interceptor", "type": "code_contains", "expected": "HttpClientInterceptor"},
+        {"name": "has_bearer_auth", "type": "code_contains", "expected": "Bearer"},
+        {"name": "uses_supplier", "type": "code_contains", "expected": "Supplier<String>"},
+        {"name": "has_authorization_header", "type": "code_contains", "expected": "Authorization"},
+        {"name": "has_completion_stage", "type": "code_contains", "expected": "CompletionStage"},
+        {"name": "calls_chain_process", "type": "code_contains", "expected": "chain.process"}
+      ]
+    },
+    {
+      "id": 6,
+      "name": "custom-response-mapper",
+      "prompt": "Create a custom HttpClientResponseMapper for XML format. The mapper must parse an XML response into a Java object and handle parsing errors. Use the HttpClientResponseMapper<T> interface.",
+      "expected_output": "Class implementing HttpClientResponseMapper, XML parsing, status code handling",
+      "files": [],
+      "assertions": [
+        {"name": "implements_mapper", "type": "code_contains", "expected": "HttpClientResponseMapper"},
+        {"name": "has_xml_parsing", "type": "regex", "expected": "(XML|xml|parseXml)"},
+        {"name": "checks_status_code", "type": "code_contains", "expected": "code()"},
+        {"name": "has_apply_method", "type": "code_contains", "expected": "apply"},
+        {"name": "reads_response_body", "type": "regex", "expected": "(body()|asString())"}
+      ]
+    },
+    {
+      "id": 7,
+      "name": "sealed-response",
+      "prompt": "Create a sealed interface for a type-safe API response with the variants: Success(data), NotFound(error), ValidationError(errors), ServerError(error). Show an example of using it in a declarative client.",
+      "expected_output": "Sealed interface/class with subtypes for different response variants, usage example in a client",
+      "files": [],
+      "assertions": [
+        {"name": "has_sealed_type", "type": "regex", "expected": "(sealed|sealed interface|sealed class)"},
+        {"name": "has_success_variant", "type": "code_contains", "expected": "Success"},
+        {"name": "has_not_found_variant", "type": "code_contains", "expected": "NotFound"},
+        {"name": "has_validation_error", "type": "code_contains", "expected": "ValidationError"},
+        {"name": "has_server_error", "type": "code_contains", "expected": "ServerError"},
+        {"name": "used_in_client", "type": "code_contains", "expected": "@HttpClient"}
+      ]
+    },
+    {
+      "id": 8,
+      "name": "query-parameters-client",
+      "prompt": "Create a declarative client with methods that use @Query parameters. GET /search with the parameters: q (String, required), category (String, optional), limit (int, default 20), offset (int, default 0), sortBy (String, optional).",
+      "expected_output": "Interface with @Query annotations, required/optional parameters, synchronous signatures",
+      "files": [],
+      "assertions": [
+        {"name": "has_http_client", "type": "code_contains", "expected": "@HttpClient"},
+        {"name": "has_query_annotations", "type": "code_contains", "expected": "@Query"},
+        {"name": "has_search_method", "type": "code_contains", "expected": "search"},
+        {"name": "has_required_param", "type": "code_contains", "expected": "q"},
+        {"name": "has_category_param", "type": "code_contains", "expected": "category"},
+        {"name": "has_pagination", "type": "regex", "expected": "(limit|offset)"},
+        {"name": "has_sorting", "type": "code_contains", "expected": "sortBy"}
+      ]
+    },
+    {
+      "id": 9,
+      "name": "response-code-mapper",
+      "prompt": "Create a declarative client with @ResponseCodeMapper for handling different HTTP status codes. 200 -> SuccessResponse, 404 -> NotFoundException, 400 -> BadRequestException, 500 -> ServerException. Use @Json to parse the response body.",
+      "expected_output": "Interface with @ResponseCodeMapper annotations, mapping status codes to types/exceptions",
+      "files": [],
+      "assertions": [
+        {"name": "has_http_client", "type": "code_contains", "expected": "@HttpClient"},
+        {"name": "has_response_code_mapper", "type": "code_contains", "expected": "@ResponseCodeMapper"},
+        {"name": "has_200_mapping", "type": "code_contains", "expected": "200"},
+        {"name": "has_404_mapping", "type": "code_contains", "expected": "404"},
+        {"name": "has_400_mapping", "type": "code_contains", "expected": "400"},
+        {"name": "has_500_mapping", "type": "code_contains", "expected": "500"},
+        {"name": "has_json", "type": "code_contains", "expected": "@Json"}
+      ]
+    },
+    {
+      "id": 10,
+      "name": "logging-interceptor",
+      "prompt": "Create an HttpClientInterceptor for logging requests and responses. Log: method, URI, headers (excluding sensitive ones), execution time, and response status code. Use @Tag to apply the interceptor to a specific client.",
+      "expected_output": "Class implementing HttpClientInterceptor, request/response logging, timing, @Tag with the client class",
+      "files": [],
+      "assertions": [
+        {"name": "implements_interceptor", "type": "code_contains", "expected": "HttpClientInterceptor"},
+        {"name": "has_tag_annotation", "type": "code_contains", "expected": "@Tag"},
+        {"name": "logs_method", "type": "code_contains", "expected": "method()"},
+        {"name": "logs_uri", "type": "code_contains", "expected": "uri()"},
+        {"name": "captures_timing", "type": "regex", "expected": "(System\\.(currentTimeMillis|nanoTime)|Duration)"},
+        {"name": "logs_status", "type": "code_contains", "expected": "code()"},
+        {"name": "has_completion_stage", "type": "code_contains", "expected": "CompletionStage"}
+      ]
+    },
+    {
+      "id": 11,
+      "name": "header-parameters-client",
+      "prompt": "Create a declarative client with methods that use @Header parameters. POST /api/data with the headers: X-Request-ID (required), X-User-ID (optional), Accept (default application/json).",
+      "expected_output": "Interface with @Header annotations, required/optional headers, default values",
+      "files": [],
+      "assertions": [
+        {"name": "has_http_client", "type": "code_contains", "expected": "@HttpClient"},
+        {"name": "has_header_annotations", "type": "code_contains", "expected": "@Header"},
+        {"name": "has_request_id", "type": "code_contains", "expected": "X-Request-ID"},
+        {"name": "has_user_id", "type": "code_contains", "expected": "X-User-ID"},
+        {"name": "has_accept_header", "type": "code_contains", "expected": "Accept"}
+      ]
+    },
+    {
+      "id": 12,
+      "name": "error-handling-client",
+      "prompt": "Create an imperative client with error handling. Handle: HttpClientException for HTTP errors, TimeoutException for timeouts, IOException for network errors. Log errors and wrap them in RuntimeException with a clear message.",
+      "expected_output": "Class with try-catch blocks for different exception types, logging, wrapping",
+      "files": [],
+      "assertions": [
+        {"name": "has_http_client", "type": "code_contains", "expected": "HttpClient"},
+        {"name": "has_try_catch", "type": "code_contains", "expected": "try"},
+        {"name": "handles_http_exception", "type": "code_contains", "expected": "HttpClientException"},
+        {"name": "handles_timeout", "type": "code_contains", "expected": "TimeoutException"},
+        {"name": "handles_io_exception", "type": "code_contains", "expected": "IOException"},
+        {"name": "has_logging", "type": "regex", "expected": "(log|Log|Logger)"},
+        {"name": "wraps_exception", "type": "code_contains", "expected": "RuntimeException"}
+      ]
+    }
+  ]
+}

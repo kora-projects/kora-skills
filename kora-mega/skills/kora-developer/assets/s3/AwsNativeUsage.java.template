@@ -1,0 +1,52 @@
+// Drop down to AWS SDK directly when Kora's portable API doesn't cover what you need
+// (presigned URLs, bucket lifecycle, replication, SSE-C, etc.).
+// Replace `com.example.app.storage` with your package.
+
+package com.example.app.storage;
+
+import ru.tinkoff.kora.common.Component;
+import ru.tinkoff.kora.common.Tag;
+
+import software.amazon.awssdk.services.s3.S3AsyncClient;
+import software.amazon.awssdk.services.s3.S3Client;
+import software.amazon.awssdk.services.s3.model.GetObjectRequest;
+import software.amazon.awssdk.services.s3.model.MultipartUpload;
+import software.amazon.awssdk.services.s3.presigner.S3Presigner;
+import software.amazon.awssdk.services.s3.presigner.model.GetObjectPresignRequest;
+
+import java.time.Duration;
+import java.util.UUID;
+
+@Component
+public final class S3NativeService {
+
+    private final S3Client sync;                                  // injected by AwsS3ClientModule
+    private final S3AsyncClient async;
+    private final S3AsyncClient multipartUploadAsync;             // optimized async client for batch uploads
+
+    public S3NativeService(
+            S3Client sync,
+            S3AsyncClient async,
+            @Tag(MultipartUpload.class) S3AsyncClient multipartUploadAsync) {       // ← tag = the AWS SDK class
+        this.sync = sync;
+        this.async = async;
+        this.multipartUploadAsync = multipartUploadAsync;
+    }
+
+    /** Pre-signed download URL valid for 15 minutes. Not available via Kora's portable API. */
+    public java.net.URL presignedDownload(String bucket, String key) {
+        // S3Presigner is not auto-injected by Kora — create one yourself bound to the same region/credentials.
+        try (var presigner = S3Presigner.builder().build()) {
+            var presign = presigner.presignGetObject(GetObjectPresignRequest.builder()
+                .signatureDuration(Duration.ofMinutes(15))
+                .getObjectRequest(GetObjectRequest.builder().bucket(bucket).key(key).build())
+                .build());
+            return presign.url();
+        }
+    }
+
+    /** Use the tagged async client for batch uploads — uses AWS Transfer Manager under the hood. */
+    public void streamUpload(String bucket, String key, java.nio.file.Path file) {
+        // Use multipartUploadAsync.putObject(...) here for transfer-manager-style behavior.
+    }
+}

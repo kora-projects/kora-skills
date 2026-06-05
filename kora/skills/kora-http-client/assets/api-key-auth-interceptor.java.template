@@ -1,0 +1,70 @@
+package ${package};
+
+import ru.tinkoff.kora.common.Context;
+import ru.tinkoff.kora.http.client.common.HttpClientRequest;
+import ru.tinkoff.kora.http.client.common.HttpClientResponse;
+import ru.tinkoff.kora.http.client.common.HttpClientInterceptor;
+import ru.tinkoff.kora.http.client.common.InterceptChain;
+
+/**
+ * API Key HttpClientInterceptor for authentication.
+ *
+ * <p>Adds the API key header (X-API-Key or a custom header) to every request.</p>
+ *
+ * <p>Configuration (application.conf):</p>
+ * <pre>{@code
+ * httpClient {
+ *   ${client_name} {
+ *     auth {
+ *       apiKey = "your-api-key-here"
+ *       headerName = "X-API-Key"  # optional, default is X-API-Key
+ *     }
+ *   }
+ * }
+ * }</pre>
+ *
+ * <p>Module registration:</p>
+ * <pre>{@code
+ * @Module
+ * public interface ApiKeyAuthModule {
+ *     @ConfigSource("httpClient.${client_name}.auth")
+ *     interface ApiKeyAuthConfig {
+ *         String apiKey();
+ *         default String headerName() { return "X-API-Key"; }
+ *     }
+ *
+ *     @DefaultComponent
+ *     default ApiKeyAuthHttpClientInterceptor apiKeyAuthInterceptor(ApiKeyAuthConfig config) {
+ *         return new ApiKeyAuthHttpClientInterceptor(config.apiKey(), config.headerName());
+ *     }
+ * }
+ * }</pre>
+ */
+public final class ApiKeyAuthHttpClientInterceptor implements HttpClientInterceptor {
+
+    private final String apiKey;
+    private final String headerName;
+
+    public ApiKeyAuthHttpClientInterceptor(String apiKey, String headerName) {
+        this.apiKey = apiKey;
+        this.headerName = headerName;
+    }
+
+    public ApiKeyAuthHttpClientInterceptor(String apiKey) {
+        this(apiKey, "X-API-Key");
+    }
+
+    @Override
+    public CompletionStage<HttpClientResponse> intercept(
+        Context context,
+        HttpClientRequest request,
+        InterceptChain chain
+    ) {
+        // Add API key header to every request
+        HttpClientRequest authRequest = request.toBuilder()
+            .header(headerName, apiKey)
+            .build();
+
+        return chain.process(context, authRequest);
+    }
+}

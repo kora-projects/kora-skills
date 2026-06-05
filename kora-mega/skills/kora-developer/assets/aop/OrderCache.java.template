@@ -1,0 +1,70 @@
+// Typed cache + service using all four cache annotations.
+// Replace `com.example.app.cache` / `com.example.app.dto` with your packages.
+
+package com.example.app.cache;
+
+import com.example.app.dto.OrderDto;
+import ru.tinkoff.kora.cache.annotation.Cache;
+import ru.tinkoff.kora.cache.annotation.CacheInvalidate;
+import ru.tinkoff.kora.cache.annotation.CachePut;
+import ru.tinkoff.kora.cache.annotation.Cacheable;
+import ru.tinkoff.kora.cache.caffeine.CaffeineCache;
+import ru.tinkoff.kora.common.Component;
+
+// Remove this import if not using UUID as your key type
+import java.util.UUID;
+
+// 1. Typed cache interface — Kora generates the impl and registers it as a component.
+// Replace KeyType and ValueType with your actual types (e.g., UUID, OrderDto)
+@Cache("orders.cache")
+public interface OrderCache extends CaffeineCache<KeyType, ValueType> {
+
+    // For a composite key, define an inner record and use it as K:
+    //
+    //   @Cache("orders.cache")
+    //   public interface OrderCache extends CaffeineCache<OrderCache.Key, OrderDto> {
+    //       record Key(UUID tenantId, UUID orderId) {}
+    //   }
+}
+
+// 2. Service using all four cache annotations.
+@Component
+class OrdersService {                                          // non-final
+
+    private final OrderCache cache;
+    private final OrdersRepository repo;
+
+    public OrdersService(OrderCache cache, OrdersRepository repo) {
+        this.cache = cache;
+        this.repo  = repo;
+    }
+
+    @Cacheable(OrderCache.class)                               // read-through
+    public ValueType get(KeyType id) {
+        return repo.find(id);
+    }
+
+    @CachePut(OrderCache.class)                                // write-through; key = first arg (id)
+    public ValueType save(KeyType id, ValueType dto) {
+        return repo.save(dto);
+    }
+
+    @CacheInvalidate(OrderCache.class)                         // evict the entry for id
+    public void delete(KeyType id) {
+        repo.delete(id);
+    }
+
+    @CacheInvalidate(value = OrderCache.class, invalidateAll = true)  // clear whole cache
+    public void clearAll() {
+        // no business action — pure cache management
+    }
+}
+
+// Placeholder repo — replace with your actual @Repository.
+// Replace KeyType and ValueType with your actual types
+@Component
+class OrdersRepository {
+    public ValueType find(KeyType id) { return null; }
+    public ValueType save(ValueType dto) { return dto; }
+    public void delete(KeyType id) { }
+}

@@ -1,0 +1,28 @@
+package ${package};
+
+import jakarta.annotation.Nullable;
+import ru.tinkoff.kora.database.common.annotation.Column;
+import ru.tinkoff.kora.database.common.annotation.EntityJdbc;
+import ru.tinkoff.kora.database.common.annotation.Id;
+import ru.tinkoff.kora.database.common.annotation.Table;
+
+/**
+ * Entity with single-field ID (String type).
+ * For UUID IDs, change String to UUID and update import.
+ * For numeric IDs, change String to Long with sequence generation.
+ *
+ * Key annotations:
+ * - @EntityJdbc: Marks record as JDBC entity
+ * - @Table: Maps to database table
+ * - @Id: Marks primary key field
+ * - @Column: Maps field to column name
+ * - @Nullable: For nullable fields
+ */
+@EntityJdbc
+@Table("${table_name}")
+public record ${entity_name}(
+    @Column("id") @Id String id,
+    @Column("field1") String field1,
+    @Column("field2") String field2,
+    @Column("field3") @Nullable String field3
+) {}

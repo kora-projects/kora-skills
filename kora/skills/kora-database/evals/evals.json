@@ -1,0 +1,445 @@
+{
+  "skill_name": "kora-database",
+  "evals": [
+    {
+      "id": 1,
+      "name": "jdbc-basic-repository",
+      "prompt": "Create a JDBC repository for a Product entity with fields: id (UUID, primary key), name (String), price (BigDecimal), created_at (LocalDateTime). Include findById, findAll, insert, update, and delete methods using SQL macros.",
+      "expected_output": "Repository interface with @Repository annotation, @Table entity with @Id and @Column annotations, using %{return#selects}, %{entity#inserts}, %{entity#updates} macros",
+      "files": [],
+      "assertions": [
+        {"name": "has_repository_annotation", "type": "code_contains", "expected": "@Repository"},
+        {"name": "extends_jdbc_repository", "type": "code_contains", "expected": "extends JdbcRepository"},
+        {"name": "has_table_annotation", "type": "code_contains", "expected": "@Table"},
+        {"name": "has_id_annotation", "type": "code_contains", "expected": "@Id"},
+        {"name": "has_column_annotations", "type": "code_contains", "expected": "@Column"},
+        {"name": "uses_selects_macro", "type": "code_contains", "expected": "%{return#selects}"},
+        {"name": "uses_inserts_macro", "type": "code_contains", "expected": "%{entity#inserts}"},
+        {"name": "uses_updates_macro", "type": "code_contains", "expected": "%{entity#updates}"}
+      ]
+    },
+    {
+      "id": 2,
+      "name": "jdbc-transaction-management",
+      "prompt": "Implement a UserService that creates a user and sends a welcome email in a transaction. The email should be sent only after successful commit using post-commit actions.",
+      "expected_output": "Service using JdbcConnectionFactory.inTx(), currentConnectionContext().addPostCommitAction() for email sending after commit",
+      "files": [],
+      "assertions": [
+        {"name": "uses_in_tx", "type": "code_contains", "expected": "inTx("},
+        {"name": "has_lambda_in_tx", "type": "regex", "expected": "inTx\\s*\\(\\s*\\(\\s*\\)\\s*->"},
+        {"name": "uses_post_commit_action", "type": "code_contains", "expected": "addPostCommitAction"},
+        {"name": "has_current_connection_context", "type": "code_contains", "expected": "currentConnectionContext()"}
+      ]
+    },
+    {
+      "id": 3,
+      "name": "jdbc-custom-resultset-mapper",
+      "prompt": "Create a custom ResultSet mapper for User entity that converts email to lowercase and handles nullable nickname field.",
+      "expected_output": "Class implementing JdbcResultSetMapper<User> with apply(ResultSet rs) method, used via @Mapping annotation",
+      "files": [],
+      "assertions": [
+        {"name": "implements_resultset_mapper", "type": "code_contains", "expected": "implements JdbcResultSetMapper"},
+        {"name": "has_apply_method", "type": "regex", "expected": "apply\\s*\\(\\s*ResultSet"},
+        {"name": "has_mapping_annotation", "type": "code_contains", "expected": "@Mapping"},
+        {"name": "converts_to_lowercase", "type": "code_contains", "expected": "toLowerCase()"}
+      ]
+    },
+    {
+      "id": 4,
+      "name": "jdbc-batch-insert",
+      "prompt": "Create a repository method for batch inserting multiple User entities using the @Batch annotation.",
+      "expected_output": "Repository method with @Query(\"%{entity#inserts}\") and @Batch List<User> parameter",
+      "files": [],
+      "assertions": [
+        {"name": "has_batch_annotation", "type": "code_contains", "expected": "@Batch"},
+        {"name": "has_list_parameter", "type": "regex", "expected": "List<\\w+>"},
+        {"name": "has_insert_query", "type": "code_contains", "expected": "INSERT"},
+        {"name": "uses_entity_inserts_macro", "type": "code_contains", "expected": "%{entity#inserts}"}
+      ]
+    },
+    {
+      "id": 5,
+      "name": "jdbc-multiple-databases",
+      "prompt": "Configure a secondary database with @Tag annotation and create an AuditRepository that uses the secondary database.",
+      "expected_output": "SecondaryDatabase tag class, secondaryJdbcConfig and secondaryDatabase methods with @Tag, repository with executorTag = @Tag(SecondaryDatabase.class)",
+      "files": [],
+      "assertions": [
+        {"name": "has_tag_annotation", "type": "code_contains", "expected": "@Tag"},
+        {"name": "has_secondary_database_class", "type": "code_contains", "expected": "SecondaryDatabase"},
+        {"name": "has_executor_tag", "type": "code_contains", "expected": "executorTag"},
+        {"name": "has_jdbc_connection_factory", "type": "code_contains", "expected": "JdbcConnectionFactory"}
+      ]
+    },
+    {
+      "id": 6,
+      "name": "cassandra-basic-repository",
+      "prompt": "Create a Cassandra repository for an Event entity with fields: id (UUID, primary key), type (String), data (String), created_at (LocalDateTime). Include findByType and findAll methods.",
+      "expected_output": "Repository with @Repository, @Table entity with @Id @Column annotations, CQL queries with :param syntax",
+      "files": [],
+      "assertions": [
+        {"name": "has_repository_annotation", "type": "code_contains", "expected": "@Repository"},
+        {"name": "extends_cassandra_repository", "type": "code_contains", "expected": "extends CassandraRepository"},
+        {"name": "has_table_annotation", "type": "code_contains", "expected": "@Table"},
+        {"name": "has_id_annotation", "type": "code_contains", "expected": "@Id"},
+        {"name": "has_column_annotations", "type": "code_contains", "expected": "@Column"},
+        {"name": "has_named_parameter", "type": "regex", "expected": ":\\w+"}
+      ]
+    },
+    {
+      "id": 7,
+      "name": "cassandra-udt",
+      "prompt": "Define a UDT for Address (street, city, zipCode) and use it in a User entity with Cassandra repository.",
+      "expected_output": "@UDT record, @Column(\"address\") AddressUDT field in entity",
+      "files": [],
+      "assertions": [
+        {"name": "has_udt_annotation", "type": "code_contains", "expected": "@UDT"},
+        {"name": "has_udt_name", "type": "code_contains", "expected": "address_udt"},
+        {"name": "has_udt_record", "type": "regex", "expected": "record\\s+Address"},
+        {"name": "has_udt_column", "type": "code_contains", "expected": "AddressUDT"}
+      ]
+    },
+    {
+      "id": 8,
+      "name": "cassandra-profile",
+      "prompt": "Create an AnalyticsRepository with @CassandraProfile(\"analytics\") that uses custom consistency level and timeout settings.",
+      "expected_output": "Repository with @CassandraProfile annotation, corresponding profile config in application.conf with consistency and requestTimeout",
+      "files": [],
+      "assertions": [
+        {"name": "has_cassandra_profile_annotation", "type": "code_contains", "expected": "@CassandraProfile"},
+        {"name": "has_profile_name", "type": "code_contains", "expected": "analytics"},
+        {"name": "has_consistency_config", "type": "code_contains", "expected": "consistency"},
+        {"name": "has_timeout_config", "type": "code_contains", "expected": "timeout"}
+      ]
+    },
+    {
+      "id": 9,
+      "name": "cassandra-async",
+      "prompt": "Create a repository method that returns CompletionStage<List<User>> for async operations.",
+      "expected_output": "Method signature with CompletionStage return type, @Query annotation with proper CQL",
+      "files": [],
+      "assertions": [
+        {"name": "has_completion_stage", "type": "code_contains", "expected": "CompletionStage"},
+        {"name": "has_query_annotation", "type": "code_contains", "expected": "@Query"},
+        {"name": "has_list_return", "type": "regex", "expected": "List<\\w+>"}
+      ]
+    },
+    {
+      "id": 10,
+      "name": "entity-embedded",
+      "prompt": "Create an entity with @Embedded Address value object that flattens to address_street, address_city, address_zip_code columns.",
+      "expected_output": "@Embedded record Address, @Embedded Address field in parent entity, column names follow embedded pattern",
+      "files": [],
+      "assertions": [
+        {"name": "has_embedded_annotation", "type": "code_contains", "expected": "@Embedded"},
+        {"name": "has_address_record", "type": "regex", "expected": "record\\s+Address"},
+        {"name": "has_embedded_field", "type": "code_contains", "expected": "Address"},
+        {"name": "has_flattened_columns", "type": "regex", "expected": "address_(street|city|zip)"}
+      ]
+    },
+    {
+      "id": 11,
+      "name": "custom-parameter-mapper",
+      "prompt": "Create a custom parameter mapper for PostgreSQL array type that converts List<String> to SQL ARRAY.",
+      "expected_output": "Class implementing JdbcParameterColumnMapper<List<String>> with createArrayOf usage",
+      "files": [],
+      "assertions": [
+        {"name": "implements_jdbc_parameter_column_mapper", "type": "code_contains", "expected": "implements JdbcParameterColumnMapper"},
+        {"name": "uses_create_array_of", "type": "code_contains", "expected": "createArrayOf"},
+        {"name": "handles_null_values", "type": "code_contains", "expected": "setNull"},
+        {"name": "has_list_string_type", "type": "code_contains", "expected": "List<String>"}
+      ]
+    },
+    {
+      "id": 12,
+      "name": "jdbc-configuration",
+      "prompt": "Configure JDBC connection pool with HikariCP: maxPoolSize=20, minIdle=5, connectionTimeout=30s, maxLifetime=15m.",
+      "expected_output": "application.conf or application.yaml with jdbcUrl, username, password, maxPoolSize, minIdle, connectionTimeout, maxLifetime",
+      "files": [],
+      "assertions": [
+        {"name": "has_jdbc_url", "type": "code_contains", "expected": "jdbcUrl"},
+        {"name": "has_max_pool_size_20", "type": "code_contains", "expected": "maxPoolSize = 20"},
+        {"name": "has_min_idle_5", "type": "code_contains", "expected": "minIdle = 5"},
+        {"name": "has_connection_timeout_30s", "type": "code_contains", "expected": "connectionTimeout = 30s"},
+        {"name": "has_max_lifetime_15m", "type": "code_contains", "expected": "maxLifetime = 15m"}
+      ]
+    },
+    {
+      "id": 13,
+      "name": "cassandra-configuration",
+      "prompt": "Configure Cassandra connection with contactPoints, localDatacenter, keyspace, and custom timeouts.",
+      "expected_output": "application.conf with contactPoints array, localDatacenter, keyspace, connection.connectTimeout, connection.requestTimeout",
+      "files": [],
+      "assertions": [
+        {"name": "has_contact_points", "type": "code_contains", "expected": "contactPoints"},
+        {"name": "has_dc_or_local_datacenter", "type": "regex", "expected": "(dc|localDatacenter)"},
+        {"name": "has_session_keyspace", "type": "code_contains", "expected": "sessionKeyspace"},
+        {"name": "has_request_timeout", "type": "code_contains", "expected": "timeout"}
+      ]
+    },
+    {
+      "id": 14,
+      "name": "entity-naming-strategy",
+      "prompt": "Configure SNAKE_CASE naming strategy for automatic camelCase to snake_case conversion.",
+      "expected_output": "database.namingStrategy = \"SNAKE_CASE\" in configuration",
+      "files": [],
+      "assertions": [
+        {"name": "has_naming_strategy", "type": "code_contains", "expected": "namingStrategy = \"SNAKE_CASE\""}
+      ]
+    },
+    {
+      "id": 15,
+      "name": "jdbc-nullable-field",
+      "prompt": "Create a User entity with a nullable nickname field and show how to handle it in repository queries.",
+      "expected_output": "@Nullable String nickname field, proper handling in INSERT/UPDATE with macro or explicit SQL",
+      "files": [],
+      "assertions": [
+        {"name": "has_nullable_annotation", "type": "code_contains", "expected": "@Nullable"},
+        {"name": "has_string_nickname", "type": "code_contains", "expected": "String nickname"}
+      ]
+    },
+    {
+      "id": 16,
+      "name": "cassandra-lightweight-transaction",
+      "prompt": "Create a repository method that uses lightweight transaction (LWT) with IF NOT EXISTS clause.",
+      "expected_output": "@Query with \"INSERT ... IF NOT EXISTS\" returning boolean for success check",
+      "files": [],
+      "assertions": [
+        {"name": "has_if_not_exists", "type": "code_contains", "expected": "IF NOT EXISTS"},
+        {"name": "extends_cassandra_repository", "type": "code_contains", "expected": "extends CassandraRepository"},
+        {"name": "has_boolean_return", "type": "code_contains", "expected": "boolean"}
+      ]
+    },
+    {
+      "id": 17,
+      "name": "jdbc-post-rollback-action",
+      "prompt": "Implement error handling with post-rollback action that logs the failure when a transaction fails.",
+      "expected_output": "currentConnectionContext().addPostRollbackAction() with exception logging",
+      "files": [],
+      "assertions": [
+        {"name": "has_add_post_rollback_action", "type": "code_contains", "expected": "addPostRollbackAction"},
+        {"name": "logs_exception", "type": "regex", "expected": "log\\.(error|warn)"}
+      ]
+    },
+    {
+      "id": 18,
+      "name": "cassandra-pagination",
+      "prompt": "Create a repository method that supports pagination using Pageable parameter.",
+      "expected_output": "Method with Pageable parameter, proper CQL with LIMIT",
+      "files": [],
+      "assertions": [
+        {"name": "has_paging_state_parameter", "type": "code_contains", "expected": "byte[] pagingState"},
+        {"name": "has_page_size_parameter", "type": "code_contains", "expected": "int pageSize"}
+      ]
+    },
+    {
+      "id": 19,
+      "name": "entity-json-column",
+      "prompt": "Create an entity with a JSON column that stores a Map<String, Object> using custom mapper.",
+      "expected_output": "Custom JdbcResultColumnMapper for JSON serialization/deserialization, @Mapping annotation on field",
+      "files": [],
+      "assertions": [
+        {"name": "has_map_field", "type": "code_contains", "expected": "Map<String, Object>"},
+        {"name": "has_json_mapper", "type": "code_contains", "expected": "implements JdbcResultColumnMapper"},
+        {"name": "has_mapping_annotation", "type": "code_contains", "expected": "@Mapping"}
+      ]
+    },
+    {
+      "id": 20,
+      "name": "jdbc-crud-single-id",
+      "prompt": "Create a basic JDBC CRUD repository for an Order entity with a single String ID field. Include all standard CRUD operations: findById, findAll, insert, insertBatch, update, updateBatch, deleteById, deleteAll. Use SQL macros for query generation. Use @Nullable for nullable return types instead of Optional.",
+      "expected_output": "Repository extending JdbcRepository, @EntityJdbc record with @Id @Column annotations, all CRUD methods using %{return#selects}, %{entity#inserts}, %{entity#updates} macros, @Nullable for findById return type",
+      "files": [],
+      "assertions": [
+        {"name": "extends_jdbc_repository", "type": "code_contains", "expected": "extends JdbcRepository"},
+        {"name": "has_entityjdbc_annotation", "type": "code_contains", "expected": "@EntityJdbc"},
+        {"name": "has_id_annotation", "type": "code_contains", "expected": "@Id"},
+        {"name": "has_nullable_find_by_id", "type": "code_contains", "expected": "@Nullable"},
+        {"name": "has_find_all_method", "type": "code_contains", "expected": "List<Order> findAll"},
+        {"name": "has_insert_method", "type": "code_contains", "expected": "UpdateCount insert"},
+        {"name": "has_insert_batch_method", "type": "code_contains", "expected": "@Batch"},
+        {"name": "has_delete_by_id_method", "type": "code_contains", "expected": "deleteById"}
+      ]
+    },
+    {
+      "id": 21,
+      "name": "jdbc-crud-composite-id",
+      "prompt": "Create a JDBC CRUD repository for a UserPreference entity with a composite ID consisting of two UUID fields (userId, settingKey). Use @Embedded annotation for the composite key. Include findById, findAll, insert, update, and delete operations. Use @Nullable for nullable return types instead of Optional.",
+      "expected_output": "Repository with nested ID record, @Embedded annotation on ID field, %{id#where} macro for composite key queries, @Nullable for findById return type",
+      "files": [],
+      "assertions": [
+        {"name": "has_embedded_annotation", "type": "code_contains", "expected": "@Embedded"},
+        {"name": "has_composite_id_record", "type": "code_contains", "expected": "record ID"},
+        {"name": "uses_id_where_macro", "type": "code_contains", "expected": "%{id#where}"},
+        {"name": "has_nullable_return", "type": "code_contains", "expected": "@Nullable"}
+      ]
+    },
+    {
+      "id": 22,
+      "name": "jdbc-abstract-macros-repository",
+      "prompt": "Create an abstract base repository interface AbstractCrudMacrosRepository<K, V> that provides common CRUD operations (findAll, insert, insertBatch, update, updateBatch, upsert, delete, deleteBatch) using SQL macros. This pattern helps avoid code duplication when you have many repositories with similar CRUD operations. Then create a concrete BookRepository that extends this base class for a Book entity with String ID.",
+      "expected_output": "AbstractCrudMacrosRepository interface with generic types K and V, concrete repository extending it with entity-specific findByTitle method",
+      "files": [],
+      "assertions": [
+        {"name": "has_abstract_base_repository", "type": "code_contains", "expected": "interface AbstractCrudMacrosRepository"},
+        {"name": "has_generic_types", "type": "code_contains", "expected": "<K, V>"},
+        {"name": "concrete_repository_extends_abstract", "type": "code_contains", "expected": "extends AbstractCrudMacrosRepository"},
+        {"name": "has_find_all_in_base", "type": "code_contains", "expected": "List<V> findAll"},
+        {"name": "has_insert_in_base", "type": "code_contains", "expected": "UpdateCount insert"}
+      ]
+    },
+    {
+      "id": 23,
+      "name": "jdbc-id-generation-uuid",
+      "prompt": "Create a repository for a Session entity with UUID ID that is auto-generated using random UUID. Show the entity record with a convenience constructor.",
+      "expected_output": "Entity record with UUID id field, public constructor that calls this(UUID.randomUUID(), ...)",
+      "files": [],
+      "assertions": [
+        {"name": "has_uuid_id", "type": "code_contains", "expected": "UUID id"},
+        {"name": "has_random_uuid_generation", "type": "code_contains", "expected": "UUID.randomUUID()"},
+        {"name": "has_convenience_constructor", "type": "regex", "expected": "public\\s+\\w+\\s*\\([^)]*\\)\\s*\\{"}
+      ]
+    },
+    {
+      "id": 24,
+      "name": "jdbc-id-generation-sequence",
+      "prompt": "Create a repository for a Customer entity with sequence-based Long ID generation. Use RETURNING id clause to get the generated ID after insert.",
+      "expected_output": "Entity with Long id, insert method returning long or using @Id annotation for ID generation",
+      "files": [],
+      "assertions": [
+        {"name": "has_long_id", "type": "code_contains", "expected": "Long id"},
+        {"name": "has_returning_clause", "type": "code_contains", "expected": "RETURNING id"},
+        {"name": "has_id_annotation_on_return", "type": "code_contains", "expected": "@Id"}
+      ]
+    },
+    {
+      "id": 25,
+      "name": "jdbc-testing-testcontainers",
+      "prompt": "Create a test class for UserRepository using testcontainers-extensions-postgres with Flyway migrations. The test should use PER_RUN container mode, apply and drop migrations per method, and inject the repository using @TestComponent.",
+      "expected_output": "Test class with @TestcontainersPostgreSQL annotation, Flyway migration config, implements KoraAppTestConfigModifier with system properties for POSTGRES_JDBC_URL, POSTGRES_USER, POSTGRES_PASS",
+      "files": [],
+      "assertions": [
+        {"name": "has_testcontainers_postgresql_annotation", "type": "code_contains", "expected": "@TestcontainersPostgreSQL"},
+        {"name": "has_migration_engines", "type": "code_contains", "expected": "Migration.Engines"},
+        {"name": "has_per_method_migration", "type": "code_contains", "expected": "apply = Migration.Mode.PER_METHOD"},
+        {"name": "implements_kora_app_test_config_modifier", "type": "code_contains", "expected": "KoraAppTestConfigModifier"},
+        {"name": "has_connection_injection", "type": "code_contains", "expected": "@ConnectionPostgreSQL"},
+        {"name": "has_postgres_jdbc_url_prop", "type": "code_contains", "expected": "POSTGRES_JDBC_URL"},
+        {"name": "has_test_component", "type": "code_contains", "expected": "@TestComponent"}
+      ]
+    },
+    {
+      "id": 26,
+      "name": "cassandra-testing-testcontainers",
+      "prompt": "Create a test class for EventRepository using testcontainers-extensions-cassandra with CQL script migrations. The test should use PER_RUN container mode, apply and drop migrations per method, and configure Cassandra-specific system properties.",
+      "expected_output": "Test class with @TestcontainersCassandra annotation, Scripts migration engine, implements KoraAppTestConfigModifier with CASSANDRA_CONTACT_POINTS, CASSANDRA_USER, CASSANDRA_PASS, CASSANDRA_DC, CASSANDRA_KEYSPACE",
+      "files": [],
+      "assertions": [
+        {"name": "has_testcontainers_cassandra_annotation", "type": "code_contains", "expected": "@TestcontainersCassandra"},
+        {"name": "has_scripts_engine", "type": "code_contains", "expected": "Migration.Engines.SCRIPTS"},
+        {"name": "has_connection_cassandra", "type": "code_contains", "expected": "@ConnectionCassandra"},
+        {"name": "has_cassandra_contact_points", "type": "code_contains", "expected": "CASSANDRA_CONTACT_POINTS"},
+        {"name": "has_cassandra_dc", "type": "code_contains", "expected": "CASSANDRA_DC"},
+        {"name": "has_cassandra_keyspace", "type": "code_contains", "expected": "CASSANDRA_KEYSPACE"}
+      ]
+    },
+    {
+      "id": 27,
+      "name": "entity-model-single-id",
+      "prompt": "Create an entity model for a BlogPost with a single String ID field, title, content, author, and publishedAt (LocalDateTime) fields. Use proper Kora annotations.",
+      "expected_output": "@EntityJdbc record with @Table, @Id, @Column annotations, nullable field for optional values",
+      "files": [],
+      "assertions": [
+        {"name": "has_entityjdbc_annotation", "type": "code_contains", "expected": "@EntityJdbc"},
+        {"name": "has_table_annotation", "type": "code_contains", "expected": "@Table"},
+        {"name": "has_id_annotation", "type": "code_contains", "expected": "@Id"},
+        {"name": "has_localdatetime_field", "type": "code_contains", "expected": "LocalDateTime"}
+      ]
+    },
+    {
+      "id": 28,
+      "name": "entity-model-composite-id",
+      "prompt": "Create an entity model for a ProductInventory with a composite ID consisting of productId (UUID) and warehouseId (String). The entity should have quantity and lastUpdated fields. Use nested record pattern for the composite key.",
+      "expected_output": "Entity with nested ID record, @Embedded annotation, @Id on the composite key field",
+      "files": [],
+      "assertions": [
+        {"name": "has_embedded_annotation", "type": "code_contains", "expected": "@Embedded"},
+        {"name": "has_nested_id_record", "type": "code_contains", "expected": "record ID"},
+        {"name": "has_composite_key_fields", "type": "code_contains", "expected": "UUID"},
+        {"name": "has_id_on_composite", "type": "code_contains", "expected": "@Id"}
+      ]
+    },
+    {
+      "id": 29,
+      "name": "cassandra-crud-single-id",
+      "prompt": "Create a basic Cassandra CRUD repository for a Message entity with a single UUID ID field. Include all standard CRUD operations: findById, findAll, insert, insertBatch, update, updateBatch, deleteById, deleteAll. Add insertIfNotExists for lightweight transactions. Use explicit CQL queries (not SQL macros). Use @Nullable for nullable return types instead of Optional.",
+      "expected_output": "Repository extending CassandraRepository, @Table record with @Id @Column annotations, all CRUD methods with explicit CQL, IF NOT EXISTS for conditional insert, @Nullable for findById return type",
+      "files": [],
+      "assertions": [
+        {"name": "extends_cassandra_repository", "type": "code_contains", "expected": "extends CassandraRepository"},
+        {"name": "has_table_annotation", "type": "code_contains", "expected": "@Table"},
+        {"name": "has_id_annotation", "type": "code_contains", "expected": "@Id"},
+        {"name": "has_nullable_find_by_id", "type": "code_contains", "expected": "@Nullable"},
+        {"name": "has_find_all_method", "type": "code_contains", "expected": "List<Message> findAll"},
+        {"name": "has_insert_method", "type": "code_contains", "expected": "void insert"},
+        {"name": "has_insert_batch_method", "type": "code_contains", "expected": "@Batch"},
+        {"name": "has_if_not_exists", "type": "code_contains", "expected": "IF NOT EXISTS"},
+        {"name": "has_truncate_delete_all", "type": "code_contains", "expected": "TRUNCATE"}
+      ]
+    },
+    {
+      "id": 30,
+      "name": "cassandra-crud-composite-id",
+      "prompt": "Create a Cassandra CRUD repository for a SensorData entity with a composite ID consisting of sensorId (UUID) and timestamp (Instant). Use nested record pattern for the composite key. Include findById, findAll, insert, insertBatch, update, updateBatch, deleteById, deleteAll. Add insertIfNotExists for lightweight transactions. Use explicit CQL queries with both partition key columns in WHERE clause.",
+      "expected_output": "Repository with nested ID record, @Id on composite key field, explicit CQL with both key columns in WHERE clause, IF NOT EXISTS for conditional insert",
+      "files": [],
+      "assertions": [
+        {"name": "has_composite_id_record", "type": "code_contains", "expected": "record ID"},
+        {"name": "has_id_on_composite", "type": "code_contains", "expected": "@Id"},
+        {"name": "has_both_key_columns_in_where", "type": "regex", "expected": "WHERE.*sensorId.*AND.*timestamp"},
+        {"name": "has_if_not_exists", "type": "code_contains", "expected": "IF NOT EXISTS"},
+        {"name": "has_insert_batch_method", "type": "code_contains", "expected": "@Batch"}
+      ]
+    },
+    {
+      "id": 31,
+      "name": "cassandra-abstract-repository",
+      "prompt": "Create an abstract base repository interface AbstractCassandraCrudRepository<K, V> that provides common CRUD operations (findAll, insert, insertBatch, update, updateBatch, deleteById, deleteAll) for Cassandra. Include insertIfNotExists for lightweight transactions. Then create a concrete LogEntryRepository that extends this base class for a LogEntry entity with String ID.",
+      "expected_output": "AbstractCassandraCrudRepository interface with generic types K and V, concrete repository extending it with entity-specific methods, insertIfNotExists with IF NOT EXISTS",
+      "files": [],
+      "assertions": [
+        {"name": "has_abstract_base_repository", "type": "code_contains", "expected": "interface AbstractCassandraCrudRepository"},
+        {"name": "has_generic_types", "type": "code_contains", "expected": "<K, V>"},
+        {"name": "extends_cassandra_repository", "type": "code_contains", "expected": "extends CassandraRepository"},
+        {"name": "concrete_repository_extends_abstract", "type": "code_contains", "expected": "extends AbstractCassandraCrudRepository"},
+        {"name": "has_if_not_exists", "type": "code_contains", "expected": "IF NOT EXISTS"},
+        {"name": "has_truncate_delete_all", "type": "code_contains", "expected": "TRUNCATE"}
+      ]
+    },
+    {
+      "id": 32,
+      "name": "cassandra-entity-single-id",
+      "prompt": "Create a Cassandra entity model for a Notification with a single UUID ID field, recipient (String), message (String), read (boolean), and createdAt (Instant) fields. Use proper Kora Cassandra annotations.",
+      "expected_output": "@Table record with @Id, @Column annotations, no @EntityJdbc (Cassandra uses @Table only)",
+      "files": [],
+      "assertions": [
+        {"name": "has_table_annotation", "type": "code_contains", "expected": "@Table"},
+        {"name": "has_id_annotation", "type": "code_contains", "expected": "@Id"},
+        {"name": "has_column_annotations", "type": "code_contains", "expected": "@Column"},
+        {"name": "no_entityjdbc_annotation", "type": "code_not_contains", "expected": "@EntityJdbc"}
+      ]
+    },
+    {
+      "id": 33,
+      "name": "cassandra-entity-composite-id",
+      "prompt": "Create a Cassandra entity model for a UserSession with a composite ID consisting of userId (UUID) and sessionId (String). The entity should have deviceInfo and lastActive fields. Use nested record pattern for the composite key.",
+      "expected_output": "Entity with nested ID record, @Id on the composite key field, @Table annotation (not @EntityJdbc)",
+      "files": [],
+      "assertions": [
+        {"name": "has_table_annotation", "type": "code_contains", "expected": "@Table"},
+        {"name": "has_nested_id_record", "type": "code_contains", "expected": "record ID"},
+        {"name": "has_id_on_composite", "type": "code_contains", "expected": "@Id"},
+        {"name": "no_entityjdbc_annotation", "type": "code_not_contains", "expected": "@EntityJdbc"}
+      ]
+    }
+  ]
+}

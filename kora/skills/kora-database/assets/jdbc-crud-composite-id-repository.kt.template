@@ -1,0 +1,98 @@
+package `${package}`
+
+import ru.tinkoff.kora.database.common.UpdateCount
+import ru.tinkoff.kora.database.common.annotation.Batch
+import ru.tinkoff.kora.database.common.annotation.Query
+import ru.tinkoff.kora.database.jdbc.JdbcRepository
+
+/**
+ * CRUD repository with composite ID (two-field UUID key).
+ * Uses %{id#where} macro for automatic WHERE clause generation.
+ * Composite ID must be marked with @Id and @Embedded annotations.
+ *
+ * Best practices:
+ * - Use nullable return types (T?) not Optional
+ * - %{id#where} expands to: field_a = :fieldA AND field_b = :fieldB
+ * - ON CONFLICT clause must explicitly name all key columns
+ */
+@Repository
+interface `${repository_name}` : JdbcRepository {
+
+    /**
+     * Find entity by composite ID.
+     * @param id composite entity ID
+     * @return entity or null if not found
+     */
+    @Query("SELECT %{return#selects} FROM %{return#table} WHERE %{id#where}")
+    fun findById(id: `${entity_name}`.ID): `${entity_name}`?
+
+    /**
+     * Find all entities.
+     * @return list of all entities
+     */
+    @Query("SELECT %{return#selects} FROM %{return#table}")
+    fun findAll(): List<`${entity_name}`>
+
+    /**
+     * Insert single entity.
+     * @param entity entity to insert
+     * @return update count
+     */
+    @Query("%{entity#inserts}")
+    fun insert(entity: `${entity_name}`): UpdateCount
+
+    /**
+     * Insert multiple entities in batch.
+     * @param entities list of entities to insert
+     * @return update count
+     */
+    @Query("%{entity#inserts}")
+    fun insertBatch(@Batch entities: List<`${entity_name}`>): UpdateCount
+
+    /**
+     * Update single entity by composite ID.
+     * @param entity entity to update (ID must be set)
+     * @return update count
+     */
+    @Query("UPDATE %{entity#table} SET %{entity#updates} WHERE %{entity#where = @id}")
+    fun update(entity: `${entity_name}`): UpdateCount
+
+    /**
+     * Update multiple entities in batch.
+     * @param entities list of entities to update
+     * @return update count
+     */
+    @Query("UPDATE %{entity#table} SET %{entity#updates} WHERE %{entity#where = @id}")
+    fun updateBatch(@Batch entities: List<`${entity_name}`>): UpdateCount
+
+    /**
+     * Upsert single entity (insert or update on conflict).
+     * @param entity entity to upsert
+     * @return update count
+     */
+    @Query("INSERT INTO %{entity#table} %{entity#inserts} ON CONFLICT (field_a, field_b) DO UPDATE SET %{entity#updates}")
+    fun upsert(entity: `${entity_name}`): UpdateCount
+
+    /**
+     * Upsert multiple entities in batch.
+     * @param entities list of entities to upsert
+     * @return update count
+     */
+    @Query("INSERT INTO %{entity#table} %{entity#inserts} ON CONFLICT (field_a, field_b) DO UPDATE SET %{entity#updates}")
+    fun upsertBatch(@Batch entities: List<`${entity_name}`>): UpdateCount
+
+    /**
+     * Delete entity by composite ID.
+     * @param id composite entity ID
+     * @return update count
+     */
+    @Query("DELETE FROM %{entity#table} WHERE %{id#where}")
+    fun deleteById(id: `${entity_name}`.ID): UpdateCount
+
+    /**
+     * Delete all entities.
+     * @return update count
+     */
+    @Query("DELETE FROM %{entity#table}")
+    fun deleteAll(): UpdateCount
+}

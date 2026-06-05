@@ -1,0 +1,99 @@
+package `${package}`
+
+import ru.tinkoff.kora.database.common.UpdateCount
+import ru.tinkoff.kora.database.common.annotation.Batch
+import ru.tinkoff.kora.database.common.annotation.Query
+import ru.tinkoff.kora.database.jdbc.JdbcRepository
+
+/**
+ * Basic CRUD repository with single-field ID.
+ * Extends JdbcRepository for base functionality.
+ * Uses SQL macros for automatic query generation.
+ *
+ * Best practices:
+ * - Use nullable return types (T?) not Optional
+ * - Use @Batch for batch operations
+ * - Prefer sync signatures with Virtual Threads
+ * - ID type can be String, UUID, Long, or any type matching your entity's @Id field
+ */
+@Repository
+interface `${repository_name}` : JdbcRepository {
+
+    /**
+     * Find entity by ID.
+     * @param id entity ID (type must match entity's @Id field)
+     * @return entity or null if not found
+     */
+    @Query("SELECT %{return#selects} FROM %{return#table} WHERE id = :id")
+    fun findById(id: `${id_type}`): `${entity_name}`?
+
+    /**
+     * Find all entities.
+     * @return list of all entities
+     */
+    @Query("SELECT %{return#selects} FROM %{return#table}")
+    fun findAll(): List<`${entity_name}`>
+
+    /**
+     * Insert single entity.
+     * @param entity entity to insert
+     * @return update count
+     */
+    @Query("%{entity#inserts}")
+    fun insert(entity: `${entity_name}`): UpdateCount
+
+    /**
+     * Insert multiple entities in batch.
+     * @param entities list of entities to insert
+     * @return update count
+     */
+    @Query("%{entity#inserts}")
+    fun insertBatch(@Batch entities: List<`${entity_name}`>): UpdateCount
+
+    /**
+     * Update single entity by ID.
+     * @param entity entity to update (ID must be set)
+     * @return update count
+     */
+    @Query("%{entity#updates}")
+    fun update(entity: `${entity_name}`): UpdateCount
+
+    /**
+     * Update multiple entities in batch.
+     * @param entities list of entities to update
+     * @return update count
+     */
+    @Query("%{entity#updates}")
+    fun updateBatch(@Batch entities: List<`${entity_name}`>): UpdateCount
+
+    /**
+     * Upsert single entity (insert or update on conflict).
+     * @param entity entity to upsert
+     * @return update count
+     */
+    @Query("INSERT INTO %{entity#table} %{entity#inserts} ON CONFLICT (id) DO UPDATE SET %{entity#updates}")
+    fun upsert(entity: `${entity_name}`): UpdateCount
+
+    /**
+     * Upsert multiple entities in batch.
+     * @param entities list of entities to upsert
+     * @return update count
+     */
+    @Query("INSERT INTO %{entity#table} %{entity#inserts} ON CONFLICT (id) DO UPDATE SET %{entity#updates}")
+    fun upsertBatch(@Batch entities: List<`${entity_name}`>): UpdateCount
+
+    /**
+     * Delete entity by ID.
+     * @param id entity ID (type must match entity's @Id field)
+     * @return update count
+     */
+    @Query("DELETE FROM %{entity#table} WHERE id = :id")
+    fun deleteById(id: `${id_type}`): UpdateCount
+
+    /**
+     * Delete all entities.
+     * @return update count
+     */
+    @Query("DELETE FROM %{entity#table}")
+    fun deleteAll(): UpdateCount
+}

@@ -1,0 +1,23 @@
+package `${package}`
+
+import ru.tinkoff.kora.database.common.annotation.Column
+import ru.tinkoff.kora.database.common.annotation.Id
+import ru.tinkoff.kora.database.common.annotation.Table
+
+/**
+ * Entity with single-field ID for Cassandra.
+ * For UUID IDs, use UUID type.
+ * For String IDs, change to String type.
+ *
+ * Key annotations:
+ * - @Table: Maps to Cassandra table
+ * - @Id: Marks primary key field
+ * - @Column: Maps field to column name
+ */
+@Table("`${table_name}`")
+data class ${entity_name}(
+    @Column("id") @Id val id: `${id_type}`,
+    @Column("field1") val field1: String,
+    @Column("field2") val field2: String,
+    @Column("field3") val field3: String? = null
+)

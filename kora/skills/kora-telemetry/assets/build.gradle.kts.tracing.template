@@ -1,0 +1,14 @@
+plugins {
+    id("java")
+}
+
+dependencies {
+    // Kora OpenTelemetry Tracing Exporter (gRPC)
+    implementation("ru.tinkoff.kora:opentelemetry-tracing-exporter-grpc:${koraVersion}")
+
+    // OpenTelemetry API (if custom spans are needed)
+    implementation("io.opentelemetry:opentelemetry-api:1.35.+")
+
+    // Optional: HTTP exporter (instead of gRPC)
+    // implementation("ru.tinkoff.kora:opentelemetry-tracing-exporter-http:${koraVersion}")
+}

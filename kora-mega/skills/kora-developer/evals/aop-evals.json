@@ -1,0 +1,47 @@
+{
+  "skill_name": "kora-aop",
+  "evals": [
+    {
+      "id": 1,
+      "name": "validated-dto",
+      "prompt": "Create a DTO with validation for order creation — SKU, quantity, currency, list of tags, delivery address",
+      "expected_output": "Java record with @Valid annotation and validators (@NotBlank, @Size, @Range, @Pattern, @NotEmpty, @Valid for nested Address)",
+      "files": []
+    },
+    {
+      "id": 2,
+      "name": "resilient-service",
+      "prompt": "Create a service for calling an external API with timeout, retry, circuit breaker, and fallback",
+      "expected_output": "Java class with @Timeout, @Retry, @CircuitBreaker, @Fallback annotations, non-final class, fallback method",
+      "files": []
+    },
+    {
+      "id": 3,
+      "name": "scheduled-jobs",
+      "prompt": "Create scheduled jobs for periodic data cleanup and a nightly report",
+      "expected_output": "Java class with @ScheduleAtFixedRate, @ScheduleWithFixedDelay, @ScheduleOnce, @ScheduleWithCron (Quartz), non-final class",
+      "files": []
+    },
+    {
+      "id": 4,
+      "name": "cache-service",
+      "prompt": "Create a cache service for orders with @Cacheable, @CachePut, @CacheInvalidate",
+      "expected_output": "Java interface extends CaffeineCache + service with @Cacheable, @CachePut, @CacheInvalidate (including allEntries)",
+      "files": []
+    },
+    {
+      "id": 5,
+      "name": "logged-service",
+      "prompt": "Create a service with method logging using @Log, @Log.in, @Log.out, @Mdc",
+      "expected_output": "Java class with @Log for entry/exit, @Log.in for entry-only, @Log.out for result-only, @Mdc for context, @Log.off for hiding parameters",
+      "files": []
+    },
+    {
+      "id": 6,
+      "name": "validated-service",
+      "prompt": "Create a service with argument validation using @Validate on methods",
+      "expected_output": "Java class with @Validate on methods, argument validation, ViolationException on error",
+      "files": []
+    }
+  ]
+}

@@ -1,0 +1,34 @@
+plugins {
+    id "java"
+    id "com.google.protobuf" version "0.9.4"
+}
+
+dependencies {
+    implementation platform("ru.tinkoff.kora:kora-bom:$koraVersion")
+
+    // gRPC Client
+    implementation "ru.tinkoff.kora:grpc-client"
+    implementation "io.grpc:grpc-protobuf:1.62.2"
+    implementation "javax.annotation:javax.annotation-api:1.3.2"
+
+    // Configuration (HOCON)
+    implementation "ru.tinkoff.kora:config-module"
+    implementation "ru.tinkoff.kora:config-hocon"
+}
+
+protobuf {
+    protoc { artifact = "com.google.protobuf:protoc:3.25.3" }
+    plugins {
+        grpc { artifact = "io.grpc:protoc-gen-grpc-java:1.62.2" }
+    }
+    generateProtoTasks {
+        all()*.plugins { grpc {} }
+    }
+}
+
+sourceSets {
+    main.java {
+        srcDirs "build/generated/source/proto/main/grpc"
+        srcDirs "build/generated/source/proto/main/java"
+    }
+}

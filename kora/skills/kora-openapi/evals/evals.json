@@ -1,0 +1,618 @@
+{
+  "skill_name": "kora-openapi",
+  "evals": [
+    {
+      "id": 1,
+      "name": "java-client-basic",
+      "prompt": "Create an HTTP client for the OpenAPI specification petstore.yaml. Use synchronous mode (java-client). Configure generation with clientConfigPrefix: httpClient.petApi.",
+      "expected_output": "Gradle build file with the openApiGenerateHttpClient task, generated PetApi interface with synchronous methods",
+      "files": ["openapi-spec.yaml.template"],
+      "assertions": [
+        {
+          "name": "build-gradle-has-openapi-generator",
+          "type": "contains",
+          "target": "build.gradle",
+          "content": "openApiGenerateHttpClient",
+          "description": "build.gradle contains the openApiGenerateHttpClient task"
+        },
+        {
+          "name": "config-has-client-config-prefix",
+          "type": "contains",
+          "target": "build.gradle",
+          "content": "clientConfigPrefix",
+          "description": "clientConfigPrefix configured in configOptions"
+        },
+        {
+          "name": "mode-is-java-client",
+          "type": "contains",
+          "target": "build.gradle",
+          "content": "java-client",
+          "description": "mode set to java-client"
+        },
+        {
+          "name": "generated-interface-has-sync-methods",
+          "type": "contains",
+          "target": "PetApi.java",
+          "content": "Pet getPetById",
+          "description": "Generated interface has synchronous methods"
+        }
+      ]
+    },
+    {
+      "id": 2,
+      "name": "java-server-basic",
+      "prompt": "Create an HTTP server for the OpenAPI specification petstore.yaml. Use synchronous mode (java-server) with validation enabled. Configure delegateMethodBodyMode: throw-exception.",
+      "expected_output": "Gradle build file with the openApiGenerateHttpServer task, generated PetApiDelegate interface with methods returning ApiResponses subclass (e.g., PetApiResponses.GetPetByIdApiResponse)",
+      "files": ["openapi-spec.yaml.template"],
+      "assertions": [
+        {
+          "name": "build-gradle-has-server-task",
+          "type": "contains",
+          "target": "build.gradle",
+          "content": "openApiGenerateHttpServer",
+          "description": "build.gradle contains the openApiGenerateHttpServer task"
+        },
+        {
+          "name": "mode-is-java-server",
+          "type": "contains",
+          "target": "build.gradle",
+          "content": "java-server",
+          "description": "mode set to java-server"
+        },
+        {
+          "name": "validation-enabled",
+          "type": "contains",
+          "target": "build.gradle",
+          "content": "enableServerValidation",
+          "description": "enableServerValidation: true"
+        },
+        {
+          "name": "delegate-returns-api-responses",
+          "type": "contains",
+          "target": "PetApiDelegate.java",
+          "content": "ApiResponses",
+          "description": "Delegate methods return ApiResponses subclass"
+        }
+      ]
+    },
+    {
+      "id": 3,
+      "name": "kotlin-client-suspend",
+      "prompt": "Create a Kotlin HTTP client for the OpenAPI specification. Use kotlin-suspend-client mode. Configure the KSP task with dependsOn from openApiGenerateHttpClient.",
+      "expected_output": "build.gradle.kts with register<GenerateTask>, generated interface with suspend functions",
+      "files": ["openapi-spec.yaml.template"],
+      "language": "kotlin",
+      "assertions": [
+        {
+          "name": "build-kts-has-generate-task",
+          "type": "contains",
+          "target": "build.gradle.kts",
+          "content": "register<GenerateTask>",
+          "description": "build.gradle.kts contains register<GenerateTask>"
+        },
+        {
+          "name": "mode-is-kotlin-suspend-client",
+          "type": "contains",
+          "target": "build.gradle.kts",
+          "content": "kotlin-suspend-client",
+          "description": "mode set to kotlin-suspend-client"
+        },
+        {
+          "name": "ksp-depends-on-generate",
+          "type": "contains",
+          "target": "build.gradle.kts",
+          "content": "dependsOn",
+          "description": "KSP task depends on openApiGenerateHttpClient"
+        },
+        {
+          "name": "generated-interface-has-suspend",
+          "type": "contains",
+          "target": "PetApi.kt",
+          "content": "suspend",
+          "description": "Generated interface contains suspend functions"
+        }
+      ]
+    },
+    {
+      "id": 4,
+      "name": "client-interceptors",
+      "prompt": "Configure interceptors for the HTTP client: a global logger for all operations, a metrics interceptor for tag 'pet', a tracing interceptor for tag 'shop'. Use JSON configuration in configOptions.interceptors.",
+      "expected_output": "Interceptors configuration with correct type and tag for each interceptor",
+      "files": [],
+      "assertions": [
+        {
+          "name": "interceptors-config-exists",
+          "type": "contains",
+          "target": "build.gradle",
+          "content": "interceptors",
+          "description": "interceptors configuration is present"
+        },
+        {
+          "name": "logger-interceptor-global",
+          "type": "contains",
+          "target": "build.gradle",
+          "content": "logging",
+          "description": "Logger configured for all operations"
+        },
+        {
+          "name": "metrics-tag-pet",
+          "type": "contains",
+          "target": "build.gradle",
+          "content": "pet",
+          "description": "metrics interceptor for tag 'pet'"
+        },
+        {
+          "name": "tracing-tag-shop",
+          "type": "contains",
+          "target": "build.gradle",
+          "content": "shop",
+          "description": "tracing interceptor for tag 'shop'"
+        }
+      ]
+    },
+    {
+      "id": 5,
+      "name": "client-tags",
+      "prompt": "Configure tags for the HTTP client: httpClientTag and telemetryTag for operations '*' (common), 'instrument', and 'shop'.",
+      "expected_output": "Tags configuration with httpClientTag and telemetryTag for each operation group",
+      "files": [],
+      "assertions": [
+        {
+          "name": "tags-config-exists",
+          "type": "contains",
+          "target": "build.gradle",
+          "content": "tags",
+          "description": "tags configuration is present"
+        },
+        {
+          "name": "common-tag-star",
+          "type": "contains",
+          "target": "build.gradle",
+          "content": "*",
+          "description": "common tag for '*' operations"
+        },
+        {
+          "name": "instrument-tag",
+          "type": "contains",
+          "target": "build.gradle",
+          "content": "instrument",
+          "description": "instrument tag configured"
+        },
+        {
+          "name": "shop-tag",
+          "type": "contains",
+          "target": "build.gradle",
+          "content": "shop",
+          "description": "shop tag configured"
+        }
+      ]
+    },
+    {
+      "id": 6,
+      "name": "server-validation",
+      "prompt": "Enable server-side validation for the OpenAPI server. What annotations will be generated for the name: string field with minLength: 1, maxLength: 100?",
+      "expected_output": "enableServerValidation: true, @NotNull @Size(min=1, max=100) on the name field",
+      "files": [],
+      "assertions": [
+        {
+          "name": "validation-enabled",
+          "type": "contains",
+          "target": "build.gradle",
+          "content": "enableServerValidation",
+          "description": "enableServerValidation: true"
+        },
+        {
+          "name": "not-null-annotation",
+          "type": "contains",
+          "target": "Pet.java",
+          "content": "@NotNull",
+          "description": "@NotNull annotation on the name field"
+        },
+        {
+          "name": "size-annotation",
+          "type": "contains",
+          "target": "Pet.java",
+          "content": "@Size",
+          "description": "@Size(min=1, max=100) on the name field"
+        }
+      ]
+    },
+    {
+      "id": 7,
+      "name": "bearer-auth-extractor",
+      "prompt": "Create an HttpServerPrincipalExtractor for Bearer authentication. The OpenAPI spec defines a securityScheme 'bearerAuth' with type: http, scheme: bearer.",
+      "expected_output": "@Module interface with a @Tag(ApiSecurity.BearerAuth.class) method returning HttpServerPrincipalExtractor",
+      "files": [],
+      "assertions": [
+        {
+          "name": "module-annotation",
+          "type": "contains",
+          "target": "AuthModule.java",
+          "content": "@Module",
+          "description": "Class is annotated with @Module"
+        },
+        {
+          "name": "tag-bearer-auth",
+          "type": "contains",
+          "target": "AuthModule.java",
+          "content": "@Tag(ApiSecurity.BearerAuth.class)",
+          "description": "Method has @Tag(ApiSecurity.BearerAuth.class)"
+        },
+        {
+          "name": "returns-extractor",
+          "type": "contains",
+          "target": "AuthModule.java",
+          "content": "HttpServerPrincipalExtractor",
+          "description": "Method returns HttpServerPrincipalExtractor"
+        }
+      ]
+    },
+    {
+      "id": 8,
+      "name": "apikey-auth-extractor",
+      "prompt": "Create an HttpServerPrincipalExtractor for API Key authentication. The OpenAPI spec defines a securityScheme 'apiKeyAuth' with type: apiKey, in: header, name: X-API-Key.",
+      "expected_output": "@Module interface with a @Tag(ApiSecurity.ApiKeyAuth.class) method",
+      "files": [],
+      "assertions": [
+        {
+          "name": "module-annotation",
+          "type": "contains",
+          "target": "AuthModule.java",
+          "content": "@Module",
+          "description": "Class is annotated with @Module"
+        },
+        {
+          "name": "tag-apikey-auth",
+          "type": "contains",
+          "target": "AuthModule.java",
+          "content": "@Tag(ApiSecurity.ApiKeyAuth.class)",
+          "description": "Method has @Tag(ApiSecurity.ApiKeyAuth.class)"
+        }
+      ]
+    },
+    {
+      "id": 9,
+      "name": "basic-auth-extractor",
+      "prompt": "Create an HttpServerPrincipalExtractor for Basic authentication. Parse Base64-encoded credentials from the Authorization header.",
+      "expected_output": "@Module interface with a @Tag(ApiSecurity.BasicAuth.class) method that parses the Basic auth header",
+      "files": [],
+      "assertions": [
+        {
+          "name": "module-annotation",
+          "type": "contains",
+          "target": "AuthModule.java",
+          "content": "@Module",
+          "description": "Class is annotated with @Module"
+        },
+        {
+          "name": "tag-basic-auth",
+          "type": "contains",
+          "target": "AuthModule.java",
+          "content": "@Tag(ApiSecurity.BasicAuth.class)",
+          "description": "Method has @Tag(ApiSecurity.BasicAuth.class)"
+        },
+        {
+          "name": "base64-parsing",
+          "type": "contains",
+          "target": "AuthModule.java",
+          "content": "Base64",
+          "description": "Base64 parsing is present"
+        }
+      ]
+    },
+    {
+      "id": 10,
+      "name": "openapi-normalizer",
+      "prompt": "Configure openapiNormalizer to disable all normalizers. Which rule is enabled by default in plugin 7.0.0+ and may cause issues?",
+      "expected_output": "DISABLE_ALL: true, SIMPLIFY_ONEOF_ANYOF enabled by default",
+      "files": [],
+      "assertions": [
+        {
+          "name": "disable-all-rule",
+          "type": "contains",
+          "target": "build.gradle",
+          "content": "DISABLE_ALL",
+          "description": "DISABLE_ALL: true configured"
+        },
+        {
+          "name": "simplify-oneof-anyof",
+          "type": "contains",
+          "target": "build.gradle",
+          "content": "SIMPLIFY_ONEOF_ANYOF",
+          "description": "SIMPLIFY_ONEOF_ANYOF mentioned"
+        }
+      ]
+    },
+    {
+      "id": 11,
+      "name": "java-reactive-server",
+      "prompt": "Create a reactive HTTP server using java-reactive-server mode. What return types will the delegate methods have?",
+      "expected_output": "Mono<ApiResponses> for all delegate methods (e.g., Mono<PetApiResponses.GetPetByIdApiResponse>)",
+      "files": [],
+      "assertions": [
+        {
+          "name": "mode-is-reactive",
+          "type": "contains",
+          "target": "build.gradle",
+          "content": "java-reactive-server",
+          "description": "mode set to java-reactive-server"
+        },
+        {
+          "name": "returns-mono",
+          "type": "contains",
+          "target": "PetApiDelegate.java",
+          "content": "Mono<",
+          "description": "Methods return Mono<T>"
+        }
+      ]
+    },
+    {
+      "id": 12,
+      "name": "multi-module-setup",
+      "prompt": "Configure OpenAPI generation for a multi-module project: common module with models, api module with clients. How to configure outputDir and apiPackage/modelPackage?",
+      "expected_output": "Configuration with correct package names and outputDir for each module",
+      "files": [],
+      "assertions": [
+        {
+          "name": "api-package-configured",
+          "type": "contains",
+          "target": "build.gradle",
+          "content": "apiPackage",
+          "description": "apiPackage configured"
+        },
+        {
+          "name": "model-package-configured",
+          "type": "contains",
+          "target": "build.gradle",
+          "content": "modelPackage",
+          "description": "modelPackage configured"
+        },
+        {
+          "name": "unique-output-dir",
+          "type": "contains",
+          "target": "build.gradle",
+          "content": "outputDir",
+          "description": "outputDir configured for each module"
+        }
+      ]
+    },
+    {
+      "id": 13,
+      "name": "json-nullable-config",
+      "prompt": "Explain the difference between enableJsonNullable, forceIncludeOptional, and forceIncludeNonRequired config options.",
+      "expected_output": "Description of each option: JsonNullable for nullable fields, forceInclude for @JsonInclude(Always)",
+      "files": [],
+      "assertions": [
+        {
+          "name": "enable-json-nullable",
+          "type": "contains",
+          "target": "build.gradle",
+          "content": "enableJsonNullable",
+          "description": "enableJsonNullable mentioned"
+        },
+        {
+          "name": "force-include-optional",
+          "type": "contains",
+          "target": "build.gradle",
+          "content": "forceIncludeOptional",
+          "description": "forceIncludeOptional mentioned"
+        },
+        {
+          "name": "force-include-non-required",
+          "type": "contains",
+          "target": "build.gradle",
+          "content": "forceIncludeNonRequired",
+          "description": "forceIncludeNonRequired mentioned"
+        }
+      ]
+    },
+    {
+      "id": 14,
+      "name": "delegate-implementation",
+      "prompt": "Create an implementation of PetApiDelegate for a synchronous server. The method getPetById(Long petId) should return a Pet from the service.",
+      "expected_output": "@Component class with constructor injection, implementing PetApiDelegate and returning new PetApiResponses.GetPetByIdApiResponse.GetPetById200ApiResponse(pet)",
+      "files": [],
+      "assertions": [
+        {
+          "name": "component-annotation",
+          "type": "contains",
+          "target": "PetApiDelegate.java",
+          "content": "@Component",
+          "description": "Class is annotated with @Component"
+        },
+        {
+          "name": "implements-delegate",
+          "type": "contains",
+          "target": "PetApiDelegate.java",
+          "content": "implements PetApiDelegate",
+          "description": "Class implements PetApiDelegate"
+        },
+        {
+          "name": "returns-200-response",
+          "type": "contains",
+          "target": "PetApiDelegate.java",
+          "content": "GetPetById200ApiResponse",
+          "description": "Method returns GetPetById200ApiResponse"
+        }
+      ]
+    },
+    {
+      "id": 15,
+      "name": "async-client-mode",
+      "prompt": "Which mode should be used for an asynchronous HTTP client with CompletionStage return types? Provide a configuration example.",
+      "expected_output": "java-async-client mode, CompletionStage<T> return types",
+      "files": [],
+      "assertions": [
+        {
+          "name": "mode-is-async",
+          "type": "contains",
+          "target": "build.gradle",
+          "content": "java-async-client",
+          "description": "mode set to java-async-client"
+        },
+        {
+          "name": "returns-completion-stage",
+          "type": "contains",
+          "target": "PetApi.java",
+          "content": "CompletionStage",
+          "description": "Methods return CompletionStage<T>"
+        }
+      ]
+    },
+    {
+      "id": 16,
+      "name": "prefix-path-server",
+      "prompt": "Configure prefixPath for the HTTP server so that all endpoints have the prefix /api/v1. Which config option should be used?",
+      "expected_output": "prefixPath: /api/v1 in configOptions",
+      "files": [],
+      "assertions": [
+        {
+          "name": "prefix-path-configured",
+          "type": "contains",
+          "target": "build.gradle",
+          "content": "prefixPath",
+          "description": "prefixPath configured"
+        },
+        {
+          "name": "prefix-value",
+          "type": "contains",
+          "target": "build.gradle",
+          "content": "/api/v1",
+          "description": "prefixPath set to /api/v1"
+        }
+      ]
+    },
+    {
+      "id": 17,
+      "name": "auth-as-method-argument",
+      "prompt": "How to configure passing authentication as a delegate method argument instead of an interceptor? Show the method signature.",
+      "expected_output": "authAsMethodArgument: true, method with an additional Principal parameter",
+      "files": [],
+      "assertions": [
+        {
+          "name": "auth-as-arg-configured",
+          "type": "contains",
+          "target": "build.gradle",
+          "content": "authAsMethodArgument",
+          "description": "authAsMethodArgument: true configured"
+        },
+        {
+          "name": "principal-parameter",
+          "type": "contains",
+          "target": "PetApiDelegate.java",
+          "content": "Principal",
+          "description": "Method has a Principal parameter"
+        }
+      ]
+    },
+    {
+      "id": 18,
+      "name": "kotlin-server-suspend",
+      "prompt": "Create a Kotlin HTTP server with suspend functions. Which mode should be used and what will the delegate method signature look like?",
+      "expected_output": "kotlin-suspend-server mode, suspend fun methodName(): PetApiResponses.GetPetByIdApiResponse (ApiResponses subclass, not ResponseEntity<T>)",
+      "files": [],
+      "language": "kotlin",
+      "assertions": [
+        {
+          "name": "mode-is-kotlin-suspend-server",
+          "type": "contains",
+          "target": "build.gradle.kts",
+          "content": "kotlin-suspend-server",
+          "description": "mode set to kotlin-suspend-server"
+        },
+        {
+          "name": "suspend-function",
+          "type": "contains",
+          "target": "PetApiDelegate.kt",
+          "content": "suspend",
+          "description": "Methods are suspend functions"
+        },
+        {
+          "name": "returns-api-responses",
+          "type": "contains",
+          "target": "PetApiDelegate.kt",
+          "content": "ApiResponses",
+          "description": "Methods return ApiResponses subclass"
+        }
+      ]
+    },
+    {
+      "id": 19,
+      "name": "filter-with-models",
+      "prompt": "What is the filterWithModels option for? When should it be used?",
+      "expected_output": "Filtering models when using FILTER in openapiNormalizer, to reduce the number of generated classes",
+      "files": [],
+      "assertions": [
+        {
+          "name": "filter-with-models-configured",
+          "type": "contains",
+          "target": "build.gradle",
+          "content": "filterWithModels",
+          "description": "filterWithModels mentioned"
+        }
+      ]
+    },
+    {
+      "id": 20,
+      "name": "kotlin-server-basic",
+      "prompt": "Create a Kotlin HTTP server for the OpenAPI specification petstore.yaml. Use kotlin-server mode.",
+      "expected_output": "build.gradle.kts with register<GenerateTask>, mode: kotlin-server, generated PetApiDelegate interface",
+      "files": ["openapi-spec.yaml.template"],
+      "language": "kotlin",
+      "assertions": [
+        {
+          "name": "build-kts-has-server-task",
+          "type": "contains",
+          "target": "build.gradle.kts",
+          "content": "openApiGenerateHttpServer",
+          "description": "build.gradle.kts contains the openApiGenerateHttpServer task"
+        },
+        {
+          "name": "mode-is-kotlin-server",
+          "type": "contains",
+          "target": "build.gradle.kts",
+          "content": "kotlin-server",
+          "description": "mode set to kotlin-server"
+        },
+        {
+          "name": "generated-delegate-exists",
+          "type": "contains",
+          "target": "PetApiDelegate.kt",
+          "content": "interface PetApiDelegate",
+          "description": "Generated PetApiDelegate interface"
+        }
+      ]
+    },
+    {
+      "id": 21,
+      "name": "kotlin-client-basic",
+      "prompt": "Create a Kotlin HTTP client for the OpenAPI specification petstore.yaml. Use kotlin-client mode.",
+      "expected_output": "build.gradle.kts with register<GenerateTask>, mode: kotlin-client, generated PetApi interface",
+      "files": ["openapi-spec.yaml.template"],
+      "language": "kotlin",
+      "assertions": [
+        {
+          "name": "build-kts-has-client-task",
+          "type": "contains",
+          "target": "build.gradle.kts",
+          "content": "openApiGenerateHttpClient",
+          "description": "build.gradle.kts contains the openApiGenerateHttpClient task"
+        },
+        {
+          "name": "mode-is-kotlin-client",
+          "type": "contains",
+          "target": "build.gradle.kts",
+          "content": "kotlin-client",
+          "description": "mode set to kotlin-client"
+        },
+        {
+          "name": "generated-client-exists",
+          "type": "contains",
+          "target": "PetApi.kt",
+          "content": "interface PetApi",
+          "description": "Generated PetApi interface"
+        }
+      ]
+    }
+  ]
+}

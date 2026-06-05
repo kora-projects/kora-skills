@@ -1,0 +1,135 @@
+package ${package};
+
+import ru.tinkoff.kora.json.common.annotation.Json;
+import ru.tinkoff.kora.http.client.common.annotation.ResponseCodeMapper;
+
+/**
+ * Sealed interface for polymorphic response with @ResponseCodeMapper.
+ *
+ * <p>Allows type-safe handling of different HTTP status codes.</p>
+ *
+ * <p>Features:</p>
+ * <ul>
+ *   <li>Sealed interface with explicit permits for success/error</li>
+ *   <li>@ResponseCodeMapper for status code mapping</li>
+ *   <li>Type-safe error handling via pattern matching</li>
+ * </ul>
+ *
+ * <p>Usage in a client:</p>
+ * <pre>{@code
+ * @ResponseCodeMapper(code = 200, mapper = SuccessMapper.class)
+ * @ResponseCodeMapper(code = 400, mapper = BadRequestMapper.class)
+ * @ResponseCodeMapper(code = 404, mapper = NotFoundMapper.class)
+ * @ResponseCodeMapper(code = ResponseCodeMapper.DEFAULT, mapper = DefaultErrorMapper.class)
+ * ${dto_name} ${method_name}(@Json ${request_dto_name} request);
+ * }</pre>
+ */
+@Json
+public sealed interface ${dto_name}
+    permits ${dto_name}.Success, ${dto_name}.Error {
+
+    /**
+     * Successful response (2xx).
+     *
+     * @param data response data
+     */
+    record Success(${response_data_type} data) implements ${dto_name} {}
+
+    /**
+     * Error (4xx, 5xx).
+     *
+     * @param code error code
+     * @param message error message
+     */
+    record Error(int code, String message) implements ${dto_name} {}
+
+    /**
+     * Helper method to check for success.
+     */
+    default boolean isSuccess() {
+        return this instanceof Success;
+    }
+
+    /**
+     * Helper method to check for an error.
+     */
+    default boolean isError() {
+        return this instanceof Error;
+    }
+
+    /**
+     * Get data if successful, otherwise throw an exception.
+     */
+    default ${response_data_type} getData() {
+        if (this instanceof Success s) {
+            return s.data();
+        }
+        throw new IllegalStateException("Expected success but got error: " + this);
+    }
+
+    /**
+     * Handle the result via pattern matching.
+     */
+    default <T> T fold(
+        java.util.function.Function<Success, T> onSuccess,
+        java.util.function.Function<Error, T> onError
+    ) {
+        if (this instanceof Success s) {
+            return onSuccess.apply(s);
+        } else if (this instanceof Error e) {
+            return onError.apply(e);
+        }
+        throw new IllegalStateException("Unknown result type: " + this);
+    }
+}
+
+/**
+ * Mapper for a successful response (200 OK).
+ */
+class SuccessMapper implements ru.tinkoff.kora.http.client.common.response.HttpClientResponseMapper<${dto_name}.Success> {
+    @Override
+    public ${dto_name}.Success apply(ru.tinkoff.kora.common.Context context,
+                                      ru.tinkoff.kora.http.client.common.HttpClientResponse response) {
+        // Parse JSON body into data
+        // TODO: implement using JsonReader
+        String body = response.body().asString();
+        ${response_data_type} data = null; // parseJson(body)
+        return new ${dto_name}.Success(data);
+    }
+}
+
+/**
+ * Mapper for BadRequest (400).
+ */
+class BadRequestMapper implements ru.tinkoff.kora.http.client.common.response.HttpClientResponseMapper<${dto_name}.Error> {
+    @Override
+    public ${dto_name}.Error apply(ru.tinkoff.kora.common.Context context,
+                                    ru.tinkoff.kora.http.client.common.HttpClientResponse response) {
+        String body = response.body().asString();
+        // TODO: parse the error from JSON
+        return new ${dto_name}.Error(400, "Bad Request: " + body);
+    }
+}
+
+/**
+ * Mapper for NotFound (404).
+ */
+class NotFoundMapper implements ru.tinkoff.kora.http.client.common.response.HttpClientResponseMapper<${dto_name}.Error> {
+    @Override
+    public ${dto_name}.Error apply(ru.tinkoff.kora.common.Context context,
+                                    ru.tinkoff.kora.http.client.common.HttpClientResponse response) {
+        return new ${dto_name}.Error(404, "Resource not found");
+    }
+}
+
+/**
+ * Mapper for default errors (5xx and others).
+ */
+class DefaultErrorMapper implements ru.tinkoff.kora.http.client.common.response.HttpClientResponseMapper<${dto_name}.Error> {
+    @Override
+    public ${dto_name}.Error apply(ru.tinkoff.kora.common.Context context,
+                                    ru.tinkoff.kora.http.client.common.HttpClientResponse response) {
+        String body = response.body().asString();
+        return new ${dto_name}.Error(response.code(), "Error: " + body);
+    }
+}

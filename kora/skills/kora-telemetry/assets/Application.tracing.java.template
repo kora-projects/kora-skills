@@ -1,0 +1,16 @@
+package ${package};
+
+import ru.tinkoff.kora.application.KoraApplication;
+import ru.tinkoff.kora.application.graph.ApplicationGraph;
+import ru.tinkoff.kora.opentelemetry.module.OpentelemetryGrpcExporterModule;
+import ru.tinkoff.kora.config.hocon.HoconConfigModule;
+
+/**
+ * Application with OpentelemetryGrpcExporterModule for tracing
+ */
+@KoraApp
+public interface Application extends OpentelemetryGrpcExporterModule, HoconConfigModule {
+    static void main(String[] args) {
+        KoraApplication.run(ApplicationGraph::graph);
+    }
+}

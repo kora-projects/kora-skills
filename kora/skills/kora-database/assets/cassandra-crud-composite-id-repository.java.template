@@ -1,0 +1,90 @@
+package ${package};
+
+import jakarta.annotation.Nullable;
+import java.util.List;
+import ru.tinkoff.kora.database.common.annotation.Batch;
+import ru.tinkoff.kora.database.common.annotation.Query;
+import ru.tinkoff.kora.database.cassandra.CassandraRepository;
+
+/**
+ * CRUD repository for Cassandra with composite ID (two-field key).
+ * Composite ID must be a nested record marked with @Id.
+ *
+ * Cassandra-specific notes:
+ * - WHERE clause must include all partition key columns
+ * - No UPDATE with SET clause - use explicit column assignments
+ * - Use IF NOT EXISTS for lightweight transactions
+ * - Batch operations use @Batch annotation
+ *
+ * Best practices:
+ * - Use @Nullable for nullable return types (not Optional)
+ * - Prefer sync signatures with Virtual Threads
+ */
+@Repository
+public interface ${repository_name} extends CassandraRepository {
+
+    /**
+     * Find entity by composite ID.
+     * @param id composite entity ID
+     * @return entity or null if not found
+     */
+    @Query("SELECT * FROM ${table_name} WHERE ${id1_field} = :${id1_field} AND ${id2_field} = :${id2_field}")
+    @Nullable
+    ${entity_name} findById(${entity_name}.ID id);
+
+    /**
+     * Find all entities.
+     * @return list of all entities
+     */
+    @Query("SELECT * FROM ${table_name}")
+    List<${entity_name}> findAll();
+
+    /**
+     * Insert single entity.
+     * @param entity entity to insert
+     */
+    @Query("INSERT INTO ${table_name} (${id1_field}, ${id2_field}, name, field1, field2) VALUES (:${id1_field}, :${id2_field}, :name, :field1, :field2)")
+    void insert(${entity_name} entity);
+
+    /**
+     * Insert multiple entities in batch.
+     * @param entities list of entities to insert
+     */
+    @Query("INSERT INTO ${table_name} (${id1_field}, ${id2_field}, name, field1, field2) VALUES (:${id1_field}, :${id2_field}, :name, :field1, :field2)")
+    void insertBatch(@Batch List<${entity_name}> entities);
+
+    /**
+     * Insert entity if not exists (lightweight transaction).
+     * @param entity entity to insert
+     * @return true if inserted, false if already exists
+     */
+    @Query("INSERT INTO ${table_name} (${id1_field}, ${id2_field}, name, field1, field2) VALUES (:${id1_field}, :${id2_field}, :name, :field1, :field2) IF NOT EXISTS")
+    boolean insertIfNotExists(${entity_name} entity);
+
+    /**
+     * Update entity by composite ID (explicit column assignments).
+     * @param entity entity to update (ID must be set)
+     */
+    @Query("UPDATE ${table_name} SET name = :name, field1 = :field1, field2 = :field2 WHERE ${id1_field} = :${id1_field} AND ${id2_field} = :${id2_field}")
+    void update(${entity_name} entity);
+
+    /**
+     * Update multiple entities in batch.
+     * @param entities list of entities to update
+     */
+    @Query("UPDATE ${table_name} SET name = :name, field1 = :field1, field2 = :field2 WHERE ${id1_field} = :${id1_field} AND ${id2_field} = :${id2_field}")
+    void updateBatch(@Batch List<${entity_name}> entities);
+
+    /**
+     * Delete entity by composite ID.
+     * @param id composite entity ID
+     */
+    @Query("DELETE FROM ${table_name} WHERE ${id1_field} = :${id1_field} AND ${id2_field} = :${id2_field}")
+    void deleteById(${entity_name}.ID id);
+
+    /**
+     * Delete all entities (use with caution - no WHERE clause).
+     */
+    @Query("TRUNCATE ${table_name}")
+    void deleteAll();
+}

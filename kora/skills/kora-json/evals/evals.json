@@ -1,0 +1,65 @@
+{
+  "skill_name": "kora-json",
+  "evals": [
+    {
+      "id": 1,
+      "eval_name": "basic-dto-record",
+      "prompt": "Create a @Json DTO record UserDto with fields id, name, email for an HTTP API."
+    },
+    {
+      "id": 2,
+      "eval_name": "enum-json-serialization",
+      "prompt": "Create an enum OrderStatus with @Json for JSON serialization via toString() with custom values (pending, processing, shipped)."
+    },
+    {
+      "id": 3,
+      "eval_name": "sealed-interface-payment",
+      "prompt": "Create a sealed interface PaymentResult with @JsonDiscriminatorField(\"type\") and two implementations: PaymentSuccess (SUCCESS) and PaymentError (ERROR) for polymorphic JSON."
+    },
+    {
+      "id": 4,
+      "eval_name": "json-field-rename",
+      "prompt": "Create a @Json DTO ApiRequest with @JsonField annotations to rename fields: userId -> user_id, firstName -> first_name."
+    },
+    {
+      "id": 5,
+      "eval_name": "optional-nullable-fields",
+      "prompt": "Create a @Json DTO UserUpdateRequest with optional fields via @Nullable (name, email) and a required field id."
+    },
+    {
+      "id": 6,
+      "eval_name": "json-skip-internal-field",
+      "prompt": "Create a @Json DTO InternalDto with @JsonSkip to ignore the internal field internalField during serialization."
+    },
+    {
+      "id": 7,
+      "eval_name": "json-include-non-null",
+      "prompt": "Create a @Json DTO Response with @JsonInclude(IncludeType.NON_NULL) to exclude null fields from JSON."
+    },
+    {
+      "id": 8,
+      "eval_name": "json-reader-only",
+      "prompt": "Create a @JsonReader DTO ImportData for deserialization of incoming data only."
+    },
+    {
+      "id": 9,
+      "eval_name": "json-writer-only",
+      "prompt": "Create a @JsonWriter DTO ExportData for serialization of outgoing data only."
+    },
+    {
+      "id": 10,
+      "eval_name": "custom-json-mapper-module",
+      "prompt": "Create a @Module with custom JsonReader<LocalDate> and JsonWriter<ZoneOffset> factory methods."
+    },
+    {
+      "id": 11,
+      "eval_name": "json-controller-crud",
+      "prompt": "Create a @HttpController UserController with @Json methods for createUser (@Json UserRequest) and getUser (@Path String id) with JSON request/response."
+    },
+    {
+      "id": 12,
+      "eval_name": "jackson-module-integration",
+      "prompt": "Set up Jackson integration: add the jackson-module dependency, create a @KoraApp interface extending JacksonModule to use ObjectMapper instead of the built-in JSON module."
+    }
+  ]
+}

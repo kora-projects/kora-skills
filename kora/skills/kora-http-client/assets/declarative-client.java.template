@@ -1,0 +1,128 @@
+package ${package};
+
+import ru.tinkoff.kora.http.client.common.HttpClient;
+import ru.tinkoff.kora.http.client.common.annotation.HttpClient;
+import ru.tinkoff.kora.http.client.common.annotation.HttpRoute;
+import ru.tinkoff.kora.http.client.common.annotation.Path;
+import ru.tinkoff.kora.http.client.common.annotation.Query;
+import ru.tinkoff.kora.http.client.common.annotation.Header;
+import ru.tinkoff.kora.http.client.common.annotation.Json;
+import ru.tinkoff.kora.http.client.common.response.HttpResponseEntity;
+import ru.tinkoff.kora.http.common.HttpMethod;
+
+import java.util.List;
+
+/**
+ * Declarative HTTP client for working with the ${api_name} API.
+ *
+ * <p>Uses annotations for declarative endpoint description.</p>
+ *
+ * <p>Features:</p>
+ * <ul>
+ *   <li>Type-safe interface with compile-time contract validation</li>
+ *   <li>Automatic JSON (de)serialization via @Json</li>
+ *   <li>Support for path/query/header parameters</li>
+ *   <li>Synchronous method signatures</li>
+ * </ul>
+ *
+ * <p>Module registration:</p>
+ * <pre>{@code
+ * @KoraApp
+ * public interface Application extends JdkHttpClientModule, HttpClientModule, JsonModule {
+ *     // The client is registered automatically via @HttpClient("${client_name}")
+ * }
+ * }</pre>
+ */
+@HttpClient("${client_name}")
+public interface ${client_interface_name} {
+
+    /**
+     * POST ${route_path} — ${operation_description}.
+     *
+     * @param request request body
+     * @return operation result
+     */
+    @HttpRoute(method = HttpMethod.POST, path = "${route_path}")
+    @Json
+    ${response_dto_name} ${create_method_name}(
+        @Json ${request_dto_name} request
+    );
+
+    /**
+     * GET ${route_path}/{id} — retrieve a resource by ID.
+     *
+     * @param id resource identifier
+     * @return operation result
+     */
+    @HttpRoute(method = HttpMethod.GET, path = "${route_path}/{id}")
+    @Json
+    ${response_dto_name} ${get_by_id_method_name}(
+        @Path("id") String id
+    );
+
+    /**
+     * GET ${route_path} — list resources with pagination.
+     *
+     * @param limit maximum number of records
+     * @param offset pagination offset
+     * @return list of results
+     */
+    @HttpRoute(method = HttpMethod.GET, path = "${route_path}")
+    @Json
+    List<${response_dto_name}> ${list_method_name}(
+        @Query("limit") Integer limit,
+        @Query("offset") Integer offset
+    );
+
+    /**
+     * PUT ${route_path}/{id} — update a resource.
+     *
+     * @param id resource identifier
+     * @param request request body
+     * @return operation result
+     */
+    @HttpRoute(method = HttpMethod.PUT, path = "${route_path}/{id}")
+    @Json
+    ${response_dto_name} ${update_method_name}(
+        @Path("id") String id,
+        @Json ${request_dto_name} request
+    );
+
+    /**
+     * DELETE ${route_path}/{id} — delete a resource.
+     *
+     * @param id resource identifier
+     */
+    @HttpRoute(method = HttpMethod.DELETE, path = "${route_path}/{id}")
+    void ${delete_method_name}(
+        @Path("id") String id
+    );
+
+    /**
+     * GET ${route_path}/search — search resources.
+     *
+     * @param query search query
+     * @param filters list of filters
+     * @return list of results
+     */
+    @HttpRoute(method = HttpMethod.GET, path = "${route_path}/search")
+    @Json
+    List<${response_dto_name}> ${search_method_name}(
+        @Query("q") String query,
+        @Query("filter") List<String> filters
+    );
+
+    /**
+     * POST ${route_path}/bulk — bulk operation.
+     *
+     * @param requests list of requests
+     * @param dryRun dry-run mode (true = validate only, no changes applied)
+     * @return operation result
+     */
+    @HttpRoute(method = HttpMethod.POST, path = "${route_path}/bulk")
+    @Json
+    ${response_dto_name} ${bulk_method_name}(
+        @Json List<${request_dto_name}> requests,
+        @Query("dryRun") Boolean dryRun
+    );
+}

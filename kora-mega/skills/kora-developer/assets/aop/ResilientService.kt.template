@@ -1,0 +1,66 @@
+// Kotlin outbound call wrapped with @Timeout + @Retry + @CircuitBreaker + @Fallback.
+// Aspect order (top to bottom) matters — see references/resilient.md.
+// Replace `com.example.app.service` with your package.
+// Class must be `open` for aspects to work.
+
+package com.example.app.service
+
+import ru.tinkoff.kora.common.Component
+import ru.tinkoff.kora.resilient.circuitbreaker.annotation.CircuitBreaker
+import ru.tinkoff.kora.resilient.fallback.annotation.Fallback
+import ru.tinkoff.kora.resilient.retry.annotation.Retry
+import ru.tinkoff.kora.resilient.timeout.annotation.Timeout
+
+@Component
+open class InventoryService(                                              // open, not final
+    private val client: InventoryClient
+) {
+
+    // Semantics with this stacking:
+    //   1. @Timeout caps the WHOLE chain (including retries and fallback).
+    //   2. @CircuitBreaker short-circuits when open — @Retry doesn't even run.
+    //   3. @Retry retries the underlying call until success or attempts exhausted.
+    //   4. @Fallback provides a value if all retries fail.
+    @Timeout("inventory.check")
+    @CircuitBreaker("inventory.check")
+    @Retry("inventory.check")
+    @Fallback(value = "inventory.check", method = "fallback")
+    open fun checkStock(sku: String): Int {
+        return client.call(sku)
+    }
+
+    // Fallback method — same class, signature-compatible return type.
+    protected open fun fallback(sku: String): Int = 0
+
+    // Per-attempt timeout instead: swap order — @Retry outside @Timeout.
+    @Retry("inventory.check")
+    @Timeout("inventory.check.perAttempt")
+    open fun checkWithPerAttemptTimeout(sku: String): Int {
+        return client.call(sku)
+    }
+}
+
+// Placeholder dependency — replace with your actual client
+open class InventoryClient {
+    open fun call(sku: String): Int = 42
+}
+
+// Config snippet (HOCON) — add to your application.conf:
+//
+// inventory.check {
+//   timeout = "2s"
+//   circuit-breaker {
+//     failureThreshold = 5
+//     successThreshold = 3
+//     requestVolumeThreshold = 10
+//     waitDuration = "30s"
+//   }
+//   retry {
+//     attempts = 3
+//     waitBetween = "100ms"
+//     maxWait = "2s"
+//   }
+//   fallback {
+//     enabled = true
+//   }
+// }

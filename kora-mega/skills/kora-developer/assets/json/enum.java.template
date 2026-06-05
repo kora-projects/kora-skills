@@ -1,0 +1,47 @@
+package ${package};
+
+import ru.tinkoff.kora.json.common.annotation.Json;
+import java.util.Arrays;
+
+/**
+ * ${enum_name} with custom JSON serialization.
+ *
+ * <p>Serialized via toString() — override for a custom format.</p>
+ *
+ * @see #toString()
+ * @see #fromString(String)
+ */
+@Json
+public enum ${enum_name} {
+    ${enum_values};
+
+    private final String value;
+
+    ${enum_name}(String value) {
+        this.value = value;
+    }
+
+    /**
+     * Returns the JSON representation of the enum.
+     * By default returns the lowercase name.
+     */
+    @Override
+    public String toString() {
+        return value;
+    }
+
+    /**
+     * Deserializes an enum from a JSON string.
+     *
+     * @param value value from JSON
+     * @return the matching enum constant
+     * @throws IllegalArgumentException if the value is not found
+     */
+    public static ${enum_name} fromString(String value) {
+        return Arrays.stream(values())
+            .filter(e -> e.value.equals(value))
+            .findFirst()
+            .orElseThrow(() -> new IllegalArgumentException(
+                "Unknown ${enum_name}: " + value));
+    }
+}

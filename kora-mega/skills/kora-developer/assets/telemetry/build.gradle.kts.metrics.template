@@ -1,0 +1,15 @@
+plugins {
+    id("java")
+}
+
+dependencies {
+    // Kora Metrics Module (Micrometer)
+    implementation("ru.tinkoff.kora:micrometer-module:${koraVersion}")
+
+    // Prometheus registry (for metrics export)
+    implementation("io.micrometer:micrometer-registry-prometheus:1.12.+")
+
+    // Optional: additional registries
+    // implementation("io.micrometer:micrometer-registry-otlp:1.12.+")
+    // implementation("io.micrometer:micrometer-registry-statsd:1.12.+")
+}

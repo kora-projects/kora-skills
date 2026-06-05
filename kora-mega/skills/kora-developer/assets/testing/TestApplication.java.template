@@ -1,0 +1,141 @@
+package ${package};
+
+import java.util.List;
+import ru.tinkoff.kora.common.Component;
+import ru.tinkoff.kora.common.KoraApp;
+import ru.tinkoff.kora.common.annotation.Root;
+import ru.tinkoff.kora.database.common.annotation.Query;
+import ru.tinkoff.kora.database.common.annotation.Repository;
+import ru.tinkoff.kora.database.jdbc.JdbcRepository;
+
+/**
+ * TestApplication extends the main application and adds test components
+ * that are needed ONLY within tests.
+ *
+ * PURPOSE:
+ * - Adding any components for tests (not just DB-related!)
+ * - Repositories with cleanup methods (deleteAll, truncate)
+ * - Components from common modules not used in production
+ * - Fast test utilities for setup/teardown
+ * - Mock/stub components for test isolation
+ *
+ * EXAMPLE COMPONENTS:
+ * - TestPetRepository — for cleaning the DB between tests
+ * - TestCacheWarmer — for warming up the cache in tests
+ * - TestMessageProducer — for sending test messages
+ * - FakeExternalService — stub for an external API
+ *
+ * IMPORTANT:
+ * - Components must be @Root if they are not used by other components
+ * - Black-box testing is the primary approach; TestApplication is supplementary
+ *
+ * USAGE IN TESTS:
+ * \{@code
+ * @KoraAppTest(TestApplication.class)
+ * class MyIntegrationTest {
+ *     @TestComponent
+ *     private TestPetRepository testPetRepository;
+ *
+ *     @BeforeEach
+ *     void setUp() {
+ *         testPetRepository.deleteAll(); // Clean up the DB
+ *     }
+ * }
+ * }
+ *
+ * BUILD REQUIREMENTS (MANDATORY):
+ *
+ * 1. Enable submodule generation in build.gradle:
+ *
+ *    compileJava {
+ *        options.compilerArgs += [
+ *            "-Akora.app.submodule.enabled=true"
+ *        ]
+ *    }
+ *
+ * 2. Add the annotation processor to test dependencies:
+ *
+ *    dependencies {
+ *        testAnnotationProcessor "ru.tinkoff.kora:annotation-processors"
+ *    }
+ *
+ * 3. Exclude generated classes from JUnit (if needed):
+ *
+ *    test {
+ *        exclude("**/\$*")
+ *    }
+ *
+ * After the build, TestApplication\$TestApplicationGraph will appear in test/classes.
+ */
+@KoraApp
+public interface TestApplication extends Application {
+
+    /**
+     * Test repository for working with ${entity} entities.
+     * Adds methods for cleaning up data in tests.
+     *
+     * Components in TestApplication must be @Root,
+     * because they may not be used by other components.
+     */
+    @Root
+    @Component
+    @Repository
+    interface Test${entity}Repository extends JdbcRepository {
+
+        /**
+         * Retrieve all rows from the table.
+         *
+         * @return list of all entities
+         */
+        @Query("SELECT %{return#selects} FROM %{return#table}")
+        List<${entity}> findAll();
+
+        /**
+         * Delete all rows from the table.
+         * Used to clean up the DB between tests.
+         */
+        @Query("DELETE FROM ${table}")
+        void deleteAll();
+
+        /**
+         * Optional: method for inserting test data.
+         *
+         * @param entity entity to insert
+         * @return ID of the inserted row
+         */
+        // @Query("INSERT INTO ${table} (name, category_id) VALUES (:name, :categoryId) RETURNING id")
+        // Long insert(${entity} entity);
+    }
+
+    /**
+     * Optional: test repository for related entities.
+     * Uncomment and adapt to your schema.
+     */
+    /*
+    @Root
+    @Component
+    @Repository
+    interface Test${relatedEntity}Repository extends JdbcRepository {
+
+        @Query("SELECT %{return#selects} FROM %{return#table}")
+        List<${relatedEntity}> findAll();
+
+        @Query("DELETE FROM ${relatedTable}")
+        void deleteAll();
+    }
+    */
+
+    /**
+     * Optional: any other test component (not only DB-related).
+     * For example: a stub for an external service, a test producer, etc.
+     *
+     * @Root is required if the component is not used by other components.
+     */
+    /*
+    @Root
+    @Component
+    default TestExternalService testExternalService() {
+        return new FakeExternalService(); // Stub for tests
+    }
+    */
+}

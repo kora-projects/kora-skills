@@ -1,0 +1,128 @@
+package ${package}
+
+import io.goodforgod.testcontainers.extensions.ContainerMode
+import io.goodforgod.testcontainers.extensions.Network
+import io.goodforgod.testcontainers.extensions.jdbc.*
+import org.junit.jupiter.api.AfterAll
+import org.junit.jupiter.api.BeforeAll
+import org.junit.jupiter.api.Test
+import java.net.http.HttpClient
+import java.net.http.HttpRequest
+import java.net.http.HttpResponse
+import java.time.Duration
+import org.json.JSONObject
+
+@TestcontainersPostgreSQL(
+    network = @Network(shared = true),
+    mode = ContainerMode.PER_RUN,
+    migration = @Migration(
+        engine = Migration.Engines.FLYWAY,
+        apply = Migration.Mode.PER_METHOD,
+        drop = Migration.Mode.PER_METHOD
+    )
+)
+class ${testName} {
+
+    companion object {
+        private val container = AppContainer.build()
+            .withNetwork(org.testcontainers.containers.Network.SHARED)
+
+        @JvmStatic
+        @BeforeAll
+        fun setup(@ConnectionPostgreSQL connection: JdbcConnection) {
+            val params = connection.paramsInNetwork().orElseThrow()
+            container.withEnv(
+                mapOf(
+                    "DB_JDBC_URL" to params.jdbcUrl(),
+                    "DB_USER" to params.username(),
+                    "DB_PASS" to params.password()
+                )
+            )
+            container.start()
+        }
+
+        @JvmStatic
+        @AfterAll
+        fun cleanup() {
+            container.stop()
+        }
+    }
+
+    @ConnectionPostgreSQL
+    private lateinit var connection: JdbcConnection
+
+    @Test
+    fun `should create resource`() {
+        // given
+        val httpClient = HttpClient.newHttpClient()
+        val requestBody = JSONObject().put("name", "test-resource")
+
+        // when
+        val request = HttpRequest.newBuilder()
+            .POST(HttpRequest.BodyPublishers.ofString(requestBody.toString()))
+            .uri(container.uri.resolve("/api/resources"))
+            .timeout(Duration.ofSeconds(5))
+            .build()
+
+        val response = httpClient.send(request, HttpResponse.BodyHandlers.ofString())
+        org.junit.jupiter.api.Assertions.assertEquals(200, response.statusCode())
+
+        // then
+        val responseBody = JSONObject(response.body())
+        org.junit.jupiter.api.Assertions.assertNotNull(responseBody.get("id"))
+        org.junit.jupiter.api.Assertions.assertEquals("test-resource", responseBody.get("name"))
+    }
+
+    @Test
+    fun `should get resource`() {
+        // given
+        val httpClient = HttpClient.newHttpClient()
+
+        // Create resource first
+        val createRequest = HttpRequest.newBuilder()
+            .POST(HttpRequest.BodyPublishers.ofString("{\"name\":\"test\"}"))
+            .uri(container.uri.resolve("/api/resources"))
+            .timeout(Duration.ofSeconds(5))
+            .build()
+        val createResponse = httpClient.send(createRequest, HttpResponse.BodyHandlers.ofString())
+        val resourceId = JSONObject(createResponse.body()).get("id")
+
+        // when
+        val getRequest = HttpRequest.newBuilder()
+            .GET()
+            .uri(container.uri.resolve("/api/resources/\$resourceId"))
+            .timeout(Duration.ofSeconds(5))
+            .build()
+
+        val getResponse = httpClient.send(getRequest, HttpResponse.BodyHandlers.ofString())
+        org.junit.jupiter.api.Assertions.assertEquals(200, getResponse.statusCode())
+    }
+
+    @Test
+    fun `should delete resource`() {
+        // given
+        val httpClient = HttpClient.newHttpClient()
+
+        // Create resource first
+        val createRequest = HttpRequest.newBuilder()
+            .POST(HttpRequest.BodyPublishers.ofString("{\"name\":\"test\"}"))
+            .uri(container.uri.resolve("/api/resources"))
+            .timeout(Duration.ofSeconds(5))
+            .build()
+        val createResponse = httpClient.send(createRequest, HttpResponse.BodyHandlers.ofString())
+        val resourceId = JSONObject(createResponse.body()).get("id")
+
+        // when
+        val deleteRequest = HttpRequest.newBuilder()
+            .DELETE()
+            .uri(container.uri.resolve("/api/resources/\$resourceId"))
+            .timeout(Duration.ofSeconds(5))
+            .build()
+
+        val deleteResponse = httpClient.send(deleteRequest, HttpResponse.BodyHandlers.ofString())
+        org.junit.jupiter.api.Assertions.assertEquals(200, deleteResponse.statusCode())
+
+        // then - verify in the DB
+        // connection.assertCountsEquals(0, "resources")
+    }
+}

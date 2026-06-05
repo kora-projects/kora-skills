@@ -1,0 +1,38 @@
+package ${package};
+
+import ru.tinkoff.kora.json.common.annotation.Json;
+
+/**
+ * Response DTO for ${operation_description}.
+ *
+ * <p>Used as a response body in HTTP client methods.</p>
+ *
+ * <p>Features:</p>
+ * <ul>
+ *   <li>@Json annotation for automatic deserialization</li>
+ *   <li>Record for immutability and conciseness</li>
+ *   <li>Explicit field types for type safety</li>
+ * </ul>
+ *
+ * @param ${field1_name} ${field1_description}
+ * @param ${field2_name} ${field2_description}
+ * @param ${field3_name} ${field3_description}
+ */
+@Json
+public record ${dto_name}(
+    /**
+     * ${field1_name}: ${field1_description}
+     */
+    String ${field1_name},
+
+    /**
+     * ${field2_name}: ${field2_description}
+     */
+    String ${field2_name},
+
+    /**
+     * ${field3_name}: ${field3_description}
+     */
+    Integer ${field3_name}
+) {
+}

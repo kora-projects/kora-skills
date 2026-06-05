@@ -1,0 +1,45 @@
+package ${package}
+
+import io.opentelemetry.api.trace.Span
+import io.opentelemetry.api.trace.StatusCode
+import io.opentelemetry.api.trace.Tracer
+import io.opentelemetry.context.Context
+import ru.tinkoff.kora.common.Component
+import ru.tinkoff.kora.opentelemetry.common.OpentelemetryContext
+
+/**
+ * Example of custom tracing usage.
+ */
+@Component
+class TracingInterceptor(
+    private val tracer: Tracer
+) {
+
+    /**
+     * Creates a custom span for an operation.
+     */
+    fun <T> executeWithSpan(operationName: String, operation: () -> T): T {
+        val ctx = Context.current()
+        val otctx = OpentelemetryContext.get(ctx)
+
+        val span = tracer.spanBuilder(operationName)
+            .setParent(otctx.context)
+            .setAttribute("custom.operation", operationName)
+            .startSpan()
+
+        OpentelemetryContext.set(ctx, otctx.add(span))
+
+        return try {
+            val result = operation()
+            span.setStatus(StatusCode.OK)
+            result
+        } catch (e: Exception) {
+            span.recordException(e)
+            span.setStatus(StatusCode.ERROR, e.message)
+            throw e
+        } finally {
+            span.end()
+            OpentelemetryContext.set(ctx, otctx)
+        }
+    }
+}

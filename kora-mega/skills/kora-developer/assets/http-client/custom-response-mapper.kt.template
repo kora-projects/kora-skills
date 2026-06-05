@@ -1,0 +1,56 @@
+package ${package}
+
+import ru.tinkoff.kora.common.Context
+import ru.tinkoff.kora.http.client.common.HttpClientResponse
+import ru.tinkoff.kora.http.client.common.response.HttpClientResponseMapper
+
+/**
+ * Custom HttpClientResponseMapper for the ${response_type} type.
+ *
+ * Used for non-standard response deserialization.
+ *
+ * Features:
+ * - Full control over response parsing
+ * - Support for non-standard formats (XML, Protobuf, etc.)
+ * - Custom error handling
+ *
+ * Usage in a client:
+ * ```kotlin
+ * @HttpClient("${client_name}")
+ * interface MyApiClient {
+ *     @HttpRoute(method = HttpMethod.GET, path = "/data")
+ *     @Mapping(CustomResponseMapper::class)
+ *     fun getData(): ${response_type}
+ * }
+ * ```
+ *
+ * Or via @ResponseCodeMapper:
+ * ```kotlin
+ * @ResponseCodeMapper(code = 200, mapper = CustomResponseMapper::class)
+ * fun getData(): ${response_type}
+ * ```
+ */
+class CustomResponseMapper : HttpClientResponseMapper<${response_type}> {
+
+    override fun apply(
+        context: Context,
+        response: HttpClientResponse
+    ): ${response_type} {
+        // Validate status code
+        val statusCode = response.code()
+        if (statusCode < 200 || statusCode >= 300) {
+            throw RuntimeException("Request failed with status: $statusCode")
+        }
+
+        // Read response body
+        val body = response.body().asString()
+
+        // TODO: implement response parsing
+        // Options:
+        // 1. Jackson ObjectMapper: objectMapper.readValue(body, ${response_type}::class.java)
+        // 2. JsonReader from kora json-module
+        // 3. Custom parsing (XML, CSV, etc.)
+
+        throw UnsupportedOperationException("Not implemented")
+    }
+}

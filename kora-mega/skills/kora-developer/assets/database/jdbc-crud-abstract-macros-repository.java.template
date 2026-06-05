@@ -1,0 +1,106 @@
+package ${package};
+
+import jakarta.annotation.Nullable;
+import java.util.List;
+import ru.tinkoff.kora.database.common.UpdateCount;
+import ru.tinkoff.kora.database.common.annotation.Batch;
+import ru.tinkoff.kora.database.common.annotation.Query;
+import ru.tinkoff.kora.database.jdbc.JdbcRepository;
+
+/**
+ * Abstract base repository for CRUD operations using SQL macros.
+ * Provides common CRUD operations that can be reused across multiple repositories.
+ *
+ * When to use this pattern:
+ * - You have many repositories with similar CRUD operations
+ * - You want to avoid code duplication
+ * - You need consistent CRUD behavior across the application
+ *
+ * Usage:
+ * 1. Copy this interface to your project
+ * 2. Create concrete repository extending it:
+ *    {@code
+ *    @Repository
+ *    public interface UserRepository extends AbstractCrudMacrosRepository<String, User> {
+ *        @Query("SELECT %{return#selects} FROM %{return#table} WHERE email = :email")
+ *        @Nullable
+ *        User findByEmail(String email);
+ *    }
+ *    }
+ *
+ * @param <K> ID type (e.g., String, Long, UUID, or composite ID class)
+ * @param <V> Entity value type (must be @EntityJdbc record)
+ */
+public interface AbstractCrudMacrosRepository<K, V> extends JdbcRepository {
+
+    /**
+     * Find all entities.
+     * @return list of all entities
+     */
+    @Query("SELECT %{return#selects} FROM %{return#table}")
+    List<V> findAll();
+
+    /**
+     * Insert single entity.
+     * @param entity entity to insert
+     * @return update count
+     */
+    @Query("INSERT INTO %{entity#inserts}")
+    UpdateCount insert(V entity);
+
+    /**
+     * Insert multiple entities in batch.
+     * @param entities list of entities to insert
+     * @return update count
+     */
+    @Query("INSERT INTO %{entity#inserts}")
+    UpdateCount insertBatch(@Batch List<V> entities);
+
+    /**
+     * Update single entity by ID.
+     * @param entity entity to update (ID must be set)
+     * @return update count
+     */
+    @Query("UPDATE %{entity#table} SET %{entity#updates} WHERE %{entity#where = @id}")
+    UpdateCount update(V entity);
+
+    /**
+     * Update multiple entities in batch.
+     * @param entities list of entities to update
+     * @return update count
+     */
+    @Query("UPDATE %{entity#table} SET %{entity#updates} WHERE %{entity#where = @id}")
+    UpdateCount updateBatch(@Batch List<V> entities);
+
+    /**
+     * Upsert single entity (insert or update on conflict).
+     * Works for single-column IDs. For composite IDs, override with explicit ON CONFLICT clause.
+     * @param entity entity to upsert
+     * @return update count
+     */
+    @Query("INSERT INTO %{entity#table} %{entity#inserts} ON CONFLICT (id) DO UPDATE SET %{entity#updates}")
+    UpdateCount upsert(V entity);
+
+    /**
+     * Upsert multiple entities in batch.
+     * @param entities list of entities to upsert
+     * @return update count
+     */
+    @Query("INSERT INTO %{entity#table} %{entity#inserts} ON CONFLICT (id) DO UPDATE SET %{entity#updates}")
+    UpdateCount upsertBatch(@Batch List<V> entities);
+
+    /**
+     * Delete entity by ID.
+     * @param id entity ID
+     * @return update count
+     */
+    @Query("DELETE FROM %{entity#table} WHERE id = :id")
+    UpdateCount deleteById(K id);
+
+    /**
+     * Delete all entities (truncate).
+     * @return update count
+     */
+    @Query("DELETE FROM %{entity#table}")
+    UpdateCount deleteAll();
+}

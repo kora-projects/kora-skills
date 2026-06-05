@@ -1,0 +1,235 @@
+package ${package};
+
+import ru.tinkoff.kora.http.client.common.HttpClient;
+import ru.tinkoff.kora.http.client.common.HttpClientRequest;
+import ru.tinkoff.kora.http.client.common.HttpClientResponse;
+import ru.tinkoff.kora.http.client.common.body.HttpBody;
+import ru.tinkoff.kora.http.common.HttpMethod;
+
+import java.util.List;
+import java.util.concurrent.CompletionStage;
+
+/**
+ * Imperative HTTP client for working with the ${api_name} API.
+ *
+ * <p>Uses the HttpClient interface for manual request construction.</p>
+ *
+ * <p>Features:</p>
+ * <ul>
+ *   <li>Full control over the request (headers, body, timeouts)</li>
+ *   <li>Dynamic URL and parameter construction</li>
+ *   <li>Custom response handling</li>
+ *   <li>Explicit dependencies via DI container</li>
+ *   <li>Asynchronous method signatures (CompletionStage)</li>
+ * </ul>
+ *
+ * <p>Module registration:</p>
+ * <pre>{@code
+ * @Component
+ * public final class ${client_class_name} {
+ *     private final HttpClient httpClient;
+ *
+ *     public ${client_class_name}(
+ *         @Tag(${api_tag_class}.class) HttpClient httpClient
+ *     ) {
+ *         this.httpClient = httpClient;
+ *     }
+ * }
+ * }</pre>
+ */
+public final class ${client_class_name} {
+
+    private final HttpClient httpClient;
+    private final String baseUrl;
+
+    public ${client_class_name}(
+        @Tag(${api_tag_class}.class) HttpClient httpClient
+    ) {
+        this.httpClient = httpClient;
+        this.baseUrl = "${base_url}";
+    }
+
+    /**
+     * POST ${route_path} — ${operation_description}.
+     *
+     * @param request request body (JSON)
+     * @return operation result
+     */
+    public CompletionStage<${response_dto_name}> ${create_method_name}(
+        ${request_dto_name} request
+    ) {
+        String jsonBody = serializeToJson(request);
+
+        HttpClientRequest httpRequest = HttpClientRequest
+            .of(HttpMethod.POST, baseUrl + "${route_path}")
+            .header("Content-Type", "application/json")
+            .header("Accept", "application/json")
+            .body(HttpBody.plaintext(jsonBody))
+            .build();
+
+        return httpClient.execute(httpRequest)
+            .thenApply(this::parse${response_dto_name});
+    }
+
+    /**
+     * GET ${route_path}/{id} — retrieve a resource by ID.
+     *
+     * @param id resource identifier
+     * @return operation result
+     */
+    public CompletionStage<${response_dto_name}> ${get_by_id_method_name}(String id) {
+        HttpClientRequest httpRequest = HttpClientRequest
+            .of(HttpMethod.GET, baseUrl + "${route_path}/" + id)
+            .header("Accept", "application/json")
+            .build();
+
+        return httpClient.execute(httpRequest)
+            .thenApply(this::parse${response_dto_name});
+    }
+
+    /**
+     * GET ${route_path} — list resources with pagination.
+     *
+     * @param limit maximum number of records
+     * @param offset pagination offset
+     * @return list of results
+     */
+    public CompletionStage<List<${response_dto_name}>> ${list_method_name}(
+        Integer limit,
+        Integer offset
+    ) {
+        String url = baseUrl + "${route_path}" +
+            "?limit=" + limit +
+            "&offset=" + offset;
+
+        HttpClientRequest httpRequest = HttpClientRequest
+            .of(HttpMethod.GET, url)
+            .header("Accept", "application/json")
+            .build();
+
+        return httpClient.execute(httpRequest)
+            .thenApply(this::parse${response_dto_name}List);
+    }
+
+    /**
+     * PUT ${route_path}/{id} — update a resource.
+     *
+     * @param id resource identifier
+     * @param request request body (JSON)
+     * @return operation result
+     */
+    public CompletionStage<${response_dto_name}> ${update_method_name}(
+        String id,
+        ${request_dto_name} request
+    ) {
+        String jsonBody = serializeToJson(request);
+
+        HttpClientRequest httpRequest = HttpClientRequest
+            .of(HttpMethod.PUT, baseUrl + "${route_path}/" + id)
+            .header("Content-Type", "application/json")
+            .header("Accept", "application/json")
+            .body(HttpBody.plaintext(jsonBody))
+            .build();
+
+        return httpClient.execute(httpRequest)
+            .thenApply(this::parse${response_dto_name});
+    }
+
+    /**
+     * DELETE ${route_path}/{id} — delete a resource.
+     *
+     * @param id resource identifier
+     * @return operation completion
+     */
+    public CompletionStage<Void> ${delete_method_name}(String id) {
+        HttpClientRequest httpRequest = HttpClientRequest
+            .of(HttpMethod.DELETE, baseUrl + "${route_path}/" + id)
+            .build();
+
+        return httpClient.execute(httpRequest)
+            .thenAccept(response -> {
+                if (response.code() >= 300) {
+                    throw new RuntimeException("Request failed with status " + response.code());
+                }
+            });
+    }
+
+    /**
+     * POST ${route_path}/search — search with filters.
+     *
+     * @param query search query
+     * @param filters list of filters
+     * @return list of results
+     */
+    public CompletionStage<List<${response_dto_name}>> ${search_method_name}(
+        String query,
+        List<String> filters
+    ) {
+        StringBuilder urlBuilder = new StringBuilder(baseUrl + "${route_path}/search?q=" + query);
+        for (String filter : filters) {
+            urlBuilder.append("&filter=").append(filter);
+        }
+
+        HttpClientRequest httpRequest = HttpClientRequest
+            .of(HttpMethod.POST, urlBuilder.toString())
+            .header("Accept", "application/json")
+            .build();
+
+        return httpClient.execute(httpRequest)
+            .thenApply(this::parse${response_dto_name}List);
+    }
+
+    /**
+     * POST ${route_path}/bulk — bulk operation.
+     *
+     * @param requests list of requests
+     * @param dryRun dry-run mode
+     * @return operation result
+     */
+    public CompletionStage<${response_dto_name}> ${bulk_method_name}(
+        List<${request_dto_name}> requests,
+        Boolean dryRun
+    ) {
+        String jsonBody = serializeToJson(requests);
+
+        HttpClientRequest httpRequest = HttpClientRequest
+            .of(HttpMethod.POST, baseUrl + "${route_path}/bulk?dryRun=" + dryRun)
+            .header("Content-Type", "application/json")
+            .header("Accept", "application/json")
+            .body(HttpBody.plaintext(jsonBody))
+            .build();
+
+        return httpClient.execute(httpRequest)
+            .thenApply(this::parse${response_dto_name});
+    }
+
+    // === Helper methods ===
+
+    /**
+     * Serialize an object to JSON.
+     * Use Jackson ObjectMapper or another JSON processor.
+     */
+    private String serializeToJson(Object obj) {
+        // TODO: implement using Jackson ObjectMapper
+        // return objectMapper.writeValueAsString(obj);
+        throw new UnsupportedOperationException("Not implemented");
+    }
+
+    /**
+     * Parse a JSON response into a DTO.
+     */
+    private ${response_dto_name} parse${response_dto_name}(HttpClientResponse response) {
+        // TODO: implement using Jackson JsonNode or JsonReader
+        String body = response.body().asString();
+        throw new UnsupportedOperationException("Not implemented");
+    }
+
+    /**
+     * Parse a JSON response into a list of DTOs.
+     */
+    private List<${response_dto_name}> parse${response_dto_name}List(HttpClientResponse response) {
+        // TODO: implement using Jackson TypeReference
+        String body = response.body().asString();
+        throw new UnsupportedOperationException("Not implemented");
+    }
+}

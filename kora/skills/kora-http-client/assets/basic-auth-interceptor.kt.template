@@ -1,0 +1,67 @@
+package ${package}
+
+import ru.tinkoff.kora.common.Context
+import ru.tinkoff.kora.http.client.common.HttpClientRequest
+import ru.tinkoff.kora.http.client.common.HttpClientResponse
+import ru.tinkoff.kora.http.client.common.HttpClientInterceptor
+import ru.tinkoff.kora.http.client.common.InterceptChain
+import java.nio.charset.StandardCharsets
+import java.util.Base64
+import java.util.concurrent.CompletionStage
+
+/**
+ * Basic Auth HttpClientInterceptor for authentication.
+ *
+ * Adds the Authorization: Basic <credentials> header to every request.
+ *
+ * Configuration (application.conf):
+ * ```hocon
+ * httpClient {
+ *   ${client_name} {
+ *     auth {
+ *       username = "myuser"
+ *       password = "mypassword"
+ *     }
+ *   }
+ * }
+ * ```
+ *
+ * Module registration:
+ * ```kotlin
+ * @Module
+ * interface BasicAuthModule {
+ *     @ConfigSource("httpClient.${client_name}.auth")
+ *     interface BasicAuthConfig {
+ *         val username: String
+ *         val password: String
+ *     }
+ *
+ *     @DefaultComponent
+ *     fun basicAuthInterceptor(config: BasicAuthConfig): BasicAuthHttpClientInterceptor {
+ *         return BasicAuthHttpClientInterceptor(config.username, config.password)
+ *     }
+ * }
+ * ```
+ */
+class BasicAuthHttpClientInterceptor(
+    username: String,
+    password: String
+) : HttpClientInterceptor {
+
+    private val credentials: String = Base64.getEncoder().encodeToString(
+        "$username:$password".toByteArray(StandardCharsets.UTF_8)
+    )
+
+    override fun intercept(
+        context: Context,
+        request: HttpClientRequest,
+        chain: InterceptChain
+    ): CompletionStage<HttpClientResponse> {
+        // Add Authorization header to every request
+        val authRequest = request.toBuilder()
+            .header("Authorization", "Basic $credentials")
+            .build()
+
+        return chain.process(context, authRequest)
+    }
+}

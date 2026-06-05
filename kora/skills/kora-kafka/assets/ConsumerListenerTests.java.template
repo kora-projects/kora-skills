@@ -1,0 +1,95 @@
+package ${package}.listener;
+
+import io.goodforgod.testcontainers.extensions.ContainerMode;
+import io.goodforgod.testcontainers.extensions.kafka.ConnectionKafka;
+import io.goodforgod.testcontainers.extensions.kafka.Event;
+import io.goodforgod.testcontainers.extensions.kafka.KafkaConnection;
+import io.goodforgod.testcontainers.extensions.kafka.TestcontainersKafka;
+import io.goodforgod.testcontainers.extensions.kafka.Topics;
+import org.jetbrains.annotations.NotNull;
+import org.json.JSONObject;
+import org.junit.jupiter.api.Test;
+import org.testcontainers.shaded.org.awaitility.Awaitility;
+import ru.tinkoff.kora.application.graph.Lifecycle;
+import ru.tinkoff.kora.common.Tag;
+import ru.tinkoff.kora.test.extension.junit5.KoraAppTest;
+import ru.tinkoff.kora.test.extension.junit5.KoraAppTestConfigModifier;
+import ru.tinkoff.kora.test.extension.junit5.KoraConfigModification;
+import ru.tinkoff.kora.test.extension.junit5.TestComponent;
+
+import java.time.Duration;
+import java.util.concurrent.Executors;
+
+/**
+ * Tests for the ${listenerName} consumer.
+ *
+ * Usage:
+ * 1. Make sure the dependencies are added in build.gradle:
+ *    testImplementation "io.goodforgod:testcontainers-extensions-kafka:0.13.1"
+ *    testRuntimeOnly "org.apache.kafka:kafka-clients:3.5.1"
+ *    testImplementation "org.json:json:20231013"
+ *    testImplementation "org.awaitility:awaitility:4.2.0"
+ *
+ * 2. Run tests: ./gradlew test
+ */
+@TestcontainersKafka(
+    mode = ContainerMode.PER_RUN,
+    topics = @Topics({ "${topicName}" })
+)
+@KoraAppTest(Application.class)
+class ${listenerName}Tests implements KoraAppTestConfigModifier {
+
+    @ConnectionKafka
+    private KafkaConnection connection;
+
+    @Tag(${listenerName}Module.${listenerName}ProcessTag.class)
+    @TestComponent
+    private Lifecycle consumerLifecycle;
+
+    @TestComponent
+    private ${listenerName} consumer;
+
+    @NotNull
+    @Override
+    public KoraConfigModification config() {
+        return KoraConfigModification.ofSystemProperty(
+            "KAFKA_BOOTSTRAP",
+            connection.params().bootstrapServers()
+        );
+    }
+
+    @Test
+    void shouldProcessEvent() {
+        // given
+        var event = new JSONObject()
+            .put("id", "test-123")
+            .put("name", "Test Event")
+            .put("value", 42);
+
+        // when
+        connection.send("${topicName}", Event.ofValueAndRandomKey(event));
+
+        // then
+        Awaitility.await()
+            .atMost(Duration.ofSeconds(15))
+            .pollExecutorService(Executors.newSingleThreadExecutor())
+            .until(() -> consumer.processedCount() >= 1);
+    }
+
+    @Test
+    void shouldProcessMultipleEvents() {
+        // given
+        var consumer = connection.subscribe("${topicName}");
+
+        // when
+        connection.send("${topicName}",
+            Event.ofValue(new JSONObject().put("id", "1")),
+            Event.ofValue(new JSONObject().put("id", "2")),
+            Event.ofValue(new JSONObject().put("id", "3"))
+        );
+
+        // then
+        var received = consumer.assertReceivedAtLeast(3, Duration.ofSeconds(10));
+        assert received.size() >= 3;
+    }
+}

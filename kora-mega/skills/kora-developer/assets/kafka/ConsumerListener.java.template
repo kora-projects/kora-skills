@@ -1,0 +1,94 @@
+package ${packagePath}.listener;
+
+import org.apache.kafka.clients.consumer.ConsumerRecord;
+import org.apache.kafka.clients.consumer.ConsumerRecords;
+import org.apache.kafka.common.header.Headers;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import ru.tinkoff.kora.common.Component;
+import ru.tinkoff.kora.kafka.common.annotation.KafkaListener;
+
+/**
+ * Example Kafka consumer with various processing method signatures.
+ *
+ * Choose one of the signatures depending on your needs:
+ * - processValue: simple value processing
+ * - processKeyValue: key-value pair processing
+ * - processWithHeaders: processing with access to headers
+ * - processRecord: processing with a full ConsumerRecord
+ * - processRecords: batch processing with ConsumerRecords
+ */
+@Component
+public final class ConsumerListener {
+    
+    private static final Logger log = LoggerFactory.getLogger(ConsumerListener.class);
+    
+    /**
+     * Simple value processing (auto-commit after each message)
+     */
+    @KafkaListener("kafka.consumer.myListener")
+    void processValue(String value) {
+        log.info("Received value: {}", value);
+        // Business logic
+    }
+
+    /**
+     * Key-value pair processing (auto-commit after each message)
+     */
+    @KafkaListener("kafka.consumer.myListener")
+    void processKeyValue(String key, String value) {
+        log.info("Received key={}, value={}", key, value);
+        // Business logic
+    }
+
+    /**
+     * Processing with access to headers
+     */
+    @KafkaListener("kafka.consumer.myListener")
+    void processWithHeaders(String key, String value, Headers headers) {
+        log.info("Received key={}, value={}, headers={}", key, value, headers);
+        // Business logic
+    }
+
+    /**
+     * Processing with a full ConsumerRecord (access to metadata)
+     */
+    @KafkaListener("kafka.consumer.myListener")
+    void processRecord(ConsumerRecord<String, String> record) {
+        log.info("Received topic={}, partition={}, offset={}, key={}, value={}",
+            record.topic(),
+            record.partition(),
+            record.offset(),
+            record.key(),
+            record.value()
+        );
+        // Business logic
+    }
+
+    /**
+     * Batch processing with ConsumerRecords (auto-commit after the entire batch)
+     */
+    @KafkaListener("kafka.consumer.myListener")
+    void processRecords(ConsumerRecords<String, String> records) {
+        log.info("Received batch of {} records", records.count());
+        for (ConsumerRecord<String, String> record : records) {
+            // Process each message in the batch
+            log.debug("Processing offset={}: {}", record.offset(), record.value());
+        }
+        // commitSync() is called automatically after the entire batch
+    }
+
+    /**
+     * Processing with deserialization error handling
+     */
+    @KafkaListener("kafka.consumer.myListener")
+    void processWithErrorHandling(String value, Exception error) {
+        if (error != null) {
+            log.error("Deserialization error", error);
+            // Handle error (e.g., send to DLQ)
+            return;
+        }
+        log.info("Received value: {}", value);
+        // Business logic
+    }
+}

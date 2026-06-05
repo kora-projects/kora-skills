@@ -1,0 +1,110 @@
+package ${package}
+
+import org.slf4j.LoggerFactory
+import ru.tinkoff.kora.common.Component
+import ru.tinkoff.kora.common.Context
+import ru.tinkoff.kora.common.Tag
+import ru.tinkoff.kora.http.common.body.HttpBody
+import ru.tinkoff.kora.http.server.common.*
+import ru.tinkoff.kora.http.server.common.HttpServerModule
+import ru.tinkoff.kora.json.common.JsonWriter
+import java.io.IOException
+import java.util.concurrent.CompletionException
+import java.util.concurrent.CompletionStage
+
+/**
+ * Global error handler for the Kora HTTP server.
+ *
+ * Intercepts all exceptions and converts them to appropriate HTTP statuses:
+ * - 400 Bad Request - for invalid data (IllegalArgumentException)
+ * - 404 Not Found - for missing resources (NotFoundException)
+ * - 408 Request Timeout - for timeouts (TimeoutException)
+ * - 500 Internal Error - for unexpected errors
+ *
+ * Usage:
+ * 1. Class is annotated with @Tag(HttpServerModule::class) for global application
+ * 2. Implements HttpServerInterceptor to intercept requests
+ * 3. Uses exceptionally() to handle errors in CompletionStage
+ *
+ * @see HttpServerInterceptor - interceptor interface
+ * @see HttpServerResponseException - exception for HTTP responses
+ */
+@Tag(HttpServerModule::class)
+@Component
+class ${error_handler_name}(
+    private val errorJsonWriter: JsonWriter<ErrorResponse>
+) : HttpServerInterceptor {
+
+    private val logger = LoggerFactory.getLogger(${error_handler_name}::class.java)
+
+    override fun intercept(
+        context: Context,
+        request: HttpServerRequest,
+        chain: InterceptChain
+    ): CompletionStage<HttpServerResponse> {
+        return chain.process(context, request).exceptionally { e ->
+            // Unwrap CompletionException to get the original exception
+            var exception = e
+            if (e is CompletionException) {
+                exception = e.cause ?: e
+            }
+
+            // HttpServerResponseException already contains a ready response
+            if (exception is HttpServerResponseException) {
+                return@exceptionally exception.response
+            }
+
+            // Determine the error type and build the appropriate response
+            val (statusCode, errorResponse) = when (exception) {
+                // 400 Bad Request - for invalid data
+                is IllegalArgumentException -> 400 to ErrorResponse(
+                    "BAD_REQUEST",
+                    "Invalid data: ${exception.message}"
+                )
+                // 404 Not Found - for missing resources
+                is NotFoundException -> 404 to ErrorResponse(
+                    "NOT_FOUND",
+                    "Resource not found: ${exception.message}"
+                )
+                // 408 Request Timeout
+                is java.util.concurrent.TimeoutException -> 408 to ErrorResponse(
+                    "REQUEST_TIMEOUT",
+                    "Request timed out"
+                )
+                // 500 Internal Server Error - for all other unexpected errors
+                else -> {
+                    logger.error(
+                        "Unexpected error while processing request {} {}",
+                        request.method(), request.path(), exception
+                    )
+                    500 to ErrorResponse(
+                        "INTERNAL_ERROR",
+                        "Internal server error"
+                    )
+                }
+            }
+
+            // Build JSON response
+            try {
+                HttpServerResponse.of(
+                    statusCode,
+                    HttpBody.json(errorJsonWriter.toByteArray(errorResponse))
+                )
+            } catch (ex: IOException) {
+                logger.error("Failed to serialize error response", ex)
+                HttpServerResponse.of(500, HttpBody.plaintext("Internal server error"))
+            }
+        }
+    }
+
+    /**
+     * DTO for an error response.
+     *
+     * @property code error code (BAD_REQUEST, NOT_FOUND, INTERNAL_ERROR)
+     * @property message human-readable error description
+     */
+    data class ErrorResponse(
+        val code: String,
+        val message: String
+    )
+}

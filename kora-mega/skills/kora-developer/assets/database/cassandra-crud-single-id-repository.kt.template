@@ -1,0 +1,89 @@
+package `${package}`
+
+import ru.tinkoff.kora.database.common.annotation.Batch
+import ru.tinkoff.kora.database.common.annotation.Query
+import ru.tinkoff.kora.database.cassandra.CassandraRepository
+
+/**
+ * Basic CRUD repository for Cassandra with single-field ID.
+ * Extends CassandraRepository for base functionality.
+ *
+ * Cassandra-specific notes:
+ * - No UPDATE with SET clause - use explicit INSERT or separate INSERT/UPDATE
+ * - Use IF NOT EXISTS for lightweight transactions (conditional inserts)
+ * - Batch operations use @Batch annotation
+ * - Support for async with CompletionStage (optional)
+ *
+ * Best practices:
+ * - Use nullable return types (T?) not Optional
+ * - Prefer sync signatures with Virtual Threads
+ * - Use IF NOT EXISTS for conditional inserts when needed
+ * - ID type: Use UUID, String, or Long depending on your key generation strategy
+ */
+@Repository
+interface `${repository_name}` : CassandraRepository {
+
+    /**
+     * Find entity by ID.
+     * @param id entity ID (type must match entity's @Id field)
+     * @return entity or null if not found
+     */
+    @Query("SELECT * FROM `${table_name}` WHERE id = :id")
+    fun findById(id: `${id_type}`): `${entity_name}`?
+
+    /**
+     * Find all entities.
+     * @return list of all entities
+     */
+    @Query("SELECT * FROM `${table_name}`")
+    fun findAll(): List<`${entity_name}`>
+
+    /**
+     * Insert single entity.
+     * @param entity entity to insert
+     */
+    @Query("INSERT INTO `${table_name}` (id, field1, field2, field3) VALUES (:id, :field1, :field2, :field3)")
+    fun insert(entity: `${entity_name}`)
+
+    /**
+     * Insert multiple entities in batch.
+     * @param entities list of entities to insert
+     */
+    @Query("INSERT INTO `${table_name}` (id, field1, field2, field3) VALUES (:id, :field1, :field2, :field3)")
+    fun insertBatch(@Batch entities: List<`${entity_name}`>)
+
+    /**
+     * Insert entity if not exists (lightweight transaction).
+     * @param entity entity to insert
+     * @return true if inserted, false if already exists
+     */
+    @Query("INSERT INTO `${table_name}` (id, field1, field2, field3) VALUES (:id, :field1, :field2, :field3) IF NOT EXISTS")
+    fun insertIfNotExists(entity: `${entity_name}`): Boolean
+
+    /**
+     * Update entity by ID (explicit column assignments).
+     * @param entity entity to update (ID must be set)
+     */
+    @Query("UPDATE `${table_name}` SET field1 = :field1, field2 = :field2, field3 = :field3 WHERE id = :id")
+    fun update(entity: `${entity_name}`)
+
+    /**
+     * Update multiple entities in batch.
+     * @param entities list of entities to update
+     */
+    @Query("UPDATE `${table_name}` SET field1 = :field1, field2 = :field2, field3 = :field3 WHERE id = :id")
+    fun updateBatch(@Batch entities: List<`${entity_name}`>)
+
+    /**
+     * Delete entity by ID.
+     * @param id entity ID (type must match entity's @Id field)
+     */
+    @Query("DELETE FROM `${table_name}` WHERE id = :id")
+    fun deleteById(id: `${id_type}`)
+
+    /**
+     * Delete all entities (use with caution - no WHERE clause).
+     */
+    @Query("TRUNCATE `${table_name}`")
+    fun deleteAll()
+}

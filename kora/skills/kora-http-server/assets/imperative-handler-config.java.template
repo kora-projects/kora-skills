@@ -1,0 +1,60 @@
+package ${package};
+
+import ru.tinkoff.kora.common.Context;
+import ru.tinkoff.kora.http.server.common.HttpServerRequest;
+import ru.tinkoff.kora.http.server.common.HttpServerRequestHandler;
+import ru.tinkoff.kora.http.server.common.HttpServerResponse;
+import ru.tinkoff.kora.http.server.common.HttpServerRequestHandlerImpl;
+import ru.tinkoff.kora.http.server.common.body.HttpBody;
+
+import java.util.concurrent.CompletableFuture;
+
+/**
+ * Imperative HTTP handler with a configurable enabled flag.
+ *
+ * <p>Allows dynamically enabling/disabling the endpoint via configuration.</p>
+ *
+ * <p>Use cases:</p>
+ * <ul>
+ *   <li>Feature flags — enable/disable without redeployment</li>
+ *   <li>A/B testing — gradual rollout to a portion of traffic</li>
+ *   <li>Debug endpoints — only in dev/staging</li>
+ *   <li>Graceful degradation — disable under load</li>
+ * </ul>
+ */
+public interface ${handler_module_name} {
+
+    /**
+     * Handler with dynamic control via configuration.
+     *
+     * @param config configuration holding the enabled flag
+     * @return HttpServerRequestHandler
+     */
+    default HttpServerRequestHandler ${handler_method_name}(
+        ${config_interface_name} config
+    ) {
+        boolean enabled = config.${enabled_method}();
+
+        return HttpServerRequestHandlerImpl.of(
+            "${http_method}",
+            "${route_path}",
+            (context, request) -> {
+                // TODO: implement handler logic
+                return CompletableFuture.completedFuture(
+                    HttpServerResponse.of(200, HttpBody.plaintext("${response_body}"))
+                );
+            },
+            enabled  // controlled via configuration
+        );
+    }
+}
+
+/**
+ * Configuration interface for the handler.
+ */
+interface ${config_interface_name} {
+    /**
+     * @return true if the handler should be active
+     */
+    boolean ${enabled_method}();
+}

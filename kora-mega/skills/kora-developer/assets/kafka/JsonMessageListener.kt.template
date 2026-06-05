@@ -1,0 +1,53 @@
+package ${packagePath}.listener
+
+import java.time.Instant
+import org.slf4j.LoggerFactory
+import ru.tinkoff.kora.common.Component
+import ru.tinkoff.kora.json.common.annotation.Json
+import ru.tinkoff.kora.kafka.common.annotation.KafkaListener
+
+/**
+ * Example Kafka consumer with JSON deserialization.
+ *
+ * The @Json annotation automatically deserializes JSON into a data class.
+ */
+@Component
+class JsonMessageListener {
+    
+    private val log = LoggerFactory.getLogger(JsonMessageListener::class.java)
+    
+    /**
+     * DTO for JSON messages
+     */
+    @Json
+    data class MyEvent(
+        val id: String,
+        val name: String,
+        val code: Int,
+        val timestamp: Instant
+    )
+    
+    /**
+     * Process a JSON message (value only)
+     */
+    @KafkaListener("kafka.consumer.jsonListener")
+    fun processEvent(event: MyEvent) {
+        log.info(
+            "Received event: id={}, name={}, code={}, timestamp={}",
+            event.id,
+            event.name,
+            event.code,
+            event.timestamp
+        )
+        // Business logic for event processing
+    }
+
+    /**
+     * Process a JSON message (key-value)
+     */
+    @KafkaListener("kafka.consumer.jsonListener")
+    fun processEventWithKey(key: String, event: MyEvent) {
+        log.info("Received key={}, event={}", key, event)
+        // Business logic for event processing
+    }
+}

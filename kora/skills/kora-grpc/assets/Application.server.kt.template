@@ -1,0 +1,9 @@
+@KoraApp
+interface Application : GrpcServerModule, HoconConfigModule {
+    companion object {
+        @JvmStatic
+        fun main(args: Array<String>) {
+            KoraApplication.run(ApplicationGraph::graph)
+        }
+    }
+}

@@ -1,0 +1,8 @@
+# Kora Metrics Configuration
+httpServer {
+    privateApiHttpMetricsPath = "/metrics"  # Prometheus endpoint
+}
+
+metrics {
+    opentelemetrySpec = "V120"  # or "V123"
+}

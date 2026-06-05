@@ -1,0 +1,143 @@
+{
+  "dxt_version": "1.0.0",
+  "name": "kora-developer",
+  "displayName": "Kora Framework — Java/Kotlin Backend Developer",
+  "version": "1.0.0",
+  "highlights": [
+    "Fastest JVM framework: 50–100ms startup time",
+    "6x less memory than Spring Boot (~50MB idle)",
+    "Compile-time DI: zero reflection, zero proxies, zero runtime magic",
+    "AI-friendly: readable generated source code",
+    "Virtual threads for massive concurrency (Java 21+)",
+    "15 production-ready sub-skills: HTTP, Database, Kafka, gRPC, S3, OpenAPI, Telemetry"
+  ],
+  "description": "Build production-grade Java/Kotlin microservices with Kora Framework — the fastest JVM backend framework. Compile-time dependency injection, no reflection or bytecode generation, annotation-processor driven (Java) or KSP driven (Kotlin). Perfect for AI agents and cloud-native microservices. Includes 15 specialized sub-skills: HTTP server/client, Kafka, JDBC/Cassandra, gRPC, S3, OpenAPI codegen, caching (Caffeine/Redis), resilience (CircuitBreaker/Retry), scheduling, validation, MapStruct, and full observability (OpenTelemetry + Micrometer).",
+  "author": {
+    "name": "Anton Kurako",
+    "url": "https://github.com/goodforgod"
+  },
+  "license": "Apache 2.0",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/kora-projects/kora-skills"
+  },
+  "homepage": "https://kora-projects.github.io/kora-docs",
+  "categories": ["backend", "java", "kotlin", "microservices", "dependency-injection", "compile-time", "cloud-native"],
+  "keywords": [
+    "kora",
+    "java",
+    "kotlin",
+    "microservices",
+    "dependency-injection",
+    "compile-time-di",
+    "annotation-processor",
+    "ksp",
+    "gradle",
+    "spring-alternative",
+    "fastest-jvm",
+    "low-latency",
+    "cloud-native",
+    "http-server",
+    "http-client",
+    "jdbc",
+    "cassandra",
+    "kafka",
+    "grpc",
+    "openapi",
+    "s3",
+    "telemetry",
+    "opentelemetry",
+    "micrometer",
+    "caching",
+    "resilience",
+    "circuit-breaker",
+    "scheduling",
+    "validation",
+    "mapstruct"
+  ],
+  "main": "kora/install.sh",
+  "install": {
+    "type": "shell",
+    "command": "./kora/install.sh",
+    "destination": "~/.claude"
+  },
+  "icon": "kora/assets/icon.png",
+  "anthropic": {
+    "minVersion": "2.0.20",
+    "capabilities": ["skills", "subagents"]
+  },
+  "files": [
+    "kora/SKILL.md",
+    "kora/README.md",
+    "kora/install.sh",
+    "kora/skills/**/*"
+  ],
+  "sub_skills": {
+    "count": 14,
+    "names": [
+      "kora-bootstrap",
+      "kora-json",
+      "kora-journal",
+      "kora-http-server",
+      "kora-http-client",
+      "kora-openapi",
+      "kora-aop",
+      "kora-kafka",
+      "kora-telemetry",
+      "kora-database",
+      "kora-grpc",
+      "kora-s3",
+      "kora-testing",
+      "kora-mapstruct"
+    ],
+    "description": "14 specialized sub-skills for each Kora Framework module: bootstrap, HTTP, database, Kafka, gRPC, S3, OpenAPI, telemetry, AOP, testing, and more"
+  },
+  "documentation": {
+    "main": "kora/CLAUDE.md",
+    "readme": "README.md",
+    "examples": "https://github.com/kora-projects/kora-examples",
+    "changelog": "https://kora-projects.github.io/kora-docs/en/changelog/changelog/",
+    "kora_docs": "https://kora-projects.github.io/kora-docs/en/",
+    "kora_github": "https://github.com/kora-projects/kora",
+    "java_template": "https://github.com/kora-projects/kora-java-template",
+    "kotlin_template": "https://github.com/kora-projects/kora-kotlin-template"
+  },
+  "requirements": {
+    "java": "17+ (recommended: 25)",
+    "kotlin": "1.9+",
+    "gradle": "7+",
+    "kora": "1.2.15+"
+  },
+  "features": {
+    "compile_time_di": true,
+    "no_reflection": true,
+    "no_bytecode_generation": true,
+    "annotation_processors": true,
+    "ksp_support": true,
+    "virtual_threads": true,
+    "opentelemetry": true,
+    "modules": [
+      "http-server-undertow",
+      "http-client-jdk",
+      "http-client-okhttp",
+      "database-jdbc",
+      "database-cassandra",
+      "kafka",
+      "grpc-server",
+      "grpc-client",
+      "s3-client",
+      "openapi-codegen",
+      "cache-caffeine",
+      "cache-redis",
+      "resilient",
+      "scheduling-jdk",
+      "scheduling-quartz",
+      "validation",
+      "json",
+      "mapstruct",
+      "telemetry-opentelemetry",
+      "metrics-micrometer",
+      "logging-logback"
+    ]
+  }
+}

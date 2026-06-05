@@ -1,0 +1,207 @@
+package ${package}
+
+import ru.tinkoff.kora.http.client.common.HttpClient
+import ru.tinkoff.kora.http.client.common.HttpClientRequest
+import ru.tinkoff.kora.http.client.common.HttpClientResponse
+import ru.tinkoff.kora.http.client.common.body.HttpBody
+import ru.tinkoff.kora.http.common.HttpMethod
+import java.util.concurrent.CompletionStage
+
+/**
+ * Imperative HTTP client for working with the ${api_name} API.
+ *
+ * Uses the HttpClient interface for manual request construction.
+ *
+ * Features:
+ * - Full control over the request (headers, body, timeouts)
+ * - Dynamic URL and parameter construction
+ * - Custom response handling
+ * - Explicit dependencies via DI container
+ * - Asynchronous method signatures (CompletionStage)
+ *
+ * Module registration:
+ * ```kotlin
+ * @Component
+ * class ${client_class_name}(
+ *     @Tag(${api_tag_class}::class) private val httpClient: HttpClient
+ * ) {
+ *     private val baseUrl = "${base_url}"
+ * }
+ * ```
+ */
+class ${client_class_name}(
+    @Tag(${api_tag_class}::class) private val httpClient: HttpClient
+) {
+
+    private val baseUrl = "${base_url}"
+
+    /**
+     * POST ${route_path} — ${operation_description}.
+     *
+     * @param request request body (JSON)
+     * @return operation result
+     */
+    fun ${create_method_name}(request: ${request_dto_name}): CompletionStage<${response_dto_name}> {
+        val jsonBody = serializeToJson(request)
+
+        val httpRequest = HttpClientRequest
+            .of(HttpMethod.POST, baseUrl + "${route_path}")
+            .header("Content-Type", "application/json")
+            .header("Accept", "application/json")
+            .body(HttpBody.plaintext(jsonBody))
+            .build()
+
+        return httpClient.execute(httpRequest)
+            .thenApply { response -> parse${response_dto_name}(response) }
+    }
+
+    /**
+     * GET ${route_path}/{id} — retrieve a resource by ID.
+     *
+     * @param id resource identifier
+     * @return operation result
+     */
+    fun ${get_by_id_method_name}(id: String): CompletionStage<${response_dto_name}> {
+        val httpRequest = HttpClientRequest
+            .of(HttpMethod.GET, baseUrl + "${route_path}/$id")
+            .header("Accept", "application/json")
+            .build()
+
+        return httpClient.execute(httpRequest)
+            .thenApply { response -> parse${response_dto_name}(response) }
+    }
+
+    /**
+     * GET ${route_path} — list resources with pagination.
+     *
+     * @param limit maximum number of records
+     * @param offset pagination offset
+     * @return list of results
+     */
+    fun ${list_method_name}(limit: Int, offset: Int): CompletionStage<List<${response_dto_name}>> {
+        val url = baseUrl + "${route_path}" +
+            "?limit=$limit" +
+            "&offset=$offset"
+
+        val httpRequest = HttpClientRequest
+            .of(HttpMethod.GET, url)
+            .header("Accept", "application/json")
+            .build()
+
+        return httpClient.execute(httpRequest)
+            .thenApply { response -> parse${response_dto_name}List(response) }
+    }
+
+    /**
+     * PUT ${route_path}/{id} — update a resource.
+     *
+     * @param id resource identifier
+     * @param request request body (JSON)
+     * @return operation result
+     */
+    fun ${update_method_name}(id: String, request: ${request_dto_name}): CompletionStage<${response_dto_name}> {
+        val jsonBody = serializeToJson(request)
+
+        val httpRequest = HttpClientRequest
+            .of(HttpMethod.PUT, baseUrl + "${route_path}/$id")
+            .header("Content-Type", "application/json")
+            .header("Accept", "application/json")
+            .body(HttpBody.plaintext(jsonBody))
+            .build()
+
+        return httpClient.execute(httpRequest)
+            .thenApply { response -> parse${response_dto_name}(response) }
+    }
+
+    /**
+     * DELETE ${route_path}/{id} — delete a resource.
+     *
+     * @param id resource identifier
+     * @return operation completion
+     */
+    fun ${delete_method_name}(id: String): CompletionStage<Void> {
+        val httpRequest = HttpClientRequest
+            .of(HttpMethod.DELETE, baseUrl + "${route_path}/$id")
+            .build()
+
+        return httpClient.execute(httpRequest)
+            .thenAccept { response ->
+                if (response.code() >= 300) {
+                    throw RuntimeException("Request failed with status ${response.code()}")
+                }
+            }
+    }
+
+    /**
+     * POST ${route_path}/search — search with filters.
+     *
+     * @param query search query
+     * @param filters list of filters
+     * @return list of results
+     */
+    fun ${search_method_name}(query: String, filters: List<String>): CompletionStage<List<${response_dto_name}>> {
+        val urlBuilder = StringBuilder(baseUrl + "${route_path}/search?q=$query")
+        for (filter in filters) {
+            urlBuilder.append("&filter=").append(filter)
+        }
+
+        val httpRequest = HttpClientRequest
+            .of(HttpMethod.POST, urlBuilder.toString())
+            .header("Accept", "application/json")
+            .build()
+
+        return httpClient.execute(httpRequest)
+            .thenApply { response -> parse${response_dto_name}List(response) }
+    }
+
+    /**
+     * POST ${route_path}/bulk — bulk operation.
+     *
+     * @param requests list of requests
+     * @param dryRun dry-run mode
+     * @return operation result
+     */
+    fun ${bulk_method_name}(requests: List<${request_dto_name}>, dryRun: Boolean): CompletionStage<${response_dto_name}> {
+        val jsonBody = serializeToJson(requests)
+
+        val httpRequest = HttpClientRequest
+            .of(HttpMethod.POST, baseUrl + "${route_path}/bulk?dryRun=$dryRun")
+            .header("Content-Type", "application/json")
+            .header("Accept", "application/json")
+            .body(HttpBody.plaintext(jsonBody))
+            .build()
+
+        return httpClient.execute(httpRequest)
+            .thenApply { response -> parse${response_dto_name}(response) }
+    }
+
+    // === Helper methods ===
+
+    /**
+     * Serialize an object to JSON.
+     * Use Jackson ObjectMapper or another JSON processor.
+     */
+    private fun serializeToJson(obj: Any): String {
+        // TODO: implement using Jackson ObjectMapper
+        // return objectMapper.writeValueAsString(obj)
+        throw UnsupportedOperationException("Not implemented")
+    }
+
+    /**
+     * Parse a JSON response into a DTO.
+     */
+    private fun parse${response_dto_name}(response: HttpClientResponse): ${response_dto_name} {
+        // TODO: implement using Jackson JsonNode or JsonReader
+        val body = response.body().asString()
+        throw UnsupportedOperationException("Not implemented")
+    }
+
+    /**
+     * Parse a JSON response into a list of DTOs.
+     */
+    private fun parse${response_dto_name}List(response: HttpClientResponse): List<${response_dto_name}> {
+        // TODO: implement using Jackson TypeReference
+        val body = response.body().asString()
+        throw UnsupportedOperationException("Not implemented")
+    }
+}

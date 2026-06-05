@@ -1,0 +1,14 @@
+plugins {
+    id("java")
+}
+
+dependencies {
+    // Kora Logback Module
+    implementation("ru.tinkoff.kora:logging-logback:${koraVersion}")
+
+    // Logback classic (pulled transitively from ru.tinkoff.kora:logging-logback)
+    // Can be omitted explicitly
+
+    // Optional: async appender for performance
+    // com.lmax:disruptor:3.4.+ for high performance
+}

@@ -1,0 +1,757 @@
+{
+  "skill_name": "kora-telemetry",
+  "evals": [
+    {
+      "id": 1,
+      "name": "metrics-basic-setup",
+      "prompt": "Configure metrics collection in a Kora application using Micrometer. Add the micrometer-module dependency, connect the Prometheus registry, and configure the /metrics endpoint via httpServer.privateApiHttpMetricsPath.",
+      "expected_output": "MetricsModule connected, Prometheus registry added, endpoint configured via application.conf",
+      "files": [],
+      "assertions": [
+        {
+          "name": "build-gradle-micrometer-module",
+          "type": "contains",
+          "target": "build.gradle",
+          "content": "ru.tinkoff.kora:micrometer-module",
+          "description": "micrometer-module dependency added"
+        },
+        {
+          "name": "build-gradle-prometheus-registry",
+          "type": "contains",
+          "target": "build.gradle",
+          "content": "io.micrometer:micrometer-registry-prometheus",
+          "description": "Prometheus registry dependency added"
+        },
+        {
+          "name": "application-metrics-module",
+          "type": "contains",
+          "target": "Application.java",
+          "content": "MetricsModule",
+          "description": "MetricsModule connected to Application"
+        },
+        {
+          "name": "application-conf-metrics-path",
+          "type": "contains",
+          "target": "application.conf",
+          "content": "privateApiHttpMetricsPath",
+          "description": "Metrics endpoint path configured"
+        },
+        {
+          "name": "application-conf-metrics-path-value",
+          "type": "contains",
+          "target": "application.conf",
+          "content": "/metrics",
+          "description": "Metrics endpoint set to /metrics"
+        }
+      ]
+    },
+    {
+      "id": 2,
+      "name": "tracing-grpc-exporter-setup",
+      "prompt": "Configure distributed tracing via OpenTelemetry gRPC exporter in Kora. Endpoint: http://jaeger:4317, service.name: my-service, compression: gzip.",
+      "expected_output": "OpentelemetryGrpcExporterModule connected, endpoint configured, service.name attributes added",
+      "files": [],
+      "assertions": [
+        {
+          "name": "build-gradle-tracing-exporter",
+          "type": "contains",
+          "target": "build.gradle",
+          "content": "ru.tinkoff.kora:opentelemetry-tracing-exporter-grpc",
+          "description": "opentelemetry-tracing-exporter-grpc dependency added"
+        },
+        {
+          "name": "application-tracing-module",
+          "type": "contains",
+          "target": "Application.java",
+          "content": "OpentelemetryGrpcExporterModule",
+          "description": "OpentelemetryGrpcExporterModule connected to Application"
+        },
+        {
+          "name": "application-conf-tracing-endpoint",
+          "type": "contains",
+          "target": "application.conf",
+          "content": "endpoint = \"http://jaeger:4317\"",
+          "description": "Tracing exporter endpoint configured"
+        },
+        {
+          "name": "application-conf-service-name",
+          "type": "contains",
+          "target": "application.conf",
+          "content": "\"service.name\" = \"my-service\"",
+          "description": "service.name attribute added"
+        },
+        {
+          "name": "application-conf-compression",
+          "type": "contains",
+          "target": "application.conf",
+          "content": "compression = \"gzip\"",
+          "description": "gzip compression enabled"
+        }
+      ]
+    },
+    {
+      "id": 3,
+      "name": "logging-logback-setup",
+      "prompt": "Configure logging via Logback in a Kora application. Add LogbackModule, create logback.xml with an async appender and console output.",
+      "expected_output": "LogbackModule connected, logback.xml created with KoraAsyncAppender",
+      "files": [],
+      "assertions": [
+        {
+          "name": "build-gradle-logback",
+          "type": "contains",
+          "target": "build.gradle",
+          "content": "ru.tinkoff.kora:logging-logback",
+          "description": "logging-logback dependency added"
+        },
+        {
+          "name": "application-logback-module",
+          "type": "contains",
+          "target": "Application.java",
+          "content": "LogbackModule",
+          "description": "LogbackModule connected to Application"
+        },
+        {
+          "name": "logback-xml-exists",
+          "type": "regex",
+          "target": "logback.xml",
+          "content": "<configuration>",
+          "description": "logback.xml exists"
+        },
+        {
+          "name": "logback-async-appender",
+          "type": "contains",
+          "target": "logback.xml",
+          "content": "KoraAsyncAppender",
+          "description": "KoraAsyncAppender is used"
+        },
+        {
+          "name": "logback-console-appender",
+          "type": "contains",
+          "target": "logback.xml",
+          "content": "ConsoleAppender",
+          "description": "ConsoleAppender configured"
+        },
+        {
+          "name": "logback-root-level",
+          "type": "regex",
+          "target": "logback.xml",
+          "content": "<root level=\"(INFO|DEBUG)\">",
+          "description": "Root logger level configured"
+        }
+      ]
+    },
+    {
+      "id": 4,
+      "name": "custom-metrics-config",
+      "prompt": "Create metrics customization with common tags: service=my-service, environment=production, version=1.0.0. Use PrometheusMeterRegistryInitializer.",
+      "expected_output": "MetricsConfigModule with a commonTagsInit method that adds common tags",
+      "files": [],
+      "assertions": [
+        {
+          "name": "metrics-config-module",
+          "type": "regex",
+          "target": "CustomMetricsConfig.java",
+          "content": "@Module|interface.*MetricsConfig",
+          "description": "MetricsConfigModule created"
+        },
+        {
+          "name": "common-tags-init-method",
+          "type": "contains",
+          "target": "CustomMetricsConfig.java",
+          "content": "PrometheusMeterRegistryInitializer",
+          "description": "Method returns PrometheusMeterRegistryInitializer"
+        },
+        {
+          "name": "common-tags-service",
+          "type": "contains",
+          "target": "CustomMetricsConfig.java",
+          "content": "\"service\", \"my-service\"",
+          "description": "Common tag service added"
+        },
+        {
+          "name": "common-tags-environment",
+          "type": "contains",
+          "target": "CustomMetricsConfig.java",
+          "content": "\"environment\", \"production\"",
+          "description": "Common tag environment added"
+        },
+        {
+          "name": "common-tags-version",
+          "type": "contains",
+          "target": "CustomMetricsConfig.java",
+          "content": "\"version\", \"1.0.0\"",
+          "description": "Common tag version added"
+        }
+      ]
+    },
+    {
+      "id": 5,
+      "name": "custom-tracing-span",
+      "prompt": "Create a service with custom tracing. Use Tracer to create spans, set OK/ERROR status, and record exceptions via recordException.",
+      "expected_output": "Service with custom spans, correct error handling, and span closing",
+      "files": [],
+      "assertions": [
+        {
+          "name": "tracer-injection",
+          "type": "contains",
+          "target": "MyService.java",
+          "content": "Tracer tracer",
+          "description": "Tracer injected into service"
+        },
+        {
+          "name": "span-builder",
+          "type": "contains",
+          "target": "MyService.java",
+          "content": "tracer.spanBuilder",
+          "description": "Span created via spanBuilder"
+        },
+        {
+          "name": "opentelemetry-context",
+          "type": "contains",
+          "target": "MyService.java",
+          "content": "OpentelemetryContext",
+          "description": "OpentelemetryContext is used"
+        },
+        {
+          "name": "span-status-ok",
+          "type": "contains",
+          "target": "MyService.java",
+          "content": "StatusCode.OK",
+          "description": "Status OK is set"
+        },
+        {
+          "name": "span-status-error",
+          "type": "contains",
+          "target": "MyService.java",
+          "content": "StatusCode.ERROR",
+          "description": "Status ERROR is set"
+        },
+        {
+          "name": "record-exception",
+          "type": "contains",
+          "target": "MyService.java",
+          "content": "recordException",
+          "description": "Exceptions recorded in span"
+        },
+        {
+          "name": "span-end",
+          "type": "contains",
+          "target": "MyService.java",
+          "content": "span.end()",
+          "description": "Span closed in finally"
+        }
+      ]
+    },
+    {
+      "id": 6,
+      "name": "http-server-telemetry",
+      "prompt": "Configure telemetry for the HTTP server: enable logging, metrics, tracing for httpServer. Log requestHeaders: X-Request-Id, User-Agent.",
+      "expected_output": "Telemetry configuration for httpServer with logging, metrics, tracing",
+      "files": [],
+      "assertions": [
+        {
+          "name": "http-server-telemetry-section",
+          "type": "regex",
+          "target": "application.conf",
+          "content": "httpServer\\s*\\{[^}]*telemetry",
+          "description": "Telemetry section inside httpServer"
+        },
+        {
+          "name": "telemetry-logging-enabled",
+          "type": "regex",
+          "target": "application.conf",
+          "content": "logging\\s*\\{[^}]*enabled\\s*=\\s*true",
+          "description": "Telemetry logging enabled"
+        },
+        {
+          "name": "telemetry-metrics-enabled",
+          "type": "regex",
+          "target": "application.conf",
+          "content": "metrics\\s*\\{[^}]*enabled\\s*=\\s*true",
+          "description": "Telemetry metrics enabled"
+        },
+        {
+          "name": "telemetry-tracing-enabled",
+          "type": "regex",
+          "target": "application.conf",
+          "content": "tracing\\s*\\{[^}]*enabled\\s*=\\s*true",
+          "description": "Telemetry tracing enabled"
+        },
+        {
+          "name": "request-headers-config",
+          "type": "contains",
+          "target": "application.conf",
+          "content": "X-Request-Id",
+          "description": "Logged request headers configured"
+        }
+      ]
+    },
+    {
+      "id": 7,
+      "name": "http-client-telemetry",
+      "prompt": "Configure telemetry for the HTTP client MyClient: enable logging, metrics, tracing. Configuration must be inside httpClient.MyClient.",
+      "expected_output": "Telemetry configuration for httpClient.MyClient",
+      "files": [],
+      "assertions": [
+        {
+          "name": "http-client-section",
+          "type": "regex",
+          "target": "application.conf",
+          "content": "httpClient\\s*\\{[^}]*MyClient",
+          "description": "MyClient section inside httpClient"
+        },
+        {
+          "name": "client-telemetry-logging",
+          "type": "regex",
+          "target": "application.conf",
+          "content": "logging\\s*\\{[^}]*enabled\\s*=\\s*true",
+          "description": "Client telemetry logging enabled"
+        },
+        {
+          "name": "client-telemetry-metrics",
+          "type": "regex",
+          "target": "application.conf",
+          "content": "metrics\\s*\\{[^}]*enabled\\s*=\\s*true",
+          "description": "Client telemetry metrics enabled"
+        },
+        {
+          "name": "client-telemetry-tracing",
+          "type": "regex",
+          "target": "application.conf",
+          "content": "tracing\\s*\\{[^}]*enabled\\s*=\\s*true",
+          "description": "Client telemetry tracing enabled"
+        }
+      ]
+    },
+    {
+      "id": 8,
+      "name": "grpc-telemetry",
+      "prompt": "Configure telemetry for gRPC server and client: enable logging, metrics, tracing for grpcServer and grpcClient.MyService.",
+      "expected_output": "Telemetry configuration for gRPC server and client",
+      "files": [],
+      "assertions": [
+        {
+          "name": "grpc-server-telemetry",
+          "type": "regex",
+          "target": "application.conf",
+          "content": "grpcServer\\s*\\{[^}]*telemetry[^}]*logging\\s*\\{[^}]*enabled\\s*=\\s*true",
+          "description": "gRPC server telemetry configured"
+        },
+        {
+          "name": "grpc-client-section",
+          "type": "regex",
+          "target": "application.conf",
+          "content": "grpcClient\\s*\\{[^}]*MyService",
+          "description": "MyClient section inside grpcClient"
+        },
+        {
+          "name": "grpc-client-telemetry",
+          "type": "regex",
+          "target": "application.conf",
+          "content": "telemetry\\s*\\{[^}]*enabled\\s*=\\s*true",
+          "description": "gRPC client telemetry enabled"
+        }
+      ]
+    },
+    {
+      "id": 9,
+      "name": "database-telemetry",
+      "prompt": "Configure telemetry for the database: enable logging, metrics, tracing. Enable query parameter logging via includeQueryParameters.",
+      "expected_output": "Telemetry configuration for database with query parameter logging",
+      "files": [],
+      "assertions": [
+        {
+          "name": "db-telemetry-section",
+          "type": "regex",
+          "target": "application.conf",
+          "content": "db\\s*\\{[^}]*telemetry",
+          "description": "Telemetry section inside db"
+        },
+        {
+          "name": "db-logging-enabled",
+          "type": "regex",
+          "target": "application.conf",
+          "content": "logging\\s*\\{[^}]*enabled\\s*=\\s*true",
+          "description": "DB telemetry logging enabled"
+        },
+        {
+          "name": "include-query-parameters",
+          "type": "contains",
+          "target": "application.conf",
+          "content": "includeQueryParameters",
+          "description": "Query parameter logging enabled"
+        }
+      ]
+    },
+    {
+      "id": 10,
+      "name": "kotlin-metrics-setup",
+      "prompt": "Configure metrics collection in a Kora application on Kotlin. Use micrometer-module, Prometheus registry, create Application with MetricsModule.",
+      "expected_output": "Kotlin Application with MetricsModule, build.gradle.kts with dependencies",
+      "files": [],
+      "assertions": [
+        {
+          "name": "kts-micrometer-module",
+          "type": "contains",
+          "target": "build.gradle.kts",
+          "content": "ru.tinkoff.kora:micrometer-module",
+          "description": "micrometer-module dependency added"
+        },
+        {
+          "name": "kts-prometheus-registry",
+          "type": "contains",
+          "target": "build.gradle.kts",
+          "content": "io.micrometer:micrometer-registry-prometheus",
+          "description": "Prometheus registry dependency added"
+        },
+        {
+          "name": "kotlin-application-metrics",
+          "type": "contains",
+          "target": "Application.kt",
+          "content": "MetricsModule",
+          "description": "MetricsModule connected to Application"
+        },
+        {
+          "name": "kotlin-companion-main",
+          "type": "contains",
+          "target": "Application.kt",
+          "content": "companion object",
+          "description": "Kotlin companion object for main"
+        },
+        {
+          "name": "kotlin-jvm-static",
+          "type": "contains",
+          "target": "Application.kt",
+          "content": "@JvmStatic",
+          "description": "@JvmStatic annotation for main"
+        }
+      ]
+    },
+    {
+      "id": 11,
+      "name": "kotlin-tracing-setup",
+      "prompt": "Configure tracing in a Kora application on Kotlin. Use opentelemetry-tracing-exporter-grpc, endpoint http://localhost:4317, create Application with OpentelemetryGrpcExporterModule.",
+      "expected_output": "Kotlin Application with OpentelemetryGrpcExporterModule, build.gradle.kts with dependencies",
+      "files": [],
+      "assertions": [
+        {
+          "name": "kts-tracing-exporter",
+          "type": "contains",
+          "target": "build.gradle.kts",
+          "content": "ru.tinkoff.kora:opentelemetry-tracing-exporter-grpc",
+          "description": "opentelemetry-tracing-exporter-grpc dependency added"
+        },
+        {
+          "name": "kotlin-application-tracing",
+          "type": "contains",
+          "target": "Application.kt",
+          "content": "OpentelemetryGrpcExporterModule",
+          "description": "OpentelemetryGrpcExporterModule connected"
+        },
+        {
+          "name": "kotlin-tracing-endpoint",
+          "type": "contains",
+          "target": "application.conf",
+          "content": "endpoint = \"http://localhost:4317\"",
+          "description": "Tracing endpoint configured"
+        }
+      ]
+    },
+    {
+      "id": 12,
+      "name": "kotlin-custom-metrics",
+      "prompt": "Create metrics customization on Kotlin with common tags. Use @Module interface, PrometheusMeterRegistryInitializer, add tags service, environment, version.",
+      "expected_output": "Kotlin MetricsConfigModule with commonTagsInit method",
+      "files": [],
+      "assertions": [
+        {
+          "name": "kotlin-module-interface",
+          "type": "regex",
+          "target": "CustomMetricsConfig.kt",
+          "content": "@Module\\ninterface",
+          "description": "Kotlin @Module interface"
+        },
+        {
+          "name": "kotlin-common-tags-init",
+          "type": "contains",
+          "target": "CustomMetricsConfig.kt",
+          "content": "PrometheusMeterRegistryInitializer",
+          "description": "Method returns PrometheusMeterRegistryInitializer"
+        },
+        {
+          "name": "kotlin-common-tags-service",
+          "type": "contains",
+          "target": "CustomMetricsConfig.kt",
+          "content": "\"service\", \"my-service\"",
+          "description": "Common tag service added"
+        },
+        {
+          "name": "kotlin-default-annotation",
+          "type": "contains",
+          "target": "CustomMetricsConfig.kt",
+          "content": "@Default",
+          "description": "@Default annotation for method"
+        }
+      ]
+    },
+    {
+      "id": 13,
+      "name": "kotlin-tracing-interceptor",
+      "prompt": "Create a TracingInterceptor in Kotlin. Use Tracer, create spans with setParent, set OK/ERROR status, and close spans in finally.",
+      "expected_output": "Kotlin TracingInterceptor component with custom spans",
+      "files": [],
+      "assertions": [
+        {
+          "name": "kotlin-component",
+          "type": "contains",
+          "target": "TracingInterceptor.kt",
+          "content": "@Component",
+          "description": "@Component annotation"
+        },
+        {
+          "name": "kotlin-tracer-injection",
+          "type": "contains",
+          "target": "TracingInterceptor.kt",
+          "content": "tracer: Tracer",
+          "description": "Tracer injected"
+        },
+        {
+          "name": "kotlin-span-builder",
+          "type": "contains",
+          "target": "TracingInterceptor.kt",
+          "content": "tracer.spanBuilder",
+          "description": "Span created via spanBuilder"
+        },
+        {
+          "name": "kotlin-set-parent",
+          "type": "contains",
+          "target": "TracingInterceptor.kt",
+          "content": ".setParent",
+          "description": "Parent context set"
+        },
+        {
+          "name": "kotlin-span-status",
+          "type": "contains",
+          "target": "TracingInterceptor.kt",
+          "content": "StatusCode.OK",
+          "description": "Status OK is set"
+        },
+        {
+          "name": "kotlin-span-end-finally",
+          "type": "contains",
+          "target": "TracingInterceptor.kt",
+          "content": "span.end()",
+          "description": "Span closed in finally"
+        }
+      ]
+    },
+    {
+      "id": 14,
+      "name": "prometheus-integration",
+      "prompt": "Configure Prometheus integration: add micrometer-registry-prometheus, configure httpServer.privateApiHttpMetricsPath=/metrics, create prometheus.yml with scrape_config.",
+      "expected_output": "Prometheus registry, metrics endpoint, prometheus.yml configuration",
+      "files": [],
+      "assertions": [
+        {
+          "name": "prometheus-registry-dependency",
+          "type": "contains",
+          "target": "build.gradle",
+          "content": "io.micrometer:micrometer-registry-prometheus",
+          "description": "Prometheus registry dependency"
+        },
+        {
+          "name": "metrics-path-config",
+          "type": "contains",
+          "target": "application.conf",
+          "content": "privateApiHttpMetricsPath = \"/metrics\"",
+          "description": "Metrics path configured"
+        },
+        {
+          "name": "prometheus-scrape-config",
+          "type": "contains",
+          "target": "prometheus.yml",
+          "content": "scrape_configs",
+          "description": "Prometheus scrape_configs section"
+        },
+        {
+          "name": "prometheus-metrics-path",
+          "type": "contains",
+          "target": "prometheus.yml",
+          "content": "metrics_path: '/metrics'",
+          "description": "Prometheus metrics_path configured"
+        }
+      ]
+    },
+    {
+      "id": 15,
+      "name": "jaeger-integration",
+      "prompt": "Configure Jaeger integration: endpoint http://jaeger:4317, compression gzip, service.name=my-service, service.namespace=kora.",
+      "expected_output": "Tracing configuration for Jaeger",
+      "files": [],
+      "assertions": [
+        {
+          "name": "jaeger-endpoint",
+          "type": "contains",
+          "target": "application.conf",
+          "content": "endpoint = \"http://jaeger:4317\"",
+          "description": "Jaeger endpoint configured"
+        },
+        {
+          "name": "jaeger-compression",
+          "type": "contains",
+          "target": "application.conf",
+          "content": "compression = \"gzip\"",
+          "description": "Gzip compression enabled"
+        },
+        {
+          "name": "jaeger-service-name",
+          "type": "contains",
+          "target": "application.conf",
+          "content": "\"service.name\" = \"my-service\"",
+          "description": "Service name attribute"
+        },
+        {
+          "name": "jaeger-service-namespace",
+          "type": "contains",
+          "target": "application.conf",
+          "content": "\"service.namespace\" = \"kora\"",
+          "description": "Service namespace attribute"
+        }
+      ]
+    },
+    {
+      "id": 16,
+      "name": "structured-logging",
+      "prompt": "Use structured logging in Kora: create a logger via LoggerFactory, use StructuredArgument.marker for userId, MDC.put for traceId.",
+      "expected_output": "Code with structured logging, StructuredArgument, MDC",
+      "files": [],
+      "assertions": [
+        {
+          "name": "logger-factory",
+          "type": "contains",
+          "target": "MyService.java",
+          "content": "LoggerFactory.getLogger",
+          "description": "Logger created via LoggerFactory"
+        },
+        {
+          "name": "structured-argument-marker",
+          "type": "contains",
+          "target": "MyService.java",
+          "content": "StructuredArgument.marker",
+          "description": "StructuredArgument.marker is used"
+        },
+        {
+          "name": "mdc-put",
+          "type": "contains",
+          "target": "MyService.java",
+          "content": "MDC.put",
+          "description": "MDC.put is used"
+        },
+        {
+          "name": "mdc-clear",
+          "type": "contains",
+          "target": "MyService.java",
+          "content": "MDC.clear",
+          "description": "MDC cleared in finally"
+        }
+      ]
+    },
+    {
+      "id": 17,
+      "name": "logging-levels-config",
+      "prompt": "Configure log levels via application.conf: ru.tinkoff.kora=INFO, com.example=DEBUG, ru.tinkoff.kora.http.server.common.telemetry=DEBUG.",
+      "expected_output": "Logging levels configuration in application.conf",
+      "files": [],
+      "assertions": [
+        {
+          "name": "logging-levels-section",
+          "type": "regex",
+          "target": "application.conf",
+          "content": "logging\\s*\\{[^}]*levels",
+          "description": "Logging levels section"
+        },
+        {
+          "name": "kora-info-level",
+          "type": "contains",
+          "target": "application.conf",
+          "content": "\"ru.tinkoff.kora\" = \"INFO\"",
+          "description": "Kora logger level INFO"
+        },
+        {
+          "name": "example-debug-level",
+          "type": "contains",
+          "target": "application.conf",
+          "content": "\"com.example\" = \"DEBUG\"",
+          "description": "Example logger level DEBUG"
+        },
+        {
+          "name": "telemetry-debug-level",
+          "type": "contains",
+          "target": "application.conf",
+          "content": "\"ru.tinkoff.kora.http.server.common.telemetry\" = \"DEBUG\"",
+          "description": "Telemetry logger level DEBUG"
+        }
+      ]
+    },
+    {
+      "id": 18,
+      "name": "http-exporter-alternative",
+      "prompt": "Use the HTTP exporter for tracing instead of gRPC. Endpoint: http://localhost:4318/v1/traces, add the opentelemetry-tracing-exporter-http dependency.",
+      "expected_output": "OpentelemetryHttpExporterModule with HTTP endpoint",
+      "files": [],
+      "assertions": [
+        {
+          "name": "http-exporter-dependency",
+          "type": "contains",
+          "target": "build.gradle",
+          "content": "ru.tinkoff.kora:opentelemetry-tracing-exporter-http",
+          "description": "HTTP exporter dependency"
+        },
+        {
+          "name": "http-exporter-module",
+          "type": "contains",
+          "target": "Application.java",
+          "content": "OpentelemetryHttpExporterModule",
+          "description": "OpentelemetryHttpExporterModule connected"
+        },
+        {
+          "name": "http-endpoint",
+          "type": "contains",
+          "target": "application.conf",
+          "content": "endpoint = \"http://localhost:4318/v1/traces\"",
+          "description": "HTTP endpoint configured"
+        }
+      ]
+    },
+    {
+      "id": 19,
+      "name": "async-logging-config",
+      "prompt": "Configure async logging in logback.xml: use KoraAsyncAppender with bufferSize=8192, flushThreshold=7000.",
+      "expected_output": "Logback configuration with async appender",
+      "files": [],
+      "assertions": [
+        {
+          "name": "async-appender-class",
+          "type": "contains",
+          "target": "logback.xml",
+          "content": "KoraAsyncAppender",
+          "description": "KoraAsyncAppender is used"
+        },
+        {
+          "name": "buffer-size",
+          "type": "contains",
+          "target": "logback.xml",
+          "content": "bufferSize>8192",
+          "description": "Buffer size = 8192"
+        },
+        {
+          "name": "flush-threshold",
+          "type": "contains",
+          "target": "logback.xml",
+          "content": "flushThreshold>7000",
+          "description": "Flush threshold = 7000"
+        }
+      ]
+    }
+  ]
+}

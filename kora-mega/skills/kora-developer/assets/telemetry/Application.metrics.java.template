@@ -1,0 +1,16 @@
+package ${package};
+
+import ru.tinkoff.kora.application.KoraApplication;
+import ru.tinkoff.kora.application.graph.ApplicationGraph;
+import ru.tinkoff.kora.micrometer.module.MetricsModule;
+import ru.tinkoff.kora.config.hocon.HoconConfigModule;
+
+/**
+ * Application with MetricsModule for metrics collection
+ */
+@KoraApp
+public interface Application extends MetricsModule, HoconConfigModule {
+    static void main(String[] args) {
+        KoraApplication.run(ApplicationGraph::graph);
+    }
+}

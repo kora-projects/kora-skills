@@ -1,0 +1,97 @@
+package ${package};
+
+import jakarta.annotation.Nullable;
+import java.util.List;
+import ru.tinkoff.kora.database.common.annotation.Batch;
+import ru.tinkoff.kora.database.common.annotation.Query;
+import ru.tinkoff.kora.database.cassandra.CassandraRepository;
+
+/**
+ * Abstract base repository for Cassandra CRUD operations.
+ * Provides common CRUD operations that can be reused across multiple repositories.
+ *
+ * When to use this pattern:
+ * - You have many repositories with similar CRUD operations
+ * - You want to avoid code duplication
+ * - You need consistent CRUD behavior across the application
+ *
+ * Usage:
+ * 1. Copy this interface to your project
+ * 2. Create concrete repository extending it:
+ *    {@code
+ *    @Repository
+ *    public interface UserRepository extends AbstractCassandraCrudRepository<String, User> {
+ *        @Query("SELECT * FROM users WHERE email = :email")
+ *        @Nullable
+ *        User findByEmail(String email);
+ *    }
+ *    }
+ *
+ * Cassandra-specific notes:
+ * - No UPDATE with SET clause - use explicit column assignments
+ * - Use IF NOT EXISTS for lightweight transactions (conditional inserts)
+ * - Batch operations use @Batch annotation
+ *
+ * @param <K> ID type (e.g., String, UUID, or composite ID class)
+ * @param <V> Entity value type (must be @Table annotated record)
+ */
+public interface AbstractCassandraCrudRepository<K, V> extends CassandraRepository {
+
+    /**
+     * Find all entities.
+     * @return list of all entities
+     */
+    @Query("SELECT * FROM %{return#table}")
+    List<V> findAll();
+
+    /**
+     * Insert single entity.
+     * @param entity entity to insert
+     */
+    @Query("INSERT INTO %{entity#table} %{entity#inserts}")
+    void insert(V entity);
+
+    /**
+     * Insert multiple entities in batch.
+     * @param entities list of entities to insert
+     */
+    @Query("INSERT INTO %{entity#table} %{entity#inserts}")
+    void insertBatch(@Batch List<V> entities);
+
+    /**
+     * Insert entity if not exists (lightweight transaction).
+     * @param entity entity to insert
+     * @return true if inserted, false if already exists
+     */
+    @Query("INSERT INTO %{entity#table} %{entity#inserts} IF NOT EXISTS")
+    boolean insertIfNotExists(V entity);
+
+    /**
+     * Update entity by ID (explicit column assignments).
+     * Override this method in concrete repository with actual column names.
+     * @param entity entity to update (ID must be set)
+     */
+    @Query("UPDATE %{entity#table} SET %{entity#updates} WHERE %{entity#where = @id}")
+    void update(V entity);
+
+    /**
+     * Update multiple entities in batch.
+     * Override this method in concrete repository with actual column names.
+     * @param entities list of entities to update
+     */
+    @Query("UPDATE %{entity#table} SET %{entity#updates} WHERE %{entity#where = @id}")
+    void updateBatch(@Batch List<V> entities);
+
+    /**
+     * Delete entity by ID.
+     * @param id entity ID
+     */
+    @Query("DELETE FROM %{entity#table} WHERE %{entity#where = @id}")
+    void deleteById(K id);
+
+    /**
+     * Delete all entities (truncate table - use with caution).
+     */
+    @Query("TRUNCATE %{entity#table}")
+    void deleteAll();
+}

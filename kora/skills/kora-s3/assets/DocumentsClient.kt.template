@@ -1,0 +1,56 @@
+// Kotlin equivalent of DocumentsClient.java.template.
+// Replace `com.example.app.storage` with your package.
+
+package com.example.app.storage
+
+import ru.tinkoff.kora.s3.client.annotation.S3
+import ru.tinkoff.kora.s3.client.model.S3Body
+import ru.tinkoff.kora.s3.client.model.S3Object
+import ru.tinkoff.kora.s3.client.model.S3ObjectList
+import ru.tinkoff.kora.s3.client.model.S3ObjectMeta
+import ru.tinkoff.kora.s3.client.model.S3ObjectMetaList
+import ru.tinkoff.kora.s3.client.model.S3ObjectUpload
+import java.util.UUID
+
+@S3.Client("s3client.documents")
+interface DocumentsClient {
+
+    @S3.Get
+    fun get(key: String): S3Object
+
+    @S3.Get
+    fun head(key: String): S3ObjectMeta
+
+    @S3.Get("docs/{tenantId}/{docId}.pdf")
+    fun getDoc(tenantId: String, docId: UUID): S3Object
+
+    @S3.Get
+    fun getMany(keys: List<String>): List<S3Object>
+
+    @S3.List
+    fun list(prefix: String): S3ObjectList
+
+    @S3.List
+    fun listMeta(prefix: String): S3ObjectMetaList
+
+    @S3.List(value = "docs/{tenantId}/", delimiter = "/")
+    fun listFolder(tenantId: String): S3ObjectList
+
+    @S3.Put
+    fun put(key: String, body: S3Body)
+
+    @S3.Put
+    fun putWithMeta(key: String, body: S3Body): S3ObjectUpload
+
+    @S3.Put("docs/{tenantId}/{docId}.pdf")
+    fun putDoc(tenantId: String, docId: UUID, body: S3Body): S3ObjectUpload
+
+    @S3.Delete
+    fun delete(key: String)
+
+    @S3.Delete
+    fun deleteMany(keys: List<String>)
+
+    @S3.Delete("docs/{tenantId}/{docId}.pdf")
+    fun deleteDoc(tenantId: String, docId: UUID)
+}

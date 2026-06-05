@@ -1,0 +1,108 @@
+package ${package}.publisher
+
+import io.goodforgod.testcontainers.extensions.ContainerMode
+import io.goodforgod.testcontainers.extensions.kafka.*
+import org.jetbrains.annotations.NotNull
+import org.json.JSONObject
+import org.junit.jupiter.api.Assertions.*
+import org.junit.jupiter.api.Test
+import ru.tinkoff.kora.test.extension.junit5.*
+
+/**
+ * Tests for the ${publisherName} producer (Kotlin).
+ *
+ * Usage:
+ * 1. Make sure the dependencies are added in build.gradle.kts:
+ *    testImplementation("io.goodforgod:testcontainers-extensions-kafka:0.13.1")
+ *    testRuntimeOnly("org.apache.kafka:kafka-clients:3.5.1")
+ *    testImplementation("org.json:json:20231013")
+ *
+ * 2. Run tests: ./gradlew test
+ */
+@TestcontainersKafka(
+    mode = ContainerMode.PER_RUN,
+    topics = [Topics(["${topicName}"])]
+)
+@KoraAppTest(Application::class)
+class ${publisherName}Tests : KoraAppTestConfigModifier {
+
+    @ConnectionKafka
+    private lateinit var connection: KafkaConnection
+
+    @TestComponent
+    private lateinit var publisher: ${publisherName}
+
+    @NotNull
+    override fun config(): KoraConfigModification {
+        return KoraConfigModification.ofSystemProperty(
+            "KAFKA_BOOTSTRAP",
+            connection.params().bootstrapServers()
+        )
+    }
+
+    @Test
+    fun `should send message`() {
+        // given
+        val consumer = connection.subscribe("${topicName}")
+        val message = "test-message-${System.currentTimeMillis()}"
+
+        // when
+        publisher.send(message)
+
+        // then
+        val received = consumer.assertReceivedAtLeast(1)[0]
+        assertNull(received.key())
+        assertEquals(message, received.value())
+    }
+
+    @Test
+    fun `should send message with key`() {
+        // given
+        val consumer = connection.subscribe("${topicName}")
+        val key = "test-key-123"
+        val value = "test-value-456"
+
+        // when
+        publisher.send(key, value)
+
+        // then
+        val received = consumer.assertReceivedAtLeast(1)[0]
+        assertEquals(key, received.key())
+        assertEquals(value, received.value())
+    }
+
+    @Test
+    fun `should send json message`() {
+        // given
+        val consumer = connection.subscribe("${topicName}")
+        val event = JSONObject()
+            .put("orderId", "order-123")
+            .put("customerId", "cust-456")
+            .put("amount", 99.99)
+
+        // when
+        publisher.sendEvent(event.toString())
+
+        // then
+        val received = consumer.assertReceivedAtLeast(1)[0]
+        val json = received.value().asJson()
+        assertEquals("order-123", json.getString("orderId"))
+        assertEquals("cust-456", json.getString("customerId"))
+        assertEquals(99.99, json.getDouble("amount"), 0.01)
+    }
+
+    @Test
+    fun `should send multiple messages`() {
+        // given
+        val consumer = connection.subscribe("${topicName}")
+
+        // when
+        for (i in 0 until 5) {
+            publisher.send("message-$i")
+        }
+
+        // then
+        val received = consumer.assertReceivedAtLeast(5)
+        assertEquals(5, received.size)
+    }
+}

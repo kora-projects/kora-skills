@@ -1,0 +1,62 @@
+package ${package}
+
+import ru.tinkoff.kora.common.Context
+import ru.tinkoff.kora.http.client.common.HttpClientRequest
+import ru.tinkoff.kora.http.client.common.HttpClientResponse
+import ru.tinkoff.kora.http.client.common.HttpClientInterceptor
+import ru.tinkoff.kora.http.client.common.InterceptChain
+
+/**
+ * API Key HttpClientInterceptor for authentication.
+ *
+ * Adds the API key header (X-API-Key or a custom header) to every request.
+ *
+ * Configuration (application.conf):
+ * ```hocon
+ * httpClient {
+ *   ${client_name} {
+ *     auth {
+ *       apiKey = "your-api-key-here"
+ *       headerName = "X-API-Key"  # optional, default is X-API-Key
+ *     }
+ *   }
+ * }
+ * ```
+ *
+ * Module registration:
+ * ```kotlin
+ * @Module
+ * interface ApiKeyAuthModule {
+ *     @ConfigSource("httpClient.${client_name}.auth")
+ *     interface ApiKeyAuthConfig {
+ *         val apiKey: String
+ *         val headerName: String get() = "X-API-Key"
+ *     }
+ *
+ *     @DefaultComponent
+ *     fun apiKeyAuthInterceptor(config: ApiKeyAuthConfig): ApiKeyAuthHttpClientInterceptor {
+ *         return ApiKeyAuthHttpClientInterceptor(config.apiKey, config.headerName)
+ *     }
+ * }
+ * ```
+ */
+class ApiKeyAuthHttpClientInterceptor(
+    private val apiKey: String,
+    private val headerName: String = "X-API-Key"
+) : HttpClientInterceptor {
+
+    constructor(apiKey: String) : this(apiKey, "X-API-Key")
+
+    override fun intercept(
+        context: Context,
+        request: HttpClientRequest,
+        chain: InterceptChain
+    ): CompletionStage<HttpClientResponse> {
+        // Add API key header to every request
+        val authRequest = request.toBuilder()
+            .header(headerName, apiKey)
+            .build()
+
+        return chain.process(context, authRequest)
+    }
+}

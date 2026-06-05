@@ -1,0 +1,21 @@
+// Add MapStruct to a Java Kora project. Drop into build.gradle alongside existing dependencies.
+
+dependencies {
+    // Kora annotation processors (you already have this)
+    annotationProcessor "ru.tinkoff.kora:annotation-processors"
+
+    // MapStruct processor — runs first, generates *MapperImpl classes
+    annotationProcessor "org.mapstruct:mapstruct-processor:1.5.5.Final"
+
+    // MapStruct runtime
+    implementation "org.mapstruct:mapstruct:1.5.5.Final"
+}
+
+// Optional: enable MapStruct compile-time verbose output
+compileJava {
+    options.compilerArgs += [
+        "-Amapstruct.suppressGeneratorTimestamp=true",
+        "-Amapstruct.suppressGeneratorVersionInfoComment=true",
+        "-Amapstruct.defaultComponentModel=default"
+    ]
+}

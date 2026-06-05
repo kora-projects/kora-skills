@@ -1,0 +1,84 @@
+package ${package};
+
+import ru.tinkoff.kora.common.Context;
+import ru.tinkoff.kora.http.client.common.HttpClientRequest;
+import ru.tinkoff.kora.http.client.common.HttpClientResponse;
+import ru.tinkoff.kora.http.client.common.HttpClientInterceptor;
+import ru.tinkoff.kora.http.client.common.InterceptChain;
+
+import java.util.function.Supplier;
+
+/**
+ * Bearer Token HttpClientInterceptor for authentication.
+ *
+ * <p>Adds the Authorization: Bearer <token> header to every request.</p>
+ *
+ * <p>Supports dynamic token retrieval via Supplier.</p>
+ *
+ * <p>Configuration (application.conf):</p>
+ * <pre>{@code
+ * httpClient {
+ *   ${client_name} {
+ *     auth {
+ *       token = "your-bearer-token-here"
+ *       # or for OAuth:
+ *       # tokenEndpoint = "https://auth.example.com/oauth/token"
+ *       # clientId = "client-id"
+ *       # clientSecret = "client-secret"
+ *     }
+ *   }
+ * }
+ * }</pre>
+ *
+ * <p>Module registration:</p>
+ * <pre>{@code
+ * @Module
+ * public interface BearerAuthModule {
+ *     @ConfigSource("httpClient.${client_name}.auth")
+ *     interface BearerAuthConfig {
+ *         String token();
+ *     }
+ *
+ *     @DefaultComponent
+ *     default BearerAuthHttpClientInterceptor bearerAuthInterceptor(BearerAuthConfig config) {
+ *         return new BearerAuthHttpClientInterceptor(() -> config.token());
+ *     }
+ * }
+ * }</pre>
+ */
+public final class BearerAuthHttpClientInterceptor implements HttpClientInterceptor {
+
+    private final Supplier<String> tokenSupplier;
+
+    /**
+     * Creates an interceptor with a static token.
+     */
+    public BearerAuthHttpClientInterceptor(String token) {
+        this(() -> token);
+    }
+
+    /**
+     * Creates an interceptor with dynamic token retrieval.
+     *
+     * @param tokenSupplier token supplier (for OAuth token refresh)
+     */
+    public BearerAuthHttpClientInterceptor(Supplier<String> tokenSupplier) {
+        this.tokenSupplier = tokenSupplier;
+    }
+
+    @Override
+    public CompletionStage<HttpClientResponse> intercept(
+        Context context,
+        HttpClientRequest request,
+        InterceptChain chain
+    ) {
+        String token = tokenSupplier.get();
+
+        // Add Authorization header to every request
+        HttpClientRequest authRequest = request.toBuilder()
+            .header("Authorization", "Bearer " + token)
+            .build();
+
+        return chain.process(context, authRequest);
+    }
+}

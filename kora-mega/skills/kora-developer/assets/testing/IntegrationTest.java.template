@@ -1,0 +1,69 @@
+package ${package};
+
+import static org.junit.jupiter.api.Assertions.*;
+
+import io.goodforgod.testcontainers.extensions.ContainerMode;
+import io.goodforgod.testcontainers.extensions.jdbc.*;
+import org.jetbrains.annotations.NotNull;
+import org.junit.jupiter.api.Test;
+import ru.tinkoff.kora.test.extension.junit5.KoraAppTest;
+import ru.tinkoff.kora.test.extension.junit5.KoraAppTestConfigModifier;
+import ru.tinkoff.kora.test.extension.junit5.KoraConfigModification;
+import ru.tinkoff.kora.test.extension.junit5.TestComponent;
+
+@TestcontainersPostgreSQL(
+    mode = ContainerMode.PER_RUN,
+    migration = @Migration(
+        engine = Migration.Engines.FLYWAY,
+        apply = Migration.Mode.PER_METHOD,
+        drop = Migration.Mode.PER_METHOD,
+        locations = {"db/migration"}
+    )
+)
+@KoraAppTest(Application.class)
+class ${repositoryName}Test implements KoraAppTestConfigModifier {
+
+    @ConnectionPostgreSQL
+    private JdbcConnection connection;
+
+    @TestComponent
+    private ${repositoryName} ${repositoryVarName};
+
+    @NotNull
+    @Override
+    public KoraConfigModification config() {
+        return KoraConfigModification.ofSystemProperty(
+            "DB_JDBC_URL", connection.params().jdbcUrl()
+        )
+        .withSystemProperty("DB_USER", connection.params().username())
+        .withSystemProperty("DB_PASS", connection.params().password());
+    }
+
+    @Test
+    void shouldSaveAndFind() {
+        // given
+        var entity = new ${entityName}("test-data");
+
+        // when
+        ${repositoryVarName}.save(entity);
+        var found = ${repositoryVarName}.findById(entity.id());
+
+        // then
+        assertNotNull(found);
+        assertEquals(entity.data(), found.data());
+    }
+
+    @Test
+    void shouldDelete() {
+        // given
+        var entity = new ${entityName}("test-data");
+        ${repositoryVarName}.save(entity);
+
+        // when
+        ${repositoryVarName}.deleteById(entity.id());
+        var found = ${repositoryVarName}.findById(entity.id());
+
+        // then
+        assertNull(found);
+    }
+}

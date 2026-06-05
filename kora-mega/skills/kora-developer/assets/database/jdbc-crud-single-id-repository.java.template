@@ -1,0 +1,102 @@
+package ${package};
+
+import jakarta.annotation.Nullable;
+import java.util.List;
+import ru.tinkoff.kora.database.common.UpdateCount;
+import ru.tinkoff.kora.database.common.annotation.Batch;
+import ru.tinkoff.kora.database.common.annotation.Query;
+import ru.tinkoff.kora.database.jdbc.JdbcRepository;
+
+/**
+ * Basic CRUD repository with single-field ID.
+ * Extends JdbcRepository for base functionality.
+ * Uses SQL macros for automatic query generation.
+ *
+ * Best practices:
+ * - Use @Nullable for nullable return types (not Optional)
+ * - Use @Batch for batch operations
+ * - Prefer sync signatures with Virtual Threads
+ * - ID type can be String, UUID, Long, or any type matching your entity's @Id field
+ */
+@Repository
+public interface ${repository_name} extends JdbcRepository {
+
+    /**
+     * Find entity by ID.
+     * @param id entity ID (type must match entity's @Id field)
+     * @return entity or null if not found
+     */
+    @Query("SELECT %{return#selects} FROM %{return#table} WHERE id = :id")
+    @Nullable
+    ${entity_name} findById(${id_type} id);
+
+    /**
+     * Find all entities.
+     * @return list of all entities
+     */
+    @Query("SELECT %{return#selects} FROM %{return#table}")
+    List<${entity_name}> findAll();
+
+    /**
+     * Insert single entity.
+     * @param entity entity to insert
+     * @return update count
+     */
+    @Query("%{entity#inserts}")
+    UpdateCount insert(${entity_name} entity);
+
+    /**
+     * Insert multiple entities in batch.
+     * @param entities list of entities to insert
+     * @return update count
+     */
+    @Query("%{entity#inserts}")
+    UpdateCount insertBatch(@Batch List<${entity_name}> entities);
+
+    /**
+     * Update single entity by ID.
+     * @param entity entity to update (ID must be set)
+     * @return update count
+     */
+    @Query("%{entity#updates}")
+    UpdateCount update(${entity_name} entity);
+
+    /**
+     * Update multiple entities in batch.
+     * @param entities list of entities to update
+     * @return update count
+     */
+    @Query("%{entity#updates}")
+    UpdateCount updateBatch(@Batch List<${entity_name}> entities);
+
+    /**
+     * Upsert single entity (insert or update on conflict).
+     * @param entity entity to upsert
+     * @return update count
+     */
+    @Query("INSERT INTO %{entity#table} %{entity#inserts} ON CONFLICT (id) DO UPDATE SET %{entity#updates}")
+    UpdateCount upsert(${entity_name} entity);
+
+    /**
+     * Upsert multiple entities in batch.
+     * @param entities list of entities to upsert
+     * @return update count
+     */
+    @Query("INSERT INTO %{entity#table} %{entity#inserts} ON CONFLICT (id) DO UPDATE SET %{entity#updates}")
+    UpdateCount upsertBatch(@Batch List<${entity_name}> entities);
+
+    /**
+     * Delete entity by ID.
+     * @param id entity ID (type must match entity's @Id field)
+     * @return update count
+     */
+    @Query("DELETE FROM %{entity#table} WHERE id = :id")
+    UpdateCount deleteById(${id_type} id);
+
+    /**
+     * Delete all entities.
+     * @return update count
+     */
+    @Query("DELETE FROM %{entity#table}")
+    UpdateCount deleteAll();
+}

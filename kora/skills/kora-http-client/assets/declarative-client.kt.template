@@ -1,0 +1,122 @@
+package ${package}
+
+import ru.tinkoff.kora.http.client.common.annotation.HttpClient
+import ru.tinkoff.kora.http.client.common.annotation.HttpRoute
+import ru.tinkoff.kora.http.client.common.annotation.Path
+import ru.tinkoff.kora.http.client.common.annotation.Query
+import ru.tinkoff.kora.http.client.common.annotation.Header
+import ru.tinkoff.kora.http.client.common.annotation.Json
+import ru.tinkoff.kora.http.common.HttpMethod
+
+/**
+ * Declarative HTTP client for working with the ${api_name} API.
+ *
+ * Uses annotations for declarative endpoint description.
+ *
+ * Features:
+ * - Type-safe interface with compile-time contract validation
+ * - Automatic JSON (de)serialization via @Json
+ * - Support for path/query/header parameters
+ * - Synchronous method signatures
+ *
+ * Module registration:
+ * ```kotlin
+ * @KoraApp
+ * interface Application : JdkHttpClientModule, HttpClientModule, JsonModule {
+ *     // The client is registered automatically via @HttpClient("${client_name}")
+ * }
+ * ```
+ */
+@HttpClient("${client_name}")
+interface ${client_interface_name} {
+
+    /**
+     * POST ${route_path} — ${operation_description}.
+     *
+     * @param request request body
+     * @return operation result
+     */
+    @HttpRoute(method = HttpMethod.POST, path = "${route_path}")
+    @Json
+    fun ${create_method_name}(
+        @Json request: ${request_dto_name}
+    ): ${response_dto_name}
+
+    /**
+     * GET ${route_path}/{id} — retrieve a resource by ID.
+     *
+     * @param id resource identifier
+     * @return operation result
+     */
+    @HttpRoute(method = HttpMethod.GET, path = "${route_path}/{id}")
+    @Json
+    fun ${get_by_id_method_name}(
+        @Path("id") id: String
+    ): ${response_dto_name}
+
+    /**
+     * GET ${route_path} — list resources with pagination.
+     *
+     * @param limit maximum number of records
+     * @param offset pagination offset
+     * @return list of results
+     */
+    @HttpRoute(method = HttpMethod.GET, path = "${route_path}")
+    @Json
+    fun ${list_method_name}(
+        @Query("limit") limit: Int,
+        @Query("offset") offset: Int
+    ): List<${response_dto_name}>
+
+    /**
+     * PUT ${route_path}/{id} — update a resource.
+     *
+     * @param id resource identifier
+     * @param request request body
+     * @return operation result
+     */
+    @HttpRoute(method = HttpMethod.PUT, path = "${route_path}/{id}")
+    @Json
+    fun ${update_method_name}(
+        @Path("id") id: String,
+        @Json request: ${request_dto_name}
+    ): ${response_dto_name}
+
+    /**
+     * DELETE ${route_path}/{id} — delete a resource.
+     *
+     * @param id resource identifier
+     */
+    @HttpRoute(method = HttpMethod.DELETE, path = "${route_path}/{id}")
+    fun ${delete_method_name}(
+        @Path("id") id: String
+    )
+
+    /**
+     * GET ${route_path}/search — search resources.
+     *
+     * @param query search query
+     * @param filters list of filters
+     * @return list of results
+     */
+    @HttpRoute(method = HttpMethod.GET, path = "${route_path}/search")
+    @Json
+    fun ${search_method_name}(
+        @Query("q") query: String,
+        @Query("filter") filters: List<String>
+    ): List<${response_dto_name}>
+
+    /**
+     * POST ${route_path}/bulk — bulk operation.
+     *
+     * @param requests list of requests
+     * @param dryRun dry-run mode (true = validate only, no changes applied)
+     * @return operation result
+     */
+    @HttpRoute(method = HttpMethod.POST, path = "${route_path}/bulk")
+    @Json
+    fun ${bulk_method_name}(
+        @Json requests: List<${request_dto_name}>,
+        @Query("dryRun") dryRun: Boolean
+    ): ${response_dto_name}
+}

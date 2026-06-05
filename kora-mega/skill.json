@@ -1,0 +1,131 @@
+{
+  "dxt_version": "1.0.0",
+  "name": "kora-mega",
+  "displayName": "Kora Framework — Mega Skill (All-in-One)",
+  "version": "1.0.0",
+  "highlights": [
+    "Unified mega-skill combining all 14 Kora sub-skills",
+    "Single SKILL.md for all Kora development tasks",
+    "Compile-time DI: zero reflection, zero proxies",
+    "Fastest JVM framework: 50–100ms startup, 6x less memory than Spring Boot",
+    "All assets, references, scripts, and evals in one place"
+  ],
+  "description": "Unified mega-skill combining all 14 Kora Framework sub-skills into one comprehensive SKILL.md. Build production-grade Java/Kotlin microservices with compile-time dependency injection, zero reflection, annotation-processor driven. Includes all assets, references, scripts, and evals from bootstrap, JSON, HTTP server/client, OpenAPI, AOP, Kafka, telemetry, database, gRPC, S3, testing, MapStruct, and journal.",
+  "author": {
+    "name": "Anton Kurako",
+    "url": "https://github.com/goodforgod"
+  },
+  "license": "Apache 2.0",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/kora-projects/kora-skills"
+  },
+  "homepage": "https://kora-projects.github.io/kora-docs",
+  "categories": ["backend", "java", "kotlin", "microservices", "dependency-injection", "compile-time", "cloud-native"],
+  "keywords": [
+    "kora",
+    "java",
+    "kotlin",
+    "microservices",
+    "dependency-injection",
+    "compile-time-di",
+    "annotation-processor",
+    "ksp",
+    "gradle",
+    "spring-alternative",
+    "fastest-jvm",
+    "low-latency",
+    "cloud-native",
+    "http-server",
+    "http-client",
+    "jdbc",
+    "cassandra",
+    "kafka",
+    "grpc",
+    "openapi",
+    "s3",
+    "telemetry",
+    "opentelemetry",
+    "micrometer",
+    "caching",
+    "resilience",
+    "circuit-breaker",
+    "scheduling",
+    "validation",
+    "mapstruct",
+    "mega-skill",
+    "all-in-one"
+  ],
+  "main": "skills/kora-developer/install.sh",
+  "install": {
+    "type": "shell",
+    "command": "./skills/kora-developer/install.sh",
+    "destination": "~/.claude"
+  },
+  "icon": "skills/kora-developer/assets/icon.png",
+  "anthropic": {
+    "minVersion": "2.0.20",
+    "capabilities": ["skills", "subagents"]
+  },
+  "files": [
+    "skills/kora-developer/SKILL.md",
+    "skills/kora-developer/README.md",
+    "skills/kora-developer/install.sh",
+    "skills/kora-developer/assets/**/*",
+    "skills/kora-developer/references/**/*",
+    "skills/kora-developer/scripts/**/*",
+    "skills/kora-developer/evals/**/*"
+  ],
+  "documentation": {
+    "main": "skills/kora-developer/SKILL.md",
+    "readme": "skills/kora-developer/README.md",
+    "examples": "https://github.com/kora-projects/kora-examples",
+    "changelog": "https://kora-projects.github.io/kora-docs/en/changelog/changelog/",
+    "kora_docs": "https://kora-projects.github.io/kora-docs/en/",
+    "kora_github": "https://github.com/kora-projects/kora",
+    "java_template": "https://github.com/kora-projects/kora-java-template",
+    "kotlin_template": "https://github.com/kora-projects/kora-kotlin-template"
+  },
+  "requirements": {
+    "java": "17+ (recommended: 25)",
+    "kotlin": "1.9+",
+    "gradle": "7+",
+    "kora": "1.2.15+"
+  },
+  "features": {
+    "unified_skill": true,
+    "compile_time_di": true,
+    "no_reflection": true,
+    "no_bytecode_generation": true,
+    "annotation_processors": true,
+    "ksp_support": true,
+    "virtual_threads": true,
+    "opentelemetry": true,
+    "modules": [
+      "bootstrap",
+      "json",
+      "http-server",
+      "http-client",
+      "openapi",
+      "aop",
+      "kafka",
+      "telemetry",
+      "database-jdbc",
+      "database-cassandra",
+      "grpc-server",
+      "grpc-client",
+      "s3-client",
+      "cache-caffeine",
+      "cache-redis",
+      "resilient",
+      "scheduling-jdk",
+      "scheduling-quartz",
+      "validation",
+      "mapstruct",
+      "telemetry-opentelemetry",
+      "metrics-micrometer",
+      "logging-logback",
+      "testing"
+    ]
+  }
+}

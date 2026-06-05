@@ -1,0 +1,70 @@
+package ${package};
+
+import ru.tinkoff.kora.common.Context;
+import ru.tinkoff.kora.http.client.common.HttpClientRequest;
+import ru.tinkoff.kora.http.client.common.HttpClientResponse;
+import ru.tinkoff.kora.http.client.common.HttpClientInterceptor;
+import ru.tinkoff.kora.http.client.common.InterceptChain;
+
+import java.nio.charset.StandardCharsets;
+import java.util.Base64;
+import java.util.concurrent.CompletionStage;
+
+/**
+ * Basic Auth HttpClientInterceptor for authentication.
+ *
+ * <p>Adds the Authorization: Basic <credentials> header to every request.</p>
+ *
+ * <p>Configuration (application.conf):</p>
+ * <pre>{@code
+ * httpClient {
+ *   ${client_name} {
+ *     auth {
+ *       username = "myuser"
+ *       password = "mypassword"
+ *     }
+ *   }
+ * }
+ * }</pre>
+ *
+ * <p>Module registration:</p>
+ * <pre>{@code
+ * @Module
+ * public interface BasicAuthModule {
+ *     @ConfigSource("httpClient.${client_name}.auth")
+ *     interface BasicAuthConfig {
+ *         String username();
+ *         String password();
+ *     }
+ *
+ *     @DefaultComponent
+ *     default BasicAuthHttpClientInterceptor basicAuthInterceptor(BasicAuthConfig config) {
+ *         return new BasicAuthHttpClientInterceptor(config.username(), config.password());
+ *     }
+ * }
+ * }</pre>
+ */
+public final class BasicAuthHttpClientInterceptor implements HttpClientInterceptor {
+
+    private final String credentials;
+
+    public BasicAuthHttpClientInterceptor(String username, String password) {
+        this.credentials = Base64.getEncoder().encodeToString(
+            (username + ":" + password).getBytes(StandardCharsets.UTF_8)
+        );
+    }
+
+    @Override
+    public CompletionStage<HttpClientResponse> intercept(
+        Context context,
+        HttpClientRequest request,
+        InterceptChain chain
+    ) {
+        // Add Authorization header to every request
+        HttpClientRequest authRequest = request.toBuilder()
+            .header("Authorization", "Basic " + credentials)
+            .build();
+
+        return chain.process(context, authRequest);
+    }
+}

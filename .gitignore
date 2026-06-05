@@ -1,0 +1,64 @@
+# Kora Skills — Git Ignore
+
+# This is the .gitignore for the kora-skills repository
+# (not to be confused with the .gitignore inside the skill package)
+
+# Build outputs
+build/
+.gradle/
+target/
+__pycache__/
+*.pyc
+*.pyo
+
+# IDE
+.idea/
+*.iml
+.vscode/
+*.swp
+*.swo
+*.sublime-*
+
+# Local configuration (user-specific)
+.local/
+config.local.*
+*.local
+
+# Cache
+.cache/
+
+# OS
+.DS_Store
+Thumbs.db
+Desktop.ini
+
+# Logs
+*.log
+logs/
+
+# Temporary files
+tmp/
+temp/
+*.tmp
+
+# Generated documentation (if built locally)
+site/
+public/
+mkdocs/site/
+
+# Test artifacts
+.coverage
+htmlcov/
+.pytest_cache/
+.test-results/
+
+# Node modules (if using skills-cli)
+node_modules/
+package-lock.json
+
+# Secrets and credentials
+*.env
+.env.local
+*.pem
+*.key
+secrets/

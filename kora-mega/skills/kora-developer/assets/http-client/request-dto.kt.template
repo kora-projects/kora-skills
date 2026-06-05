@@ -1,0 +1,39 @@
+package ${package}
+
+import ru.tinkoff.kora.json.common.annotation.Json
+
+/**
+ * Request DTO for ${operation_description}.
+ *
+ * Used as a request body in HTTP client methods.
+ *
+ * Features:
+ * - @Json annotation for automatic serialization
+ * - Data class for immutability and conciseness
+ * - Explicit field types for validation
+ *
+ * @property ${field1_name} ${field1_description}
+ * @property ${field2_name} ${field2_description}
+ */
+@Json
+data class ${dto_name}(
+    /**
+     * ${field1_name}: ${field1_description}
+     */
+    val ${field1_name}: String,
+
+    /**
+     * ${field2_name}: ${field2_description}
+     */
+    val ${field2_name}: String,
+
+    /**
+     * ${field3_name}: ${field3_description} (optional)
+     */
+    val ${field3_name}: Int? = null
+) {
+    init {
+        require(${field1_name}.isNotBlank()) { "${field1_name} is required" }
+        require(${field2_name}.isNotBlank()) { "${field2_name} is required" }
+    }
+}

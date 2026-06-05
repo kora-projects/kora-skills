@@ -1,0 +1,16 @@
+package ${package};
+
+import ru.tinkoff.kora.application.KoraApplication;
+import ru.tinkoff.kora.application.graph.ApplicationGraph;
+import ru.tinkoff.kora.logging.logback.LogbackModule;
+import ru.tinkoff.kora.config.hocon.HoconConfigModule;
+
+/**
+ * Application with LogbackModule for logging
+ */
+@KoraApp
+public interface Application extends LogbackModule, HoconConfigModule {
+    static void main(String[] args) {
+        KoraApplication.run(ApplicationGraph::graph);
+    }
+}

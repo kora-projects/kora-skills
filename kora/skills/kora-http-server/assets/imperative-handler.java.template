@@ -1,0 +1,77 @@
+package ${package};
+
+import ru.tinkoff.kora.common.Context;
+import ru.tinkoff.kora.http.server.common.HttpServerRequest;
+import ru.tinkoff.kora.http.server.common.HttpServerRequestHandler;
+import ru.tinkoff.kora.http.server.common.HttpServerResponse;
+import ru.tinkoff.kora.http.server.common.HttpServerRequestHandlerImpl;
+import ru.tinkoff.kora.http.server.common.body.HttpBody;
+import ru.tinkoff.kora.http.server.common.RequestHandlerUtils;
+
+import java.util.List;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.CompletionStage;
+
+/**
+ * Imperative HTTP handler for ${handler_description}.
+ *
+ * <p>Uses a functional approach without @HttpController annotations.</p>
+ *
+ * <p>Features:</p>
+ * <ul>
+ *   <li>Full control over request processing</li>
+ *   <li>Dynamic enable/disable via the enabled parameter</li>
+ *   <li>Explicit dependencies via module</li>
+ * </ul>
+ */
+public interface ${handler_module_name} {
+
+    /**
+     * Handler for ${handler_description}.
+     *
+     * @return HttpServerRequestHandler to register in the module
+     */
+    default HttpServerRequestHandler ${handler_method_name}() {
+        return HttpServerRequestHandlerImpl.of(
+            "${http_method}",           // HTTP method: GET, POST, PUT, DELETE, PATCH
+            "${route_path}",            // Path template: /api/{id}, /users/{userId}/posts
+            (context, request) -> {
+                // === Path Parameters ===
+                // String id = RequestHandlerUtils.parseStringPathParameter(request, "id");
+                // Integer count = RequestHandlerUtils.parseIntPathParameter(request, "count");
+
+                // === Query Parameters (required / optional / list) ===
+                // String query = RequestHandlerUtils.parseStringQueryParameter(request, "q");
+                // String optionalQuery = RequestHandlerUtils.parseOptionalStringQueryParameter(request, "filter");
+                // List<String> queries = RequestHandlerUtils.parseOptionalStringListQueryParameter(request, "tags");
+
+                // === Header Parameters ===
+                // String header = RequestHandlerUtils.parseStringHeaderParameter(request, "X-Custom-Header");
+                // String optionalHeader = RequestHandlerUtils.parseOptionalStringHeaderParameter(request, "Authorization");
+                // List<String> headers = RequestHandlerUtils.parseOptionalStringListHeaderParameter(request, "X-Ids");
+
+                // === Cookie Parameters ===
+                // String cookie = RequestHandlerUtils.parseStringCookieParameter(request, "sessionId");
+                // String optionalCookie = RequestHandlerUtils.parseOptionalStringCookieParameter(request, "tracking");
+
+                // === Request Body (for POST/PUT/PATCH) ===
+                // String body = request.getBody().asString();
+                // byte[] bytes = request.getBody().asByteArray();
+
+                // === Response ===
+                // return CompletableFuture.completedFuture(
+                //     HttpServerResponse.of(200, HttpBody.plaintext("Response body"))
+                // );
+                // return CompletableFuture.completedFuture(
+                //     HttpServerResponse.of(404, HttpBody.plaintext("Not found"))
+                // );
+
+                // TODO: implement handler logic
+                return CompletableFuture.completedFuture(
+                    HttpServerResponse.of(200, HttpBody.plaintext("${response_body}"))
+                );
+            },
+            ${enabled}  // true = handler is active, false = handler is not registered
+        );
+    }
+}

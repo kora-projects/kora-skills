@@ -1,0 +1,56 @@
+// Outbound call wrapped with @Timeout + @Retry + @CircuitBreaker + @Fallback.
+// Aspect order (top to bottom) matters — see references/resilient.md.
+// Replace `com.example.app.service` with your package.
+
+package com.example.app.service;
+
+import ru.tinkoff.kora.common.Component;
+import ru.tinkoff.kora.resilient.circuitbreaker.annotation.CircuitBreaker;
+import ru.tinkoff.kora.resilient.fallback.annotation.Fallback;
+import ru.tinkoff.kora.resilient.retry.annotation.Retry;
+import ru.tinkoff.kora.resilient.timeout.annotation.Timeout;
+
+@Component
+public class InventoryService {                                         // NOT final
+
+    private final InventoryClient client;
+
+    public InventoryService(InventoryClient client) {
+        this.client = client;
+    }
+
+    // Semantics with this stacking:
+    //   1. @Timeout caps the WHOLE chain (including retries and fallback).
+    //   2. @CircuitBreaker short-circuits when open — @Retry doesn't even run.
+    //   3. @Retry retries the underlying call until success or attempts exhausted.
+    //   4. @Fallback provides a value if all retries fail.
+    @Timeout("inventory.check")
+    @CircuitBreaker("inventory.check")
+    @Retry("inventory.check")
+    @Fallback(value = "inventory.check", method = "checkFallback(sku)")
+    public Stock check(String sku) {
+        return client.lookup(sku);
+    }
+
+    // Fallback method — same class, signature-compatible return type.
+    protected Stock checkFallback(String sku) {
+        return Stock.UNKNOWN;
+    }
+
+    // Per-attempt timeout instead: swap order — @Retry outside @Timeout.
+    @Retry("inventory.check")
+    @Timeout("inventory.check.perAttempt")
+    public Stock checkPerAttempt(String sku) {
+        return client.lookup(sku);
+    }
+
+    public enum Stock { IN_STOCK, OUT_OF_STOCK, UNKNOWN }
+}
+
+// Placeholder dependency — replace with your actual @HttpClient or service.
+@Component
+class InventoryClient {
+    public InventoryService.Stock lookup(String sku) {
+        return InventoryService.Stock.IN_STOCK;
+    }
+}

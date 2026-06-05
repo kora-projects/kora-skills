@@ -1,0 +1,93 @@
+kafka {
+  # Consumer configuration
+  consumer {
+    # Example listener for processing messages
+    myListener {
+      # Topics to subscribe to (required: topics or topicsPattern)
+      topics = ["my-topic"]
+      # topicsPattern = "my-topic-*"
+
+      # Consumer behavior
+      pollTimeout = "5s"           # Maximum time to wait for messages
+      backoffTimeout = "15s"       # Pause between errors
+      threads = 1                  # Number of processing threads
+      shutdownWait = "30s"         # Graceful shutdown wait time
+      offset = "latest"            # earliest, latest, or Duration (e.g., "5m")
+
+      # Kafka driver properties (required)
+      driverProperties {
+        "bootstrap.servers" = ${KAFKA_BOOTSTRAP_SERVERS:"localhost:9092"}
+        "group.id" = "my-consumer-group"
+        "auto.offset.reset" = "latest"
+        "enable.auto.commit" = true
+        "max.poll.records" = 500
+      }
+      
+      # Telemetry
+      telemetry {
+        logging {
+          enabled = true
+        }
+        metrics {
+          enabled = true
+          slo = [1, 10, 50, 100, 200, 500, 1000, 2000, 5000, 10000]
+        }
+        tracing {
+          enabled = true
+        }
+      }
+    }
+  }
+  
+  # Producer configuration
+  producer {
+    # Example publisher for sending messages
+    myPublisher {
+      # Kafka driver properties (required)
+      driverProperties {
+        "bootstrap.servers" = ${KAFKA_BOOTSTRAP_SERVERS:"localhost:9092"}
+        "acks" = "all"
+        "retries" = 3
+        "linger.ms" = 5
+        "batch.size" = 16384
+      }
+      
+      # Topic configuration
+      myTopic {
+        topic = "my-topic"
+        # partition = 0  # optional
+      }
+      
+      # Telemetry
+      telemetry {
+        logging {
+          enabled = true
+        }
+        metrics {
+          enabled = true
+          slo = [1, 10, 50, 100, 200, 500, 1000, 2000, 5000, 10000]
+        }
+        tracing {
+          enabled = true
+        }
+      }
+    }
+    
+    # Transactional publisher (optional)
+    # myTransactionalPublisher {
+    #   idPrefix = "my-app-"
+    #   maxPoolSize = 10
+    #   maxWaitTime = "10s"
+    #   driverProperties {
+    #     "bootstrap.servers" = ${KAFKA_BOOTSTRAP_SERVERS:"localhost:9092"}
+    #   }
+    # }
+  }
+}
+
+# Logging
+logging.level {
+  "root": "INFO"
+  "ru.tinkoff.kora": "DEBUG"
+  "${packagePath}": "DEBUG"
+}

@@ -1,0 +1,37 @@
+package ${package}
+
+import io.micrometer.core.instrument.MeterRegistry
+import ru.tinkoff.kora.micrometer.module.PrometheusMeterRegistryInitializer
+import ru.tinkoff.kora.common.Module
+
+/**
+ * Metrics customization module.
+ * Adds common tags and configures the registry.
+ */
+@Module
+interface CustomMetricsConfig {
+
+    /**
+     * Adds common tags to all metrics.
+     */
+    @Default
+    fun commonTagsInit(): PrometheusMeterRegistryInitializer {
+        return PrometheusMeterRegistryInitializer { registry ->
+            registry.config()
+                .commonTags("service", "my-service")
+                .commonTags("environment", "production")
+                .commonTags("version", "1.0.0")
+        }
+    }
+
+    /**
+     * Customizes naming convention.
+     */
+    @Default
+    fun customNaming(): MeterRegistry.Customizer {
+        return MeterRegistry.Customizer { registry ->
+            // Example: add a prefix to all metrics
+            // registry.config().commonTags("prefix", "myapp")
+        }
+    }
+}

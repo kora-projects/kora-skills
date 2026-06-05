@@ -1,0 +1,278 @@
+{
+  "skill_name": "kora-bootstrap",
+  "evals": [
+    {
+      "id": 1,
+      "name": "single-module-java-app",
+      "prompt": "Create a single-module Kora application structure in Java with the name my-app and package com.example. Include: build.gradle with koraBom configuration, Application.java with @KoraApp, DatabaseModule.java with @Module.",
+      "expected_output": "Single-module project with correct structure, Gradle setup with koraBom, @KoraApp application, @Module for DI",
+      "files": [],
+      "assertions": [
+        {"name": "has_kora_app_annotation", "type": "code_contains", "expected": "@KoraApp"},
+        {"name": "has_module_annotation", "type": "code_contains", "expected": "@Module"},
+        {"name": "has_kora_bom_config", "type": "code_contains", "expected": "koraBom"},
+        {"name": "has_annotation_processor", "type": "code_contains", "expected": "annotationProcessor"},
+        {"name": "has_java_17", "type": "code_contains", "expected": "VERSION_25"},
+        {"name": "has_main_method", "type": "code_contains", "expected": "main(String[] args)"},
+        {"name": "uses_kora_application", "type": "code_contains", "expected": "KoraApplication"}
+      ]
+    },
+    {
+      "id": 2,
+      "name": "multi-module-architecture",
+      "prompt": "Create a multi-module architecture for a Kora application with modules: common (shared types), pet-api (Pet domain), vet-api (Vet domain), app (assembly). Show the structure and @KoraSubmodule for each module.",
+      "expected_output": "Multi-module structure with @KoraSubmodule for each module, proper extends for external modules",
+      "files": [],
+      "assertions": [
+        {"name": "has_kora_submodule", "type": "code_contains", "expected": "@KoraSubmodule"},
+        {"name": "has_common_module", "type": "code_contains", "expected": "common"},
+        {"name": "has_extends_for_submodule", "type": "regex", "expected": "extends\\s+\\w+Module"},
+        {"name": "has_multiple_modules", "type": "regex", "expected": "(pet-api|vet-api|app)"},
+        {"name": "has_settings_gradle", "type": "code_contains", "expected": "include"}
+      ]
+    },
+    {
+      "id": 3,
+      "name": "config-source-interface",
+      "prompt": "Create a @ConfigSource interface DatabaseConfig with config path 'app.database'. Fields: url (String), username (String), password (String), poolSize (int). Show the corresponding HOCON config with environment variables.",
+      "expected_output": "@ConfigSource interface with correct path, HOCON config with ${ENV_VAR} syntax",
+      "files": [],
+      "assertions": [
+        {"name": "has_config_source_annotation", "type": "code_contains", "expected": "@ConfigSource"},
+        {"name": "has_correct_path", "type": "code_contains", "expected": "app.database"},
+        {"name": "has_url_field", "type": "code_contains", "expected": "url"},
+        {"name": "has_credentials", "type": "regex", "expected": "(username|password)"},
+        {"name": "has_pool_size", "type": "code_contains", "expected": "poolSize"},
+        {"name": "has_hocon_config", "type": "code_contains", "expected": "application.conf"},
+        {"name": "uses_env_vars", "type": "regex", "expected": "\\$\\{[A-Z_]+\\}"}
+      ]
+    },
+    {
+      "id": 4,
+      "name": "component-with-injection",
+      "prompt": "Create a @Component class UserService with constructor injection. Dependencies: UserRepository, CacheService. The class must be final with a single public constructor.",
+      "expected_output": "@Component final class with constructor injection, proper dependencies",
+      "files": [],
+      "assertions": [
+        {"name": "has_component_annotation", "type": "code_contains", "expected": "@Component"},
+        {"name": "is_final_class", "type": "regex", "expected": "public final class"},
+        {"name": "has_constructor", "type": "code_contains", "expected": "public UserService"},
+        {"name": "has_repository_dep", "type": "code_contains", "expected": "UserRepository"},
+        {"name": "has_cache_dep", "type": "code_contains", "expected": "CacheService"},
+        {"name": "not_abstract", "type": "not_contains", "expected": "abstract class"}
+      ]
+    },
+    {
+      "id": 5,
+      "name": "tagged-dependencies",
+      "prompt": "Show an example of using @Tag to distinguish Cache implementations: RedisCache and CaffeineCache. Create a tag class RedisTag, tagged components, and tagged injection in a service.",
+      "expected_output": "Simple tag class, @Tag on components, @Tag at injection point",
+      "files": [],
+      "assertions": [
+        {"name": "has_tag_annotation", "type": "code_contains", "expected": "@Tag"},
+        {"name": "has_tag_class", "type": "regex", "expected": "(RedisTag|CacheTag)"},
+        {"name": "has_redis_impl", "type": "code_contains", "expected": "RedisCache"},
+        {"name": "has_caffeine_impl", "type": "code_contains", "expected": "CaffeineCache"},
+        {"name": "has_tagged_injection", "type": "regex", "expected": "@Tag\\([^)]+\\)"}
+      ]
+    },
+    {
+      "id": 6,
+      "name": "root-component",
+      "prompt": "Create a @Root component CacheWarmer that warms up the cache at application startup. The component must have @Component and a dependency on CacheService.",
+      "expected_output": "@Root @Component class with initialization in the constructor",
+      "files": [],
+      "assertions": [
+        {"name": "has_root_annotation", "type": "code_contains", "expected": "@Root"},
+        {"name": "has_component_annotation", "type": "code_contains", "expected": "@Component"},
+        {"name": "has_init_logic", "type": "regex", "expected": "(warm|init|start)"},
+        {"name": "has_cache_dependency", "type": "code_contains", "expected": "CacheService"},
+        {"name": "is_final_class", "type": "code_contains", "expected": "final class"}
+      ]
+    },
+    {
+      "id": 7,
+      "name": "lifecycle-component",
+      "prompt": "Create a DatabasePool component that implements the Lifecycle interface with init() and release() methods. The component must be @Component and a final class.",
+      "expected_output": "@Component class implementing Lifecycle with init/release methods",
+      "files": [],
+      "assertions": [
+        {"name": "has_component_annotation", "type": "code_contains", "expected": "@Component"},
+        {"name": "implements_lifecycle", "type": "code_contains", "expected": "Lifecycle"},
+        {"name": "has_init_method", "type": "code_contains", "expected": "init()"},
+        {"name": "has_release_method", "type": "code_contains", "expected": "release()"},
+        {"name": "has_override", "type": "code_contains", "expected": "@Override"},
+        {"name": "is_final_class", "type": "code_contains", "expected": "final class"}
+      ]
+    },
+    {
+      "id": 8,
+      "name": "module-with-factory",
+      "prompt": "Create a @Module interface DatabaseModule with a factory method dataSource() that creates a DataSource from DatabaseConfig. Use @DefaultComponent on the method.",
+      "expected_output": "@Module interface with @DefaultComponent factory method, parameters from Config",
+      "files": [],
+      "assertions": [
+        {"name": "has_module_annotation", "type": "code_contains", "expected": "@Module"},
+        {"name": "has_default_component", "type": "code_contains", "expected": "@DefaultComponent"},
+        {"name": "has_datasource_method", "type": "code_contains", "expected": "DataSource"},
+        {"name": "has_config_param", "type": "code_contains", "expected": "DatabaseConfig"},
+        {"name": "is_interface", "type": "code_contains", "expected": "interface DatabaseModule"}
+      ]
+    },
+    {
+      "id": 9,
+      "name": "all-collection-injection",
+      "prompt": "Show an example of injecting a collection of all Notifier implementations via All<Notifier>. Create a NotificationService that uses All<Notifier> to send notifications through all channels.",
+      "expected_output": "Use of All<T> for collection injection, iterating over all implementations",
+      "files": [],
+      "assertions": [
+        {"name": "has_all_injection", "type": "code_contains", "expected": "All<Notifier>"},
+        {"name": "has_component_annotation", "type": "code_contains", "expected": "@Component"},
+        {"name": "iterates_notifiers", "type": "regex", "expected": "(for|forEach)"},
+        {"name": "calls_notify", "type": "code_contains", "expected": "notify"},
+        {"name": "is_final_class", "type": "code_contains", "expected": "final class"}
+      ]
+    },
+    {
+      "id": 10,
+      "name": "lazy-injection-valuedof",
+      "prompt": "Show an example of lazy injection via ValueOf<Config> to prevent cascading refresh. Create a ConfigService that retrieves Config lazily.",
+      "expected_output": "Use of ValueOf<T> for lazy injection, retrieval via .get()",
+      "files": [],
+      "assertions": [
+        {"name": "has_valuedof_injection", "type": "code_contains", "expected": "ValueOf<Config>"},
+        {"name": "has_component_annotation", "type": "code_contains", "expected": "@Component"},
+        {"name": "calls_get", "type": "regex", "expected": "\\.get\\(\\)"},
+        {"name": "is_final_class", "type": "code_contains", "expected": "final class"}
+      ]
+    },
+    {
+      "id": 11,
+      "name": "hocon-yaml-config",
+      "prompt": "Create configuration for a Kora application in two formats: HOCON (application.conf) and YAML (application.yaml). The config must include: server.port, database.url, database.poolSize, cache.enabled.",
+      "expected_output": "Both configuration formats with correct syntax, environment variables",
+      "files": [],
+      "assertions": [
+        {"name": "has_hocon_config", "type": "code_contains", "expected": "application.conf"},
+        {"name": "has_yaml_config", "type": "code_contains", "expected": "application.yaml"},
+        {"name": "has_server_port", "type": "code_contains", "expected": "port"},
+        {"name": "has_database_config", "type": "code_contains", "expected": "database"},
+        {"name": "has_pool_size", "type": "code_contains", "expected": "poolSize"},
+        {"name": "has_cache_config", "type": "code_contains", "expected": "cache"},
+        {"name": "uses_env_vars", "type": "regex", "expected": "\\$\\{[A-Z_]+\\}"}
+      ]
+    },
+    {
+      "id": 12,
+      "name": "kotlin-multi-module",
+      "prompt": "Create a multi-module Kora project in Kotlin with modules: common, api, app. Show settings.gradle.kts, build.gradle.kts for each module, Application.kt with @KoraApp.",
+      "expected_output": "Kotlin multi-module project with Gradle Kotlin DSL, @KoraApp application",
+      "files": [],
+      "assertions": [
+        {"name": "has_kotlin_plugin", "type": "code_contains", "expected": "kotlin"},
+        {"name": "has_kora_app", "type": "code_contains", "expected": "@KoraApp"},
+        {"name": "has_gradle_kts", "type": "code_contains", "expected": ".kts"},
+        {"name": "has_multiple_modules", "type": "regex", "expected": "(common|api|app)"},
+        {"name": "has_settings_gradle", "type": "code_contains", "expected": "include"},
+        {"name": "has_main_function", "type": "code_contains", "expected": "fun main"}
+      ]
+    },
+    {
+      "id": 13,
+      "name": "lifecycle-wrapper",
+      "prompt": "Show an example of using LifecycleWrapper.wrap() for a factory method in @Module. Create a CacheModule that creates a CaffeineCache with warmup on init and invalidateAll on release.",
+      "expected_output": "@Module with a factory method using LifecycleWrapper.wrap()",
+      "files": [],
+      "assertions": [
+        {"name": "has_module_annotation", "type": "code_contains", "expected": "@Module"},
+        {"name": "uses_lifecycle_wrapper", "type": "code_contains", "expected": "LifecycleWrapper.wrap"},
+        {"name": "has_warmup", "type": "code_contains", "expected": "warmup"},
+        {"name": "has_invalidate", "type": "code_contains", "expected": "invalidateAll"},
+        {"name": "has_cache_config", "type": "code_contains", "expected": "CacheConfig"}
+      ]
+    },
+    {
+      "id": 14,
+      "name": "optional-nullable-injection",
+      "prompt": "Show an example of optional injection via the @Nullable annotation. Create an EmailService that can function without a MailServer (optional dependency).",
+      "expected_output": "@Component with @Nullable dependency, null check",
+      "files": [],
+      "assertions": [
+        {"name": "has_component_annotation", "type": "code_contains", "expected": "@Component"},
+        {"name": "has_nullable", "type": "code_contains", "expected": "@Nullable"},
+        {"name": "has_mail_server", "type": "code_contains", "expected": "MailServer"},
+        {"name": "has_null_check", "type": "regex", "expected": "(if.*!= null|?.)"},
+        {"name": "is_final_class", "type": "code_contains", "expected": "final class"}
+      ]
+    },
+    {
+      "id": 15,
+      "name": "gradle-validation",
+      "prompt": "Run validation of a build.gradle file for a Kora project. Check: presence of koraBom configuration, annotation-processors dependency, Java 17, application plugin with mainClass.",
+      "expected_output": "Validation report covering all required elements of build.gradle",
+      "files": [],
+      "assertions": [
+        {"name": "checks_kora_bom", "type": "code_contains", "expected": "koraBom"},
+        {"name": "checks_annotation_processor", "type": "code_contains", "expected": "annotationProcessor"},
+        {"name": "checks_java_version", "type": "code_contains", "expected": "25"},
+        {"name": "checks_application_plugin", "type": "code_contains", "expected": "application"},
+        {"name": "checks_main_class", "type": "code_contains", "expected": "mainClass"}
+      ]
+    },
+    {
+      "id": 16,
+      "name": "gradle-wrapper-setup",
+      "prompt": "Set up the Gradle Wrapper for a project from scratch (Gradle is not installed). Create: gradle/wrapper/gradle-wrapper.properties with version 9.5.1, download gradle-wrapper.jar from the official URL, run initialization via java -cp.",
+      "expected_output": "gradle-wrapper.properties with correct distributionUrl, gradle-wrapper.jar, initialization command",
+      "files": [],
+      "assertions": [
+        {"name": "has_wrapper_properties", "type": "code_contains", "expected": "gradle-wrapper.properties"},
+        {"name": "has_gradle_9_4", "type": "code_contains", "expected": "gradle-9.5.1"},
+        {"name": "has_distribution_url", "type": "code_contains", "expected": "services.gradle.org"},
+        {"name": "has_wrapper_jar", "type": "code_contains", "expected": "gradle-wrapper.jar"},
+        {"name": "has_github_url", "type": "code_contains", "expected": "raw.githubusercontent.com/gradle/gradle"},
+        {"name": "has_init_command", "type": "code_contains", "expected": "org.gradle.wrapper.GradleWrapperMain"},
+        {"name": "has_mkdir_wrapper", "type": "code_contains", "expected": "gradle/wrapper"}
+      ]
+    },
+    {
+      "id": 17,
+      "name": "disttar-artifact-build",
+      "prompt": "Show the command to build the final artifact of a Kora application in tar.gz format. Explain the difference between `./gradlew clean classes` and `./gradlew distTar`, and when to use each.",
+      "expected_output": "Command ./gradlew distTar for the final artifact, explanation that clean classes is for intermediate compilation checks",
+      "files": [],
+      "assertions": [
+        {"name": "has_disttar_command", "type": "code_contains", "expected": "distTar"},
+        {"name": "has_clean_classes_command", "type": "code_contains", "expected": "clean classes"},
+        {"name": "explains_disttar_purpose", "type": "regex", "expected": "(final|artifact|tar\\.gz|distribution)"},
+        {"name": "explains_clean_classes_purpose", "type": "regex", "expected": "(check|compil|quick|fast)"}
+      ]
+    },
+    {
+      "id": 18,
+      "name": "gradle-troubleshooting",
+      "prompt": "When running `./gradlew clean` I got the error 'Unable to delete directory... This might happen because a process has files open'. Show how to fix this.",
+      "expected_output": "Use ./gradlew --stop to stop the Gradle daemon, then retry clean",
+      "files": [],
+      "assertions": [
+        {"name": "has_stop_command", "type": "code_contains", "expected": "./gradlew --stop"},
+        {"name": "mentions_daemon", "type": "regex", "expected": "(daemon|process)"},
+        {"name": "has_retry_clean", "type": "code_contains", "expected": "clean"},
+        {"name": "explains_root_cause", "type": "regex", "expected": "(lock|open|working directory)"}
+      ]
+    },
+    {
+      "id": 19,
+      "name": "iterative-development-workflow",
+      "prompt": "Describe the correct workflow for iterative development of a Kora application. Which commands to use and in what order?",
+      "expected_output": "Minimal code increments → ./gradlew clean classes → ./gradlew test → validate against examples",
+      "files": [],
+      "assertions": [
+        {"name": "mentions_minimal_increments", "type": "regex", "expected": "(minimal|small|increment|incremental|steps)"},
+        {"name": "has_clean_classes", "type": "code_contains", "expected": "clean classes"},
+        {"name": "has_test_command", "type": "code_contains", "expected": "./gradlew test"},
+        {"name": "mentions_validation", "type": "regex", "expected": "(validate|examples|cross-reference)"}
+      ]
+    }
+  ]
+}

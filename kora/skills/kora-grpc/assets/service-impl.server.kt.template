@@ -1,0 +1,34 @@
+package ${package}
+
+import ${proto_package}.${service_name}Grpc
+import ${proto_package}.${request_class}
+import ${proto_package}.${response_class}
+import io.grpc.StatusRuntimeException
+import ru.tinkoff.kora.annotation.processor.component.Component
+
+/**
+ * gRPC service implementation for ${service_name}.
+ * Extend the generated ${service_name}ImplBase and annotate with @Component.
+ */
+@Component
+class ${service_name}Service : ${service_name}Grpc.${service_name}ImplBase() {
+
+    override fun ${method_name}(request: ${request_class}, responseObserver: io.grpc.stub.StreamObserver<${response_class}>) {
+        try {
+            // TODO: Implement business logic
+            val response = ${response_class}.newBuilder()
+                // .setField(value)
+                .build()
+
+            responseObserver.onNext(response)
+            responseObserver.onCompleted()
+        } catch (e: Exception) {
+            responseObserver.onError(
+                io.grpc.Status.INTERNAL
+                    .withDescription(e.message)
+                    .withCause(e)
+                    .asRuntimeException()
+            )
+        }
+    }
+}

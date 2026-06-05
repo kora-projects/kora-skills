@@ -1,0 +1,48 @@
+package ${package}
+
+import io.mockk.every
+import io.mockk.mockk
+import io.mockk.verify
+import org.junit.jupiter.api.Assertions.*
+import org.junit.jupiter.api.BeforeEach
+import org.junit.jupiter.api.Test
+import ru.tinkoff.kora.test.extension.junit5.KoraAppTest
+import ru.tinkoff.kora.test.extension.junit5.KoraAppTestConfigModifier
+import ru.tinkoff.kora.test.extension.junit5.KoraConfigModification
+import ru.tinkoff.kora.test.extension.junit5.TestComponent
+
+@KoraAppTest(Application::class)
+class ${componentName}Test : KoraAppTestConfigModifier {
+
+    @MockK
+    @TestComponent
+    private val ${dependencyVarName}: ${dependencyName} = mockk()
+
+    @TestComponent
+    private lateinit var ${componentVarName}: ${componentName}
+
+    override fun config(): KoraConfigModification {
+        return KoraConfigModification.ofString(
+            """
+            # Test configuration
+            """.trimIndent()
+        )
+    }
+
+    @BeforeEach
+    fun setup() {
+        // Setup mocks
+        every { ${dependencyVarName}.someMethod(any()) } returns someValue
+    }
+
+    @Test
+    fun `should do something`() {
+        // given
+        // when
+        val result = ${componentVarName}.doSomething()
+
+        // then
+        assertNotNull(result)
+        verify { ${dependencyVarName}.someMethod(any()) }
+    }
+}

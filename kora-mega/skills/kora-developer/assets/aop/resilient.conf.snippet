@@ -1,0 +1,45 @@
+# Config for the ResilientService template — matches @CircuitBreaker/@Retry/@Timeout/@Fallback names.
+# Drop into application.conf alongside other config.
+
+resilient {
+  # ---- CircuitBreaker ----
+  circuitbreaker {
+    default {
+      slidingWindowSize             = 100
+      minimumRequiredCalls          = 10
+      failureRateThreshold          = 50           # % of failures to trip
+      waitDurationInOpenState       = "25s"
+      permittedCallsInHalfOpenState = 15
+      enabled                       = true
+    }
+    "inventory.check" {
+      waitDurationInOpenState = "10s"
+    }
+  }
+
+  # ---- Retry ----
+  retry {
+    default {
+      delay     = "100ms"
+      attempts  = 2
+      delayStep = "100ms"
+      enabled   = true
+    }
+    "inventory.check" {
+      attempts = 3                                  # 3 retries on top of the original call
+    }
+  }
+
+  # ---- Timeout ----
+  timeout {
+    default { duration = "1s", enabled = true }
+    "inventory.check"            { duration = "5s" }   # whole-chain timeout
+    "inventory.check.perAttempt" { duration = "500ms" } # per-attempt timeout
+  }
+
+  # ---- Fallback ----
+  fallback {
+    default { enabled = true }
+    # "inventory.check" { failurePredicateName = "ignoreNotFound" }   # optional custom predicate
+  }
+}

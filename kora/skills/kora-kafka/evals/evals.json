@@ -1,0 +1,353 @@
+{
+  "skill_name": "kora-kafka",
+  "evals": [
+    {
+      "id": 1,
+      "name": "basic-consumer",
+      "prompt": "Create a Kafka consumer for processing messages from the 'orders' topic. The consumer must accept the message value (String) and log the received message. Use the @KafkaListener annotation.",
+      "expected_output": "Class with @Component and @KafkaListener, processing method with String parameter, logging",
+      "files": [],
+      "assertions": [
+        {"name": "has_component_annotation", "type": "code_contains", "expected": "@Component"},
+        {"name": "has_kafka_listener", "type": "code_contains", "expected": "@KafkaListener"},
+        {"name": "has_config_path", "type": "regex", "expected": "kafka\\.consumer\\."},
+        {"name": "has_string_param", "type": "regex", "expected": "(String\\s+\\w+|void\\s+\\w+\\(String)"},
+        {"name": "has_logging", "type": "regex", "expected": "(log\\.|logger|Logger)"}
+      ]
+    },
+    {
+      "id": 2,
+      "name": "json-consumer",
+      "prompt": "Create a Kafka consumer for processing JSON messages with order events. The event contains: orderId (String), customerId (String), amount (BigDecimal), timestamp (Instant). Use the @Json annotation for deserialization.",
+      "expected_output": "DTO class with @Json, consumer with @Json parameter, order event processing",
+      "files": [],
+      "assertions": [
+        {"name": "has_json_record", "type": "code_contains", "expected": "@Json"},
+        {"name": "has_order_event", "type": "regex", "expected": "(OrderEvent|OrderEvent)"},
+        {"name": "has_order_id", "type": "code_contains", "expected": "orderId"},
+        {"name": "has_customer_id", "type": "code_contains", "expected": "customerId"},
+        {"name": "has_amount", "type": "code_contains", "expected": "amount"},
+        {"name": "has_timestamp", "type": "code_contains", "expected": "timestamp"},
+        {"name": "uses_bigdecimal", "type": "code_contains", "expected": "BigDecimal"},
+        {"name": "uses_instant", "type": "code_contains", "expected": "Instant"}
+      ]
+    },
+    {
+      "id": 3,
+      "name": "consumer-with-key",
+      "prompt": "Create a Kafka consumer that processes key-value pairs. Key — userId (String), value — message (String). The consumer must log both values.",
+      "expected_output": "Method with two String parameters (key, value), logging both",
+      "files": [],
+      "assertions": [
+        {"name": "has_kafka_listener", "type": "code_contains", "expected": "@KafkaListener"},
+        {"name": "has_key_param", "type": "regex", "expected": "(String\\s+key|String\\s+userId)"},
+        {"name": "has_value_param", "type": "code_contains", "expected": "value"},
+        {"name": "logs_both", "type": "regex", "expected": "(key.*value|userId.*value)"}
+      ]
+    },
+    {
+      "id": 4,
+      "name": "consumer-with-headers",
+      "prompt": "Create a Kafka consumer that reads message headers. The method must accept: key, value, and Headers from Apache Kafka. Extract the 'X-Source' header and log it.",
+      "expected_output": "Method with Headers parameter, extracting header by name",
+      "files": [],
+      "assertions": [
+        {"name": "has_headers_param", "type": "code_contains", "expected": "Headers"},
+        {"name": "imports_kafka_headers", "type": "code_contains", "expected": "org.apache.kafka"},
+        {"name": "extracts_header", "type": "regex", "expected": "(headers\\.|lastHeader|X-Source)"}
+      ]
+    },
+    {
+      "id": 5,
+      "name": "consumer-record-handling",
+      "prompt": "Create a Kafka consumer that receives a full ConsumerRecord. Extract from it: topic, partition, offset, key, value and log all the information.",
+      "expected_output": "Method with ConsumerRecord<K,V> parameter, access to metadata",
+      "files": [],
+      "assertions": [
+        {"name": "has_consumer_record", "type": "code_contains", "expected": "ConsumerRecord"},
+        {"name": "gets_topic", "type": "code_contains", "expected": "topic()"},
+        {"name": "gets_partition", "type": "code_contains", "expected": "partition()"},
+        {"name": "gets_offset", "type": "code_contains", "expected": "offset()"},
+        {"name": "gets_key", "type": "code_contains", "expected": "key()"},
+        {"name": "gets_value", "type": "code_contains", "expected": "value()"}
+      ]
+    },
+    {
+      "id": 6,
+      "name": "consumer-error-handling",
+      "prompt": "Create a Kafka consumer with error handling. The method must accept value and Exception (nullable). On error — log and return; on success — process the value.",
+      "expected_output": "Method with @Nullable Exception parameter, conditional error-handling logic",
+      "files": [],
+      "assertions": [
+        {"name": "has_kafka_listener", "type": "code_contains", "expected": "@KafkaListener"},
+        {"name": "has_exception_param", "type": "regex", "expected": "(Exception|Throwable)"},
+        {"name": "has_nullable", "type": "code_contains", "expected": "@Nullable"},
+        {"name": "has_error_check", "type": "regex", "expected": "(if.*error|if.*exception|if.*!=.*null)"}
+      ]
+    },
+    {
+      "id": 7,
+      "name": "basic-producer",
+      "prompt": "Create a Kafka producer interface for sending messages to the 'notifications' topic. The interface must have a method send(String value) with the @KafkaPublisher.Topic annotation.",
+      "expected_output": "Interface with @KafkaPublisher, method with @Topic annotation",
+      "files": [],
+      "assertions": [
+        {"name": "has_kafka_publisher", "type": "code_contains", "expected": "@KafkaPublisher"},
+        {"name": "has_topic_annotation", "type": "code_contains", "expected": "@Topic"},
+        {"name": "has_send_method", "type": "regex", "expected": "void\\s+send"},
+        {"name": "has_string_param", "type": "code_contains", "expected": "String"}
+      ]
+    },
+    {
+      "id": 8,
+      "name": "producer-with-metadata",
+      "prompt": "Create a Kafka producer that returns RecordMetadata after sending. Add methods: sendWithMeta(String value) returning RecordMetadata, sendAsync(String value) returning Future<RecordMetadata>.",
+      "expected_output": "Interface with metadata-returning methods, Future for async",
+      "files": [],
+      "assertions": [
+        {"name": "has_record_metadata", "type": "code_contains", "expected": "RecordMetadata"},
+        {"name": "has_future", "type": "code_contains", "expected": "Future"},
+        {"name": "has_async_method", "type": "regex", "expected": "(sendAsync|sendFuture)"},
+        {"name": "imports_kafka_metadata", "type": "code_contains", "expected": "org.apache.kafka"}
+      ]
+    },
+    {
+      "id": 9,
+      "name": "json-producer",
+      "prompt": "Create a Kafka producer for sending JSON events. DTO: PaymentEvent with fields paymentId, amount, status. The method sendPayment(@Json PaymentEvent event) must serialize to JSON.",
+      "expected_output": "DTO with @Json, producer interface with @Json parameter",
+      "files": [],
+      "assertions": [
+        {"name": "has_json_dto", "type": "code_contains", "expected": "@Json"},
+        {"name": "has_payment_event", "type": "regex", "expected": "(PaymentEvent|paymentEvent)"},
+        {"name": "has_payment_id", "type": "code_contains", "expected": "paymentId"},
+        {"name": "has_amount", "type": "code_contains", "expected": "amount"},
+        {"name": "has_status", "type": "code_contains", "expected": "status"}
+      ]
+    },
+    {
+      "id": 10,
+      "name": "transactional-producer",
+      "prompt": "Create a transactional Kafka producer. Base interface OrderPublisher with a sendOrder method. Transactional interface TransactionalOrderPublisher extends TransactionalPublisher<OrderPublisher>.",
+      "expected_output": "Two interfaces: base and transactional extending TransactionalPublisher",
+      "files": [],
+      "assertions": [
+        {"name": "has_base_publisher", "type": "regex", "expected": "(OrderPublisher|BasePublisher)"},
+        {"name": "has_transactional_publisher", "type": "regex", "expected": "(Transactional.*Publisher|.*Transactional.*Publisher)"},
+        {"name": "extends_transactional", "type": "code_contains", "expected": "TransactionalPublisher"},
+        {"name": "has_kafka_publisher", "type": "code_contains", "expected": "@KafkaPublisher"}
+      ]
+    },
+    {
+      "id": 11,
+      "name": "consumer-configuration",
+      "prompt": "Write a HOCON configuration for a Kafka consumer with: topics=['orders'], bootstrap.servers from the KAFKA_BOOTSTRAP env variable, group.id='order-processor', enable.auto.commit=true, telemetry (logging, metrics, tracing enabled).",
+      "expected_output": "HOCON config with consumer section, driverProperties, telemetry",
+      "files": [],
+      "assertions": [
+        {"name": "has_consumer_section", "type": "regex", "expected": "consumer\\s*\\{"},
+        {"name": "has_topics", "type": "code_contains", "expected": "topics"},
+        {"name": "has_bootstrap_servers", "type": "code_contains", "expected": "bootstrap.servers"},
+        {"name": "has_env_variable", "type": "regex", "expected": "\\$\\{"},
+        {"name": "has_group_id", "type": "code_contains", "expected": "group.id"},
+        {"name": "has_auto_commit", "type": "code_contains", "expected": "auto.commit"},
+        {"name": "has_telemetry", "type": "code_contains", "expected": "telemetry"},
+        {"name": "has_logging_enabled", "type": "code_contains", "expected": "logging"},
+        {"name": "has_metrics_enabled", "type": "code_contains", "expected": "metrics"},
+        {"name": "has_tracing_enabled", "type": "code_contains", "expected": "tracing"}
+      ]
+    },
+    {
+      "id": 12,
+      "name": "producer-configuration",
+      "prompt": "Write a HOCON configuration for a Kafka producer with: bootstrap.servers from env, acks='all', retries=3, and topic configuration for 'notifications' with topic='notifications'.",
+      "expected_output": "HOCON config with producer section, driverProperties, topic config",
+      "files": [],
+      "assertions": [
+        {"name": "has_producer_section", "type": "regex", "expected": "producer\\s*\\{"},
+        {"name": "has_bootstrap_servers", "type": "code_contains", "expected": "bootstrap.servers"},
+        {"name": "has_acks", "type": "code_contains", "expected": "acks"},
+        {"name": "has_retries", "type": "code_contains", "expected": "retries"},
+        {"name": "has_topic_config", "type": "code_contains", "expected": "topic"}
+      ]
+    },
+    {
+      "id": 13,
+      "name": "skip-record-exception",
+      "prompt": "Create a Kafka consumer that skips messages with the value 'SKIP' using KafkaSkipRecordException. For other values — normal processing.",
+      "expected_output": "Consumer with a SKIP check and throw KafkaSkipRecordException",
+      "files": [],
+      "assertions": [
+        {"name": "has_kafka_listener", "type": "code_contains", "expected": "@KafkaListener"},
+        {"name": "has_skip_check", "type": "code_contains", "expected": "SKIP"},
+        {"name": "throws_skip_exception", "type": "code_contains", "expected": "KafkaSkipRecordException"},
+        {"name": "has_if_condition", "type": "code_contains", "expected": "if"}
+      ]
+    },
+    {
+      "id": 14,
+      "name": "batch-consumer",
+      "prompt": "Create a Kafka consumer that processes batches of messages using ConsumerRecords<K,V>. Iterate over all records in a loop and process each one.",
+      "expected_output": "Method with ConsumerRecords parameter, for-each loop",
+      "files": [],
+      "assertions": [
+        {"name": "has_consumer_records", "type": "code_contains", "expected": "ConsumerRecords"},
+        {"name": "has_loop", "type": "regex", "expected": "(for\\s*\\(|forEach)"},
+        {"name": "has_kafka_listener", "type": "code_contains", "expected": "@KafkaListener"}
+      ]
+    },
+    {
+      "id": 15,
+      "name": "application-module",
+      "prompt": "Create an Application interface for a Kora application with Kafka. Include modules: KafkaModule, JsonModule, HoconConfigModule, LogbackModule. Add a main method with KoraApplication.run.",
+      "expected_output": "@KoraApp interface extending modules, main method",
+      "files": [],
+      "assertions": [
+        {"name": "has_kora_app", "type": "code_contains", "expected": "@KoraApp"},
+        {"name": "has_kafka_module", "type": "code_contains", "expected": "KafkaModule"},
+        {"name": "has_json_module", "type": "code_contains", "expected": "JsonModule"},
+        {"name": "has_config_module", "type": "code_contains", "expected": "HoconConfigModule"},
+        {"name": "has_logback_module", "type": "code_contains", "expected": "LogbackModule"},
+        {"name": "has_main_method", "type": "regex", "expected": "static\\s+void\\s+main"},
+        {"name": "has_kora_run", "type": "code_contains", "expected": "KoraApplication.run"}
+      ]
+    },
+    {
+      "id": 16,
+      "name": "consumer-test",
+      "prompt": "Create a test for a Kafka consumer using Testcontainers. The consumer processes messages from the 'orders' topic. The test must: send a test event, verify that the consumer processed the message via Awaitility.",
+      "expected_output": "Test with @TestcontainersKafka, @KoraAppTest, @ConnectionKafka, event sending, verification via Awaitility",
+      "files": [],
+      "assertions": [
+        {"name": "has_testcontainers_kafka", "type": "code_contains", "expected": "@TestcontainersKafka"},
+        {"name": "has_kora_app_test", "type": "code_contains", "expected": "@KoraAppTest"},
+        {"name": "has_connection_kafka", "type": "code_contains", "expected": "@ConnectionKafka"},
+        {"name": "has_kafka_connection", "type": "code_contains", "expected": "KafkaConnection"},
+        {"name": "has_test_component", "type": "code_contains", "expected": "@TestComponent"},
+        {"name": "has_connection_send", "type": "code_contains", "expected": "connection.send"},
+        {"name": "has_awaitility", "type": "code_contains", "expected": "Awaitility"},
+        {"name": "has_config_modifier", "type": "code_contains", "expected": "KoraAppTestConfigModifier"}
+      ]
+    },
+    {
+      "id": 17,
+      "name": "producer-test",
+      "prompt": "Create a test for a Kafka producer using Testcontainers. The producer sends messages to the 'notifications' topic. The test must: subscribe to the topic, send a message via the producer, verify the received message.",
+      "expected_output": "Test with @TestcontainersKafka, @ConnectionKafka, subscribe, producer.send, assertReceivedAtLeast",
+      "files": [],
+      "assertions": [
+        {"name": "has_testcontainers_kafka", "type": "code_contains", "expected": "@TestcontainersKafka"},
+        {"name": "has_kora_app_test", "type": "code_contains", "expected": "@KoraAppTest"},
+        {"name": "has_connection_kafka", "type": "code_contains", "expected": "@ConnectionKafka"},
+        {"name": "has_subscribe", "type": "regex", "expected": "connection\\.subscribe"},
+        {"name": "has_producer_send", "type": "regex", "expected": "publisher\\.send"},
+        {"name": "has_assert_received", "type": "code_contains", "expected": "assertReceivedAtLeast"},
+        {"name": "has_test_component", "type": "code_contains", "expected": "@TestComponent"}
+      ]
+    },
+    {
+      "id": 18,
+      "name": "json-consumer-test",
+      "prompt": "Create a test for a Kafka consumer with JSON messages. Use JSONObject to create a test event. Send an event with fields id, name, value. Verify processing via Awaitility.",
+      "expected_output": "Test with JSONObject, Event.ofValueAndRandomKey, JSON event with fields",
+      "files": [],
+      "assertions": [
+        {"name": "has_json_object", "type": "code_contains", "expected": "JSONObject"},
+        {"name": "has_put_chain", "type": "regex", "expected": "\\.put\\("},
+        {"name": "has_event_of_value", "type": "code_contains", "expected": "Event.ofValue"},
+        {"name": "has_awaitility", "type": "code_contains", "expected": "Awaitility"},
+        {"name": "has_connection_send", "type": "code_contains", "expected": "connection.send"}
+      ]
+    },
+    {
+      "id": 19,
+      "name": "producer-multiple-messages-test",
+      "prompt": "Create a test that sends multiple messages via a producer and verifies that all were received. Send 5 messages, use assertReceivedAtLeast(5).",
+      "expected_output": "Test with send loop, assertReceivedAtLeast(5)",
+      "files": [],
+      "assertions": [
+        {"name": "has_loop", "type": "regex", "expected": "(for\\s*\\(|for\\s*\\()"},
+        {"name": "has_multiple_send", "type": "regex", "expected": "(send\\(|publisher\\.send)"},
+        {"name": "has_assert_at_least_5", "type": "code_contains", "expected": "assertReceivedAtLeast(5)"},
+        {"name": "has_testcontainers_kafka", "type": "code_contains", "expected": "@TestcontainersKafka"}
+      ]
+    },
+    {
+      "id": 20,
+      "name": "consumer-multiple-topics",
+      "prompt": "Create a Kafka consumer that listens to two topics: 'orders-v1' and 'orders-v2'. The configuration must include both topics in the topics array.",
+      "expected_output": "Consumer with topics = [\"orders-v1\", \"orders-v2\"] in configuration",
+      "files": [],
+      "assertions": [
+        {"name": "has_kafka_listener", "type": "code_contains", "expected": "@KafkaListener"},
+        {"name": "has_topics_array", "type": "regex", "expected": "\\[.*orders-v1.*orders-v2.*\\]"},
+        {"name": "has_multiple_topics", "type": "regex", "expected": "(topics.*=|topics:).*\\["}
+      ]
+    },
+    {
+      "id": 21,
+      "name": "producer-with-headers",
+      "prompt": "Create a Kafka producer that sends messages with headers. The method must accept: key, value, headers. Use Headers from Apache Kafka.",
+      "expected_output": "Method with Headers parameter, sending with headers",
+      "files": [],
+      "assertions": [
+        {"name": "has_kafka_publisher", "type": "code_contains", "expected": "@KafkaPublisher"},
+        {"name": "has_headers_param", "type": "code_contains", "expected": "Headers"},
+        {"name": "imports_kafka_headers", "type": "regex", "expected": "org\\.apache\\.kafka"}
+      ]
+    },
+    {
+      "id": 22,
+      "name": "transactional-producer-usage",
+      "prompt": "Create a service that uses a transactional producer. The method must call transactionalPublisher.inTx() and send two messages within the transaction.",
+      "expected_output": "Service with @Component, inject TransactionalPublisher, inTx() call with lambda",
+      "files": [],
+      "assertions": [
+        {"name": "has_component", "type": "code_contains", "expected": "@Component"},
+        {"name": "has_transactional_publisher", "type": "regex", "expected": "(Transactional.*Publisher|txPublisher)"},
+        {"name": "has_in_tx", "type": "code_contains", "expected": "inTx"},
+        {"name": "has_multiple_sends", "type": "regex", "expected": "(send\\().*(send\\()"}
+      ]
+    },
+    {
+      "id": 23,
+      "name": "rebalance-listener",
+      "prompt": "Create a ConsumerAwareRebalanceListener for handling rebalance events. Implement methods: onPartitionsRevoked and onPartitionsAssigned with logging.",
+      "expected_output": "Class implementing ConsumerAwareRebalanceListener, two methods with partition logging",
+      "files": [],
+      "assertions": [
+        {"name": "implements_rebalance", "type": "code_contains", "expected": "ConsumerAwareRebalanceListener"},
+        {"name": "has_on_revoked", "type": "code_contains", "expected": "onPartitionsRevoked"},
+        {"name": "has_on_assigned", "type": "code_contains", "expected": "onPartitionsAssigned"},
+        {"name": "has_partitions_param", "type": "code_contains", "expected": "Collection<TopicPartition>"},
+        {"name": "has_logging", "type": "regex", "expected": "(log\\.|logger)"}
+      ]
+    },
+    {
+      "id": 24,
+      "name": "kotlin-consumer",
+      "prompt": "Create a Kafka consumer in Kotlin. The class must be @Component, a method with @KafkaListener accepts String value and logs the message.",
+      "expected_output": "Kotlin class with @Component, @KafkaListener method",
+      "files": [],
+      "assertions": [
+        {"name": "has_component", "type": "code_contains", "expected": "@Component"},
+        {"name": "has_kafka_listener", "type": "code_contains", "expected": "@KafkaListener"},
+        {"name": "is_kotlin", "type": "regex", "expected": "(class\\s+\\w+|: \\w+)"},
+        {"name": "has_logging", "type": "regex", "expected": "(log\\.|logger|Logger)"}
+      ]
+    },
+    {
+      "id": 25,
+      "name": "kotlin-producer",
+      "prompt": "Create a Kafka producer interface in Kotlin. Interface with @KafkaPublisher, method send(value: String) with @KafkaPublisher.Topic.",
+      "expected_output": "Kotlin interface with @KafkaPublisher, send method",
+      "files": [],
+      "assertions": [
+        {"name": "has_kafka_publisher", "type": "code_contains", "expected": "@KafkaPublisher"},
+        {"name": "has_topic_annotation", "type": "code_contains", "expected": "@Topic"},
+        {"name": "is_kotlin_interface", "type": "regex", "expected": "interface\\s+\\w+"},
+        {"name": "has_send_method", "type": "regex", "expected": "fun\\s+send"}
+      ]
+    }
+  ]
+}

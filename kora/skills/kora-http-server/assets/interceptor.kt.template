@@ -1,0 +1,70 @@
+package ${package}
+
+import org.slf4j.LoggerFactory
+import ru.tinkoff.kora.common.Component
+import ru.tinkoff.kora.common.Context
+import ru.tinkoff.kora.common.Tag
+import ru.tinkoff.kora.http.server.common.HttpServerInterceptor
+import ru.tinkoff.kora.http.server.common.HttpServerRequest
+import ru.tinkoff.kora.http.server.common.HttpServerResponse
+import ru.tinkoff.kora.http.server.common.InterceptChain
+import ru.tinkoff.kora.http.server.common.HttpServerModule
+import java.util.concurrent.CompletionStage
+
+/**
+ * Global interceptor for ${interceptor_type}.
+ *
+ * Applied to all HTTP controllers via @Tag(HttpServerModule::class).
+ *
+ * Usage pattern:
+ * 1. Before request (before): logging, authentication, rate limiting
+ * 2. chain.process() - continue the chain
+ * 3. After request (after): response logging, metrics
+ *
+ * @see HttpServerInterceptor - interceptor interface
+ * @see Tag - global application
+ */
+@Tag(HttpServerModule::class)
+@Component
+class ${interceptor_name} : HttpServerInterceptor {
+
+    private val logger = LoggerFactory.getLogger(${interceptor_name}::class.java)
+
+    override fun intercept(
+        context: Context,
+        request: HttpServerRequest,
+        chain: InterceptChain
+    ): CompletionStage<HttpServerResponse> {
+        // === BEFORE REQUEST ===
+        val startTime = System.currentTimeMillis()
+        logger.info("HTTP Request: {} {} {}", request.method(), request.path(), request.headers())
+
+        // === CONTINUE CHAIN ===
+        return chain.process(context, request)
+            .thenApply { response ->
+                // === AFTER RESPONSE ===
+                val duration = System.currentTimeMillis() - startTime
+                logger.info(
+                    "HTTP Response: {} {} - {} ({} ms)",
+                    request.method(),
+                    request.path(),
+                    response.status(),
+                    duration
+                )
+                response
+            }
+            .exceptionally { e ->
+                // === ERROR HANDLING ===
+                val duration = System.currentTimeMillis() - startTime
+                logger.error(
+                    "HTTP Error: {} {} - {} ({} ms)",
+                    request.method(),
+                    request.path(),
+                    e.message,
+                    duration,
+                    e
+                )
+                throw java.util.concurrent.CompletionException(e)
+            }
+    }
+}

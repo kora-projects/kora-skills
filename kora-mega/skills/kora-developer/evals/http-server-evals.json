@@ -1,0 +1,182 @@
+{
+  "skill_name": "kora-http-server",
+  "evals": [
+    {
+      "id": 1,
+      "name": "crud-user-api",
+      "prompt": "Create an HTTP controller for a User API in a Kora application. Required endpoints: GET /users/{id} (get user), POST /users (create user), DELETE /users/{id} (delete user). Use JSON request/response. User must have fields: id (String), name (String), email (String).",
+      "expected_output": "HTTP controller with @HttpController, @HttpRoute for 3 endpoints, @Json DTO for User request/response, @Path for path parameters",
+      "files": [],
+      "assertions": [
+        {"name": "has_http_controller_annotation", "type": "code_contains", "expected": "@HttpController"},
+        {"name": "has_component_annotation", "type": "code_contains", "expected": "@Component"},
+        {"name": "has_json_annotations", "type": "code_contains", "expected": "@Json"},
+        {"name": "has_get_endpoint", "type": "code_contains", "expected": "HttpMethod.GET"},
+        {"name": "has_post_endpoint", "type": "code_contains", "expected": "HttpMethod.POST"},
+        {"name": "has_delete_endpoint", "type": "code_contains", "expected": "HttpMethod.DELETE"},
+        {"name": "has_path_parameter", "type": "code_contains", "expected": "@Path"},
+        {"name": "has_user_dto", "type": "regex", "expected": "(record|class)\\s+User"}
+      ]
+    },
+    {
+      "id": 2,
+      "name": "logging-interceptor",
+      "prompt": "Add a global interceptor for logging all HTTP requests in a Kora application. The interceptor must log: request method, URI, execution time, response status code. Use @Tag(HttpServerModule.class) for global application.",
+      "expected_output": "HttpServerInterceptor implementation with logging before/after processing, @Tag(HttpServerModule.class) for global application",
+      "files": [],
+      "assertions": [
+        {"name": "implements_interceptor", "type": "code_contains", "expected": "HttpServerInterceptor"},
+        {"name": "has_global_tag", "type": "code_contains", "expected": "@Tag(HttpServerModule.class)"},
+        {"name": "logs_request_method", "type": "code_contains", "expected": "method()"},
+        {"name": "logs_uri", "type": "code_contains", "expected": "uri()"},
+        {"name": "captures_timing", "type": "regex", "expected": "(System\\.(currentTimeMillis|nanoTime)|Duration)"},
+        {"name": "logs_status_code", "type": "code_contains", "expected": "code()"},
+        {"name": "calls_chain_process", "type": "code_contains", "expected": "chain.process"}
+      ]
+    },
+    {
+      "id": 3,
+      "name": "error-handling",
+      "prompt": "Implement error handling for an HTTP controller in Kora. Required handling: 400 Bad Request for invalid data, 404 Not Found for missing resources, 500 Internal Error for unexpected errors. Use HttpServerResponseException.",
+      "expected_output": "Controller with throw HttpServerResponseException.of(400/404/500), optionally a global error interceptor",
+      "files": [],
+      "assertions": [
+        {"name": "uses_http_server_exception", "type": "code_contains", "expected": "HttpServerResponseException"},
+        {"name": "has_400_handling", "type": "code_contains", "expected": "400"},
+        {"name": "has_404_handling", "type": "code_contains", "expected": "404"},
+        {"name": "has_500_handling", "type": "code_contains", "expected": "500"},
+        {"name": "uses_of_method", "type": "regex", "expected": "HttpServerResponseException\\.of\\("}
+      ]
+    },
+    {
+      "id": 4,
+      "name": "query-parameters",
+      "prompt": "Create a GET /products endpoint for searching products with parameters: category (String, required), minPrice (BigDecimal, optional), maxPrice (BigDecimal, optional), limit (int, default 20), offset (int, default 0). Use @Query annotations.",
+      "expected_output": "Controller with @Query parameters, including required/optional parameters and default values",
+      "files": [],
+      "assertions": [
+        {"name": "has_get_endpoint", "type": "code_contains", "expected": "HttpMethod.GET"},
+        {"name": "has_path_products", "type": "code_contains", "expected": "/products"},
+        {"name": "has_query_annotations", "type": "code_contains", "expected": "@Query"},
+        {"name": "has_category_param", "type": "code_contains", "expected": "category"},
+        {"name": "has_price_params", "type": "regex", "expected": "(minPrice|maxPrice)"},
+        {"name": "has_pagination", "type": "regex", "expected": "(limit|offset)"},
+        {"name": "uses_bigdecimal", "type": "code_contains", "expected": "BigDecimal"}
+      ]
+    },
+    {
+      "id": 5,
+      "name": "request-headers",
+      "prompt": "Create a POST /api/data endpoint that accepts: a JSON body with data, header X-Request-ID (String, required), header X-User-ID (String, optional), header Accept-Language (String, default 'en'). Use @Header annotations.",
+      "expected_output": "Controller with @Header parameters, @Json body, handling of required/optional headers",
+      "files": [],
+      "assertions": [
+        {"name": "has_post_endpoint", "type": "code_contains", "expected": "HttpMethod.POST"},
+        {"name": "has_header_annotations", "type": "code_contains", "expected": "@Header"},
+        {"name": "has_json_body", "type": "code_contains", "expected": "@Json"},
+        {"name": "has_request_id", "type": "code_contains", "expected": "X-Request-ID"},
+        {"name": "has_user_id", "type": "code_contains", "expected": "X-User-ID"},
+        {"name": "has_accept_language", "type": "code_contains", "expected": "Accept-Language"}
+      ]
+    },
+    {
+      "id": 6,
+      "name": "form-data-multipart",
+      "prompt": "Create a POST /upload endpoint for file uploads. The endpoint must accept: a file (multipart/form-data), file name (String), description (String, optional), tags (List<String>). Use HttpServerRequest to handle multipart.",
+      "expected_output": "Controller with multipart/form-data handling, parsing files and form fields",
+      "files": [],
+      "assertions": [
+        {"name": "has_post_endpoint", "type": "code_contains", "expected": "HttpMethod.POST"},
+        {"name": "has_upload_path", "type": "code_contains", "expected": "/upload"},
+        {"name": "uses_http_server_request", "type": "code_contains", "expected": "HttpServerRequest"},
+        {"name": "handles_multipart", "type": "code_contains", "expected": "multipart"},
+        {"name": "has_file_handling", "type": "regex", "expected": "(file|upload|binary)"},
+        {"name": "has_list_tags", "type": "code_contains", "expected": "List<String>"}
+      ]
+    },
+    {
+      "id": 7,
+      "name": "custom-response-mapper",
+      "prompt": "Create a custom HttpServerResponseMapper for XML format. The mapper must serialize an object to XML and set Content-Type: application/xml. Use @ResponseCodeMapper or explicit HttpServerResponse construction.",
+      "expected_output": "Custom response mapper with XML serialization, correct headers",
+      "files": [],
+      "assertions": [
+        {"name": "implements_mapper", "type": "regex", "expected": "(HttpServerResponseMapper|HttpResponseEntity)"},
+        {"name": "has_xml_content_type", "type": "code_contains", "expected": "application/xml"},
+        {"name": "has_xml_serialization", "type": "regex", "expected": "(XML|xml|toXml)"},
+        {"name": "sets_headers", "type": "code_contains", "expected": "HttpHeaders"}
+      ]
+    },
+    {
+      "id": 8,
+      "name": "validation-controller",
+      "prompt": "Create a controller with input validation. POST /users must validate: email (email format), age (18-120), name (non-empty, 2-100 characters). Return 400 with an error description when data is invalid.",
+      "expected_output": "Controller with field validation, 400 response with validation errors",
+      "files": [],
+      "assertions": [
+        {"name": "has_post_endpoint", "type": "code_contains", "expected": "HttpMethod.POST"},
+        {"name": "has_email_validation", "type": "regex", "expected": "(email|@|Email)"},
+        {"name": "has_age_validation", "type": "code_contains", "expected": "age"},
+        {"name": "has_name_validation", "type": "code_contains", "expected": "name"},
+        {"name": "returns_400", "type": "code_contains", "expected": "400"},
+        {"name": "has_validation_errors", "type": "regex", "expected": "(invalid|valid|error)"}
+      ]
+    },
+    {
+      "id": 9,
+      "name": "cors-interceptor",
+      "prompt": "Add a CORS interceptor for the REST API. Allow: origins https://app.example.com and https://admin.example.com, methods GET/POST/PUT/DELETE, headers Content-Type/Authorization, credentials include, maxAge 3600.",
+      "expected_output": "HttpServerInterceptor with CORS headers, correct Access-Control-* response headers",
+      "files": [],
+      "assertions": [
+        {"name": "implements_interceptor", "type": "code_contains", "expected": "HttpServerInterceptor"},
+        {"name": "has_access_control_allow_origin", "type": "code_contains", "expected": "Access-Control-Allow-Origin"},
+        {"name": "has_access_control_allow_methods", "type": "code_contains", "expected": "Access-Control-Allow-Methods"},
+        {"name": "has_access_control_allow_headers", "type": "code_contains", "expected": "Access-Control-Allow-Headers"},
+        {"name": "has_credentials", "type": "code_contains", "expected": "Access-Control-Allow-Credentials"},
+        {"name": "handles_preflight", "type": "regex", "expected": "(OPTIONS|preflight)"}
+      ]
+    },
+    {
+      "id": 10,
+      "name": "async-endpoint",
+      "prompt": "Create an asynchronous GET /reports/{id} endpoint that performs a long-running operation in the background. Use CompletionStage to return the result. On success return 200 with JSON, on error return 500.",
+      "expected_output": "Controller with CompletionStage return type, async processing, error handling",
+      "files": [],
+      "assertions": [
+        {"name": "has_get_endpoint", "type": "code_contains", "expected": "HttpMethod.GET"},
+        {"name": "has_completion_stage", "type": "code_contains", "expected": "CompletionStage"},
+        {"name": "has_json_response", "type": "code_contains", "expected": "@Json"},
+        {"name": "has_async_pattern", "type": "regex", "expected": "(CompletableFuture|supplyAsync|thenApply)"},
+        {"name": "has_error_handling", "type": "regex", "expected": "(exceptionally|handle|whenComplete)"}
+      ]
+    },
+    {
+      "id": 11,
+      "name": "health-check-endpoint",
+      "prompt": "Create a simple health check endpoint GET /health that returns 200 OK with a JSON service status. Also add a readiness check GET /ready that verifies the database connection.",
+      "expected_output": "Simple controller with health/readiness endpoints, JSON response",
+      "files": [],
+      "assertions": [
+        {"name": "has_health_endpoint", "type": "code_contains", "expected": "/health"},
+        {"name": "has_ready_endpoint", "type": "code_contains", "expected": "/ready"},
+        {"name": "has_get_method", "type": "code_contains", "expected": "HttpMethod.GET"},
+        {"name": "returns_json", "type": "code_contains", "expected": "@Json"},
+        {"name": "has_status_check", "type": "regex", "expected": "(status|healthy|ready)"}
+      ]
+    },
+    {
+      "id": 12,
+      "name": "pagination-endpoint",
+      "prompt": "Create a GET /items endpoint with pagination: page (int, default 1), size (int, default 20, max 100), sortBy (String, optional), sortOrder (ASC/DESC, default ASC). The response must include: items array, totalPages, totalElements, currentPage.",
+      "expected_output": "Controller with pagination parameters, response with metadata",
+      "files": [],
+      "assertions": [
+        {"name": "has_get_endpoint", "type": "code_contains", "expected": "HttpMethod.GET"},
+        {"name": "has_pagination_params", "type": "regex", "expected": "(page|size)"},
+        {"name": "has_sorting", "type": "regex", "expected": "(sortBy|sortOrder)"},
+        {"name": "has_response_wrapper", "type": "regex", "expected": "(Page|Pagination|totalPages|totalElements)"}
+      ]
+    }
+  ]
+}

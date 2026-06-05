@@ -1,0 +1,32 @@
+package ${package};
+
+import jakarta.annotation.Nullable;
+import ru.tinkoff.kora.database.common.annotation.Column;
+import ru.tinkoff.kora.database.common.annotation.Id;
+import ru.tinkoff.kora.database.common.annotation.Table;
+
+/**
+ * Entity with composite ID (two-field key).
+ * Composite ID is implemented as a nested record.
+ *
+ * Key patterns:
+ * - Nested record for composite key (ID)
+ * - @Id on the parent field marks it as composite primary key
+ * - ID types: Use ${id1_type} and ${id2_type} (UUID, String, Long, etc.)
+ */
+@Table("${table_name}")
+public record ${entity_name}(
+    @Id ID id,
+    @Column("name") String name,
+    @Column("field1") String field1,
+    @Column("field2") @Nullable String field2
+) {
+    /**
+     * Composite ID class with two fields.
+     */
+    public record ID(${id1_type} ${id1_field}, ${id2_type} ${id2_field}) {
+        public ID() {
+            this(${id1_default}, ${id2_default});
+        }
+    }
+}

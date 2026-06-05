@@ -1,0 +1,6 @@
+@KoraApp
+public interface Application extends GrpcClientModule, HoconConfigModule {
+    static void main(String[] args) {
+        KoraApplication.run(ApplicationGraph::graph);
+    }
+}

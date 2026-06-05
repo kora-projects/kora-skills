@@ -1,0 +1,36 @@
+package com.example;
+
+import ru.tinkoff.kora.application.KoraApplication
+import ru.tinkoff.kora.common.KoraApp
+import ru.tinkoff.kora.config.hocon.HoconConfigModule
+import ru.tinkoff.kora.http.server.undertow.UndertowHttpServerModule
+import ru.tinkoff.kora.json.module.JsonModule
+import ru.tinkoff.kora.logging.logback.LogbackModule
+import ru.tinkoff.kora.validation.module.ValidationModule
+import ru.tinkoff.kora.validation.module.http.server.ViolationExceptionHttpServerResponseMapper
+
+// HTTP Server Application
+@KoraApp
+interface Application :
+    HoconConfigModule,
+    LogbackModule,
+    JsonModule,
+    ValidationModule,
+    UndertowHttpServerModule {
+    companion object {
+        @JvmStatic
+        fun main(args: Array<String>) {
+            KoraApplication.run(ApplicationGraph::graph)
+        }
+    }
+
+    // Custom validation error handler (optional)
+    fun violationExceptionHttpServerResponseMapper(): ViolationExceptionHttpServerResponseMapper {
+        return ViolationExceptionHttpServerResponseMapper { request, exception ->
+            ru.tinkoff.kora.http.server.common.HttpServerResponseException.of(
+                400,
+                exception.message
+            )
+        }
+    }
+}

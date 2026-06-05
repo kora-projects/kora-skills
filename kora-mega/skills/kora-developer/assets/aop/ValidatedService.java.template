@@ -1,0 +1,37 @@
+// Service using @Validate aspect on a method. Class is NOT final → aspect can subclass.
+// Combine with a global ErrorInterceptor (see kora-server) that maps ViolationException to 400.
+// Replace `com.example.app.service` / `com.example.app.dto` with your packages.
+
+package com.example.app.service;
+
+import com.example.app.dto.CreateOrder;
+import com.example.app.dto.Order;
+import ru.tinkoff.kora.common.Component;
+import ru.tinkoff.kora.validation.common.Validator;
+import ru.tinkoff.kora.validation.common.annotation.NotBlank;
+import ru.tinkoff.kora.validation.common.annotation.Valid;
+import ru.tinkoff.kora.validation.common.annotation.Validate;
+
+import java.util.UUID;
+
+@Component
+public class OrdersService {                          // NOT final
+
+    private final Validator<CreateOrder> bodyValidator;       // auto-injected from @Valid
+
+    public OrdersService(Validator<CreateOrder> bodyValidator) {
+        this.bodyValidator = bodyValidator;
+    }
+
+    // Approach 1 — declarative: @Validate on the method aspect-validates args and return value.
+    @Validate
+    public Order create(@Valid CreateOrder body, @NotBlank String tenantId) {
+        return new Order(UUID.randomUUID(), body.sku(), body.quantity(), tenantId);
+    }
+
+    // Approach 2 — imperative: control over failure handling, fail-fast, etc.
+    public Order createManual(CreateOrder body) {
+        bodyValidator.validateAndThrow(body);          // throws ViolationException
+        return new Order(UUID.randomUUID(), body.sku(), body.quantity(), "default");
+    }
+}

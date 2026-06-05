@@ -1,0 +1,337 @@
+{
+  "skill_name": "kora-grpc",
+  "evals": [
+    {
+      "id": 1,
+      "name": "grpc-server-basic-setup",
+      "prompt": "Create a gRPC server in a Kora application. The service should be named UserService with a GetUser method. Use the grpc-server module.",
+      "expected_output": "Project with build.gradle (protobuf plugin, grpc-server dependency), Application.java with GrpcServerModule, application.conf with grpcServer.port configuration, UserService handler extending UserServiceGrpc.UserServiceImplBase with @Component annotation",
+      "files": [],
+      "assertions": [
+        {
+          "name": "build-gradle-has-protobuf-plugin",
+          "type": "contains",
+          "target": "build.gradle",
+          "content": "com.google.protobuf",
+          "description": "build.gradle contains protobuf plugin 0.9.4"
+        },
+        {
+          "name": "build-gradle-has-grpc-server",
+          "type": "contains",
+          "target": "build.gradle",
+          "content": "grpc-server",
+          "description": "build.gradle contains grpc-server dependency"
+        },
+        {
+          "name": "application-has-grpc-server-module",
+          "type": "contains",
+          "target": "Application.java",
+          "content": "GrpcServerModule",
+          "description": "Application interface extends GrpcServerModule"
+        },
+        {
+          "name": "config-has-grpc-server-port",
+          "type": "contains",
+          "target": "application.conf",
+          "content": "grpcServer",
+          "description": "application.conf contains grpcServer block"
+        },
+        {
+          "name": "handler-extends-impl-base",
+          "type": "contains",
+          "target": "UserService.java",
+          "content": "UserServiceGrpc.UserServiceImplBase",
+          "description": "Handler extends UserServiceGrpc.UserServiceImplBase"
+        },
+        {
+          "name": "handler-has-component",
+          "type": "contains",
+          "target": "UserService.java",
+          "content": "@Component",
+          "description": "Handler is annotated with @Component"
+        }
+      ]
+    },
+    {
+      "id": 2,
+      "name": "grpc-client-basic-setup",
+      "prompt": "Create a gRPC client in a Kora application to connect to the PaymentService. Use the grpc-client module.",
+      "expected_output": "Project with build.gradle (protobuf plugin, grpc-client dependency), Application.java with GrpcClientModule, application.conf with grpcClient.PaymentService.url configuration, client wrapper class with injected stub",
+      "files": [],
+      "assertions": [
+        {
+          "name": "build-gradle-has-grpc-client",
+          "type": "contains",
+          "target": "build.gradle",
+          "content": "grpc-client",
+          "description": "build.gradle contains grpc-client dependency"
+        },
+        {
+          "name": "application-has-grpc-client-module",
+          "type": "contains",
+          "target": "Application.java",
+          "content": "GrpcClientModule",
+          "description": "Application interface extends GrpcClientModule"
+        },
+        {
+          "name": "config-has-grpc-client-url",
+          "type": "contains",
+          "target": "application.conf",
+          "content": "grpcClient.PaymentService",
+          "description": "application.conf contains grpcClient.PaymentService.url"
+        },
+        {
+          "name": "client-has-tag-annotation",
+          "type": "contains",
+          "target": "PaymentServiceClient.java",
+          "content": "@Tag(PaymentServiceGrpc.class)",
+          "description": "Client wrapper uses @Tag for stub injection"
+        }
+      ]
+    },
+    {
+      "id": 3,
+      "name": "grpc-server-interceptor",
+      "prompt": "Add a custom ServerInterceptor for logging all gRPC calls to an existing gRPC server.",
+      "expected_output": "Server interceptor class implementing ServerInterceptor with @Component annotation, interceptCall method with logging logic",
+      "files": [],
+      "assertions": [
+        {
+          "name": "interceptor-implements-server-interceptor",
+          "type": "contains",
+          "target": "GrpcLoggingInterceptor.java",
+          "content": "implements ServerInterceptor",
+          "description": "Interceptor implements ServerInterceptor"
+        },
+        {
+          "name": "interceptor-has-component",
+          "type": "contains",
+          "target": "GrpcLoggingInterceptor.java",
+          "content": "@Component",
+          "description": "Interceptor is annotated with @Component"
+        },
+        {
+          "name": "intercept-call-method",
+          "type": "contains",
+          "target": "GrpcLoggingInterceptor.java",
+          "content": "interceptCall",
+          "description": "interceptCall method is implemented"
+        }
+      ]
+    },
+    {
+      "id": 4,
+      "name": "grpc-client-interceptor",
+      "prompt": "Add a custom ClientInterceptor for adding an Authorization header to all gRPC requests of the AuthService client.",
+      "expected_output": "Client interceptor class implementing ClientInterceptor with @Tag(AuthServiceGrpc.class) and @Component annotations, interceptCall method that adds authorization header",
+      "files": [],
+      "assertions": [
+        {
+          "name": "interceptor-implements-client-interceptor",
+          "type": "contains",
+          "target": "AuthClientInterceptor.java",
+          "content": "implements ClientInterceptor",
+          "description": "Interceptor implements ClientInterceptor"
+        },
+        {
+          "name": "interceptor-has-tag",
+          "type": "contains",
+          "target": "AuthClientInterceptor.java",
+          "content": "@Tag(AuthServiceGrpc.class)",
+          "description": "Interceptor has @Tag(AuthServiceGrpc.class)"
+        },
+        {
+          "name": "interceptor-has-component",
+          "type": "contains",
+          "target": "AuthClientInterceptor.java",
+          "content": "@Component",
+          "description": "Interceptor is annotated with @Component"
+        }
+      ]
+    },
+    {
+      "id": 5,
+      "name": "grpc-server-reflection",
+      "prompt": "Enable gRPC Server Reflection for debugging via gRPC CLI tools.",
+      "expected_output": "Added grpc-services:1.62.2 dependency, grpcServer.reflectionEnabled = true in application.conf",
+      "files": [],
+      "assertions": [
+        {
+          "name": "build-gradle-has-grpc-services",
+          "type": "contains",
+          "target": "build.gradle",
+          "content": "grpc-services",
+          "description": "build.gradle contains grpc-services dependency"
+        },
+        {
+          "name": "config-has-reflection-enabled",
+          "type": "contains",
+          "target": "application.conf",
+          "content": "reflectionEnabled = true",
+          "description": "application.conf contains reflectionEnabled = true"
+        }
+      ]
+    },
+    {
+      "id": 6,
+      "name": "grpc-server-telemetry-config",
+      "prompt": "Configure telemetry for the gRPC server: enable logging, metrics with SLO, and tracing.",
+      "expected_output": "grpcServer.telemetry block with logging.enabled = true, metrics.enabled = true with slo array, tracing.enabled = true",
+      "files": [],
+      "assertions": [
+        {
+          "name": "telemetry-logging-enabled",
+          "type": "contains",
+          "target": "application.conf",
+          "content": "logging.enabled = true",
+          "description": "telemetry.logging.enabled = true"
+        },
+        {
+          "name": "telemetry-metrics-enabled",
+          "type": "contains",
+          "target": "application.conf",
+          "content": "metrics.enabled = true",
+          "description": "telemetry.metrics.enabled = true"
+        },
+        {
+          "name": "telemetry-metrics-has-slo",
+          "type": "contains",
+          "target": "application.conf",
+          "content": "slo",
+          "description": "metrics contains SLO array"
+        },
+        {
+          "name": "telemetry-tracing-enabled",
+          "type": "contains",
+          "target": "application.conf",
+          "content": "tracing.enabled = true",
+          "description": "telemetry.tracing.enabled = true"
+        }
+      ]
+    },
+    {
+      "id": 7,
+      "name": "grpc-client-timeout-config",
+      "prompt": "Configure timeout and keepAlive for the gRPC client OrderService.",
+      "expected_output": "grpcClient.OrderService block with timeout = \"10s\", keepAliveTime and keepAliveTimeout settings",
+      "files": [],
+      "assertions": [
+        {
+          "name": "config-has-timeout",
+          "type": "contains",
+          "target": "application.conf",
+          "content": "timeout",
+          "description": "grpcClient.OrderService contains timeout"
+        },
+        {
+          "name": "config-has-keepalive",
+          "type": "contains",
+          "target": "application.conf",
+          "content": "keepAlive",
+          "description": "grpcClient.OrderService contains keepAlive settings"
+        }
+      ]
+    },
+    {
+      "id": 8,
+      "name": "grpc-bidirectional-streaming",
+      "prompt": "Create a gRPC service with a bidirectional streaming Chat method for real-time chat.",
+      "expected_output": "Proto definition with stream keyword for both request and response, server handler with StreamObserver for streaming, client wrapper with streaming support",
+      "files": [],
+      "assertions": [
+        {
+          "name": "proto-has-stream-keyword",
+          "type": "contains",
+          "target": "service.proto",
+          "content": "stream",
+          "description": "Proto file contains stream keyword"
+        },
+        {
+          "name": "handler-uses-stream-observer",
+          "type": "contains",
+          "target": "ChatService.java",
+          "content": "StreamObserver",
+          "description": "Handler uses StreamObserver"
+        }
+      ]
+    },
+    {
+      "id": 9,
+      "name": "grpc-error-handling",
+      "prompt": "Add error handling to a gRPC server using StatusRuntimeException.",
+      "expected_output": "Server handler with try-catch block throwing StatusRuntimeException with appropriate Status codes (NOT_FOUND, INVALID_ARGUMENT, etc.)",
+      "files": [],
+      "assertions": [
+        {
+          "name": "handler-has-status-exception",
+          "type": "contains",
+          "target": "UserService.java",
+          "content": "StatusRuntimeException",
+          "description": "Handler uses StatusRuntimeException"
+        },
+        {
+          "name": "handler-has-status-codes",
+          "type": "regex",
+          "target": "UserService.java",
+          "pattern": "Status\\.(NOT_FOUND|INVALID_ARGUMENT|INTERNAL|PERMISSION_DENIED)",
+          "description": "Handler uses Status codes"
+        }
+      ]
+    },
+    {
+      "id": 10,
+      "name": "kotlin-grpc-server",
+      "prompt": "Create a gRPC server in Kotlin. UserService with a GetUser method. Use the grpc-server module.",
+      "expected_output": "build.gradle.kts with protobuf plugin, Application.kt with GrpcServerModule, UserService.kt handler with @Component",
+      "files": [],
+      "language": "kotlin",
+      "assertions": [
+        {
+          "name": "build-kts-has-protobuf-plugin",
+          "type": "contains",
+          "target": "build.gradle.kts",
+          "content": "com.google.protobuf",
+          "description": "build.gradle.kts contains protobuf plugin"
+        },
+        {
+          "name": "application-kts-has-grpc-server",
+          "type": "contains",
+          "target": "Application.kt",
+          "content": "GrpcServerModule",
+          "description": "Application interface extends GrpcServerModule"
+        },
+        {
+          "name": "handler-kts-has-component",
+          "type": "contains",
+          "target": "UserService.kt",
+          "content": "@Component",
+          "description": "Handler is annotated with @Component"
+        }
+      ]
+    },
+    {
+      "id": 11,
+      "name": "kotlin-grpc-client",
+      "prompt": "Create a gRPC client in Kotlin for the PaymentService.",
+      "expected_output": "build.gradle.kts with grpc-client, Application.kt with GrpcClientModule, PaymentServiceClient.kt with @Tag",
+      "files": [],
+      "language": "kotlin",
+      "assertions": [
+        {
+          "name": "build-kts-has-grpc-client",
+          "type": "contains",
+          "target": "build.gradle.kts",
+          "content": "grpc-client",
+          "description": "build.gradle.kts contains grpc-client"
+        },
+        {
+          "name": "client-kts-has-tag",
+          "type": "contains",
+          "target": "PaymentServiceClient.kt",
+          "content": "@Tag",
+          "description": "Client has @Tag annotation"
+        }
+      ]
+    }
+  ]
+}

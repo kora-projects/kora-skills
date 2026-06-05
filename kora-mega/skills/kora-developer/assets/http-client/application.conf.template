@@ -1,0 +1,113 @@
+# Kora HTTP Client Configuration
+# HOCON format for ${client_name} client
+
+httpClient {
+  # Client-specific configuration
+  ${client_name} {
+    # Base URL for the API
+    basePath = "${base_url}"
+
+    # Request timeout (optional, default: 30s)
+    requestTimeout = "${request_timeout}"
+
+    # Connection timeout (optional, default: 10s)
+    connectTimeout = "${connect_timeout}"
+
+    # Socket timeout (optional, default: 30s)
+    socketTimeout = "${socket_timeout}"
+
+    # Follow redirects (optional, default: true)
+    followRedirects = true
+
+    # Max connections in pool (optional, default: 100)
+    maxConnections = 100
+
+    # Connection idle timeout (optional, default: 60s)
+    connectionIdleTimeout = "60s"
+
+    # Telemetry configuration
+    telemetry {
+      # Request/response logging
+      logging {
+        enabled = true
+        # Log level: INFO, DEBUG, TRACE
+        level = "DEBUG"
+        # Log request/response bodies (use with caution)
+        logBody = false
+        # Max body size to log (truncate larger bodies)
+        maxBodySizeToLog = "10KB"
+      }
+
+      # Metrics collection
+      metrics {
+        enabled = true
+        # Metric prefix for monitoring systems
+        prefix = "http.client.${client_name}"
+      }
+
+      # Distributed tracing
+      tracing {
+        enabled = true
+        # Propagate trace context to downstream services
+        propagateContext = true
+      }
+    }
+
+    # Authentication configuration (choose one)
+
+    # Basic Auth
+    # auth {
+    #   type = "basic"
+    #   username = "${auth_username}"
+    #   password = "${auth_password}"
+    # }
+
+    # API Key Auth
+    # auth {
+    #   type = "apikey"
+    #   apiKey = "${auth_api_key}"
+    #   headerName = "X-API-Key"
+    # }
+
+    # Bearer Token Auth
+    # auth {
+    #   type = "bearer"
+    #   token = "${auth_bearer_token}"
+    # }
+
+    # OAuth2 Client Credentials
+    # auth {
+    #   type = "oauth2"
+    #   tokenEndpoint = "https://auth.example.com/oauth/token"
+    #   clientId = "${oauth_client_id}"
+    #   clientSecret = "${oauth_client_secret}"
+    #   scope = "api:read api:write"
+    # }
+  }
+
+  # Global default configuration (applies to all clients)
+  defaults {
+    requestTimeout = "30s"
+    connectTimeout = "10s"
+    maxConnections = 100
+
+    telemetry {
+      logging {
+        enabled = false
+      }
+      metrics {
+        enabled = true
+      }
+      tracing {
+        enabled = true
+      }
+    }
+  }
+}
+
+# Environment variable substitution examples:
+# basePath = ${${client_name}_BASE_URL}
+# auth {
+#   username = ${${client_name}_USERNAME}
+#   password = ${${client_name}_PASSWORD}
+# }

@@ -1,0 +1,71 @@
+package ${package}
+
+import ru.tinkoff.kora.common.Context
+import ru.tinkoff.kora.http.client.common.HttpClientRequest
+import ru.tinkoff.kora.http.client.common.HttpClientResponse
+import ru.tinkoff.kora.http.client.common.HttpClientInterceptor
+import ru.tinkoff.kora.http.client.common.InterceptChain
+import java.util.function.Supplier
+
+/**
+ * Bearer Token HttpClientInterceptor for authentication.
+ *
+ * Adds the Authorization: Bearer <token> header to every request.
+ *
+ * Supports dynamic token retrieval via Supplier.
+ *
+ * Configuration (application.conf):
+ * ```hocon
+ * httpClient {
+ *   ${client_name} {
+ *     auth {
+ *       token = "your-bearer-token-here"
+ *       # or for OAuth:
+ *       # tokenEndpoint = "https://auth.example.com/oauth/token"
+ *       # clientId = "client-id"
+ *       # clientSecret = "client-secret"
+ *     }
+ *   }
+ * }
+ * ```
+ *
+ * Module registration:
+ * ```kotlin
+ * @Module
+ * interface BearerAuthModule {
+ *     @ConfigSource("httpClient.${client_name}.auth")
+ *     interface BearerAuthConfig {
+ *         val token: String
+ *     }
+ *
+ *     @DefaultComponent
+ *     fun bearerAuthInterceptor(config: BearerAuthConfig): BearerAuthHttpClientInterceptor {
+ *         return BearerAuthHttpClientInterceptor { config.token }
+ *     }
+ * }
+ * ```
+ */
+class BearerAuthHttpClientInterceptor(
+    private val tokenSupplier: Supplier<String>
+) : HttpClientInterceptor {
+
+    /**
+     * Creates an interceptor with a static token.
+     */
+    constructor(token: String) : this(Supplier { token })
+
+    override fun intercept(
+        context: Context,
+        request: HttpClientRequest,
+        chain: InterceptChain
+    ): CompletionStage<HttpClientResponse> {
+        val token = tokenSupplier.get()
+
+        // Add Authorization header to every request
+        val authRequest = request.toBuilder()
+            .header("Authorization", "Bearer $token")
+            .build()
+
+        return chain.process(context, authRequest)
+    }
+}

@@ -1,0 +1,93 @@
+name: Validate Skills
+
+on:
+  push:
+    paths:
+      - '../../skills-docs/**'
+      - 'kora-*/**'
+  pull_request:
+    paths:
+      - '../../skills-docs/**'
+      - 'kora-*/**'
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.x'
+
+      - name: Validate skill structure
+        run: |
+          echo "🔍 Validating Kora skills structure..."
+
+          # Check for main SKILL.md
+          if [ ! -f "SKILL.md" ] && [ ! -f "skills/kora/SKILL.md" ]; then
+            echo "❌ ERROR: Main SKILL.md not found"
+            exit 1
+          fi
+
+          # Check for required files in main skill
+          SKILL_DIR="skills/kora"
+          if [ -d "$SKILL_DIR" ]; then
+            for file in SKILL.md skill.json README.md install.sh; do
+              if [ ! -f "$SKILL_DIR/$file" ]; then
+                echo "❌ ERROR: $SKILL_DIR/$file not found"
+                exit 1
+              fi
+            done
+          fi
+
+          # Check sub-skills
+          SUB_SKILL_COUNT=0
+          for skill_dir in kora-*/; do
+            if [ -d "$skill_dir" ]; then
+              SUB_SKILL_COUNT=$((SUB_SKILL_COUNT + 1))
+
+              # Check for SKILL.md in each sub-skill
+              if [ ! -f "$skill_dir/SKILL.md" ]; then
+                echo "❌ ERROR: $skill_dir/SKILL.md not found"
+                exit 1
+              fi
+
+              echo "✅ Validated: $skill_dir"
+            fi
+          done
+
+          echo ""
+          echo "✅ All skills validated successfully!"
+          echo "📊 Total sub-skills: $SUB_SKILL_COUNT"
+
+      - name: Validate skill.json
+        run: |
+          echo "🔍 Validating skill.json..."
+
+          SKILL_JSON="skills/kora/skill.json"
+          if [ ! -f "$SKILL_JSON" ]; then
+            SKILL_JSON="skill.json"
+          fi
+
+          if [ -f "$SKILL_JSON" ]; then
+            # Check if valid JSON
+            python -m json.tool "$SKILL_JSON" > /dev/null
+            if [ $? -eq 0 ]; then
+              echo "✅ skill.json is valid JSON"
+
+              # Check required fields
+              if grep -q '"name"' "$SKILL_JSON" && \
+                 grep -q '"version"' "$SKILL_JSON" && \
+                 grep -q '"description"' "$SKILL_JSON"; then
+                echo "✅ Required fields present"
+              else
+                echo "❌ ERROR: Required fields missing in skill.json"
+                exit 1
+              fi
+            else
+              echo "❌ ERROR: skill.json is not valid JSON"
+              exit 1
+            fi
+          fi

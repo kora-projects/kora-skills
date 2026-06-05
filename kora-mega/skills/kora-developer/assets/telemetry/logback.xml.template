@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<configuration>
+    <appender name="STDOUT" class="ch.qos.logback.core.ConsoleAppender">
+        <encoder><pattern>%d{HH:mm:ss.SSS} %-5level [%thread] %logger{36} - %msg%n</pattern></encoder>
+    </appender>
+
+    <appender name="ASYNC" class="ru.tinkoff.kora.logging.logback.KoraAsyncAppender">
+        <appender-ref ref="STDOUT"/>
+        <bufferSize>8192</bufferSize>
+        <flushThreshold>7000</flushThreshold>
+    </appender>
+
+    <logger name="ru.tinkoff.kora" level="INFO"/>
+    <logger name="ru.tinkoff.kora.http.server.common.telemetry" level="INFO"/>
+    <logger name="ru.tinkoff.kora.http.client.common.telemetry" level="INFO"/>
+    <logger name="ru.tinkoff.kora.grpc" level="INFO"/>
+    <logger name="ru.tinkoff.kora.database" level="INFO"/>
+    <logger name="${package}" level="DEBUG"/>
+
+    <root level="INFO"><appender-ref ref="ASYNC"/></root>
+</configuration>

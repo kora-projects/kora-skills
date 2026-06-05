@@ -1,0 +1,25 @@
+package ${package};
+
+import ${proto_package}.${service_name}Grpc;
+import ${proto_package}.${request_class};
+import ${proto_package}.${response_class};
+import ru.tinkoff.kora.annotation.processor.component.Component;
+
+/**
+ * gRPC service implementation for ${service_name}.
+ * Extend the generated ${service_name}ImplBase and annotate with @Component.
+ */
+@Component
+public class ${service_name}Service extends ${service_name}Grpc.${service_name}ImplBase {
+
+    @Override
+    public void ${method_name}(${request_class} request, StreamObserver<${response_class}> responseObserver) {
+        // TODO: Implement business logic
+        ${response_class} response = ${response_class}.newBuilder()
+            // .setField(value)
+            .build();
+
+        responseObserver.onNext(response);
+        responseObserver.onCompleted();
+    }
+}

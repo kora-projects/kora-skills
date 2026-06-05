@@ -1,0 +1,30 @@
+package `${package}`
+
+import ru.tinkoff.kora.database.common.annotation.Column
+import ru.tinkoff.kora.database.common.annotation.Id
+import ru.tinkoff.kora.database.common.annotation.Table
+
+/**
+ * Entity with composite ID (two-field key) for Cassandra.
+ * Composite ID is implemented as a nested data class.
+ *
+ * Key patterns:
+ * - Nested data class for composite key (ID)
+ * - @Id on the parent field marks it as composite primary key
+ * - ID types: Use ${id1_type} and ${id2_type} (UUID, String, Long, etc.)
+ */
+@Table("`${table_name}`")
+data class ${entity_name}(
+    @Id val id: ID,
+    @Column("name") val name: String,
+    @Column("field1") val field1: String,
+    @Column("field2") val field2: String? = null
+) {
+    /**
+     * Composite ID class with two fields.
+     */
+    data class ID(
+        val `${id1_field}`: `${id1_type}`,
+        val `${id2_field}`: `${id2_type}`
+    )
+}

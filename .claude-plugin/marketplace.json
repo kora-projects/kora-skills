@@ -1,0 +1,68 @@
+{
+  "name": "kora",
+  "owner": {
+    "name": "Kora Framework",
+    "url": "https://github.com/kora-projects"
+  },
+  "description": "Kora Framework — fastest JVM framework with compile-time DI. Zero reflection, zero proxies, zero runtime magic. Simple & easy: HTTP/REST, JDBC/Redis/Kafka, OpenAPI, validation, caching, resilience, scheduling, observability.",
+  "metadata": {
+    "description": "15 production-ready Kora Framework skills: compile-time DI, HTTP server/client, database, Kafka, gRPC, S3, OpenAPI, telemetry, caching, resilience, scheduling, validation, mapstruct.",
+    "version": "1.0.0"
+  },
+  "plugins": [
+    {
+      "name": "kora",
+      "source": "./kora",
+      "description": "Kora Framework — fastest JVM framework with compile-time DI. Zero reflection, zero proxies, zero runtime magic. Simple & easy: HTTP/REST, JDBC/Redis/Kafka, OpenAPI, validation, caching, resilience, scheduling, observability.",
+      "version": "1.0.0",
+      "author": {
+        "name": "Kora Framework"
+      },
+      "keywords": [
+        "kora",
+        "java",
+        "jvm",
+        "framework",
+        "compile-time-di",
+        "http",
+        "database",
+        "kafka",
+        "grpc",
+        "openapi",
+        "telemetry",
+        "caching",
+        "resilience",
+        "microservices"
+      ],
+      "category": "development"
+    },
+    {
+      "name": "kora-mega",
+      "source": "./kora-mega",
+      "description": "Kora Mega — unified mega-skill combining all 14 Kora sub-skills into one comprehensive SKILL.md. All modules in a single file.",
+      "version": "1.0.0",
+      "author": {
+        "name": "Kora Framework"
+      },
+      "keywords": [
+        "kora",
+        "mega-skill",
+        "all-in-one",
+        "java",
+        "jvm",
+        "framework",
+        "compile-time-di",
+        "http",
+        "database",
+        "kafka",
+        "grpc",
+        "openapi",
+        "telemetry",
+        "caching",
+        "resilience",
+        "microservices"
+      ],
+      "category": "development"
+    }
+  ]
+}

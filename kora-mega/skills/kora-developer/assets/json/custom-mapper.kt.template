@@ -1,0 +1,65 @@
+package ${package}
+
+import ru.tinkoff.kora.json.common.JsonReader
+import ru.tinkoff.kora.json.common.JsonWriter
+import ru.tinkoff.kora.common.Module
+import ru.tinkoff.kora.common.DefaultComponent
+${imports}
+
+/**
+ * Module with custom JSON mappers for ${type_name}.
+ *
+ * <p>Provides JsonReader and JsonWriter for types that cannot use the @Json annotation:</p>
+ * <ul>
+ *   <li>Third-party classes without @Json</li>
+ *   <li>Custom serialization for built-in types</li>
+ *   <li>Specific formats (date/time, money, etc.)</li>
+ * </ul>
+ *
+ * <p>Usage:</p>
+ * <pre>
+ * {@code
+ * @KoraApp
+ * interface Application : CustomJsonMapperModule {}
+ * }
+ * </pre>
+ */
+@Module
+interface ${mapper_module_name} {
+
+    /**
+     * JsonReader for ${type_name}.
+     *
+     * @param parser JSON parser
+     * @return deserialized value
+     */
+    @DefaultComponent
+    fun ${reader_method_name}(): JsonReader<${type_name}> {
+        return JsonReader { parser ->
+            // TODO: implement deserialization
+            // parser.nextToken() // skip START_OBJECT
+            // while (parser.nextToken() != JsonToken.END_OBJECT) {
+            //     val fieldName = parser.currentName()
+            //     parser.nextToken()
+            //     // read value by fieldName
+            // }
+            ${default_value}
+        }
+    }
+
+    /**
+     * JsonWriter for ${type_name}.
+     *
+     * @param generator JSON generator
+     * @param value value to serialize
+     */
+    @DefaultComponent
+    fun ${writer_method_name}(): JsonWriter<${type_name}> {
+        return JsonWriter { generator, value ->
+            // TODO: implement serialization
+            // generator.writeStartObject()
+            // generator.writeStringField("field", value.field())
+            // generator.writeEndObject()
+        }
+    }
+}

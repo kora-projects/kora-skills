@@ -1,0 +1,181 @@
+package ${package};
+
+import static io.rest-assured.RestAssured.given;
+import static org.hamcrest.Matchers.*;
+
+import io.restassured.http.ContentType;
+import org.junit.jupiter.api.AfterAll;
+import org.junit.jupiter.api.BeforeAll;
+import org.junit.jupiter.api.Test;
+
+/**
+ * Black-box tests with RestAssured for the HTTP API.
+ *
+ * Runs the application in a Docker container (AppContainer) and tests it via the HTTP API.
+ * Uses RestAssured for concise BDD-style tests with JSON assertions.
+ *
+ * Usage options:
+ * - Without a DB: remove the @TestcontainersPostgreSQL annotation and the connection field
+ * - With a DB: add @TestcontainersPostgreSQL and configure the connection
+ *
+ * @see <a href="https://rest-assured.io/">RestAssured Documentation</a>
+ */
+class ${className} {
+
+    private static final AppContainer container = AppContainer.build();
+
+    @BeforeAll
+    static void setup() {
+        // For applications with a DB, uncomment:
+        // container.withEnv(Map.of(
+        //     "DB_URL", "jdbc:postgresql://localhost:5432/test",
+        //     "DB_USER", "postgres",
+        //     "DB_PASS", "postgres"
+        // ));
+        container.start();
+    }
+
+    @AfterAll
+    static void cleanup() {
+        container.stop();
+    }
+
+    @Test
+    void shouldGetHealth() {
+        given()
+                .baseUri(container.getURI().toString())
+        .when()
+                .get("/system/health")
+        .then()
+                .statusCode(200);
+    }
+
+    @Test
+    void shouldCreateAndGetEntity() {
+        // Arrange
+        var createBody = """
+            {
+                "name": "test-entity",
+                "description": "Test description"
+            }
+            """;
+
+        // Act & Assert - Create
+        var entityId = given()
+                .baseUri(container.getURI().toString())
+                .contentType(ContentType.JSON)
+                .body(createBody)
+        .when()
+                .post("/api/entities")
+        .then()
+                .statusCode(200)
+                .body("id", notNullValue())
+                .body("name", equalTo("test-entity"))
+                .extract()
+                .path("id");
+
+        // Act & Assert - Get
+        given()
+                .baseUri(container.getURI().toString())
+                .pathParam("id", entityId)
+        .when()
+                .get("/api/entities/{id}")
+        .then()
+                .statusCode(200)
+                .body("id", equalTo(entityId))
+                .body("name", equalTo("test-entity"));
+    }
+
+    @Test
+    void shouldUpdateEntity() {
+        // Arrange - Create entity first
+        var createBody = """
+            {
+                "name": "original",
+                "description": "Original description"
+            }
+            """;
+
+        var entityId = given()
+                .baseUri(container.getURI().toString())
+                .contentType(ContentType.JSON)
+                .body(createBody)
+        .when()
+                .post("/api/entities")
+        .then()
+                .statusCode(200)
+                .extract().path("id");
+
+        // Act - Update
+        var updateBody = """
+            {
+                "name": "updated",
+                "description": "Updated description"
+            }
+            """;
+
+        // Assert
+        given()
+                .baseUri(container.getURI().toString())
+                .pathParam("id", entityId)
+                .contentType(ContentType.JSON)
+                .body(updateBody)
+        .when()
+                .put("/api/entities/{id}")
+        .then()
+                .statusCode(200)
+                .body("id", equalTo(entityId))
+                .body("name", equalTo("updated"))
+                .body("description", equalTo("Updated description"));
+    }
+
+    @Test
+    void shouldDeleteEntity() {
+        // Arrange - Create entity first
+        var createBody = """
+            {
+                "name": "to-delete",
+                "description": "Will be deleted"
+            }
+            """;
+
+        var entityId = given()
+                .baseUri(container.getURI().toString())
+                .contentType(ContentType.JSON)
+                .body(createBody)
+        .when()
+                .post("/api/entities")
+        .then()
+                .statusCode(200)
+                .extract().path("id");
+
+        // Act - Delete
+        given()
+                .baseUri(container.getURI().toString())
+                .pathParam("id", entityId)
+        .when()
+                .delete("/api/entities/{id}")
+        .then()
+                .statusCode(204);
+
+        // Assert - Verify deleted
+        given()
+                .baseUri(container.getURI().toString())
+                .pathParam("id", entityId)
+        .when()
+                .get("/api/entities/{id}")
+        .then()
+                .statusCode(404);
+    }
+
+    @Test
+    void shouldReturn404ForNotFoundEntity() {
+        given()
+                .baseUri(container.getURI().toString())
+                .pathParam("id", 99999)
+        .when()
+                .get("/api/entities/{id}")
+        .then()
+                .statusCode(404);
+    }
+}

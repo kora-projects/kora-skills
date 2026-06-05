@@ -1,0 +1,15 @@
+package ${package}
+
+import ru.tinkoff.kora.json.common.annotation.Json
+
+/**
+ * DTO for a create/update request for ${entity_name}.
+ *
+ * @property name name
+ * @property email email
+ */
+@Json
+data class ${request_name}(
+    val name: String,
+    val email: String
+)

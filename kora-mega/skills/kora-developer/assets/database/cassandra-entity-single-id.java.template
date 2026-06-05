@@ -1,0 +1,26 @@
+package ${package};
+
+import jakarta.annotation.Nullable;
+import ru.tinkoff.kora.database.common.annotation.Column;
+import ru.tinkoff.kora.database.common.annotation.Id;
+import ru.tinkoff.kora.database.common.annotation.Table;
+
+/**
+ * Entity with single-field ID.
+ * For UUID IDs, use UUID type with import java.util.UUID.
+ * For String IDs, change to String type.
+ * For numeric IDs, use Long type.
+ *
+ * Key annotations:
+ * - @Table: Maps to Cassandra table
+ * - @Id: Marks primary key field
+ * - @Column: Maps field to column name
+ * - @Nullable: For nullable fields
+ */
+@Table("${table_name}")
+public record ${entity_name}(
+    @Column("id") @Id ${id_type} id,
+    @Column("field1") String field1,
+    @Column("field2") String field2,
+    @Column("field3") @Nullable String field3
+) {}

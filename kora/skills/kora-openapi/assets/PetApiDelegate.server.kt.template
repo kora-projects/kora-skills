@@ -1,0 +1,47 @@
+package com.example.api
+
+import com.example.api.PetApiResponses.*
+import com.example.model.Pet
+import org.springframework.stereotype.Component
+
+/**
+ * Example delegate implementation for Pet API
+ *
+ * Important:
+ * - Methods return ApiResponses classes, not ResponseEntity<T>
+ * - Each HTTP status is a separate ApiResponse subclass
+ * - The delegate must handle all possible response statuses
+ */
+@Component
+class PetApiDelegate : ru.tinkoff.kora.example.api.PetApiDelegate {
+
+    override fun getPetById(petId: Long): GetPetByIdApiResponse {
+        if (petId < 0) {
+            return GetPetByIdApiResponse.GetPetById400ApiResponse()
+        }
+        val pet = petService.findById(petId) ?: return GetPetByIdApiResponse.GetPetById404ApiResponse()
+        return GetPetByIdApiResponse.GetPetById200ApiResponse(pet)
+    }
+
+    override fun addPet(body: Pet): AddPetApiResponse {
+        // Validation happens automatically before the method is called
+        val created = petService.create(body)
+        return AddPetApiResponse.AddPet200ApiResponse(com.example.model.Message("OK"))
+    }
+
+    override fun updatePet(petId: Long, body: Pet): UpdatePetApiResponse {
+        if (!petService.exists(petId)) {
+            return UpdatePetApiResponse.UpdatePet404ApiResponse()
+        }
+        val updated = petService.update(petId, body)
+        return UpdatePetApiResponse.UpdatePet200ApiResponse(updated)
+    }
+
+    override fun deletePet(petId: Long): DeletePetApiResponse {
+        if (!petService.exists(petId)) {
+            return DeletePetApiResponse.DeletePet404ApiResponse()
+        }
+        petService.delete(petId)
+        return DeletePetApiResponse.DeletePet204ApiResponse()
+    }
+}

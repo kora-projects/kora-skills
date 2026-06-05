@@ -1,0 +1,54 @@
+package com.example.api;
+
+import com.example.model.Pet;
+import com.example.model.Message;
+import org.springframework.stereotype.Component;
+
+/**
+ * Example delegate implementation for Pet API
+ *
+ * Important:
+ * - Methods return ApiResponses classes, not ResponseEntity<T>
+ * - Each HTTP status is a separate ApiResponse subclass
+ * - The delegate must handle all possible response statuses
+ */
+@Component
+public final class PetApiDelegate implements PetApiDelegate {
+
+    @Override
+    public PetApiResponses.GetPetByIdApiResponse getPetById(Long petId) {
+        if (petId < 0) {
+            return new PetApiResponses.GetPetByIdApiResponse.GetPetById400ApiResponse();
+        }
+        Pet pet = petService.findById(petId);
+        if (pet == null) {
+            return new PetApiResponses.GetPetByIdApiResponse.GetPetById404ApiResponse();
+        }
+        return new PetApiResponses.GetPetByIdApiResponse.GetPetById200ApiResponse(pet);
+    }
+
+    @Override
+    public PetApiResponses.AddPetApiResponse addPet(Pet body) {
+        // Validation happens automatically before the method is called
+        Pet created = petService.create(body);
+        return new PetApiResponses.AddPetApiResponse.AddPet200ApiResponse(new Message("OK"));
+    }
+
+    @Override
+    public PetApiResponses.UpdatePetApiResponse updatePet(Long petId, Pet body) {
+        if (!petService.exists(petId)) {
+            return new PetApiResponses.UpdatePetApiResponse.UpdatePet404ApiResponse();
+        }
+        Pet updated = petService.update(petId, body);
+        return new PetApiResponses.UpdatePetApiResponse.UpdatePet200ApiResponse(updated);
+    }
+
+    @Override
+    public PetApiResponses.DeletePetApiResponse deletePet(Long petId) {
+        if (!petService.exists(petId)) {
+            return new PetApiResponses.DeletePetApiResponse.DeletePet404ApiResponse();
+        }
+        petService.delete(petId);
+        return new PetApiResponses.DeletePetApiResponse.DeletePet204ApiResponse();
+    }
+}

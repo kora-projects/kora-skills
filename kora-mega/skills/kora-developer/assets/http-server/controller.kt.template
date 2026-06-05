@@ -1,0 +1,131 @@
+package ${package}
+
+import ru.tinkoff.kora.common.Component
+import ru.tinkoff.kora.http.common.HttpMethod
+import ru.tinkoff.kora.http.common.annotation.HttpRoute
+import ru.tinkoff.kora.http.common.annotation.Path
+import ru.tinkoff.kora.http.common.annotation.Query
+import ru.tinkoff.kora.http.server.common.HttpServerResponse
+import ru.tinkoff.kora.http.server.common.annotation.HttpController
+import ru.tinkoff.kora.http.server.common.HttpServerResponseException
+import ru.tinkoff.kora.json.common.annotation.Json
+
+/**
+ * HTTP controller for ${entity_name}.
+ *
+ * @see HttpController - marks the class as an HTTP controller
+ * @see HttpRoute - request routing
+ * @see Json - JSON serialization of request/response
+ */
+@Component
+@HttpController
+class ${controller_name} {
+
+    private val ${entity_var} = mutableMapOf<String, ${response_name}>()
+
+    /**
+     * GET /${route_path}/{id} - Get ${entity_name} by ID.
+     *
+     * @param id ${entity_name} ID
+     * @return ${response_name} data
+     * @throws HttpServerResponseException 404 if not found
+     */
+    @HttpRoute(method = HttpMethod.GET, path = "/${route_path}/{id}")
+    @Json
+    fun getById(@Path id: String): ${response_name} {
+        val item = ${entity_var}[id]
+            ?: throw HttpServerResponseException.of(
+                404,
+                "${entity_name} not found: $id"
+            )
+        return item
+    }
+
+    /**
+     * GET /${route_path} - Get list of ${entity_name}.
+     *
+     * @param limit maximum number of records
+     * @param offset offset
+     * @return list of ${response_name}
+     */
+    @HttpRoute(method = HttpMethod.GET, path = "/${route_path}")
+    @Json
+    fun getList(
+        @Query(value = "limit", defaultValue = "10") limit: Int,
+        @Query(value = "offset", defaultValue = "0") offset: Int
+    ): List<${response_name}> {
+        return ${entity_var}.values
+            .asSequence()
+            .drop(offset)
+            .take(limit)
+            .toList()
+    }
+
+    /**
+     * POST /${route_path} - Create ${entity_name}.
+     *
+     * @param request creation data
+     * @return created ${response_name}
+     * @throws HttpServerResponseException 400 on invalid data
+     */
+    @HttpRoute(method = HttpMethod.POST, path = "/${route_path}")
+    @Json
+    fun create(@Json request: ${request_name}): ${response_name} {
+        // Validate input data
+        require(!request.name.isNullOrBlank()) { "Name is required" }
+
+        // Generate ID and save
+        val id = "${entity_var_prefix}-${System.currentTimeMillis()}"
+        val item = ${response_name}(
+            id,
+            request.name,
+            request.email
+        )
+        ${entity_var}[id] = item
+        return item
+    }
+
+    /**
+     * PUT /${route_path}/{id} - Update ${entity_name}.
+     *
+     * @param id ${entity_name} ID
+     * @param request update data
+     * @return updated ${response_name}
+     * @throws HttpServerResponseException 404 if not found
+     */
+    @HttpRoute(method = HttpMethod.PUT, path = "/${route_path}/{id}")
+    @Json
+    fun update(@Path id: String, @Json request: ${request_name}): ${response_name} {
+        if (!${entity_var}.containsKey(id)) {
+            throw HttpServerResponseException.of(
+                404,
+                "${entity_name} not found: $id"
+            )
+        }
+
+        val item = ${response_name}(
+            id,
+            request.name,
+            request.email
+        )
+        ${entity_var}[id] = item
+        return item
+    }
+
+    /**
+     * DELETE /${route_path}/{id} - Delete ${entity_name}.
+     *
+     * @param id ${entity_name} ID
+     * @return 204 No Content
+     * @throws HttpServerResponseException 404 if not found
+     */
+    @HttpRoute(method = HttpMethod.DELETE, path = "/${route_path}/{id}")
+    fun delete(@Path id: String): HttpServerResponse {
+        val removed = ${entity_var}.remove(id)
+            ?: throw HttpServerResponseException.of(
+                404,
+                "${entity_name} not found: $id"
+            )
+        return HttpServerResponse.of(204)
+    }
+}

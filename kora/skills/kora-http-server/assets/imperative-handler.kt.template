@@ -1,0 +1,74 @@
+package ${package}
+
+import ru.tinkoff.kora.common.Context
+import ru.tinkoff.kora.http.server.common.HttpServerRequest
+import ru.tinkoff.kora.http.server.common.HttpServerRequestHandler
+import ru.tinkoff.kora.http.server.common.HttpServerResponse
+import ru.tinkoff.kora.http.server.common.HttpServerRequestHandlerImpl
+import ru.tinkoff.kora.http.server.common.body.HttpBody
+import ru.tinkoff.kora.http.server.common.RequestHandlerUtils
+import java.util.concurrent.CompletableFuture
+
+/**
+ * Imperative HTTP handler for ${handler_description}.
+ *
+ * <p>Uses a functional approach without @HttpController annotations.</p>
+ *
+ * <p>Features:</p>
+ * <ul>
+ *   <li>Full control over request processing</li>
+ *   <li>Dynamic enable/disable via the enabled parameter</li>
+ *   <li>Explicit dependencies via module</li>
+ * </ul>
+ */
+interface ${handler_module_name} {
+
+    /**
+     * Handler for ${handler_description}.
+     *
+     * @return HttpServerRequestHandler to register in the module
+     */
+    fun ${handler_method_name}(): HttpServerRequestHandler {
+        return HttpServerRequestHandlerImpl.of(
+            "${http_method}",           // HTTP method: GET, POST, PUT, DELETE, PATCH
+            "${route_path}",            // Path template: /api/{id}, /users/{userId}/posts
+            { context, request ->
+                // === Path Parameters ===
+                // val id = RequestHandlerUtils.parseStringPathParameter(request, "id")
+                // val count = RequestHandlerUtils.parseIntPathParameter(request, "count")
+
+                // === Query Parameters (required / optional / list) ===
+                // val query = RequestHandlerUtils.parseStringQueryParameter(request, "q")
+                // val optionalQuery = RequestHandlerUtils.parseOptionalStringQueryParameter(request, "filter")
+                // val queries = RequestHandlerUtils.parseOptionalStringListQueryParameter(request, "tags")
+
+                // === Header Parameters ===
+                // val header = RequestHandlerUtils.parseStringHeaderParameter(request, "X-Custom-Header")
+                // val optionalHeader = RequestHandlerUtils.parseOptionalStringHeaderParameter(request, "Authorization")
+                // val headers = RequestHandlerUtils.parseOptionalStringListHeaderParameter(request, "X-Ids")
+
+                // === Cookie Parameters ===
+                // val cookie = RequestHandlerUtils.parseStringCookieParameter(request, "sessionId")
+                // val optionalCookie = RequestHandlerUtils.parseOptionalStringCookieParameter(request, "tracking")
+
+                // === Request Body (for POST/PUT/PATCH) ===
+                // val body = request.body.asString()
+                // val bytes = request.body.asByteArray()
+
+                // === Response ===
+                // return CompletableFuture.completedFuture(
+                //     HttpServerResponse.of(200, HttpBody.plaintext("Response body"))
+                // )
+                // return CompletableFuture.completedFuture(
+                //     HttpServerResponse.of(404, HttpBody.plaintext("Not found"))
+                // )
+
+                // TODO: implement handler logic
+                CompletableFuture.completedFuture(
+                    HttpServerResponse.of(200, HttpBody.plaintext("${response_body}"))
+                )
+            },
+            ${enabled}  // true = handler is active, false = handler is not registered
+        )
+    }
+}

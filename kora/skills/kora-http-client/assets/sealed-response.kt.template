@@ -1,0 +1,141 @@
+package ${package}
+
+import ru.tinkoff.kora.json.common.annotation.Json
+import ru.tinkoff.kora.json.common.annotation.JsonDiscriminatorField
+import ru.tinkoff.kora.http.client.common.annotation.ResponseCodeMapper
+
+/**
+ * Sealed interface for polymorphic response with @ResponseCodeMapper.
+ *
+ * Allows type-safe handling of different HTTP status codes.
+ *
+ * Features:
+ * - Sealed class with explicit subclasses for success/error
+ * - @ResponseCodeMapper for status code mapping
+ * - Type-safe error handling via when expression
+ *
+ * Usage in a client:
+ * ```kotlin
+ * @ResponseCodeMapper(code = 200, mapper = SuccessMapper::class)
+ * @ResponseCodeMapper(code = 400, mapper = BadRequestMapper::class)
+ * @ResponseCodeMapper(code = 404, mapper = NotFoundMapper::class)
+ * @ResponseCodeMapper(code = ResponseCodeMapper.DEFAULT, mapper = DefaultErrorMapper::class)
+ * fun ${method_name}(request: ${request_dto_name}): ${dto_name}
+ * ```
+ */
+@Json
+@JsonDiscriminatorField("type")
+sealed class ${dto_name} {
+
+    /**
+     * Successful response (2xx).
+     *
+     * @property data response data
+     */
+    @Json
+    data class Success(
+        val data: ${response_data_type}
+    ) : ${dto_name}()
+
+    /**
+     * Error (4xx, 5xx).
+     *
+     * @property code error code
+     * @property message error message
+     */
+    @Json
+    data class Error(
+        val code: Int,
+        val message: String
+    ) : ${dto_name}()
+
+    /**
+     * Helper property to check for success.
+     */
+    val isSuccess: Boolean
+        get() = this is Success
+
+    /**
+     * Helper property to check for an error.
+     */
+    val isError: Boolean
+        get() = this is Error
+
+    /**
+     * Get data if successful, otherwise throw an exception.
+     */
+    fun getData(): ${response_data_type} {
+        return when (this) {
+            is Success -> data
+            is Error -> throw IllegalStateException("Expected success but got error: $this")
+        }
+    }
+
+    /**
+     * Handle the result via pattern matching.
+     */
+    fun <T> fold(
+        onSuccess: (Success) -> T,
+        onError: (Error) -> T
+    ): T {
+        return when (this) {
+            is Success -> onSuccess(this)
+            is Error -> onError(this)
+        }
+    }
+}
+
+/**
+ * Mapper for a successful response (200 OK).
+ */
+class SuccessMapper : HttpClientResponseMapper<${dto_name}.Success> {
+    override fun apply(
+        context: ru.tinkoff.kora.common.Context,
+        response: HttpClientResponse
+    ): ${dto_name}.Success {
+        // Parse JSON body into data
+        // TODO: implement using JsonReader
+        val body = response.body().asString()
+        val data: ${response_data_type}? = null // parseJson(body)
+        return ${dto_name}.Success(data!!)
+    }
+}
+
+/**
+ * Mapper for BadRequest (400).
+ */
+class BadRequestMapper : HttpClientResponseMapper<${dto_name}.Error> {
+    override fun apply(
+        context: ru.tinkoff.kora.common.Context,
+        response: HttpClientResponse
+    ): ${dto_name}.Error {
+        val body = response.body().asString()
+        // TODO: parse the error from JSON
+        return ${dto_name}.Error(400, "Bad Request: $body")
+    }
+}
+
+/**
+ * Mapper for NotFound (404).
+ */
+class NotFoundMapper : HttpClientResponseMapper<${dto_name}.Error> {
+    override fun apply(
+        context: ru.tinkoff.kora.common.Context,
+        response: HttpClientResponse
+    ): ${dto_name}.Error {
+        return ${dto_name}.Error(404, "Resource not found")
+    }
+}
+
+/**
+ * Mapper for default errors (5xx and others).
+ */
+class DefaultErrorMapper : HttpClientResponseMapper<${dto_name}.Error> {
+    override fun apply(
+        context: ru.tinkoff.kora.common.Context,
+        response: HttpClientResponse
+    ): ${dto_name}.Error {
+        val body = response.body().asString()
+        return ${dto_name}.Error(response.code(), "Error: $body")
+    }
+}

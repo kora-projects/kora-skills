@@ -1,0 +1,76 @@
+package ${package};
+
+import io.opentelemetry.api.trace.Span;
+import io.opentelemetry.api.trace.StatusCode;
+import io.opentelemetry.api.trace.Tracer;
+import io.opentelemetry.context.Context;
+import ru.tinkoff.kora.common.Component;
+import ru.tinkoff.kora.opentelemetry.common.OpentelemetryContext;
+
+/**
+ * Example of custom tracing usage.
+ */
+@Component
+public class TracingInterceptor {
+
+    private final Tracer tracer;
+
+    public TracingInterceptor(Tracer tracer) {
+        this.tracer = tracer;
+    }
+
+    /**
+     * Creates a custom span for an operation.
+     */
+    public <T> T executeWithSpan(String operationName, java.util.function.Supplier<T> operation) {
+        var ctx = Context.current();
+        var otctx = OpentelemetryContext.get(ctx);
+
+        var span = tracer.spanBuilder(operationName)
+                .setParent(otctx.getContext())
+                .setAttribute("custom.operation", operationName)
+                .startSpan();
+
+        OpentelemetryContext.set(ctx, otctx.add(span));
+
+        try {
+            T result = operation.get();
+            span.setStatus(StatusCode.OK);
+            return result;
+        } catch (Exception e) {
+            span.recordException(e);
+            span.setStatus(StatusCode.ERROR, e.getMessage());
+            throw e;
+        } finally {
+            span.end();
+            OpentelemetryContext.set(ctx, otctx);
+        }
+    }
+
+    /**
+     * Creates a span for a void operation.
+     */
+    public void executeWithSpan(String operationName, Runnable operation) {
+        var ctx = Context.current();
+        var otctx = OpentelemetryContext.get(ctx);
+
+        var span = tracer.spanBuilder(operationName)
+                .setParent(otctx.getContext())
+                .setAttribute("custom.operation", operationName)
+                .startSpan();
+
+        OpentelemetryContext.set(ctx, otctx.add(span));
+
+        try {
+            operation.run();
+            span.setStatus(StatusCode.OK);
+        } catch (Exception e) {
+            span.recordException(e);
+            span.setStatus(StatusCode.ERROR, e.getMessage());
+            throw e;
+        } finally {
+            span.end();
+            OpentelemetryContext.set(ctx, otctx);
+        }
+    }
+}

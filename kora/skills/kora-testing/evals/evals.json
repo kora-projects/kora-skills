@@ -1,0 +1,530 @@
+{
+  "skill_name": "kora-testing",
+  "version": "1.0",
+  "evals": [
+    {
+      "id": 1,
+      "name": "component-test-basic",
+      "description": "Basic component test with @TestComponent injection",
+      "prompt": "Create a component test for UserService. Use @KoraAppTest to initialize the application and @TestComponent to inject the service. Test the createUser method — create a user and verify it is returned with a populated ID.",
+      "expected_output": "Test class with @KoraAppTest, field with @TestComponent UserService, @Test method that calls createUser and verifies the result",
+      "expected_files": ["UserServiceTest.java"],
+      "tags": ["component", "basic", "java", "test-component"],
+      "assertions": [
+        {"name": "has_kora_app_test", "type": "code_contains", "expected": "@KoraAppTest", "critical": true},
+        {"name": "has_test_component", "type": "code_contains", "expected": "@TestComponent", "critical": true},
+        {"name": "has_user_service_field", "type": "regex", "expected": "(UserService|userService)", "critical": true},
+        {"name": "has_test_annotation", "type": "code_contains", "expected": "@Test", "critical": true},
+        {"name": "calls_create_user", "type": "regex", "expected": "createUser\\(", "critical": true},
+        {"name": "has_assertion", "type": "regex", "expected": "(assertEquals|assertNotNull|assertThat)", "critical": false}
+      ]
+    },
+    {
+      "id": 2,
+      "name": "component-test-mockito",
+      "description": "Component test with a Mockito mock",
+      "prompt": "Create a component test for OrderService. Use @Mock to create a mock of UserRepository and @TestComponent for OrderService. Configure the mock via when(repo.save(...)).thenReturn(...) and test the createOrder method.",
+      "expected_output": "Test with @Mock UserRepository, @TestComponent OrderService, when().thenReturn() setup, result verification",
+      "expected_files": ["OrderServiceTest.java"],
+      "tags": ["component", "mockito", "mock", "java"],
+      "assertions": [
+        {"name": "has_kora_app_test", "type": "code_contains", "expected": "@KoraAppTest", "critical": true},
+        {"name": "has_mock_annotation", "type": "code_contains", "expected": "@Mock", "critical": true},
+        {"name": "has_test_component", "type": "code_contains", "expected": "@TestComponent", "critical": true},
+        {"name": "has_user_repository", "type": "regex", "expected": "(UserRepository|userRepository)", "critical": true},
+        {"name": "has_when_then", "type": "regex", "expected": "when\\(.*\\)\\.thenReturn", "critical": true},
+        {"name": "has_mockito_import", "type": "regex", "expected": "import org\\.mockito", "critical": false}
+      ]
+    },
+    {
+      "id": 3,
+      "name": "component-test-mockk",
+      "description": "Kotlin component test with MockK",
+      "prompt": "Create a Kotlin component test for UserService. Use @MockK to mock UserRepository and @TestComponent for UserService. Configure the mock via mockk { every { repo.save(any()) } returns user } and test the createUser method.",
+      "expected_output": "Kotlin test with @MockK, mockk {}, every {} returns {}, result verification",
+      "expected_files": ["UserServiceTest.kt"],
+      "tags": ["component", "mockk", "mock", "kotlin"],
+      "assertions": [
+        {"name": "has_kora_app_test", "type": "code_contains", "expected": "@KoraAppTest", "critical": true},
+        {"name": "has_mockk_annotation", "type": "code_contains", "expected": "@MockK", "critical": true},
+        {"name": "has_test_component", "type": "code_contains", "expected": "@TestComponent", "critical": true},
+        {"name": "has_every_returns", "type": "regex", "expected": "every\\s*\\{.*\\}\\s*returns", "critical": true},
+        {"name": "has_mockk_block", "type": "code_contains", "expected": "mockk {", "critical": true},
+        {"name": "is_kotlin", "type": "regex", "expected": "(class\\s+\\w+|val\\s+\\w+\\s*:)", "critical": true}
+      ]
+    },
+    {
+      "id": 4,
+      "name": "integration-test-postgres",
+      "description": "Integration test with PostgreSQL and Flyway",
+      "prompt": "Create an integration test for UserRepository using PostgreSQL with Testcontainers. Use @TestcontainersPostgreSQL for the container, @KoraAppTest for the application, and Flyway for migrations. Test the save and findById methods.",
+      "expected_output": "Test with @TestcontainersPostgreSQL, @KoraAppTest, @TestComponent JdbcConnection, Flyway migrations, CRUD tests",
+      "expected_files": ["UserRepositoryTest.java"],
+      "tags": ["integration", "postgresql", "testcontainers", "flyway", "java"],
+      "assertions": [
+        {"name": "has_testcontainers_postgres", "type": "code_contains", "expected": "@TestcontainersPostgreSQL", "critical": true},
+        {"name": "has_kora_app_test", "type": "code_contains", "expected": "@KoraAppTest", "critical": true},
+        {"name": "has_jdbc_connection", "type": "code_contains", "expected": "JdbcConnection", "critical": true},
+        {"name": "has_flyway", "type": "code_contains", "expected": "Flyway", "critical": true},
+        {"name": "has_test_component", "type": "code_contains", "expected": "@TestComponent", "critical": true},
+        {"name": "has_repository_test", "type": "regex", "expected": "(RepositoryTest|repositoryTest)", "critical": false}
+      ]
+    },
+    {
+      "id": 5,
+      "name": "integration-test-cassandra",
+      "description": "Integration test with Cassandra and Scripts migrations",
+      "prompt": "Create an integration test for EventRepository using Cassandra with Testcontainers. Use @TestcontainersCassandra for the container, @KoraAppTest for the application, and Scripts for migrations. Test the insert and findById methods.",
+      "expected_output": "Test with @TestcontainersCassandra, @KoraAppTest, @TestComponent CassandraConnection, Scripts migrations",
+      "expected_files": ["EventRepositoryTest.java"],
+      "tags": ["integration", "cassandra", "testcontainers", "scripts", "java"],
+      "assertions": [
+        {"name": "has_testcontainers_cassandra", "type": "code_contains", "expected": "@TestcontainersCassandra", "critical": true},
+        {"name": "has_kora_app_test", "type": "code_contains", "expected": "@KoraAppTest", "critical": true},
+        {"name": "has_cassandra_connection", "type": "code_contains", "expected": "CassandraConnection", "critical": true},
+        {"name": "has_scripts_migration", "type": "code_contains", "expected": "Scripts", "critical": true},
+        {"name": "has_test_component", "type": "code_contains", "expected": "@TestComponent", "critical": true}
+      ]
+    },
+    {
+      "id": 6,
+      "name": "integration-test-kotlin",
+      "description": "Kotlin integration test with PostgreSQL",
+      "prompt": "Create a Kotlin integration test for UserRepository with @TestcontainersPostgreSQL. Use JdbcConnection for SQL assertions and @TestComponent to inject the repository.",
+      "expected_output": "Kotlin test with @TestcontainersPostgreSQL, JdbcConnection, @TestComponent repository",
+      "expected_files": ["UserRepositoryTest.kt"],
+      "tags": ["integration", "postgresql", "testcontainers", "kotlin"],
+      "assertions": [
+        {"name": "has_testcontainers_postgres", "type": "code_contains", "expected": "@TestcontainersPostgreSQL", "critical": true},
+        {"name": "has_kora_app_test", "type": "code_contains", "expected": "@KoraAppTest", "critical": true},
+        {"name": "has_jdbc_connection", "type": "code_contains", "expected": "JdbcConnection", "critical": true},
+        {"name": "has_test_component", "type": "code_contains", "expected": "@TestComponent", "critical": true},
+        {"name": "is_kotlin", "type": "regex", "expected": "(class\\s+\\w+|val\\s+\\w+\\s*:)", "critical": true}
+      ]
+    },
+    {
+      "id": 7,
+      "name": "blackbox-test-appcontainer",
+      "description": "Black-box test with AppContainer and HttpClient",
+      "prompt": "Create a black-box test using AppContainer. Use @Container for the container and HttpClient for HTTP requests. Test GET /api/users/{id} — verify status code 200 and the JSON response.",
+      "expected_output": "Test with @Container AppContainer.build(), HttpClient, HttpRequest/HttpResponse, statusCode and body verification",
+      "expected_files": ["BlackBoxTests.java"],
+      "tags": ["blackbox", "appcontainer", "http", "testcontainers", "java"],
+      "assertions": [
+        {"name": "has_container_annotation", "type": "code_contains", "expected": "@Container", "critical": true},
+        {"name": "has_app_container", "type": "regex", "expected": "(AppContainer|appContainer)", "critical": true},
+        {"name": "has_http_client", "type": "code_contains", "expected": "HttpClient", "critical": true},
+        {"name": "has_http_request", "type": "code_contains", "expected": "HttpRequest", "critical": true},
+        {"name": "has_status_check", "type": "regex", "expected": "(statusCode|status).*200", "critical": true},
+        {"name": "has_test_instance", "type": "code_contains", "expected": "@TestInstance", "critical": false}
+      ]
+    },
+    {
+      "id": 8,
+      "name": "blackbox-test-restassured-get",
+      "description": "Black-box test with RestAssured GET request",
+      "prompt": "Create a black-box test using RestAssured. The test should make a GET request to /api/users/{id} with a pathParam and verify the JSON response via .body() assertions.",
+      "expected_output": "Test with RestAssured given()/when()/then(), pathParam(), body() with equalTo/notNullValue assertions",
+      "expected_files": ["UserApiTest.java"],
+      "tags": ["blackbox", "restassured", "http", "get", "java"],
+      "assertions": [
+        {"name": "has_restassured", "type": "code_contains", "expected": "RestAssured", "critical": true},
+        {"name": "has_given", "type": "regex", "expected": "given\\(\\)", "critical": true},
+        {"name": "has_when", "type": "regex", "expected": "when\\(\\)", "critical": true},
+        {"name": "has_then", "type": "regex", "expected": "then\\(\\)", "critical": true},
+        {"name": "has_body_assertion", "type": "regex", "expected": "\\.body\\(", "critical": true},
+        {"name": "has_path_param", "type": "code_contains", "expected": "pathParam", "critical": true},
+        {"name": "has_status_code", "type": "code_contains", "expected": "statusCode", "critical": true}
+      ]
+    },
+    {
+      "id": 9,
+      "name": "blackbox-test-restassured-post",
+      "description": "Black-box test with RestAssured POST request",
+      "prompt": "Create a black-box test using RestAssured. The test should make a POST request to /api/users with a JSON body (name, email) and verify the response: status 201, Location header, ID in the response.",
+      "expected_output": "Test with RestAssured, contentType(JSON), body() with Map/POJO, statusCode(201) and header(Location) verification",
+      "expected_files": ["UserCreateTest.java"],
+      "tags": ["blackbox", "restassured", "http", "post", "java"],
+      "assertions": [
+        {"name": "has_restassured", "type": "code_contains", "expected": "RestAssured", "critical": true},
+        {"name": "has_content_type", "type": "code_contains", "expected": "contentType", "critical": true},
+        {"name": "has_json_type", "type": "regex", "expected": "(JSON|application/json)", "critical": true},
+        {"name": "has_post_method", "type": "code_contains", "expected": ".post(", "critical": true},
+        {"name": "has_status_201", "type": "regex", "expected": "statusCode\\(201\\)", "critical": true},
+        {"name": "has_header_check", "type": "code_contains", "expected": "header(", "critical": false}
+      ]
+    },
+    {
+      "id": 10,
+      "name": "blackbox-test-telemetry",
+      "description": "Black-box test with telemetry verification",
+      "prompt": "Create a black-box test using AppContainer with two ports (8080 API, 8085 system). Verify the /health endpoint on the system port via getSystemURI() and the /metrics endpoint.",
+      "expected_output": "Test with AppContainer, getSystemURI(), /health and /metrics endpoint verification, status 200",
+      "expected_files": ["HealthCheckTest.java"],
+      "tags": ["blackbox", "appcontainer", "telemetry", "health", "java"],
+      "assertions": [
+        {"name": "has_app_container", "type": "regex", "expected": "(AppContainer|appContainer)", "critical": true},
+        {"name": "has_system_uri", "type": "code_contains", "expected": "getSystemURI", "critical": true},
+        {"name": "has_health_check", "type": "code_contains", "expected": "/health", "critical": true},
+        {"name": "has_metrics_check", "type": "code_contains", "expected": "/metrics", "critical": false},
+        {"name": "has_container_annotation", "type": "code_contains", "expected": "@Container", "critical": true}
+      ]
+    },
+    {
+      "id": 11,
+      "name": "config-modifier-system-property",
+      "description": "Configuration via system property",
+      "prompt": "Create a test using KoraAppTestConfigModifier to set the system property 'external.api.url'. Use @KoraAppTest(modifiers = [KoraAppTestConfigModifier.ofSystemProperty(...)]).",
+      "expected_output": "Test with @KoraAppTest(modifiers = ...), KoraAppTestConfigModifier.ofSystemProperty()",
+      "expected_files": ["ExternalApiTest.java"],
+      "tags": ["config", "modifier", "system-property", "java"],
+      "assertions": [
+        {"name": "has_kora_app_test", "type": "code_contains", "expected": "@KoraAppTest", "critical": true},
+        {"name": "has_modifiers_param", "type": "regex", "expected": "modifiers\\s*=", "critical": true},
+        {"name": "has_config_modifier", "type": "code_contains", "expected": "KoraAppTestConfigModifier", "critical": true},
+        {"name": "has_of_system_property", "type": "code_contains", "expected": "ofSystemProperty", "critical": true},
+        {"name": "has_api_url", "type": "regex", "expected": "(api\\.url|apiUrl|API_URL)", "critical": false}
+      ]
+    },
+    {
+      "id": 12,
+      "name": "config-modifier-resource-file",
+      "description": "Configuration from a resource file",
+      "prompt": "Create a test using KoraConfigModification.ofResourceFile to load config from application-test.conf. Use it in @KoraAppTest(modifiers = [...]).",
+      "expected_output": "Test with KoraConfigModification.ofResourceFile(\"application-test.conf\")",
+      "expected_files": ["ConfigFileTest.java"],
+      "tags": ["config", "modifier", "resource-file", "java"],
+      "assertions": [
+        {"name": "has_kora_app_test", "type": "code_contains", "expected": "@KoraAppTest", "critical": true},
+        {"name": "has_config_modification", "type": "code_contains", "expected": "KoraConfigModification", "critical": true},
+        {"name": "has_of_resource_file", "type": "code_contains", "expected": "ofResourceFile", "critical": true},
+        {"name": "has_test_conf", "type": "code_contains", "expected": "application-test.conf", "critical": true}
+      ]
+    },
+    {
+      "id": 13,
+      "name": "config-modifier-inline-string",
+      "description": "Inline configuration via string",
+      "prompt": "Create a test using KoraConfigModification.ofString for inline configuration of database.url and database.password. Pass a HOCON string in @KoraAppTest(modifiers = [...]).",
+      "expected_output": "Test with KoraConfigModification.ofString() containing database.url and database.password in HOCON format",
+      "expected_files": ["InlineConfigTest.java"],
+      "tags": ["config", "modifier", "inline", "hocon", "java"],
+      "assertions": [
+        {"name": "has_kora_app_test", "type": "code_contains", "expected": "@KoraAppTest", "critical": true},
+        {"name": "has_config_modification", "type": "code_contains", "expected": "KoraConfigModification", "critical": true},
+        {"name": "has_of_string", "type": "code_contains", "expected": "ofString", "critical": true},
+        {"name": "has_database_url", "type": "regex", "expected": "database\\.url", "critical": true},
+        {"name": "has_database_password", "type": "regex", "expected": "database\\.password", "critical": true}
+      ]
+    },
+    {
+      "id": 14,
+      "name": "graph-modifier-add-component",
+      "description": "Adding a component to the graph",
+      "prompt": "Create a test using KoraAppTestGraphModifier to add a component to the dependency graph. Use the .add() method to register a test component.",
+      "expected_output": "Test with KoraAppTestGraphModifier.add() to add a component",
+      "expected_files": ["GraphAddTest.java"],
+      "tags": ["graph", "modifier", "add", "java"],
+      "assertions": [
+        {"name": "has_kora_app_test", "type": "code_contains", "expected": "@KoraAppTest", "critical": true},
+        {"name": "has_graph_modifier", "type": "code_contains", "expected": "KoraAppTestGraphModifier", "critical": true},
+        {"name": "has_add_method", "type": "regex", "expected": "\\.add\\(", "critical": true}
+      ]
+    },
+    {
+      "id": 15,
+      "name": "graph-modifier-remove-component",
+      "description": "Removing a component from the graph",
+      "prompt": "Create a test using KoraAppTestGraphModifier to remove a component from the graph. Use the .remove() method to exclude a component from the DI graph.",
+      "expected_output": "Test with KoraAppTestGraphModifier.remove() to remove a component",
+      "expected_files": ["GraphRemoveTest.java"],
+      "tags": ["graph", "modifier", "remove", "java"],
+      "assertions": [
+        {"name": "has_kora_app_test", "type": "code_contains", "expected": "@KoraAppTest", "critical": true},
+        {"name": "has_graph_modifier", "type": "code_contains", "expected": "KoraAppTestGraphModifier", "critical": true},
+        {"name": "has_remove_method", "type": "regex", "expected": "\\.remove\\(", "critical": true}
+      ]
+    },
+    {
+      "id": 16,
+      "name": "tag-injection",
+      "description": "Injection with @Tag qualifier",
+      "prompt": "Create a test using the @Tag annotation to inject a specific bean. Use @TestComponent and @Tag(\"primary\") to select the required interface implementation.",
+      "expected_output": "Test with @Tag(\"primary\") and @TestComponent for qualifier injection",
+      "expected_files": ["TagInjectionTest.java"],
+      "tags": ["tag", "qualifier", "injection", "java"],
+      "assertions": [
+        {"name": "has_kora_app_test", "type": "code_contains", "expected": "@KoraAppTest", "critical": true},
+        {"name": "has_test_component", "type": "code_contains", "expected": "@TestComponent", "critical": true},
+        {"name": "has_tag_annotation", "type": "code_contains", "expected": "@Tag", "critical": true},
+        {"name": "has_tag_value", "type": "regex", "expected": "@Tag\\(\\s*[\"\\'][\\w]+[\"\\']\\s*\\)", "critical": true}
+      ]
+    },
+    {
+      "id": 17,
+      "name": "spy-test",
+      "description": "Test with a @Spy object",
+      "prompt": "Create a test using @Spy to create a spy of a real component. Verify the method call via verify(spy).method() from Mockito.",
+      "expected_output": "Test with @Spy, verify() assertion from Mockito",
+      "expected_files": ["SpyTest.java"],
+      "tags": ["spy", "mockito", "verify", "java"],
+      "assertions": [
+        {"name": "has_kora_app_test", "type": "code_contains", "expected": "@KoraAppTest", "critical": true},
+        {"name": "has_spy_annotation", "type": "code_contains", "expected": "@Spy", "critical": true},
+        {"name": "has_verify", "type": "regex", "expected": "verify\\(", "critical": true},
+        {"name": "has_mockito_import", "type": "regex", "expected": "import org\\.mockito", "critical": false}
+      ]
+    },
+    {
+      "id": 18,
+      "name": "constructor-injection",
+      "description": "Constructor injection instead of field injection",
+      "prompt": "Create a test using constructor injection with @TestComponent instead of field injection. The class constructor should accept dependencies as parameters annotated with @TestComponent.",
+      "expected_output": "Test class with a constructor accepting @TestComponent parameters",
+      "expected_files": ["ConstructorInjectionTest.java"],
+      "tags": ["constructor", "injection", "java"],
+      "assertions": [
+        {"name": "has_kora_app_test", "type": "code_contains", "expected": "@KoraAppTest", "critical": true},
+        {"name": "has_constructor", "type": "regex", "expected": "(public\\s+\\w+Test\\(|constructor\\s*\\()", "critical": true},
+        {"name": "has_test_component_param", "type": "regex", "expected": "@TestComponent\\s+[A-Z]", "critical": true}
+      ]
+    },
+    {
+      "id": 19,
+      "name": "method-injection",
+      "description": "Method parameter injection",
+      "prompt": "Create a test using method parameter injection. The test method should accept a @TestComponent parameter directly in its method signature.",
+      "expected_output": "@Test method with a @TestComponent parameter in the signature",
+      "expected_files": ["MethodInjectionTest.java"],
+      "tags": ["method", "injection", "java"],
+      "assertions": [
+        {"name": "has_kora_app_test", "type": "code_contains", "expected": "@KoraAppTest", "critical": true},
+        {"name": "has_test_annotation", "type": "code_contains", "expected": "@Test", "critical": true},
+        {"name": "has_method_param", "type": "regex", "expected": "@Test\\s*\\([^)]*\\)\\s*(void|public)\\s+\\w+\\s*\\(@TestComponent", "critical": true}
+      ]
+    },
+    {
+      "id": 20,
+      "name": "mockito-strictness",
+      "description": "Strict stubbing verification",
+      "prompt": "Create a test with @MockitoSettings(strictness = Strictness.STRICT_STUBS) for strict stubbing verification. All stubs must be used in the test.",
+      "expected_output": "Test with @MockitoSettings(strictness = Strictness.STRICT_STUBS) on the class or method",
+      "expected_files": ["StrictStubTest.java"],
+      "tags": ["mockito", "strictness", "stubbing", "java"],
+      "assertions": [
+        {"name": "has_mockito_settings", "type": "code_contains", "expected": "@MockitoSettings", "critical": true},
+        {"name": "has_strictness", "type": "code_contains", "expected": "strictness", "critical": true},
+        {"name": "has_strict_stubs", "type": "code_contains", "expected": "STRICT_STUBS", "critical": true}
+      ]
+    },
+    {
+      "id": 21,
+      "name": "mock-argument-captor",
+      "description": "ArgumentCaptor for capturing arguments",
+      "prompt": "Create a test using ArgumentCaptor to capture arguments of a mock method. Use argumentCaptor.capture() and getValue()/getAllValues() for verification.",
+      "expected_output": "Test with ArgumentCaptor<T>, capture(), getValue() or getAllValues()",
+      "expected_files": ["ArgumentCaptorTest.java"],
+      "tags": ["mockito", "argument-captor", "capture", "java"],
+      "assertions": [
+        {"name": "has_argument_captor", "type": "code_contains", "expected": "ArgumentCaptor", "critical": true},
+        {"name": "has_capture", "type": "regex", "expected": "capture\\(\\)", "critical": true},
+        {"name": "has_get_value", "type": "regex", "expected": "(getValue|getAllValues)\\(\\)", "critical": true},
+        {"name": "has_for_class", "type": "regex", "expected": "forClass\\(", "critical": false}
+      ]
+    },
+    {
+      "id": 22,
+      "name": "shared-network",
+      "description": "Shared network for containers",
+      "prompt": "Create a black-box test using @Network(shared = true) for a shared network between AppContainer and PostgreSQLContainer. This allows the application to connect to the DB inside the Docker network.",
+      "expected_output": "Test with @Network(shared = true), AppContainer, PostgreSQLContainer on the same network",
+      "expected_files": ["SharedNetworkTest.java"],
+      "tags": ["network", "shared", "testcontainers", "java"],
+      "assertions": [
+        {"name": "has_network_annotation", "type": "code_contains", "expected": "@Network", "critical": true},
+        {"name": "has_shared_true", "type": "regex", "expected": "shared\\s*=\\s*true", "critical": true},
+        {"name": "has_app_container", "type": "regex", "expected": "(AppContainer|appContainer)", "critical": true},
+        {"name": "has_postgres_container", "type": "regex", "expected": "(PostgreSQL|Postgres)Container", "critical": false}
+      ]
+    },
+    {
+      "id": 23,
+      "name": "per-class-lifecycle",
+      "description": "PER_CLASS lifecycle for containers",
+      "prompt": "Create a test with @TestInstance(TestInstance.Lifecycle.PER_CLASS) for single container initialization. This allows containers to be reused between tests in the class.",
+      "expected_output": "Test with @TestInstance(Lifecycle.PER_CLASS) on the class",
+      "expected_files": ["PerClassLifecycleTest.java"],
+      "tags": ["lifecycle", "per-class", "junit5", "java"],
+      "assertions": [
+        {"name": "has_test_instance", "type": "code_contains", "expected": "@TestInstance", "critical": true},
+        {"name": "has_per_class", "type": "regex", "expected": "(PER_CLASS|Lifecycle\\.PER_CLASS)", "critical": true},
+        {"name": "has_lifecycle_import", "type": "regex", "expected": "TestInstance\\.Lifecycle", "critical": false}
+      ]
+    },
+    {
+      "id": 24,
+      "name": "kafka-consumer-test",
+      "description": "Kafka consumer test with Awaitility",
+      "prompt": "Create a test for a Kafka consumer using @TestcontainersKafka and Awaitility for async assertions. Send a message to Kafka and verify that the consumer processed it.",
+      "expected_output": "Test with @TestcontainersKafka, @ConnectionKafka, KafkaConnection.send(), Awaitility.await()",
+      "expected_files": ["KafkaConsumerTest.java"],
+      "tags": ["kafka", "consumer", "testcontainers", "awaitility", "java"],
+      "assertions": [
+        {"name": "has_testcontainers_kafka", "type": "code_contains", "expected": "@TestcontainersKafka", "critical": true},
+        {"name": "has_kora_app_test", "type": "code_contains", "expected": "@KoraAppTest", "critical": true},
+        {"name": "has_connection_kafka", "type": "code_contains", "expected": "@ConnectionKafka", "critical": true},
+        {"name": "has_kafka_connection", "type": "code_contains", "expected": "KafkaConnection", "critical": true},
+        {"name": "has_awaitility", "type": "code_contains", "expected": "Awaitility", "critical": true},
+        {"name": "has_await", "type": "regex", "expected": "await\\(\\)", "critical": true}
+      ]
+    },
+    {
+      "id": 25,
+      "name": "kafka-producer-test",
+      "description": "Kafka producer test with assertReceivedAtLeast",
+      "prompt": "Create a test for a Kafka producer using @TestcontainersKafka. Subscribe to the topic via connection.subscribe(), send a message via the producer, and verify via assertReceivedAtLeast().",
+      "expected_output": "Test with @TestcontainersKafka, subscribe(), producer.send(), assertReceivedAtLeast()",
+      "expected_files": ["KafkaProducerTest.java"],
+      "tags": ["kafka", "producer", "testcontainers", "assert", "java"],
+      "assertions": [
+        {"name": "has_testcontainers_kafka", "type": "code_contains", "expected": "@TestcontainersKafka", "critical": true},
+        {"name": "has_kora_app_test", "type": "code_contains", "expected": "@KoraAppTest", "critical": true},
+        {"name": "has_subscribe", "type": "regex", "expected": "subscribe\\(", "critical": true},
+        {"name": "has_assert_received", "type": "code_contains", "expected": "assertReceivedAtLeast", "critical": true},
+        {"name": "has_producer_send", "type": "regex", "expected": "(publisher|producer)\\.send", "critical": true}
+      ]
+    },
+    {
+      "id": 26,
+      "name": "mockserver-test",
+      "description": "MockServer for an external API",
+      "prompt": "Create a test using MockServer to mock an external HTTP API. Use @TestcontainersMockServer and MockServerClient to configure expectations (when/withResponse).",
+      "expected_output": "Test with @TestcontainersMockServer, MockServerClient, when(request()).withResponse()",
+      "expected_files": ["ExternalApiMockTest.java"],
+      "tags": ["mockserver", "mock", "http", "testcontainers", "java"],
+      "assertions": [
+        {"name": "has_testcontainers_mockserver", "type": "code_contains", "expected": "@TestcontainersMockServer", "critical": true},
+        {"name": "has_kora_app_test", "type": "code_contains", "expected": "@KoraAppTest", "critical": true},
+        {"name": "has_mockserver_client", "type": "code_contains", "expected": "MockServerClient", "critical": true},
+        {"name": "has_when_request", "type": "regex", "expected": "when\\(.*request", "critical": true},
+        {"name": "has_with_response", "type": "code_contains", "expected": "withResponse", "critical": true}
+      ]
+    },
+    {
+      "id": 27,
+      "name": "blackbox-test-kotlin-restassured",
+      "description": "Kotlin black-box test with RestAssured",
+      "prompt": "Create a Kotlin black-box test using RestAssured. The test should make a GET request to /api/users/{id} and verify the JSON response via body {} assertions.",
+      "expected_output": "Kotlin test with RestAssured, given/when/then, pathParam, body {} assertions",
+      "expected_files": ["UserApiTest.kt"],
+      "tags": ["blackbox", "restassured", "kotlin", "http"],
+      "assertions": [
+        {"name": "has_restassured", "type": "code_contains", "expected": "RestAssured", "critical": true},
+        {"name": "has_given", "type": "regex", "expected": "given\\(\\)", "critical": true},
+        {"name": "has_when", "type": "regex", "expected": "when\\(\\)", "critical": true},
+        {"name": "has_then", "type": "regex", "expected": "then\\(\\)", "critical": true},
+        {"name": "has_body_assertion", "type": "regex", "expected": "body\\s*\\{", "critical": true},
+        {"name": "is_kotlin", "type": "regex", "expected": "(class\\s+\\w+|fun\\s+\\w+)", "critical": true}
+      ]
+    },
+    {
+      "id": 28,
+      "name": "component-test-verify-mock",
+      "description": "Component test with mock verify()",
+      "prompt": "Create a component test that verifies a mock method was called. Use @Mock, @TestComponent, and verify(mock, times(N)).method() to verify the calls.",
+      "expected_output": "Test with @Mock, verify(mock, times(N)) or verify(mock) assertions",
+      "expected_files": ["VerifyMockTest.java"],
+      "tags": ["component", "mockito", "verify", "java"],
+      "assertions": [
+        {"name": "has_kora_app_test", "type": "code_contains", "expected": "@KoraAppTest", "critical": true},
+        {"name": "has_mock_annotation", "type": "code_contains", "expected": "@Mock", "critical": true},
+        {"name": "has_test_component", "type": "code_contains", "expected": "@TestComponent", "critical": true},
+        {"name": "has_verify", "type": "regex", "expected": "verify\\(", "critical": true},
+        {"name": "has_times_or_never", "type": "regex", "expected": "(times|never|atLeast|atMost)", "critical": false}
+      ]
+    },
+    {
+      "id": 29,
+      "name": "integration-test-liquibase",
+      "description": "Integration test with Liquibase migrations",
+      "prompt": "Create an integration test for UserRepository using PostgreSQL with Liquibase migrations instead of Flyway. Use @TestcontainersPostgreSQL and Liquibase for migrations.",
+      "expected_output": "Test with @TestcontainersPostgreSQL, Liquibase, JdbcConnection, CRUD tests",
+      "expected_files": ["UserRepositoryLiquibaseTest.java"],
+      "tags": ["integration", "postgresql", "testcontainers", "liquibase", "java"],
+      "assertions": [
+        {"name": "has_testcontainers_postgres", "type": "code_contains", "expected": "@TestcontainersPostgreSQL", "critical": true},
+        {"name": "has_kora_app_test", "type": "code_contains", "expected": "@KoraAppTest", "critical": true},
+        {"name": "has_liquibase", "type": "code_contains", "expected": "Liquibase", "critical": true},
+        {"name": "has_jdbc_connection", "type": "code_contains", "expected": "JdbcConnection", "critical": true},
+        {"name": "has_test_component", "type": "code_contains", "expected": "@TestComponent", "critical": true}
+      ]
+    },
+    {
+      "id": 30,
+      "name": "blackbox-test-json-schema",
+      "description": "Black-box test with JSON Schema validation",
+      "prompt": "Create a black-box test using RestAssured with JSON Schema validation. Verify that the response matches the JSON schema via jsonSchemaValidator().",
+      "expected_output": "Test with RestAssured, jsonSchemaValidator(), JSON response schema",
+      "expected_files": ["JsonSchemaTest.java"],
+      "tags": ["blackbox", "restassured", "json-schema", "validation", "java"],
+      "assertions": [
+        {"name": "has_restassured", "type": "code_contains", "expected": "RestAssured", "critical": true},
+        {"name": "has_json_schema_validator", "type": "code_contains", "expected": "jsonSchemaValidator", "critical": true},
+        {"name": "has_given_when_then", "type": "regex", "expected": "given\\(\\).*when\\(\\).*then\\(\\)", "critical": true},
+        {"name": "has_schema_file", "type": "regex", "expected": "(\\.json|schema)", "critical": false}
+      ]
+    },
+    {
+      "id": 31,
+      "name": "test-application-basic",
+      "description": "TestApplication for DB cleanup",
+      "prompt": "Create a TestApplication that extends Application and adds TestPetRepository with findAll() and deleteAll() methods for cleaning the pets table in tests. Include instructions for configuring the submodule in build.gradle.",
+      "expected_output": "TestApplication interface extends Application, TestPetRepository with @Query for SELECT and DELETE, submodule.enabled instruction",
+      "expected_files": ["TestApplication.java"],
+      "tags": ["test-application", "repository", "cleanup", "java", "submodule"],
+      "assertions": [
+        {"name": "has_kora_app", "type": "code_contains", "expected": "@KoraApp", "critical": true},
+        {"name": "extends_application", "type": "regex", "expected": "interface\\s+TestApplication\\s+extends\\s+Application", "critical": true},
+        {"name": "has_test_repository", "type": "regex", "expected": "interface\\s+Test.*Repository", "critical": true},
+        {"name": "has_find_all", "type": "code_contains", "expected": "findAll()", "critical": true},
+        {"name": "has_delete_all", "type": "code_contains", "expected": "deleteAll()", "critical": true},
+        {"name": "has_query_annotation", "type": "code_contains", "expected": "@Query", "critical": true},
+        {"name": "has_submodule_instruction", "type": "code_contains", "expected": "kora.app.submodule.enabled", "critical": true}
+      ]
+    },
+    {
+      "id": 32,
+      "name": "test-application-with-usage",
+      "description": "TestApplication used in a test",
+      "prompt": "Create a TestApplication with TestPetRepository and a test that uses @KoraAppTest(TestApplication.class) and calls deleteAll() in @BeforeEach. Include instructions for configuring the submodule.",
+      "expected_output": "TestApplication interface and test class with @BeforeEach calling deleteAll(), submodule.enabled instruction",
+      "expected_files": ["TestApplication.java", "PetIntegrationTest.java"],
+      "tags": ["test-application", "integration", "cleanup", "java", "submodule"],
+      "assertions": [
+        {"name": "has_test_application", "type": "code_contains", "expected": "TestApplication", "critical": true},
+        {"name": "has_kora_app_test", "type": "code_contains", "expected": "@KoraAppTest(TestApplication", "critical": true},
+        {"name": "has_before_each", "type": "code_contains", "expected": "@BeforeEach", "critical": true},
+        {"name": "has_delete_all_call", "type": "regex", "expected": "deleteAll\\(\\)", "critical": true},
+        {"name": "has_test_component", "type": "code_contains", "expected": "@TestComponent", "critical": true},
+        {"name": "has_submodule_instruction", "type": "code_contains", "expected": "kora.app.submodule.enabled", "critical": true}
+      ]
+    },
+    {
+      "id": 33,
+      "name": "test-application-generic-component",
+      "description": "TestApplication with a non-DB component",
+      "prompt": "Create a TestApplication that adds a test component for an external service (not a DB). Add FakeExternalService as a @Root @Component default method. Include instructions for configuring the submodule.",
+      "expected_output": "TestApplication with a default method returning FakeExternalService, @Root @Component, submodule instruction",
+      "expected_files": ["TestApplication.java"],
+      "tags": ["test-application", "component", "stub", "java", "submodule"],
+      "assertions": [
+        {"name": "has_kora_app", "type": "code_contains", "expected": "@KoraApp", "critical": true},
+        {"name": "extends_application", "type": "regex", "expected": "interface\\s+TestApplication\\s+extends\\s+Application", "critical": true},
+        {"name": "has_default_method", "type": "regex", "expected": "default\\s+\\w+\\s+test.*\\(\\)", "critical": true},
+        {"name": "has_root_annotation", "type": "code_contains", "expected": "@Root", "critical": true},
+        {"name": "has_component_annotation", "type": "code_contains", "expected": "@Component", "critical": true},
+        {"name": "has_submodule_instruction", "type": "code_contains", "expected": "kora.app.submodule.enabled", "critical": true}
+      ]
+    }
+  ]
+}

@@ -1,0 +1,28 @@
+package ${package}
+
+import io.grpc.*
+import ru.tinkoff.kora.annotation.processor.component.Component
+import ru.tinkoff.kora.annotation.processor.component.Tag
+
+/**
+ * Client interceptor for ${service_name} gRPC service.
+ * Use for logging, metrics, authentication, or other cross-cutting concerns.
+ */
+@Tag(${service_name}Grpc::class)
+@Component
+class ${service_name}ClientInterceptor : ClientInterceptor {
+
+    override fun <ReqT, RespT> interceptCall(
+        method: MethodDescriptor<ReqT, RespT>,
+        callOptions: CallOptions,
+        next: Channel
+    ): ClientCall<ReqT, RespT> {
+        // Add custom logic here (logging, auth headers, metrics, etc.)
+        // Example: add authorization header
+        // val metadata = Metadata()
+        // metadata.put(Metadata.Key.of("authorization", Metadata.ASCII_STRING_MARSHALLER), "Bearer " + token)
+        // return Calls.interceptCall(next, callOptions, method, metadata)
+
+        return next.newCall(method, callOptions)
+    }
+}
