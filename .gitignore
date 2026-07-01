@@ -1,0 +1,52 @@
+# Kora Agent - cloned docs and examples (regenerable)
+.kora-agent/
+.journal-improvements/
+
+# Kora Teacher - per-user progress tracking
+.kora-teacher-progress.md
+
+# Kora Journal - local journal storage
+.kora-journal/
+
+# Build artifacts
+build/
+.gradle/
+target/
+*.class
+*.jar
+*.war
+
+# IDE
+.idea/
+*.iml
+*.ipr
+*.iws
+.vscode/
+*.swp
+*.swo
+*~
+
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+
+# Logs
+*.log
+logs/
+
+# Local config overrides
+*.local.conf
+*.local.yaml
+*.local.yml
+application-local.conf
+application-local.yaml
+application-local.yml
+
+# Secrets
+*.pem
+*.key
+secrets/
+
+.openclaude/
+.agenthub/

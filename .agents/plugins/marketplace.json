@@ -1,0 +1,20 @@
+{
+  "name": "kora-framework",
+  "interface": {
+    "displayName": "Kora Framework"
+  },
+  "plugins": [
+    {
+      "name": "kora-v1",
+      "source": {
+        "source": "local",
+        "path": "./plugins/kora-v1"
+      },
+      "policy": {
+        "installation": "AVAILABLE",
+        "authentication": "ON_INSTALL"
+      },
+      "category": "Developer Tools"
+    }
+  ]
+}

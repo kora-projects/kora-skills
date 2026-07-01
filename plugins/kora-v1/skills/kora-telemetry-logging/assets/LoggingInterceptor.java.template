@@ -1,0 +1,47 @@
+package ${package}.telemetry;
+
+import ru.tinkoff.kora.common.Component;
+import ru.tinkoff.kora.common.Context;
+import ru.tinkoff.kora.common.Tag;
+import ru.tinkoff.kora.http.server.common.HttpServerModule;
+import ru.tinkoff.kora.http.server.common.HttpServerInterceptor;
+import ru.tinkoff.kora.http.server.common.HttpServerRequest;
+import ru.tinkoff.kora.http.server.common.HttpServerResponse;
+import ru.tinkoff.kora.logging.common.MDC;
+
+import java.util.UUID;
+import java.util.concurrent.CompletionStage;
+
+/**
+ * HTTP interceptor that seeds trace correlation ids into Kora MDC for every request.
+ *
+ * Reads traceId / requestId from request headers (lower-cased) or generates them, puts them
+ * into Kora MDC (propagated by KoraAsyncAppender), and removes them after the chain completes.
+ * @Tag(HttpServerModule.class) applies it to all controllers (only one such interceptor allowed).
+ */
+@Tag(HttpServerModule.class)
+@Component
+public final class LoggingInterceptor implements HttpServerInterceptor {
+
+    @Override
+    public CompletionStage<HttpServerResponse> intercept(Context context,
+                                                         HttpServerRequest request,
+                                                         InterceptChain chain) throws Exception {
+        var traceId = headerOrRandom(request, "x-trace-id");
+        var requestId = headerOrRandom(request, "x-request-id");
+
+        MDC.put("traceId", traceId);
+        MDC.put("requestId", requestId);
+        try {
+            return chain.process(context, request);
+        } finally {
+            MDC.remove("traceId");
+            MDC.remove("requestId");
+        }
+    }
+
+    private static String headerOrRandom(HttpServerRequest request, String name) {
+        var value = request.headers().getFirst(name);
+        return value != null ? value : UUID.randomUUID().toString();
+    }
+}

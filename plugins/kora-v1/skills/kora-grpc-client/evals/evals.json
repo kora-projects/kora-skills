@@ -1,0 +1,109 @@
+{
+  "evals": [
+    {
+      "id": "kora-grpc-client-stub-injection",
+      "skills": ["kora-grpc-client"],
+      "query": "I have a UserService proto with a GetUser RPC. In my Kora service, how do I call it from a component?",
+      "expected_behavior": [
+        "Enables GrpcClientModule on the @KoraApp interface",
+        "Injects UserServiceGrpc.UserServiceBlockingStub directly by type via constructor (no @Tag on the parameter)",
+        "Annotates the wrapper with @Component from ru.tinkoff.kora.common",
+        "Builds the request with GetUserRequest.newBuilder() and calls stub.getUser(request)",
+        "Does not use foreign-framework annotations or field injection"
+      ],
+      "tags": ["stubs", "basic"]
+    },
+    {
+      "id": "kora-grpc-client-configuration",
+      "skills": ["kora-grpc-client"],
+      "query": "Configure my Kora gRPC client for UserService with a 10 second timeout and metrics enabled, reading the server URL from an environment variable.",
+      "expected_behavior": [
+        "Places the config under grpcClient.UserService",
+        "Sets the required url key and overrides it with ${?GRPC_SERVER_URL} for environment substitution",
+        "Sets timeout = \"10s\" and telemetry.metrics.enabled = true",
+        "Uses an http:// URL for plaintext rather than a usePlaintext flag",
+        "Does not invent config keys that are not in GrpcClientConfig"
+      ],
+      "tags": ["config", "basic"]
+    },
+    {
+      "id": "kora-grpc-client-gradle-setup",
+      "skills": ["kora-grpc-client"],
+      "query": "Set up the Gradle build for a Java Kora gRPC client, including protobuf code generation.",
+      "expected_behavior": [
+        "Applies the com.google.protobuf plugin and configures protoc plus protoc-gen-grpc-java",
+        "Pins the BOM with platform(\"ru.tinkoff.kora:kora-parent:...\") and does not version individual ru.tinkoff.kora artifacts",
+        "Adds annotationProcessor \"ru.tinkoff.kora:annotation-processors\"",
+        "Declares ru.tinkoff.kora:grpc-client and io.grpc:grpc-protobuf",
+        "Adds build/generated/source/proto/main/{grpc,java} to sourceSets",
+        "Does not reference foreign-framework (non-Kora) Gradle plugins"
+      ],
+      "tags": ["gradle", "basic"]
+    },
+    {
+      "id": "kora-grpc-client-auth-interceptor",
+      "skills": ["kora-grpc-client"],
+      "query": "Add an authorization metadata header to every outbound gRPC call to UserService, reading the token from a config component.",
+      "expected_behavior": [
+        "Implements io.grpc.ClientInterceptor as a @Component",
+        "Scopes the interceptor with @Tag(UserServiceGrpc.class) from ru.tinkoff.kora.common.Tag",
+        "Wraps the call in ForwardingClientCall.SimpleForwardingClientCall and puts the header in start() before super.start()",
+        "Uses Metadata.Key.of(\"authorization\", Metadata.ASCII_STRING_MARSHALLER)",
+        "Injects the token via constructor from a config component, not field injection"
+      ],
+      "tags": ["interceptors", "auth", "advanced"]
+    },
+    {
+      "id": "kora-grpc-client-logging-interceptor",
+      "skills": ["kora-grpc-client"],
+      "query": "Log the full method name for each gRPC call to my streaming client for debugging.",
+      "expected_behavior": [
+        "Creates a ClientInterceptor @Component tagged with @Tag(ServiceGrpc.class)",
+        "Uses an SLF4J Logger and logs method.getFullMethodName() inside interceptCall",
+        "Returns next.newCall(method, callOptions) to continue the call",
+        "Notes that GrpcClientConfigInterceptor is applied by default",
+        "Does not use foreign-framework AOP or a servlet filter"
+      ],
+      "tags": ["interceptors", "logging", "advanced"]
+    },
+    {
+      "id": "kora-grpc-client-server-streaming",
+      "skills": ["kora-grpc-client"],
+      "query": "Consume a server-streaming GetAllUsers RPC and collect all results into a list in my Kora client.",
+      "expected_behavior": [
+        "Injects UserServiceGrpc.UserServiceBlockingStub and iterates the returned Iterator (e.g. forEachRemaining)",
+        "Or uses the async UserServiceGrpc.UserServiceStub with a StreamObserver implementing onNext/onError/onCompleted",
+        "Keeps stream handling inside a @Component wrapper service",
+        "Maps protobuf responses into application DTOs at the boundary",
+        "Does not use a foreign reactive-web stack or reactive HTTP types"
+      ],
+      "tags": ["streaming", "advanced"]
+    },
+    {
+      "id": "kora-grpc-client-client-streaming",
+      "skills": ["kora-grpc-client"],
+      "query": "Implement a client-streaming CreateUsers call that pushes multiple requests and awaits one summary response.",
+      "expected_behavior": [
+        "Injects the async UserServiceGrpc.UserServiceStub",
+        "Obtains the request StreamObserver from asyncStub.createUsers(responseObserver)",
+        "Calls requestObserver.onNext(...) per request and requestObserver.onCompleted() at the end",
+        "Bridges the async result to a synchronous boundary with a CompletableFuture completed in onNext/onCompleted",
+        "Calls requestObserver.onError(...) on failure to avoid leaking the stream"
+      ],
+      "tags": ["streaming", "advanced"]
+    },
+    {
+      "id": "kora-grpc-client-missing-stub-debug",
+      "skills": ["kora-grpc-client"],
+      "query": "My Kora app fails to build with 'Required dependency not found: UserServiceGrpc.UserServiceBlockingStub'. How do I fix it?",
+      "expected_behavior": [
+        "Confirms GrpcClientModule is extended by the @KoraApp interface",
+        "Confirms the protobuf plugin generated the stub and the generated source dirs are on the source set",
+        "Confirms the mandatory annotation processor is present so the DI graph is generated",
+        "Suggests running ./gradlew classes (or generateProto) so processors run before compilation",
+        "Does not suggest adding @Tag to the stub injection as the fix"
+      ],
+      "tags": ["troubleshooting", "advanced"]
+    }
+  ]
+}

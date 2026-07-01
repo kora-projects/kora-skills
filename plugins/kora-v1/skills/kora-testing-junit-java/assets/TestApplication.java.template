@@ -1,0 +1,59 @@
+package ${package};
+
+import ru.tinkoff.kora.common.KoraApp;
+import ru.tinkoff.kora.common.Tag;
+import ru.tinkoff.kora.common.annotation.Root;
+import ru.tinkoff.kora.database.common.annotation.Query;
+import ru.tinkoff.kora.database.common.annotation.Repository;
+import ru.tinkoff.kora.database.jdbc.JdbcRepository;
+import ${package}.model.dao.${entityName};
+
+import java.util.List;
+
+/**
+ * Test application graph that extends the production Application and adds test-only
+ * components, such as a repository used for cleanup and assertions.
+ *
+ * The Kora maintainers recommend black-box testing as the primary source of truth.
+ * Use this submodule pattern when component/integration tests need direct repository
+ * access for setup, cleanup, or assertions.
+ *
+ * The @Root default method below consumes the test repository so the otherwise-unused
+ * repository is forced into the test graph.
+ *
+ * Build requirements:
+ * 1. Enable submodule generation on the PRODUCTION application module's build.gradle:
+ *        compileJava {
+ *            options.compilerArgs += ["-Akora.app.submodule.enabled=true"]
+ *        }
+ * 2. Add the annotation processor as a test dependency:
+ *        dependencies {
+ *            testAnnotationProcessor "ru.tinkoff.kora:annotation-processors"
+ *        }
+ * 3. Exclude generated classes from JUnit discovery:
+ *        test {
+ *            filter {
+ *                excludeTestsMatching '*$*'
+ *                excludeTestsMatching "*TestApplication"
+ *            }
+ *        }
+ */
+@KoraApp
+public interface TestApplication extends Application {
+
+    @Repository
+    interface Test${entityName}Repository extends JdbcRepository {
+
+        @Query("SELECT %{return#selects} FROM %{return#table}")
+        List<${entityName}> findAll();
+
+        @Query("DELETE FROM ${tableName}")
+        void deleteAll();
+    }
+
+    @Tag(TestApplication.class)
+    @Root
+    default String testRoot(Test${entityName}Repository ignored) {
+        return "test-root";
+    }
+}

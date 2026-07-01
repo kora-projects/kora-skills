@@ -1,0 +1,54 @@
+{
+  "name": "kora-v1",
+  "version": "0.1.0",
+  "description": "Kora Framework development skill for building production-grade Java/Kotlin services — with compile-time DI, HTTP, Database, Kafka, gRPC, SOAP, OpenAPI, Telemetry, AOP. Zero reflection, zero proxies, AI agent friendly. For Kora version 1.x",
+  "author": {
+    "name": "Anton Kurako",
+    "url": "https://github.com/kora-projects"
+  },
+  "license": "Apache-2.0",
+  "homepage": "https://kora-projects.github.io/kora-docs",
+  "keywords": [
+    "kora",
+    "kora-v1",
+    "kora-1x",
+    "kora-1.x",
+    "java",
+    "kotlin",
+    "compile-time-di",
+    "microservices",
+    "http-server",
+    "http-client",
+    "jdbc",
+    "cassandra",
+    "kafka",
+    "grpc",
+    "openapi",
+    "telemetry",
+    "caching",
+    "resilience"
+  ],
+  "skills": "skills",
+  "interface": {
+    "displayName": "Kora 1.x",
+    "shortDescription": "Kora Framework 1.x Java/Kotlin microservice skills.",
+    "longDescription": "AI coding agent skills for building Kora Framework 1.x services with compile-time DI, HTTP, database, Kafka, gRPC, SOAP/WSDL, OpenAPI, telemetry, AOP, testing, and project setup guidance.",
+    "developerName": "Kora Framework",
+    "category": "Developer Tools",
+    "capabilities": [
+      "Kora service development",
+      "Kora code developer",
+      "Kora code generation",
+      "Kora code review",
+      "Kora documentation",
+      "Testing"
+    ],
+    "websiteURL": "https://kora-projects.github.io/kora-docs",
+    "brandColor": "#ffc105",
+    "defaultPrompt": [
+      "What is Kora Framework and why its good for coding agents?",
+      "Explain Kora Framework basics for a beginner?",
+      "Setup Kora HelloWorld application and explain it to me"
+    ]
+  }
+}

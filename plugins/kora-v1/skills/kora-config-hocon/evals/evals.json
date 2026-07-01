@@ -1,0 +1,101 @@
+{
+  "evals": [
+    {
+      "id": "kora-config-hocon-basic-configsource",
+      "skills": ["kora-config-hocon"],
+      "query": "I have a Kora service. Add a typed configuration for an 'app' section with name, version and environment fields, loaded from application.conf.",
+      "expected_behavior": [
+        "Adds the ru.tinkoff.kora:config-hocon dependency and the annotationProcessor ru.tinkoff.kora:annotation-processors",
+        "Declares @KoraApp interface extending HoconConfigModule",
+        "Creates an interface annotated @ConfigSource(\"app\") with name(), version(), environment() methods",
+        "Creates src/main/resources/application.conf with a matching app { } section",
+        "Does not use field injection or value-placeholder annotations; reads config only through the constructor-injected @ConfigSource interface"
+      ],
+      "tags": ["config", "basic"]
+    },
+    {
+      "id": "kora-config-hocon-env-substitution",
+      "skills": ["kora-config-hocon"],
+      "query": "Externalize the database url, user and password through environment variables in my Kora HOCON config, with a sensible default pool size that can still be overridden.",
+      "expected_behavior": [
+        "Uses required substitution ${DATABASE_URL} / ${DATABASE_USER} / ${DATABASE_PASSWORD}",
+        "Uses the default-then-override pattern (literal value reassigned with ${?VAR}) for pool size",
+        "Explains that ${VAR} is required and aborts startup if unset while ${?VAR} is optional",
+        "Does not rely on a ${VAR:default} placeholder as the substitution mechanism and does not read variables via System.getenv in code"
+      ],
+      "tags": ["config", "env", "basic"]
+    },
+    {
+      "id": "kora-config-hocon-nested-objects",
+      "skills": ["kora-config-hocon"],
+      "query": "My Kora config interface needs a nested 'bar' object and a list of bars. How do I model the nested types?",
+      "expected_behavior": [
+        "Keeps @ConfigSource only on the outer path-bound interface",
+        "Annotates the nested sub-object interfaces with @ConfigValueExtractor",
+        "Exposes the nested object as a method (e.g. BarConfig bar()) and the list as List<BarConfig> bars()",
+        "Does not annotate nested interfaces with @ConfigSource"
+      ],
+      "tags": ["config", "nested", "advanced"]
+    },
+    {
+      "id": "kora-config-hocon-required-optional-default",
+      "skills": ["kora-config-hocon"],
+      "query": "In my Kora @ConfigSource interface I need one required field, one optional field, and one field with a default value of 42.",
+      "expected_behavior": [
+        "Uses a plain method for the required field (required by default in Kora)",
+        "Marks the optional field with @Nullable (e.g. jakarta.annotation.Nullable)",
+        "Provides the default via a Java default method returning 42",
+        "Does not use a @DefaultValue annotation (it does not exist in Kora)"
+      ],
+      "tags": ["config", "advanced"]
+    },
+    {
+      "id": "kora-config-hocon-reusable-extractor",
+      "skills": ["kora-config-hocon"],
+      "query": "Two libraries in my Kora app share the same config shape (endpoint + requestTimeout) but live at libs.lib1 and libs.lib2. How do I bind both?",
+      "expected_behavior": [
+        "Declares one shape with @ConfigValueExtractor (e.g. LibConfig)",
+        "Adds @Tag marker classes and @KoraApp default factory methods that call extractor.extract(config.get(\"libs.lib1\")) and config.get(\"libs.lib2\")",
+        "Injects ConfigValueExtractor<LibConfig> and ru.tinkoff.kora.config.common.Config into the factories",
+        "Optionally reuses one HOCON object (${common-lib}) overriding a single field",
+        "Distinguishes the two instances with @Tag (not field injection or any qualifier-by-name mechanism)"
+      ],
+      "tags": ["config", "tags", "advanced"]
+    },
+    {
+      "id": "kora-config-hocon-size-duration-types",
+      "skills": ["kora-config-hocon"],
+      "query": "How do I read a byte-size limit like 10Mb and a timeout like 250s into typed fields in a Kora config interface?",
+      "expected_behavior": [
+        "Maps the byte size to ru.tinkoff.kora.config.common.Size",
+        "Maps the timeout to java.time.Duration with a value like \"250s\"",
+        "Notes that Kora has no DataSize type",
+        "Does not introduce a DataSize type or a custom string parser for the byte size"
+      ],
+      "tags": ["config", "types", "advanced"]
+    },
+    {
+      "id": "kora-config-hocon-raw-config-env",
+      "skills": ["kora-config-hocon"],
+      "query": "I want a component in my Kora app to read only environment variables through the framework config abstraction.",
+      "expected_behavior": [
+        "Injects ru.tinkoff.kora.config.common.Config with the @Environment tag",
+        "Mentions @SystemProperties and @ApplicationConfig as the other layer-scoping tags",
+        "Recommends typed @ConfigSource interfaces over injecting raw Config when possible",
+        "Does not use System.getenv directly as the primary approach instead of the @Environment-tagged Config"
+      ],
+      "tags": ["config", "advanced"]
+    },
+    {
+      "id": "kora-config-hocon-per-environment",
+      "skills": ["kora-config-hocon"],
+      "query": "How do I run my Kora service with a production config file instead of the default application.conf?",
+      "expected_behavior": [
+        "Uses the config.resource system property for a classpath file or config.file for a filesystem path",
+        "Explains the load priority: config.resource, then config.file, then application.conf, then empty",
+        "Does not invent a config.environment or CONFIG_ENVIRONMENT profile switch (it does not exist in Kora)"
+      ],
+      "tags": ["config", "ops", "advanced"]
+    }
+  ]
+}

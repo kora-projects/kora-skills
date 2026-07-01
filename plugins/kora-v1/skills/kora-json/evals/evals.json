@@ -1,0 +1,101 @@
+{
+  "evals": [
+    {
+      "id": "kora-json-basic-dto",
+      "skills": ["kora-json"],
+      "query": "I'm building a Kora HTTP API. Create a JSON request DTO UserRequest with name and email, and a UserResponse with id, name, email, createdAt.",
+      "expected_behavior": [
+        "Annotates each DTO type with @Json from ru.tinkoff.kora.json.common.annotation",
+        "Uses Java records (or Kotlin data classes) for the DTOs",
+        "Adds annotationProcessor \"ru.tinkoff.kora:annotation-processors\" and implementation \"ru.tinkoff.kora:json-module\" (Kotlin: ksp symbol-processors)",
+        "Notes that the @KoraApp interface must extend JsonModule",
+        "Does not use foreign @JsonProperty or field injection; uses constructor injection"
+      ],
+      "tags": ["dto", "basic"]
+    },
+    {
+      "id": "kora-json-controller",
+      "skills": ["kora-json"],
+      "query": "Add a Kora @HttpController UserController with a POST /users that takes a JSON body and a GET /users/{id} that returns JSON.",
+      "expected_behavior": [
+        "Marks the request parameter with @Json and the route method with @Json",
+        "Uses @HttpRoute(method = HttpMethod.POST/GET, path = ...) and @Path for the id",
+        "Annotates the controller with @HttpController and @Component, injecting the service via the constructor",
+        "Does not use @RestController, @RequestBody, @GetMapping or @PathVariable"
+      ],
+      "tags": ["http", "basic"]
+    },
+    {
+      "id": "kora-json-field-naming-optional",
+      "skills": ["kora-json"],
+      "query": "My JSON uses snake_case keys like user_id and first_name, and some fields are optional. How do I map this in a Kora DTO?",
+      "expected_behavior": [
+        "Uses @JsonField(\"user_id\") to rename fields (Kotlin: @field:JsonField)",
+        "Marks optional fields with @Nullable (Kotlin: nullable type T?)",
+        "Explains that all fields are required by default",
+        "Does not introduce fasterxml @JsonProperty"
+      ],
+      "tags": ["fields", "basic"]
+    },
+    {
+      "id": "kora-json-sealed-polymorphic",
+      "skills": ["kora-json"],
+      "query": "Create a polymorphic JSON result PaymentResult with a discriminator field type and two cases PaymentSuccess (SUCCESS) and PaymentError (ERROR).",
+      "expected_behavior": [
+        "Defines a sealed interface annotated with @Json and @JsonDiscriminatorField(\"type\")",
+        "Annotates each subtype with @JsonDiscriminatorValue matching the JSON value",
+        "Includes the discriminator field as a component on each subtype and uses permits/implements",
+        "Does not use Jackson @JsonTypeInfo/@JsonSubTypes"
+      ],
+      "tags": ["sealed", "advanced"]
+    },
+    {
+      "id": "kora-json-patch-nullable",
+      "skills": ["kora-json"],
+      "query": "I have a PATCH /users/{id} endpoint that must distinguish a field omitted from the body from a field explicitly set to null. How do I model the request DTO in Kora?",
+      "expected_behavior": [
+        "Uses JsonNullable<T> for the patchable fields",
+        "Reads state with isDefined() and value() (and isNull() when needed), not Optional-style isPresent()/get()",
+        "Explains the three states: defined non-null, defined null, undefined (omitted)",
+        "Does not invent isAbsent()/isPresent() methods on JsonNullable"
+      ],
+      "tags": ["jsonnullable", "advanced"]
+    },
+    {
+      "id": "kora-json-custom-mapper",
+      "skills": ["kora-json"],
+      "query": "I need to serialize LocalDate as dd.MM.yyyy across my Kora app. Register a custom JSON mapper.",
+      "expected_behavior": [
+        "Provides a JsonReader<LocalDate> and JsonWriter<LocalDate> factory in a @Module (@DefaultComponent) or directly in @KoraApp",
+        "Handles null in the writer (writeNull) and caches the DateTimeFormatter",
+        "Explains the factory is picked up for any @Json DTO containing LocalDate",
+        "Does not rely on framework converters or Config.getString which does not exist in Kora"
+      ],
+      "tags": ["custom-mapper", "advanced"]
+    },
+    {
+      "id": "kora-json-enum-serialization",
+      "skills": ["kora-json"],
+      "query": "Create an OrderStatus enum that serializes to lowercase strings like pending and shipped in a Kora @Json DTO.",
+      "expected_behavior": [
+        "Annotates the enum with @Json",
+        "Overrides toString() to return the lowercase value and provides a fromString lookup for reading",
+        "Explains that by default enums serialize via toString()",
+        "Does not use fasterxml enum annotations"
+      ],
+      "tags": ["enum", "intermediate"]
+    },
+    {
+      "id": "kora-json-jackson-backend",
+      "skills": ["kora-json"],
+      "query": "My team has an existing Jackson ObjectMapper config. How do I make a Kora app use Jackson instead of the generated mappers?",
+      "expected_behavior": [
+        "Extends JacksonModule on the @KoraApp interface",
+        "Adds annotationProcessor \"ru.tinkoff.kora:json-annotation-processor\" and implementation \"ru.tinkoff.kora:jackson-module\"",
+        "Provides a factory returning a custom ObjectMapper in the graph to override the default",
+        "Does not claim a non-existent @ExceptionHandler or JacksonHttpServerRequestMapper API"
+      ],
+      "tags": ["jackson", "advanced"]
+    }
+  ]
+}

@@ -1,0 +1,108 @@
+{
+  "evals": [
+    {
+      "id": "kora-http-client-basic-crud",
+      "skills": ["kora-http-client"],
+      "query": "Create a declarative Kora HTTP client UserApiClient for a User API: GET /users/{id}, GET /users with page and size query params, POST /users, and DELETE /users/{id}. The base URL must come from configuration.",
+      "expected_behavior": [
+        "Declares an interface annotated with @HttpClient and uses configPath, with the url supplied under httpClient.* in config",
+        "Annotates each method with @HttpRoute(method = HttpMethod.GET/POST/DELETE, path = ...)",
+        "Maps path variables with @Path and query parameters with @Query",
+        "Uses @Json on the method and on the body parameter for JSON request/response, and adds json-module",
+        "Does not put a baseUrl attribute on @HttpClient (that attribute does not exist; url is a config key)"
+      ],
+      "tags": ["declarative", "basic"]
+    },
+    {
+      "id": "kora-http-client-okhttp-config",
+      "skills": ["kora-http-client"],
+      "query": "Set up the OkHttp transport for a Kora HTTP client: connectTimeout 5s, readTimeout 30s, HTTP/2, with logging, metrics and tracing telemetry, plus a per-client block for usersApi pointing at http://users-service:8080 with a 10s requestTimeout.",
+      "expected_behavior": [
+        "Adds implementation ru.tinkoff.kora:http-client-ok and the annotation processor (annotation-processors for Java or symbol-processors for Kotlin)",
+        "Plugs OkHttpClientModule into the @KoraApp interface",
+        "Configures httpClient.ok.httpVersion = HTTP_2, connectTimeout and readTimeout, and telemetry.logging/metrics/tracing",
+        "Adds a per-client block httpClient.usersApi with url and requestTimeout",
+        "Does not version individual ru.tinkoff.kora artifacts and relies on the kora-parent BOM"
+      ],
+      "tags": ["transport", "basic"]
+    },
+    {
+      "id": "kora-http-client-response-entity",
+      "skills": ["kora-http-client"],
+      "query": "I need to read the HTTP status code and a response header on a Kora HTTP client call instead of just the body. How do I do that?",
+      "expected_behavior": [
+        "Returns HttpResponseEntity<T> from the @HttpRoute method",
+        "Reads the status with response.code() and the body with response.body()",
+        "Reads headers with response.headers()",
+        "Explains that without HttpResponseEntity a non-2xx status throws HttpClientResponseException",
+        "Does not use a status() method or invent a ResponseEntity from another framework"
+      ],
+      "tags": ["response", "basic"]
+    },
+    {
+      "id": "kora-http-client-error-handling",
+      "skills": ["kora-http-client"],
+      "query": "Implement error handling for a Kora HTTP client UserService.getUser(id): map 404 to a not-found error and 5xx to a service-unavailable error, and handle a response that fails to decode.",
+      "expected_behavior": [
+        "Catches HttpClientResponseException and branches on e.code() for 404 and 5xx",
+        "Catches HttpClientDecoderException for undecodable bodies",
+        "Notes that non-2xx responses throw HttpClientResponseException by default",
+        "Optionally uses @ResponseCodeMapper or HttpResponseEntity to avoid exceptions",
+        "Does not invent per-status exception classes such as NotFoundException or HttpStatusCodeException"
+      ],
+      "tags": ["error-handling", "intermediate"]
+    },
+    {
+      "id": "kora-http-client-interceptor-auth",
+      "skills": ["kora-http-client"],
+      "query": "Add an API key to every request of a Kora HTTP client by reading the key from configuration and setting an X-API-Key header.",
+      "expected_behavior": [
+        "Implements HttpClientInterceptor and overrides processRequest(Context, InterceptChain, HttpClientRequest)",
+        "Builds a new request with request.toBuilder().header(...).build() and calls chain.process",
+        "Registers the interceptor as a @Component and attaches it with @InterceptWith on the client",
+        "Reads the key from a @ConfigSource config interface, not a non-existent @ConfigValue",
+        "Uses constructor injection and does not use field injection or annotations from other frameworks"
+      ],
+      "tags": ["interceptors", "auth", "intermediate"]
+    },
+    {
+      "id": "kora-http-client-async",
+      "skills": ["kora-http-client"],
+      "query": "Build a non-blocking Kora HTTP client whose methods return CompletionStage and fan out several calls in parallel.",
+      "expected_behavior": [
+        "Declares @HttpRoute methods returning CompletionStage<T> with @Json where bodies are JSON",
+        "Composes results with thenApply/thenCompose and toCompletableFuture without blocking",
+        "Uses CompletableFuture.allOf to run calls in parallel and join the results",
+        "Mentions that Mono<T> (reactor-core) or Kotlin suspend are also supported signatures",
+        "Does not block inside the async chain with Thread.sleep or join in a callback"
+      ],
+      "tags": ["async", "intermediate"]
+    },
+    {
+      "id": "kora-http-client-resilient",
+      "skills": ["kora-http-client"],
+      "query": "Make a production Kora HTTP client resilient: retry GETs, a circuit breaker on POSTs, a timeout, and a fallback that returns an empty list.",
+      "expected_behavior": [
+        "Adds the ru.tinkoff.kora:resilient-kora dependency and ResilientModule to @KoraApp",
+        "Annotates methods with @Retry(\"name\"), @CircuitBreaker(\"name\"), @Timeout(\"name\")",
+        "Uses @Fallback(value = \"name\", method = \"...\") referencing a default fallback method",
+        "Puts the tuning values under the resilient.* config (retry/circuitbreaker/timeout blocks)",
+        "Does not use inline attributes like maxAttempts, failureThreshold, or a @Backoff annotation"
+      ],
+      "tags": ["resilience", "advanced"]
+    },
+    {
+      "id": "kora-http-client-custom-mapper",
+      "skills": ["kora-http-client"],
+      "query": "Send a plain-text request body instead of JSON from a Kora HTTP client, and decode different response shapes for 200 versus error status codes.",
+      "expected_behavior": [
+        "Implements HttpClientRequestMapper<T> returning HttpBody.plaintext(...) and references it with @Mapping",
+        "Uses @ResponseCodeMapper(code = 200, ...) and @ResponseCodeMapper(code = ResponseCodeMapper.DEFAULT, ...)",
+        "Implements HttpClientResponseMapper<T> reading response.body().asInputStream() and response.code()",
+        "Models the result as a sealed interface with @Json record variants",
+        "Imports @Mapping from ru.tinkoff.kora.common.Mapping rather than inventing an annotation"
+      ],
+      "tags": ["mappers", "advanced"]
+    }
+  ]
+}

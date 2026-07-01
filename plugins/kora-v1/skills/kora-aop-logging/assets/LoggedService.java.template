@@ -1,0 +1,37 @@
+// @Log and @Mdc patterns. Class non-final.
+// At INFO level you get boundary markers only ('>' and '<') with MDC keys.
+// At DEBUG/TRACE you also get arg/result data.
+// Replace `com.example.app.service` with your package.
+
+package com.example.app.service;
+
+import ru.tinkoff.kora.common.Component;
+import ru.tinkoff.kora.logging.common.annotation.Log;
+import ru.tinkoff.kora.logging.common.annotation.Mdc;
+
+import java.util.UUID;
+
+@Component
+public class OrdersService {                                              // NOT final
+
+    @Log                                                                  // log args + result
+    @Mdc(key = "tenant", value = "${tenantId}")                          // adds 'tenant' to MDC for the call
+    @Mdc(key = "operation", value = "create-order")
+    public String create(
+        @Mdc String tenantId,                                            // parameter value lands in MDC as 'tenantId'
+        @Log.off String idempotencyKey                                   // never logged (sensitive)
+    ) {
+        return "order-" + UUID.randomUUID();
+    }
+
+    @Log.out                                                              // log only the result
+    public String get(UUID id) {
+        return "order-" + id;
+    }
+
+    @Log                                                                  // method-level MDC, global = true keeps it on thread
+    @Mdc(key = "requestId", value = "${java.util.UUID.randomUUID().toString()}", global = true)
+    public void enterRequestContext() {
+        // From here until thread reset, every log line has requestId
+    }
+}

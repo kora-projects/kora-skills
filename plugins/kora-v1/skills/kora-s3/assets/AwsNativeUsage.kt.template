@@ -1,0 +1,50 @@
+// Drop down to AWS SDK directly when Kora's portable API doesn't cover what you need
+// (presigned URLs, bucket lifecycle, replication, SSE-C, etc.).
+// Replace `com.example.app.storage` with your package.
+
+package com.example.app.storage
+
+import ru.tinkoff.kora.common.Component
+import ru.tinkoff.kora.common.Tag
+import software.amazon.awssdk.services.s3.S3AsyncClient
+import software.amazon.awssdk.services.s3.S3Client
+import software.amazon.awssdk.services.s3.model.GetObjectRequest
+import software.amazon.awssdk.services.s3.model.MultipartUpload
+import software.amazon.awssdk.services.s3.presigner.S3Presigner
+import software.amazon.awssdk.services.s3.presigner.model.GetObjectPresignRequest
+import java.net.URL
+import java.nio.file.Path
+import java.time.Duration
+import java.util.UUID
+
+@Component
+class S3NativeService(
+    private val sync: S3Client,                                   // injected by AwsS3ClientModule
+    private val async: S3AsyncClient,
+    @Tag(MultipartUpload::class) private val multipartUploadAsync: S3AsyncClient  // ← tag = the AWS SDK class
+) {
+
+    /** Pre-signed download URL valid for 15 minutes. Not available via Kora's portable API. */
+    fun presignedDownload(bucket: String, key: String): URL {
+        // S3Presigner is not auto-injected by Kora — create one yourself bound to the same region/credentials.
+        S3Presigner.builder().build().use { presigner ->
+            val presign = presigner.presignGetObject(
+                GetObjectPresignRequest.builder()
+                    .signatureDuration(Duration.ofMinutes(15))
+                    .getObjectRequest(
+                        GetObjectRequest.builder()
+                            .bucket(bucket)
+                            .key(key)
+                            .build()
+                    )
+                    .build()
+            )
+            return presign.url()
+        }
+    }
+
+    /** Use the tagged async client for batch uploads — uses AWS Transfer Manager under the hood. */
+    fun streamUpload(bucket: String, key: String, file: Path) {
+        // Use multipartUploadAsync.putObject(...) here for transfer-manager-style behavior.
+    }
+}

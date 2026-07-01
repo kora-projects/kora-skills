@@ -1,0 +1,46 @@
+package ${packagePath};
+
+import ru.tinkoff.kora.common.Module;
+import ru.tinkoff.kora.common.DefaultComponent;
+
+/**
+ * Example Module interface with factory methods.
+ *
+ * Modules in the same src/main/java as @KoraApp are auto-discovered -
+ * no extends needed in Application interface.
+ *
+ * Use @DefaultComponent to mark factory methods that can be overridden
+ * by the application.
+ *
+ * See: references/component-registration-reference.md
+ * See: references/module-auto-discovery-reference.md
+ */
+@Module
+public interface ${Module}Module {
+
+    /**
+     * Factory method for creating a component.
+     *
+     * @DefaultComponent marks this as overridable by the application.
+     * Application can provide its own implementation by defining a factory
+     * method with the same signature (without @DefaultComponent).
+     *
+     * @return Component instance
+     */
+    @DefaultComponent
+    default ${Module}Service ${module}Service() {
+        return new ${Module}ServiceImpl();
+    }
+
+    /**
+     * Example factory method with dependencies.
+     *
+     * Dependencies are automatically injected from the container.
+     *
+     * @param dependency Injected dependency
+     * @return Component with dependency
+     */
+    default ${Module}Component ${module}Component(SomeDependency dependency) {
+        return new ${Module}Component(dependency);
+    }
+}

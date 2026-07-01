@@ -1,0 +1,41 @@
+// Kotlin MapStruct setup. MapStruct needs kapt, which collides with Kora's KSP.
+// 1.9.10 + KSP 1.9.10-1.0.13 is the last combination where kapt + KSP coexist;
+// the Kora team's own kora-kotlin-crud example abandoned this and hand-writes
+// mappers on Kotlin 1.9.25. Prefer a hand-written mapper unless you can pin these.
+
+plugins {
+    kotlin("jvm") version "1.9.10"
+    kotlin("kapt") version "1.9.10"
+    id("com.google.devtools.ksp") version "1.9.10-1.0.13"
+}
+
+// Allow KSP to see kapt-generated sources
+ksp {
+    allowSourcesFromOtherPlugins = true
+}
+
+// Force KSP to run AFTER kapt so it sees MapStruct-generated impls
+tasks.withType<KspTask> {
+    dependsOn(tasks.named("kaptGenerateStubsKotlin").get())
+    dependsOn(tasks.named("kaptKotlin").get())
+}
+
+dependencies {
+    // Kora KSP processors
+    ksp("ru.tinkoff.kora:symbol-processors")
+
+    // MapStruct processor via kapt (KSP doesn't support MapStruct)
+    kapt("org.mapstruct:mapstruct-processor:1.5.5.Final")
+
+    // MapStruct runtime
+    implementation("org.mapstruct:mapstruct:1.5.5.Final")
+}
+
+// Optional: MapStruct compiler arguments
+tasks.withType<KotlinCompile> {
+    kotlinOptions.freeCompilerArgs += listOf(
+        "-Amapstruct.suppressGeneratorTimestamp=true",
+        "-Amapstruct.suppressGeneratorVersionInfoComment=true",
+        "-Amapstruct.defaultComponentModel=default"
+    )
+}

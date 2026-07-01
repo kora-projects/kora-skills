@@ -1,0 +1,38 @@
+package ${package}
+
+import io.opentelemetry.api.trace.StatusCode
+import io.opentelemetry.api.trace.Tracer
+import ru.tinkoff.kora.common.Component
+import ru.tinkoff.kora.common.Context
+import ru.tinkoff.kora.opentelemetry.common.OpentelemetryContext
+
+/**
+ * Reusable manual-span wrapper. Centralizes the span lifecycle: parent on the
+ * current request, register the span, set status, record exceptions, and
+ * restore the previous OpentelemetryContext in finally.
+ */
+@Component
+class TracingService(private val tracer: Tracer) {
+
+    fun <T> trace(operationName: String, operation: () -> T): T {
+        val ctx = Context.current()
+        val otctx = OpentelemetryContext.get(ctx)
+        val span = tracer.spanBuilder(operationName)
+            .setParent(otctx.context)
+            .startSpan()
+
+        OpentelemetryContext.set(ctx, otctx.add(span))
+        return try {
+            val result = operation()
+            span.setStatus(StatusCode.OK)
+            result
+        } catch (e: Exception) {
+            span.recordException(e)
+            span.setStatus(StatusCode.ERROR, e.message ?: "error")
+            throw e
+        } finally {
+            span.end()
+            OpentelemetryContext.set(ctx, otctx)
+        }
+    }
+}

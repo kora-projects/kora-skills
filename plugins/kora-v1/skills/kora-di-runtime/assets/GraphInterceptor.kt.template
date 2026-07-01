@@ -1,0 +1,124 @@
+package ${packagePath}
+
+import ru.tinkoff.kora.application.graph.GraphInterceptor
+import ru.tinkoff.kora.common.Component
+
+/**
+ * Component interceptor for wrapping/modifying other components.
+ *
+ * Usage:
+ * - Metrics/timing wrappers
+ * - Logging proxies
+ * - Circuit breaker wrappers
+ * - Distributed tracing
+ * - Cache warmup
+ * - Validation wrappers
+ *
+ * Key points:
+ * - init() may return a DIFFERENT instance (proxy, wrapper, decorator)
+ * - The returned instance becomes what downstream components see
+ * - Similar to Lifecycle but with instance modification capability
+ *
+ * Generic type T is the type of component being intercepted.
+ */
+@Component
+class ${InterceptorName}<T> : GraphInterceptor<T> {
+
+    // TODO: Add dependencies if needed (MeterRegistry, Tracer, etc.)
+    // private val meterRegistry: MeterRegistry
+
+    /**
+     * Called when component is initialized.
+     *
+     * @param value The original component instance
+     * @return The instance to use (can be same, wrapped, or completely different)
+     */
+    override fun init(value: T): T {
+        println("${InterceptorName} intercepting init for: ${value::class.java.simpleName}")
+
+        // TODO: Choose one pattern:
+
+        // Pattern 1: Just inspect/initialize (return same instance)
+        // initializeComponent(value)
+        // return value
+
+        // Pattern 2: Wrap with proxy/decorator
+        // return MetricsWrapper(value, meterRegistry) as T
+
+        // Pattern 3: Return different instance
+        // return createOptimizedInstance(value)
+
+        return value
+    }
+
+    /**
+     * Called when component is being released.
+     *
+     * @param value The component instance (may be the wrapped instance from init())
+     */
+    override fun release(value: T): T {
+        println("${InterceptorName} intercepting release for: ${value::class.java.simpleName}")
+
+        // TODO: Add cleanup logic if needed
+        // - Unwrap proxies
+        // - Release interceptor-specific resources
+
+        return value
+    }
+
+    // TODO: Add helper methods as needed
+    // private fun initializeComponent(value: T) { ... }
+    // private fun createOptimizedInstance(original: T): T { ... }
+}
+
+// ============================================================================
+// EXAMPLE USAGE
+// ============================================================================
+//
+// // Metrics wrapper example
+// @Component
+// class MetricsInterceptor(
+//     private val meterRegistry: MeterRegistry
+// ) : GraphInterceptor<HttpClient> {
+//
+//     override fun init(client: HttpClient): HttpClient {
+//         return MetricsHttpClient(client, meterRegistry)
+//     }
+//
+//     override fun release(client: HttpClient): HttpClient {
+//         return client
+//     }
+// }
+//
+// // Circuit breaker wrapper example
+// @Component
+// class CircuitBreakerInterceptor(
+//     private val registry: ResilienceRegistry
+// ) : GraphInterceptor<ExternalService> {
+//
+//     override fun init(service: ExternalService): ExternalService {
+//         return registry.circuitBreaker(service, "external-service")
+//     }
+//
+//     override fun release(service: ExternalService): ExternalService {
+//         return service
+//     }
+// }
+//
+// // Cache warmup example
+// @Component
+// class CacheWarmupInterceptor : GraphInterceptor<JdbcDatabase> {
+//
+//     override fun init(db: JdbcDatabase): JdbcDatabase {
+//         warmupCache(db)
+//         return db
+//     }
+//
+//     override fun release(db: JdbcDatabase): JdbcDatabase {
+//         return db
+//     }
+//
+//     private fun warmupCache(db: JdbcDatabase) {
+//         // Pre-load frequently used data
+//     }
+// }

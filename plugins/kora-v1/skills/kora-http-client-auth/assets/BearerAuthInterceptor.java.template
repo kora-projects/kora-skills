@@ -1,0 +1,52 @@
+package ${package};
+
+import ru.tinkoff.kora.common.Component;
+import ru.tinkoff.kora.common.Context;
+import ru.tinkoff.kora.http.client.common.interceptor.HttpClientInterceptor;
+import ru.tinkoff.kora.http.client.common.request.HttpClientRequest;
+import ru.tinkoff.kora.http.client.common.response.HttpClientResponse;
+
+import java.util.concurrent.CompletionStage;
+
+/**
+ * Custom Bearer-token interceptor for an outgoing Kora HTTP client.
+ *
+ * <p>Prefer the built-in {@code BearerAuthHttpClientInterceptor} (in
+ * {@code http-client-common}). Register it from a {@code @Module}:</p>
+ * <pre>{@code
+ * @Module
+ * public interface BearerAuthModule {
+ *     default BearerAuthHttpClientInterceptor bearerAuther(HttpClientTokenProvider provider) {
+ *         return new BearerAuthHttpClientInterceptor(provider);
+ *     }
+ * }
+ * }</pre>
+ *
+ * <p>This hand-written variant fetches the token from an
+ * {@code HttpClientTokenProvider} and sets the header itself. Attach with
+ * {@code @InterceptWith(BearerAuthClientInterceptor.class)}.</p>
+ */
+@Component
+public final class BearerAuthClientInterceptor implements HttpClientInterceptor {
+
+    private final HttpClientTokenProvider tokenProvider;
+
+    public BearerAuthClientInterceptor(HttpClientTokenProvider tokenProvider) {
+        this.tokenProvider = tokenProvider;
+    }
+
+    @Override
+    public CompletionStage<HttpClientResponse> processRequest(
+            Context ctx, InterceptChain chain, HttpClientRequest request) throws Exception {
+        return tokenProvider.getToken(request).thenCompose(token -> {
+            var authorized = request.toBuilder()
+                    .header("Authorization", "Bearer " + token)
+                    .build();
+            try {
+                return chain.process(ctx, authorized);
+            } catch (Exception e) {
+                throw new IllegalStateException(e);
+            }
+        });
+    }
+}

@@ -1,0 +1,42 @@
+package ${packagePath}
+
+/**
+ * Tag class for component disambiguation.
+ *
+ * Usage:
+ * - Simple marker class for @Tag annotation
+ * - No fields or methods needed
+ * - Just a type token
+ *
+ * Example:
+ *   @Tag(RedisTag.class)
+ *   @Component
+ *   public class RedisCache implements Cache { ... }
+ */
+public final class ${ClassName} {
+    private ${ClassName}() {}
+}
+
+// ============================================================================
+// EXAMPLE TAG CLASSES
+// ============================================================================
+//
+// // Cache implementations
+// public final class RedisTag {}
+// public final class CaffeineTag {}
+//
+// // Database implementations
+// public final class PrimaryTag {}
+// public final class SecondaryTag {}
+//
+// // Environment-specific
+// public final class ProdTag {}
+// public final class DevTag {}
+//
+// // Strategy pattern
+// public final class SyncTag {}
+// public final class AsyncTag {}
+//
+// // Tenant-specific (multi-tenant applications)
+// public final class TenantATag {}
+// public final class TenantBTag {}

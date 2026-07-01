@@ -1,0 +1,39 @@
+{
+  "$schema": "https://json.schemastore.org/claude-code-marketplace.json",
+  "name": "kora-framework",
+  "version": "0.1.0",
+  "description": "Official Kora Framework skills for building production-grade Java/Kotlin services with compile-time dependency injection. Zero reflection, zero proxies, zero runtime magic, AI agent friendly.",
+  "owner": {
+    "name": "Kora Framework",
+    "url": "https://github.com/kora-projects"
+  },
+  "plugins": [
+    {
+      "name": "kora-v1",
+      "source": "./plugins/kora-v1",
+      "path": ".",
+      "ref": "master",
+      "description": "Kora Framework development skill for Java & Kotlin services with compile-time dependency injection. Zero reflection, zero proxies, zero runtime magic, AI agent friendly. Build HTTP services, databases, Kafka, gRPC, SOAP, OpenAPI, telemetry, AOP with compile-time DI and other 39 domain skills.",
+      "version": "0.1.0",
+      "author": {
+        "name": "Anton Kurako",
+        "url": "https://github.com/kora-projects"
+      },
+      "category": "backend-development",
+      "keywords": [
+        "kora",
+        "kora-v1",
+        "kora-1x",
+        "kora-1.x",
+        "java",
+        "kotlin",
+        "compile-time-di",
+        "microservices",
+        "http",
+        "database",
+        "kafka",
+        "grpc"
+      ]
+    }
+  ]
+}

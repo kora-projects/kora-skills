@@ -1,0 +1,107 @@
+package ${package};
+
+import jakarta.annotation.Nullable;
+import java.sql.Array;
+import java.sql.PreparedStatement;
+import java.sql.ResultSet;
+import java.sql.SQLException;
+import java.sql.Types;
+import java.util.List;
+import ru.tinkoff.kora.common.Mapping;
+import ru.tinkoff.kora.database.common.UpdateCount;
+import ru.tinkoff.kora.database.common.annotation.Batch;
+import ru.tinkoff.kora.database.common.annotation.Column;
+import ru.tinkoff.kora.database.common.annotation.Id;
+import ru.tinkoff.kora.database.common.annotation.Query;
+import ru.tinkoff.kora.database.common.annotation.Repository;
+import ru.tinkoff.kora.database.common.annotation.Table;
+import ru.tinkoff.kora.database.jdbc.EntityJdbc;
+import ru.tinkoff.kora.database.jdbc.JdbcRepository;
+import ru.tinkoff.kora.database.jdbc.mapper.parameter.JdbcParameterColumnMapper;
+import ru.tinkoff.kora.database.jdbc.mapper.result.JdbcResultColumnMapper;
+
+/**
+ * Repository example mapping a PostgreSQL array column (BIGINT[]) to a Java List<Long>.
+ *
+ * Kora has no built-in List<T> column conversion, so supply a parameter mapper (write)
+ * and a result mapper (read) and select both with @Mapping on the field.
+ *
+ * Database schema example:
+ *   CREATE TABLE products (
+ *       id           BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+ *       name         VARCHAR(255) NOT NULL,
+ *       category_ids BIGINT[] NOT NULL DEFAULT '{}'
+ *   );
+ */
+@EntityJdbc
+@Table("products")
+public record ${entity_name}(
+    @Id @Column("id") Long id,
+    @Column("name") String name,
+    @Mapping(${entity_name}.LongListResultMapper.class)
+    @Mapping(${entity_name}.LongListParameterMapper.class)
+    @Column("category_ids") List<Long> categoryIds
+) {
+
+    public ${entity_name}(String name, List<Long> categoryIds) {
+        this(null, name, categoryIds);
+    }
+
+    /** Reads a PostgreSQL BIGINT[] column into List<Long>. */
+    public static final class LongListResultMapper implements JdbcResultColumnMapper<List<Long>> {
+
+        @Override
+        public List<Long> apply(ResultSet rs, int index) throws SQLException {
+            Array array = rs.getArray(index);
+            if (array == null) {
+                return List.of();
+            }
+            Long[] values = (Long[]) array.getArray();
+            return List.of(values);
+        }
+    }
+
+    /** Writes a List<Long> as a PostgreSQL BIGINT[] parameter. */
+    public static final class LongListParameterMapper implements JdbcParameterColumnMapper<List<Long>> {
+
+        @Override
+        public void set(PreparedStatement stmt, int index, @Nullable List<Long> value) throws SQLException {
+            if (value == null) {
+                stmt.setNull(index, Types.ARRAY);
+                return;
+            }
+            Long[] typedArray = value.toArray(Long[]::new);
+            Array sqlArray = stmt.getConnection().createArrayOf("BIGINT", typedArray);
+            stmt.setArray(index, sqlArray);
+        }
+    }
+}
+
+/**
+ * Repository using the array-mapped entity.
+ */
+@Repository
+interface ${entity_name}Repository extends JdbcRepository {
+
+    @Query("SELECT %{return#selects} FROM %{return#table} WHERE id = :id")
+    @Nullable
+    ${entity_name} findById(Long id);
+
+    @Query("SELECT %{return#selects} FROM %{return#table}")
+    List<${entity_name}> findAll();
+
+    // Postgres ANY() against a single id parameter
+    @Query("SELECT %{return#selects} FROM %{return#table} WHERE :categoryId = ANY(category_ids)")
+    List<${entity_name}> findByCategoryId(Long categoryId);
+
+    @Query("INSERT INTO %{entity#inserts-= @id}")
+    @Id
+    Long insert(${entity_name} product);
+
+    @Query("INSERT INTO %{entity#inserts-= @id}")
+    @Id
+    List<Long> insertBatch(@Batch List<${entity_name}> products);
+
+    @Query("UPDATE %{entity#table} SET %{entity#updates} WHERE %{entity#where = @id}")
+    UpdateCount update(${entity_name} product);
+}

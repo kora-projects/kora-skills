@@ -1,0 +1,144 @@
+package ${packagePath};
+
+import ru.tinkoff.kora.application.graph.GraphInterceptor;
+import ru.tinkoff.kora.common.Component;
+
+/**
+ * Component interceptor for wrapping/modifying other components.
+ *
+ * Usage:
+ * - Metrics/timing wrappers
+ * - Logging proxies
+ * - Circuit breaker wrappers
+ * - Distributed tracing
+ * - Cache warmup
+ * - Validation wrappers
+ *
+ * Key points:
+ * - init() may return a DIFFERENT instance (proxy, wrapper, decorator)
+ * - The returned instance becomes what downstream components see
+ * - Similar to Lifecycle but with instance modification capability
+ *
+ * Generic type T is the type of component being intercepted.
+ */
+@Component
+public final class ${InterceptorName}<T> implements GraphInterceptor<T> {
+
+    // TODO: Add dependencies if needed (MeterRegistry, Tracer, etc.)
+    // private final MeterRegistry meterRegistry;
+
+    // public ${InterceptorName}(MeterRegistry meterRegistry) {
+    //     this.meterRegistry = meterRegistry;
+    // }
+
+    /**
+     * Called when component is initialized.
+     *
+     * @param value The original component instance
+     * @return The instance to use (can be same, wrapped, or completely different)
+     * @throws Exception If initialization fails
+     */
+    @Override
+    public T init(T value) throws Exception {
+        System.out.println("${InterceptorName} intercepting init for: " + value.getClass().getSimpleName());
+
+        // TODO: Choose one pattern:
+
+        // Pattern 1: Just inspect/initialize (return same instance)
+        // initializeComponent(value);
+        // return value;
+
+        // Pattern 2: Wrap with proxy/decorator
+        // return (T) new MetricsWrapper<>(value, meterRegistry);
+
+        // Pattern 3: Return different instance
+        // return createOptimizedInstance(value);
+
+        return value;
+    }
+
+    /**
+     * Called when component is being released.
+     *
+     * @param value The component instance (may be the wrapped instance from init())
+     * @throws Exception If cleanup fails
+     */
+    @Override
+    public T release(T value) throws Exception {
+        System.out.println("${InterceptorName} intercepting release for: " + value.getClass().getSimpleName());
+
+        // TODO: Add cleanup logic if needed
+        // - Unwrap proxies
+        // - Release interceptor-specific resources
+
+        return value;
+    }
+
+    // TODO: Add helper methods as needed
+    // private void initializeComponent(T value) { ... }
+    // private T createOptimizedInstance(T original) { ... }
+}
+
+// ============================================================================
+// EXAMPLE USAGE
+// ============================================================================
+//
+// // Metrics wrapper example
+// @Component
+// public final class MetricsInterceptor implements GraphInterceptor<HttpClient> {
+//     private final MeterRegistry meterRegistry;
+//
+//     public MetricsInterceptor(MeterRegistry meterRegistry) {
+//         this.meterRegistry = meterRegistry;
+//     }
+//
+//     @Override
+//     public HttpClient init(HttpClient client) {
+//         return new MetricsHttpClient(client, meterRegistry);
+//     }
+//
+//     @Override
+//     public HttpClient release(HttpClient client) {
+//         return client;
+//     }
+// }
+//
+// // Circuit breaker wrapper example
+// @Component
+// public final class CircuitBreakerInterceptor implements GraphInterceptor<ExternalService> {
+//     private final ResilienceRegistry registry;
+//
+//     public CircuitBreakerInterceptor(ResilienceRegistry registry) {
+//         this.registry = registry;
+//     }
+//
+//     @Override
+//     public ExternalService init(ExternalService service) {
+//         return registry.circuitBreaker(service, "external-service");
+//     }
+//
+//     @Override
+//     public ExternalService release(ExternalService service) {
+//         return service;
+//     }
+// }
+//
+// // Cache warmup example
+// @Component
+// public final class CacheWarmupInterceptor implements GraphInterceptor<JdbcDatabase> {
+//
+//     @Override
+//     public JdbcDatabase init(JdbcDatabase db) {
+//         warmupCache(db);
+//         return db;
+//     }
+//
+//     @Override
+//     public JdbcDatabase release(JdbcDatabase db) {
+//         return db;
+//     }
+//
+//     private void warmupCache(JdbcDatabase db) {
+//         // Pre-load frequently used data
+//     }
+// }

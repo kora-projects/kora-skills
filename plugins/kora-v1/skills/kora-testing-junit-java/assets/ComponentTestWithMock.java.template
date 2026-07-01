@@ -1,0 +1,77 @@
+package ${package};
+
+import static org.junit.jupiter.api.Assertions.*;
+import static org.mockito.ArgumentMatchers.*;
+import static org.mockito.Mockito.*;
+
+import org.jetbrains.annotations.NotNull;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+import org.mockito.Mock;
+import ru.tinkoff.kora.test.extension.junit5.KoraAppTest;
+import ru.tinkoff.kora.test.extension.junit5.KoraAppTestConfigModifier;
+import ru.tinkoff.kora.test.extension.junit5.KoraConfigModification;
+import ru.tinkoff.kora.test.extension.junit5.TestComponent;
+
+/**
+ * Component test template with Mockito mock dependencies.
+ *
+ * Usage:
+ * 1. Replace ${componentName} with your service class name
+ * 2. Replace ${dependencyName} with the dependency to mock
+ * 3. Replace ${componentVarName} and ${dependencyVarName} with variable names
+ * 4. Add test methods with proper given/when/then structure
+ */
+@KoraAppTest(Application.class)
+class ${componentName}Test implements KoraAppTestConfigModifier {
+
+    @Mock
+    @TestComponent
+    private ${dependencyName} ${dependencyVarName};
+
+    @TestComponent
+    private ${componentName} ${componentVarName};
+
+    @NotNull
+    @Override
+    public KoraConfigModification config() {
+        return KoraConfigModification.ofString("""
+            # Test configuration overrides
+            # Example:
+            # db.url = "jdbc:postgresql://localhost:5432/test"
+            """);
+    }
+
+    @BeforeEach
+    void setup() {
+        // Setup mock behavior
+        // Example:
+        // when(${dependencyVarName}.findById(anyLong())).thenReturn(Optional.of(TEST_ENTITY));
+        // when(${dependencyVarName}.save(any())).thenAnswer(invocation -> invocation.getArgument(0));
+    }
+
+    @Test
+    void shouldCreateEntity() {
+        // given
+        // var input = new CreateRequest("test-data");
+        // when(${dependencyVarName}.exists(any())).thenReturn(true);
+
+        // when
+        // var result = ${componentVarName}.create(input);
+
+        // then
+        // assertNotNull(result);
+        // verify(${dependencyVarName}).save(any());
+    }
+
+    @Test
+    void shouldThrowWhenNotFound() {
+        // given
+        // when(${dependencyVarName}.findById(anyLong())).thenReturn(Optional.empty());
+
+        // when/then
+        // var exception = assertThrows(EntityNotFoundException.class,
+        //     () -> ${componentVarName}.get(999L));
+        // assertEquals("Entity not found: 999", exception.getMessage());
+    }
+}

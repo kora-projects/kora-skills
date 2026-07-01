@@ -1,0 +1,123 @@
+// Scheduled jobs — JDK and Quartz examples.
+// @ScheduleAtFixedRate / @ScheduleWithFixedDelay / @ScheduleOnce — JDK (scheduling-jdk).
+// @ScheduleWithCron / @ScheduleWithTrigger — Quartz (scheduling-quartz).
+// Class must be non-final (Java) / open (Kotlin) for aspect codegen.
+// Replace `com.example.app.jobs` with your package.
+
+package com.example.app.jobs;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import ru.tinkoff.kora.common.Component;
+import ru.tinkoff.kora.scheduling.jdk.annotation.ScheduleAtFixedRate;
+import ru.tinkoff.kora.scheduling.jdk.annotation.ScheduleOnce;
+import ru.tinkoff.kora.scheduling.jdk.annotation.ScheduleWithFixedDelay;
+// Uncomment when using scheduling-quartz:
+// import ru.tinkoff.kora.scheduling.quartz.ScheduleWithCron;
+// import ru.tinkoff.kora.scheduling.quartz.DisallowConcurrentExecution;
+
+import java.time.temporal.ChronoUnit;
+
+@Component
+public class ScheduledJobs {                                       // non-final for aspects
+
+    private static final Logger log = LoggerFactory.getLogger(ScheduledJobs.class);
+
+    // ============== JDK SCHEDULING ==============
+
+    /**
+     * Fixed-rate: runs every {@code period} regardless of previous execution time.
+     * Overlap possible if execution exceeds period.
+     * Use for: heartbeat, metrics collection, health checks.
+     */
+    @ScheduleAtFixedRate(initialDelay = 30, period = 60, unit = ChronoUnit.SECONDS)
+    void heartbeat() {
+        // Lightweight task — keep execution time < period to avoid overlap
+        log.info("Heartbeat tick");
+    }
+
+    /**
+     * Fixed-delay: waits {@code delay} after previous execution completes.
+     * Never overlaps — safe for long-running tasks.
+     * Use for: batch processing, data sync, cleanup.
+     */
+    @ScheduleWithFixedDelay(config = "scheduling.jobs.cleanup")   // config-driven
+    void cleanup() {
+        if (Thread.currentThread().isInterrupted()) return;        // graceful shutdown
+        log.info("Running cleanup");
+        // ... do batch cleanup ...
+    }
+
+    /**
+     * One-shot: runs once after {@code delay}.
+     * Use for: cache warming, late binding, startup tasks.
+     */
+    @ScheduleOnce(delay = 5, unit = ChronoUnit.MINUTES)
+    void warmup() {
+        log.info("Warming up caches");
+        // ... populate caches, fetch initial state ...
+    }
+
+    // ============== QUARTZ SCHEDULING (uncomment when using scheduling-quartz) ==============
+
+    /**
+     * Cron: runs at times specified by cron expression.
+     * Requires: QuartzModule instead of SchedulingJdkModule.
+     * Use for: daily reports, hourly checks, complex schedules.
+     */
+    // @DisallowConcurrentExecution                                // prevent overlap
+    // @ScheduleWithCron("0 0 3 * * ?")                            // daily at 03:00
+    // void nightlyReport() {
+    //     log.info("Generating nightly report");
+    //     // ... generate report ...
+    // }
+
+    /**
+     * Cron with config: cron expression from configuration.
+     * Config has priority over annotation value.
+     */
+    // @ScheduleWithCron(config = "scheduling.jobs.hourly")
+    // void hourlyCheck() {
+    //     log.info("Running hourly check");
+    // }
+}
+
+// ============== CONFIGURATION ==============
+
+// application.conf snippet (HOCON):
+//
+// scheduling {
+//   threads = 4                # JDK pool size (default: 2)
+//   shutdownWait = "30s"       # Grace period for in-flight jobs
+//   telemetry {
+//     logging.enabled = false
+//     metrics.enabled = true
+//     tracing.enabled = true
+//   }
+//   jobs {
+//     cleanup {
+//       initialDelay = "30s"
+//       delay        = "1m"
+//     }
+//     hourly.cron = "0 0 * * * ?"   # Quartz only
+//   }
+// }
+
+// application.yml snippet (YAML):
+//
+// scheduling:
+//   threads: 4
+//   shutdownWait: "30s"
+//   telemetry:
+//     logging:
+//       enabled: false
+//     metrics:
+//       enabled: true
+//     tracing:
+//       enabled: true
+//   jobs:
+//     cleanup:
+//       initialDelay: "30s"
+//       delay: "1m"
+//     hourly:
+//       cron: "0 0 * * * ?"   # Quartz only

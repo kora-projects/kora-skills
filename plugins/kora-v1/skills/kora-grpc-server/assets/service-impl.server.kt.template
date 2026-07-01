@@ -1,0 +1,139 @@
+package ${package}
+
+import ${proto_package}.${service_name}Grpc
+import ${proto_package}.${request_class}
+import ${proto_package}.${response_class}
+import com.google.protobuf.Timestamp
+import io.grpc.Status
+import io.grpc.stub.StreamObserver
+import org.slf4j.LoggerFactory
+import ru.tinkoff.kora.common.Component
+import java.time.OffsetDateTime
+import java.util.UUID
+
+/**
+ * gRPC service implementation for ${service_name}.
+ * Extend the generated ${service_name}ImplBase and annotate with @Component.
+ *
+ * Handler patterns:
+ * - Unary: method(request, responseObserver)
+ * - Server streaming: method(request, responseObserver) with multiple onNext()
+ * - Client streaming: method(responseObserver) returns StreamObserver<Request>
+ * - Bidi streaming: method(responseObserver) returns StreamObserver<Request> with multiple onNext()
+ */
+@Component
+class ${service_name}Service : ${service_name}Grpc.${service_name}ImplBase() {
+
+    private val logger = LoggerFactory.getLogger(javaClass)
+
+    /**
+     * Unary RPC - One request, one response
+     */
+    override fun ${method_name}(request: ${request_class}, responseObserver: StreamObserver<${response_class}>) {
+        try {
+            logger.info("Processing ${method_name} request")
+
+            // TODO: Implement business logic here
+            // Example: val result = service.someMethod(request.param)
+
+            val response = ${response_class}.newBuilder()
+                // .setField(value)
+                .build()
+
+            responseObserver.onNext(response)
+            responseObserver.onCompleted()
+
+        } catch (e: IllegalArgumentException) {
+            logger.error("Invalid argument", e)
+            responseObserver.onError(
+                Status.INVALID_ARGUMENT
+                    .withDescription(e.message)
+                    .asRuntimeException()
+            )
+        } catch (e: Exception) {
+            logger.error("Internal error", e)
+            responseObserver.onError(
+                Status.INTERNAL
+                    .withDescription("Failed to process request")
+                    .withCause(e)
+                    .asRuntimeException()
+            )
+        }
+    }
+
+    /**
+     * Server streaming example - One request, multiple responses
+     * Uncomment and adapt for streaming use cases:
+     */
+    /*
+    override fun listItems(request: ListItemsRequest, responseObserver: StreamObserver<Item>) {
+        try {
+            val items = service.findAll(request.page, request.size)
+
+            for (item in items) {
+                responseObserver.onNext(toGrpcItem(item))
+            }
+
+            responseObserver.onCompleted()
+        } catch (e: Exception) {
+            responseObserver.onError(
+                Status.INTERNAL
+                    .withDescription("Failed to list items")
+                    .withCause(e)
+                    .asRuntimeException()
+            )
+        }
+    }
+    */
+
+    /**
+     * Client streaming example - Multiple requests, one response
+     * Uncomment and adapt for batch upload use cases:
+     */
+    /*
+    override fun createItems(responseObserver: StreamObserver<CreateItemsResponse>): StreamObserver<CreateItemRequest> {
+        val batch = mutableListOf<ItemRequest>()
+
+        return object : StreamObserver<CreateItemRequest> {
+            override fun onNext(request: CreateItemRequest) {
+                batch.add(ItemRequest(request.name, request.value))
+            }
+
+            override fun onError(t: Throwable) {
+                logger.error("Client streaming failed", t)
+            }
+
+            override fun onCompleted() {
+                try {
+                    val ids = service.createAll(batch)
+                    val response = CreateItemsResponse.newBuilder()
+                        .addAllItemIds(ids)
+                        .setCreatedCount(ids.size)
+                        .build()
+                    responseObserver.onNext(response)
+                    responseObserver.onCompleted()
+                } catch (e: Exception) {
+                    responseObserver.onError(
+                        Status.INTERNAL
+                            .withDescription("Failed to create items")
+                            .withCause(e)
+                            .asRuntimeException()
+                    )
+                }
+            }
+        }
+    }
+    */
+
+    /**
+     * Convert domain object to gRPC message
+     */
+    private fun toGrpcResponse(/* domain: DomainType */): ${response_class} {
+        return ${response_class}.newBuilder()
+            // .setId(domain.id)
+            // .setCreatedAt(Timestamp.newBuilder()
+            //     .setSeconds(domain.createdAt.toEpochSecond())
+            //     .build())
+            .build()
+    }
+}

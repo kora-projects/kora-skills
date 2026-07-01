@@ -1,0 +1,43 @@
+package ${packagePath}
+
+import ru.tinkoff.kora.common.Component
+import ru.tinkoff.kora.common.Tag
+
+/**
+ * Tag class for component disambiguation.
+ *
+ * Usage:
+ * - Simple marker class for @Tag annotation
+ * - No fields or methods needed
+ * - Just a type token
+ *
+ * Example:
+ *   @Tag(RedisTag::class)
+ *   @Component
+ *   class RedisCache : Cache
+ */
+class ${ClassName}
+
+// ============================================================================
+// EXAMPLE TAG CLASSES
+// ============================================================================
+//
+// // Cache implementations
+// class RedisTag
+// class CaffeineTag
+//
+// // Database implementations
+// class PrimaryTag
+// class SecondaryTag
+//
+// // Environment-specific
+// class ProdTag
+// class DevTag
+//
+// // Strategy pattern
+// class SyncTag
+// class AsyncTag
+//
+// // Tenant-specific (multi-tenant applications)
+// class TenantATag
+// class TenantBTag

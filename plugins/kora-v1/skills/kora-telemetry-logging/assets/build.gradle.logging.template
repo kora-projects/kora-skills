@@ -1,0 +1,29 @@
+plugins {
+    id "java"
+}
+
+// The kora-parent BOM aligns all Kora artifact versions; never pin a version
+// on an individual ru.tinkoff.kora:* dependency.
+configurations {
+    koraBom
+    annotationProcessor.extendsFrom(koraBom)
+    implementation.extendsFrom(koraBom)
+}
+
+dependencies {
+    koraBom platform("ru.tinkoff.kora:kora-parent:1.2.17")
+
+    // Mandatory annotation processor (Kotlin: ksp "ru.tinkoff.kora:symbol-processors").
+    // Required for @KoraApp and the @Log / @Mdc logging aspects.
+    annotationProcessor "ru.tinkoff.kora:annotation-processors"
+
+    // SLF4J + Logback implementation; transitively provides logging-common
+    // (StructuredArgument, MDC, @Log, @Mdc).
+    implementation "ru.tinkoff.kora:logging-logback"
+
+    // Log levels live in the Kora config.
+    implementation "ru.tinkoff.kora:config-hocon"
+
+    // Optional: JSON output for log aggregators (ELK / Datadog / Splunk).
+    // implementation "net.logstash.logback:logstash-logback-encoder:7.4"
+}

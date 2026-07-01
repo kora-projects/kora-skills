@@ -1,0 +1,31 @@
+# application.prod.conf
+# Production configuration - restricted access
+
+openapi {
+  management {
+    file = [
+      "openapi/api-v1.yaml",
+      "openapi/api-v2.yaml"
+    ]
+    enabled = true
+    endpoint = "/openapi"
+
+    # Disable interactive UI in production
+    swaggerui {
+      enabled = false
+    }
+
+    rapidoc {
+      enabled = false
+    }
+  }
+}
+
+# Reduce HTTP request logging in production (rely on metrics/tracing instead)
+httpServer {
+  telemetry {
+    logging {
+      enabled = false
+    }
+  }
+}

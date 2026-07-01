@@ -1,0 +1,180 @@
+// Cache configuration templates for Kora Framework.
+// Copy relevant sections to your project.
+
+package com.example.app.config;
+
+// =============================================================================
+// 1. JAVA MODULE DECLARATION
+// =============================================================================
+
+import ru.tinkoff.kora.cache.caffeine.CaffeineCacheModule;
+import ru.tinkoff.kora.cache.redis.RedisCacheModule;
+import ru.tinkoff.kora.common.KoraApp;
+
+@KoraApp
+public interface Application extends
+    CaffeineCacheModule,    // Local Caffeine cache
+    RedisCacheModule {      // Distributed Redis cache (optional)
+
+    // Typed cache interfaces can be declared here or separately
+
+    // Single-level Caffeine
+    // @Cache("users.cache")
+    // interface UserCache extends CaffeineCache<UUID, UserDto> {}
+
+    // Single-level Redis
+    // @Cache("users.redis.cache")
+    // interface UserRedisCache extends RedisCache<UUID, @Json UserDto> {}
+
+    // Multi-level: both Caffeine and Redis
+    // @Cache("users.caffeine.cache")
+    // interface UserCaffeineCache extends CaffeineCache<UUID, UserDto> {}
+
+    // @Cache("users.redis.cache")
+    // interface UserRedisCache extends RedisCache<UUID, @Json UserDto> {}
+}
+
+// =============================================================================
+// 2. HOCON CONFIGURATION (application.conf)
+// =============================================================================
+
+/*
+# Simple Caffeine cache
+users.cache.config {
+  maximumSize = 10000
+  expireAfterWrite = "10m"
+}
+
+# Advanced Caffeine cache with all options
+orders.cache.config {
+  expireAfterWrite  = "10m"     # delete entry 10m after write (optional)
+  expireAfterAccess = "5m"      # delete entry 5m after last access (optional)
+  initialSize       = 100       # pre-allocate capacity (optional)
+  maximumSize       = 10000     # eviction threshold (default: 100000)
+}
+
+# Redis cache (requires keyPrefix)
+users.redis.cache.config {
+  keyPrefix         = "users"   # REQUIRED — avoids key collisions
+  expireAfterWrite  = "1h"      # optional TTL
+  expireAfterAccess = "30m"     # optional TTL on access
+}
+
+# Lettuce (Redis driver) configuration
+lettuce {
+  uri              = "redis://localhost:6379"   # required
+  user             = ${?REDIS_USER}             # optional
+  password         = ${?REDIS_PASSWORD}         # optional
+  database         = 0                          # optional
+  protocol         = "RESP3"                    # RESP2 or RESP3
+  socketTimeout    = "15s"                      # connection timeout
+  commandTimeout   = "15s"                      # command timeout
+  forceClusterClient = false                    # force cluster mode
+
+  # SSL configuration (optional)
+  ssl {
+    ciphers          = ["TLS_CHACHA20_POLY1305_SHA256"]
+    handshakeTimeout = "10s"
+  }
+}
+
+# Multi-level cache configuration
+users.caffeine.cache.config {
+  maximumSize       = 5000
+  expireAfterWrite  = "5m"
+}
+
+users.redis.cache.config {
+  keyPrefix         = "users"
+  expireAfterWrite  = "1h"
+}
+*/
+
+// =============================================================================
+// 3. LETTUCE CONFIGURATOR (Optional customization)
+// =============================================================================
+
+import io.lettuce.core.cluster.ClusterClientOptions;
+import io.lettuce.core.resource.DefaultClientResources;
+import ru.tinkoff.kora.cache.redis.LettuceConfigurator;
+import ru.tinkoff.kora.common.Component;
+
+@Component
+public class MyLettuceConfigurator implements LettuceConfigurator {
+
+    @Override
+    public DefaultClientResources.Builder configure(DefaultClientResources.Builder resourceBuilder) {
+        // Customize client resources (thread pools, event loops, etc.)
+        return resourceBuilder;
+    }
+
+    @Override
+    public ClusterClientOptions.Builder configure(ClusterClientOptions.Builder clusterBuilder) {
+        // Customize cluster options (topology refresh, etc.)
+        return clusterBuilder;
+    }
+
+    @Override
+    public io.lettuce.core.ClientOptions.Builder configure(io.lettuce.core.ClientOptions.Builder clientBuilder) {
+        // Customize client options (timeouts, retries, etc.)
+        return clientBuilder;
+    }
+}
+
+// =============================================================================
+// 4. MULTI-LEVEL CACHE SERVICE EXAMPLE
+// =============================================================================
+
+/*
+import com.example.app.dto.UserDto;
+import ru.tinkoff.kora.cache.annotation.Cache;
+import ru.tinkoff.kora.cache.annotation.CacheInvalidate;
+import ru.tinkoff.kora.cache.annotation.CachePut;
+import ru.tinkoff.kora.cache.annotation.Cacheable;
+import ru.tinkoff.kora.cache.caffeine.CaffeineCache;
+import ru.tinkoff.kora.cache.redis.RedisCache;
+import ru.tinkoff.kora.common.Component;
+import ru.tinkoff.kora.json.common.annotation.Json;
+import java.util.UUID;
+
+@KoraApp
+public interface Application extends CaffeineCacheModule, RedisCacheModule {
+
+    @Cache("users.caffeine.config")
+    interface UserCaffeineCache extends CaffeineCache<UUID, UserDto> {}
+
+    @Cache("users.redis.config")
+    interface UserRedisCache extends RedisCache<UUID, @Json UserDto> {}
+}
+
+@Component
+public class UserService {
+
+    private final UserRepository repository;
+
+    public UserService(UserRepository repository) {
+        this.repository = repository;
+    }
+
+    // Multi-level: L1 Caffeine → L2 Redis → repository
+    @Cacheable(UserCaffeineCache.class)
+    @Cacheable(UserRedisCache.class)
+    public UserDto get(UUID id) {
+        return repository.find(id);
+    }
+
+    // Update both L1 and L2
+    @CachePut(UserCaffeineCache.class)
+    @CachePut(UserRedisCache.class)
+    public UserDto update(UUID id, UserDto dto) {
+        return repository.save(id, dto);
+    }
+
+    // Evict from both L1 and L2
+    @CacheInvalidate(UserCaffeineCache.class)
+    @CacheInvalidate(UserRedisCache.class)
+    public void delete(UUID id) {
+        repository.delete(id);
+    }
+}
+*/

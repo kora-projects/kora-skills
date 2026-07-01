@@ -1,0 +1,29 @@
+package ${packagePath}.publisher;
+
+import ru.tinkoff.kora.kafka.common.producer.TransactionalPublisher;
+import ru.tinkoff.kora.kafka.common.annotation.KafkaPublisher;
+import ru.tinkoff.kora.kafka.common.annotation.KafkaPublisher.Topic;
+import ru.tinkoff.kora.json.common.annotation.Json;
+
+/**
+ * Domain order event publisher.
+ *
+ * The transactional variant is declared as a nested @KafkaPublisher interface so
+ * both the plain and transactional publishers fit in a single file.
+ */
+@KafkaPublisher("kafka.producer.orderEvents")
+public interface OrderEventPublisher {
+
+    @Json
+    record OrderEvent(String orderId, String eventType, String payload) {}
+
+    @Topic("kafka.producer.orderEventsTopic")
+    void publish(@Json OrderEvent event);
+
+    /**
+     * Transactional order publisher: sends within a Kafka transaction.
+     */
+    @KafkaPublisher("kafka.producer.txOrderEvents")
+    interface TxOrderEventPublisher extends TransactionalPublisher<OrderEventPublisher> {
+    }
+}

@@ -1,0 +1,206 @@
+package ${package};
+
+import static org.mockito.ArgumentMatchers.*;
+import static org.mockito.Mockito.*;
+
+import org.mockito.Mock;
+import ru.tinkoff.kora.test.extension.junit5.TestComponent;
+
+/**
+ * Mockito Mock Templates for Common Scenarios
+ *
+ * Copy and adapt these patterns for your tests.
+ */
+public class MockTemplates {
+
+    // =================================================================
+    // PATTERN 1: Basic Mock Setup
+    // =================================================================
+    /*
+    @Mock
+    @TestComponent
+    private UserRepository userRepository;
+
+    @BeforeEach
+    void setup() {
+        when(userRepository.findById(anyLong())).thenReturn(Optional.of(TEST_USER));
+    }
+    */
+
+    // =================================================================
+    // PATTERN 2: Mock with Multiple Returns (Sequence)
+    // =================================================================
+    /*
+    @Mock
+    @TestComponent
+    private UserRepository userRepository;
+
+    @BeforeEach
+    void setup() {
+        when(userRepository.findById(1L))
+            .thenReturn(Optional.of(USER_1))
+            .thenReturn(Optional.of(USER_2))
+            .thenReturn(Optional.empty());
+    }
+
+    @Test
+    void shouldReturnDifferentValues() {
+        userRepository.findById(1L);  // Returns USER_1
+        userRepository.findById(1L);  // Returns USER_2
+        userRepository.findById(1L);  // Returns Optional.empty()
+    }
+    */
+
+    // =================================================================
+    // PATTERN 3: Mock with Exception
+    // =================================================================
+    /*
+    @Mock
+    @TestComponent
+    private UserRepository userRepository;
+
+    @BeforeEach
+    void setup() {
+        when(userRepository.findById(999L))
+            .thenThrow(new EntityNotFoundException("User not found: 999"));
+    }
+
+    @Test
+    void shouldThrowWhenNotFound() {
+        var exception = assertThrows(EntityNotFoundException.class,
+            () -> userRepository.findById(999L));
+        assertEquals("User not found: 999", exception.getMessage());
+    }
+    */
+
+    // =================================================================
+    // PATTERN 4: Mock with Argument Matchers
+    // =================================================================
+    /*
+    @Mock
+    @TestComponent
+    private UserRepository userRepository;
+
+    @BeforeEach
+    void setup() {
+        when(userRepository.findByEmail(anyString()))
+            .thenReturn(Optional.of(TEST_USER));
+
+        when(userRepository.findByEmail(contains("@test.com")))
+            .thenReturn(Optional.of(TEST_USER));
+
+        when(userRepository.findByEmail(eq("specific@test.com")))
+            .thenReturn(Optional.of(SPECIFIC_USER));
+    }
+    */
+
+    // =================================================================
+    // PATTERN 5: Mock with Argument Captor
+    // =================================================================
+    /*
+    @Mock
+    @TestComponent
+    private UserRepository userRepository;
+
+    @Test
+    void shouldSaveCorrectUser() {
+        service.createUser("test@example.com");
+
+        ArgumentCaptor<User> captor = ArgumentCaptor.forClass(User.class);
+        verify(userRepository).save(captor.capture());
+
+        var savedUser = captor.getValue();
+        assertEquals("test@example.com", savedUser.email());
+        assertNotNull(savedUser.id());
+    }
+    */
+
+    // =================================================================
+    // PATTERN 6: Mock with doNothing/doThrow for void methods
+    // =================================================================
+    /*
+    @Mock
+    @TestComponent
+    private EmailService emailService;
+
+    @BeforeEach
+    void setup() {
+        doNothing().when(emailService).send(anyString(), anyString());
+        doThrow(new EmailException("Failed"))
+            .when(emailService).send(eq("invalid@test.com"), anyString());
+    }
+    */
+
+    // =================================================================
+    // PATTERN 7: Spy with Partial Mocking
+    // =================================================================
+    /*
+    @Spy
+    @TestComponent
+    private UserService userService = new UserService();
+
+    @Test
+    void shouldCallRealMethodWithOverride() {
+        doReturn(TEST_USER).when(userService).getUserById(anyLong());
+
+        var result = userService.getUserById(1L);
+        assertEquals(TEST_USER, result);
+        verify(userService).getUserById(anyLong());  // Verify method was called
+    }
+    */
+
+    // =================================================================
+    // PATTERN 8: Verify with Times/Never/AtLeast
+    // =================================================================
+    /*
+    @Test
+    void shouldVerifyCallCount() {
+        service.processAll();
+
+        verify(repository, times(3)).save(any());
+        verify(repository, never()).delete(any());
+        verify(repository, atLeastOnce()).findAll();
+        verify(repository, atMost(5)).update(any());
+    }
+    */
+
+    // =================================================================
+    // PATTERN 9: Verify with Order (InOrder)
+    // =================================================================
+    /*
+    @Test
+    void shouldVerifyCallOrder() {
+        service.fullProcess();
+
+        var inOrder = inOrder(repository);
+        inOrder.verify(repository).save(any());
+        inOrder.verify(repository).update(any());
+        inOrder.verify(repository).delete(any());
+    }
+    */
+
+    // =================================================================
+    // PATTERN 10: Mock Strictness for Stub Verification
+    // =================================================================
+    /*
+    @MockitoStrictness(Strictness.STRICT_STUBS)
+    @KoraAppTest(Application.class)
+    class StrictTest {
+        @Mock
+        @TestComponent
+        private UserRepository userRepository;
+
+        @BeforeEach
+        void setup() {
+            when(userRepository.findById(anyLong())).thenReturn(Optional.of(TEST_USER));
+        }
+
+        @Test
+        void shouldUseStub() {
+            // If findById is not called, test will warn/fail with STRICT_STUBS
+            var user = userRepository.findById(1L);
+            assertNotNull(user);
+        }
+    }
+    */
+}
