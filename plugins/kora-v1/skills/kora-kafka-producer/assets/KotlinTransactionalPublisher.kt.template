@@ -1,0 +1,28 @@
+package ${packagePath}.publisher
+
+import org.apache.kafka.clients.producer.RecordMetadata
+import ru.tinkoff.kora.kafka.common.annotation.KafkaPublisher
+import ru.tinkoff.kora.kafka.common.annotation.KafkaPublisher.Topic
+import ru.tinkoff.kora.kafka.common.producer.TransactionalPublisher
+
+/**
+ * Kotlin transactional publisher example.
+ */
+@KafkaPublisher("kafka.producer.kotlinTx")
+interface KotlinTxPublisher {
+
+    @Topic("kafka.producer.kotlinTx.topic")
+    suspend fun publish(event: KotlinEvent)
+
+    data class KotlinEvent(
+        val id: String,
+        val type: String,
+        val data: String
+    )
+}
+
+/**
+ * Transactional Kotlin publisher.
+ */
+@KafkaPublisher("kafka.producer.kotlinTxEvents")
+interface KotlinTxEventsPublisher : TransactionalPublisher<KotlinTxPublisher>

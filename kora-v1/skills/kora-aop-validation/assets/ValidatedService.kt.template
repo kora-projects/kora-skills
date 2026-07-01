@@ -1,0 +1,37 @@
+// Kotlin service using the @Validate aspect on a method. Class must be `open`.
+// For HTTP 400 mapping, register ValidationHttpServerInterceptor +
+// ViolationExceptionHttpServerResponseMapper (see references/violation-exception-reference.md).
+// Replace `com.example.app.service` / `com.example.app.dto` with your packages.
+
+package com.example.app.service
+
+import com.example.app.dto.CreateOrder
+import com.example.app.dto.Order
+import ru.tinkoff.kora.common.Component
+import ru.tinkoff.kora.validation.common.Validator
+import ru.tinkoff.kora.validation.common.annotation.NotBlank
+import ru.tinkoff.kora.validation.common.annotation.Valid
+import ru.tinkoff.kora.validation.common.annotation.Validate
+import java.util.UUID
+
+@Component
+open class OrdersService(                          // open, not final
+    private val bodyValidator: Validator<CreateOrder>       // auto-injected from @Valid
+) {
+
+    // Approach 1 - declarative: @Validate aspect-validates args (and the result if annotated).
+    @Validate
+    open fun create(@Valid body: CreateOrder, @NotBlank tenantId: String): Order {
+        return Order(UUID.randomUUID(), body.sku, body.quantity, tenantId)
+    }
+
+    // Approach 2 - imperative: full control over failure handling, fail-fast, etc.
+    open fun createManual(body: CreateOrder): Order {
+        bodyValidator.validateAndThrow(body)          // throws ViolationException
+        return Order(UUID.randomUUID(), body.sku, body.quantity, "default")
+    }
+}
+
+// Placeholder DTOs — replace with your actual types
+open class CreateOrder(val sku: String, val quantity: Int)
+open class Order(val id: UUID, val sku: String, val quantity: Int, val tenantId: String)

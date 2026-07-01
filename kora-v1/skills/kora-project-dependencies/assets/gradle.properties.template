@@ -1,0 +1,12 @@
+org.gradle.caching=true
+org.gradle.parallel=true
+#
+# Kora BOM version — every ru.tinkoff.kora:* artifact inherits this version
+koraVersion=1.2.17
+#
+# Kotlin projects only: keep Kotlin and KSP versions aligned
+# kotlinVersion=1.9.25
+# kspVersion=1.9.25-1.0.20
+#
+# If the Kotlin compiler cannot target the toolchain JDK exactly, warn instead of failing
+# kotlin.jvm.target.validation.mode=warning

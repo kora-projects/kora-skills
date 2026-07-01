@@ -1,0 +1,7 @@
+plugins {
+    // Lets the Java toolchain download a JDK that is not installed locally,
+    // making the build reproducible across machines.
+    id "org.gradle.toolchains.foojay-resolver-convention" version "1.0.0"
+}
+
+rootProject.name = "kora-example"

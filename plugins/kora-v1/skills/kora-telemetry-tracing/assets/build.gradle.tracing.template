@@ -1,0 +1,13 @@
+// Tracing dependency snippet. All Kora artifacts inherit their version from the
+// kora-parent BOM, so never pin a version on a ru.tinkoff.kora:* artifact.
+dependencies {
+    koraBom platform("ru.tinkoff.kora:kora-parent:1.2.17")
+    annotationProcessor "ru.tinkoff.kora:annotation-processors"
+
+    // OTLP over gRPC (recommended). The OpenTelemetry API (Tracer/Span/StatusCode)
+    // is a transitive dependency of this module.
+    implementation "ru.tinkoff.kora:opentelemetry-tracing-exporter-grpc"
+
+    // Alternative: OTLP over HTTP (Zipkin, OTLP HTTP on port 4318)
+    // implementation "ru.tinkoff.kora:opentelemetry-tracing-exporter-http"
+}

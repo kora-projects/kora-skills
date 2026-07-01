@@ -1,0 +1,94 @@
+{
+  "evals": [
+    {
+      "id": "kora-project-setup-java-scaffold",
+      "skills": ["kora-project-setup-java"],
+      "query": "Create a new Kora service in Java from scratch with Gradle.",
+      "expected_behavior": [
+        "Creates build.gradle with the application and java plugins",
+        "Imports the BOM via koraBom platform(\"ru.tinkoff.kora:kora-parent:1.2.17\") declared once",
+        "Adds annotationProcessor \"ru.tinkoff.kora:annotation-processors\"",
+        "Defines an @KoraApp interface as the graph root",
+        "Does not version individual ru.tinkoff.kora:* artifacts",
+        "Does not use foreign-framework annotations or field injection"
+      ],
+      "tags": ["scaffold", "basic"]
+    },
+    {
+      "id": "kora-project-setup-java-bom-wiring",
+      "skills": ["kora-project-setup-java"],
+      "query": "Set up the Gradle configurations so the Kora annotation processor resolves with the right version.",
+      "expected_behavior": [
+        "Declares a custom koraBom configuration",
+        "Wires annotationProcessor.extendsFrom(koraBom) so the processor classpath gets the BOM",
+        "Extends implementation, compileOnly, and the test configurations from koraBom",
+        "Explains the annotation-processor classpath is separate from the application classpath",
+        "Does not put an explicit version on the annotation-processors dependency"
+      ],
+      "tags": ["gradle", "bom", "advanced"]
+    },
+    {
+      "id": "kora-project-setup-java-app-graph",
+      "skills": ["kora-project-setup-java"],
+      "query": "Write the main application class that boots the Kora graph.",
+      "expected_behavior": [
+        "Annotates the interface with @KoraApp from ru.tinkoff.kora.common.KoraApp",
+        "Extends framework *Module interfaces such as UndertowHttpServerModule and HoconConfigModule",
+        "Calls KoraApplication.run(ApplicationGraph::graph) in main",
+        "Imports KoraApplication from ru.tinkoff.kora.application.graph",
+        "Does not reference a foreign-framework application-bootstrap annotation"
+      ],
+      "tags": ["app-graph", "basic"]
+    },
+    {
+      "id": "kora-project-setup-java-processor-missing",
+      "skills": ["kora-project-setup-java"],
+      "query": "My Kora Java build produces no generated code and ApplicationGraph cannot be resolved.",
+      "expected_behavior": [
+        "Identifies the missing annotationProcessor \"ru.tinkoff.kora:annotation-processors\" as the cause",
+        "Notes that ApplicationGraph is generated from the @KoraApp interface at compile time",
+        "Suggests running ./gradlew classes to trigger the processor",
+        "Points to build/generated/sources/annotationProcessor/ for the generated graph"
+      ],
+      "tags": ["troubleshooting", "advanced"]
+    },
+    {
+      "id": "kora-project-setup-java-toolchain",
+      "skills": ["kora-project-setup-java"],
+      "query": "Which JDK and Gradle version should I use for a Kora Java project, and how do I configure the toolchain?",
+      "expected_behavior": [
+        "States JDK 17 minimum, 21 recommended",
+        "Configures the Java toolchain with JavaLanguageVersion in build.gradle",
+        "Adds the foojay-resolver-convention plugin in settings.gradle",
+        "Notes Gradle 7+ is required and the wrapper pins a current distribution"
+      ],
+      "tags": ["toolchain", "basic"]
+    },
+    {
+      "id": "kora-project-setup-java-test-setup",
+      "skills": ["kora-project-setup-java"],
+      "query": "Add the Gradle setup so I can write a @KoraAppTest for my new Kora service.",
+      "expected_behavior": [
+        "Adds testImplementation \"ru.tinkoff.kora:test-junit5\"",
+        "Adds testAnnotationProcessor \"ru.tinkoff.kora:annotation-processors\"",
+        "Enables useJUnitPlatform() in the test task",
+        "Uses @KoraAppTest with @TestComponent to inject graph components",
+        "Does not use a foreign-framework test annotation or a mock-bean construct"
+      ],
+      "tags": ["testing", "advanced"]
+    },
+    {
+      "id": "kora-project-setup-java-add-module",
+      "skills": ["kora-project-setup-java"],
+      "query": "I scaffolded a Kora app; how do I actually expose an HTTP endpoint?",
+      "expected_behavior": [
+        "Adds implementation \"ru.tinkoff.kora:http-server-undertow\"",
+        "Extends UndertowHttpServerModule in the @KoraApp interface",
+        "Creates a @Component @HttpController with an @HttpRoute method",
+        "Configures httpServer.publicApiHttpPort and privateApiHttpPort in application.conf",
+        "Uses constructor injection rather than field injection"
+      ],
+      "tags": ["http", "basic"]
+    }
+  ]
+}

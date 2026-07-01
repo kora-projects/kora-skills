@@ -1,0 +1,7 @@
+// The foojay-resolver-convention plugin lets the Java toolchain auto-download
+// the requested JDK instead of relying only on locally installed JDKs.
+plugins {
+    id("org.gradle.toolchains.foojay-resolver-convention") version "1.0.0"
+}
+
+rootProject.name = "kora-example"

@@ -1,0 +1,57 @@
+// Outbound call wrapped with @Timeout + @Retry + @CircuitBreaker + @Fallback.
+// Aspect order (top to bottom) matters — see resilience-config-reference.md.
+// Replace `com.example.app.service` with your package.
+
+package com.example.app.service;
+
+import ru.tinkoff.kora.common.Component;
+import ru.tinkoff.kora.resilient.circuitbreaker.annotation.CircuitBreaker;
+import ru.tinkoff.kora.resilient.fallback.annotation.Fallback;
+import ru.tinkoff.kora.resilient.retry.annotation.Retry;
+import ru.tinkoff.kora.resilient.timeout.annotation.Timeout;
+
+@Component
+public class InventoryService {                                         // NOT final
+
+    private final InventoryClient client;
+
+    public InventoryService(InventoryClient client) {
+        this.client = client;
+    }
+
+    // Declaration order = application order. The LAST annotation listed is the
+    // innermost (applied first). With the order below:
+    //   1. @Timeout (innermost) bounds the underlying call/attempt.
+    //   2. @Retry retries that call until success or attempts are exhausted (each attempt is bounded by @Timeout).
+    //   3. @CircuitBreaker opens after enough failures and then short-circuits before @Retry runs.
+    //   4. @Fallback (outermost) supplies a degraded value when the chain still fails.
+    @Fallback(value = "inventory.check", method = "checkFallback(sku)")
+    @CircuitBreaker("inventory.check")
+    @Retry("inventory.check")
+    @Timeout("inventory.check")
+    public InventoryService.Stock check(String sku) {
+        return client.lookup(sku);
+    }
+
+    // Fallback method — same class, signature-compatible return type.
+    protected InventoryService.Stock checkFallback(String sku) {
+        return InventoryService.Stock.UNKNOWN;
+    }
+
+    // Per-attempt timeout instead: swap order — @Retry outside @Timeout.
+    @Retry("inventory.check")
+    @Timeout("inventory.check.perAttempt")
+    public InventoryService.Stock checkPerAttempt(String sku) {
+        return client.lookup(sku);
+    }
+
+    public enum Stock { IN_STOCK, OUT_OF_STOCK, UNKNOWN }
+}
+
+// Placeholder dependency — replace with your actual @HttpClient or service.
+@Component
+class InventoryClient {
+    public InventoryService.Stock lookup(String sku) {
+        return InventoryService.Stock.IN_STOCK;
+    }
+}

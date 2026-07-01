@@ -1,0 +1,61 @@
+package com.example.client;
+
+import ru.tinkoff.kora.common.Component;
+import ru.tinkoff.kora.common.Context;
+import ru.tinkoff.kora.config.common.annotation.ConfigSource;
+import ru.tinkoff.kora.http.client.common.interceptor.HttpClientInterceptor;
+import ru.tinkoff.kora.http.client.common.request.HttpClientRequest;
+import ru.tinkoff.kora.http.client.common.response.HttpClientResponse;
+
+import java.util.concurrent.CompletionStage;
+
+/**
+ * Interceptor that adds an API key header to every request.
+ *
+ * Required configuration (application.conf):
+ * <pre>
+ * auth {
+ *   apiKey {
+ *     value = "your-api-key-here"
+ *     value = ${?API_KEY}
+ *   }
+ * }
+ * </pre>
+ *
+ * Usage:
+ * <pre>
+ * {@literal @}InterceptWith(ApiKeyAuthInterceptor.class)
+ * {@literal @}HttpClient(configPath = "httpClient.myApi")
+ * public interface MyApiClient {}
+ * </pre>
+ *
+ * Note: @InterceptWith is ru.tinkoff.kora.http.common.annotation.InterceptWith.
+ * For Basic/ApiKey/Bearer flows, Kora also ships built-in interceptors
+ * (BasicAuthHttpClientInterceptor, ApiKeyHttpClientInterceptor,
+ * BearerAuthHttpClientInterceptor) - see references/interceptors-reference.md.
+ */
+@Component
+public final class ApiKeyAuthInterceptor implements HttpClientInterceptor {
+
+    private final ApiKeyConfig config;
+
+    public ApiKeyAuthInterceptor(ApiKeyConfig config) {
+        this.config = config;
+    }
+
+    @Override
+    public CompletionStage<HttpClientResponse> processRequest(
+            Context ctx, InterceptChain chain, HttpClientRequest request) throws Exception {
+        // Build a new request - the request is not mutated in place.
+        var authenticated = request.toBuilder()
+            .header("X-API-Key", config.value())
+            .build();
+        return chain.process(ctx, authenticated);
+    }
+
+    /** Typed config for the API key. Kora has no @ConfigValue - inject a @ConfigSource interface. */
+    @ConfigSource("auth.apiKey")
+    public interface ApiKeyConfig {
+        String value();
+    }
+}

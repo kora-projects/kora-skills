@@ -1,0 +1,63 @@
+package com.example.interceptor;
+
+import java.util.concurrent.CompletionException;
+import java.util.concurrent.CompletionStage;
+import ru.tinkoff.kora.common.Component;
+import ru.tinkoff.kora.common.Context;
+import ru.tinkoff.kora.common.Tag;
+import ru.tinkoff.kora.http.common.body.HttpBody;
+import ru.tinkoff.kora.http.server.common.HttpServerInterceptor;
+import ru.tinkoff.kora.http.server.common.HttpServerModule;
+import ru.tinkoff.kora.http.server.common.HttpServerRequest;
+import ru.tinkoff.kora.http.server.common.HttpServerResponse;
+import ru.tinkoff.kora.http.server.common.HttpServerResponseException;
+import ru.tinkoff.kora.json.common.JsonWriter;
+
+/**
+ * Global error-to-JSON interceptor.
+ *
+ * Centralizes exception handling for every route: chain.process(...).exceptionally(...) maps
+ * exceptions to JSON responses. Kora has no separate "exception handler" type — this is the
+ * idiomatic way to translate errors. Register globally with @Tag(HttpServerModule.class).
+ */
+@Tag(HttpServerModule.class)
+@Component
+public final class ErrorInterceptor implements HttpServerInterceptor {
+
+    @ru.tinkoff.kora.json.common.annotation.Json
+    public record ErrorResponse(String message) {}
+
+    private final JsonWriter<ErrorResponse> errorWriter;
+
+    public ErrorInterceptor(JsonWriter<ErrorResponse> errorWriter) {
+        this.errorWriter = errorWriter;
+    }
+
+    @Override
+    public CompletionStage<HttpServerResponse> intercept(Context context,
+                                                         HttpServerRequest request,
+                                                         InterceptChain chain) throws Exception {
+        return chain.process(context, request).exceptionally(throwable -> {
+            Throwable cause = unwrap(throwable);
+            if (cause instanceof HttpServerResponseException e) {
+                return json(e.code(), e.getMessage());
+            }
+            if (cause instanceof IllegalArgumentException) {
+                return json(400, "Invalid request parameters");
+            }
+            return json(500, "An unexpected error occurred");
+        });
+    }
+
+    private HttpServerResponse json(int code, String message) {
+        return HttpServerResponse.of(code, HttpBody.json(errorWriter.toByteArrayUnchecked(new ErrorResponse(message))));
+    }
+
+    private static Throwable unwrap(Throwable throwable) {
+        Throwable current = throwable;
+        while (current instanceof CompletionException && current.getCause() != null) {
+            current = current.getCause();
+        }
+        return current;
+    }
+}

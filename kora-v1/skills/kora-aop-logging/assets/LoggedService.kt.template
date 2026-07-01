@@ -1,0 +1,24 @@
+// Kotlin equivalent. Class must be `open` for aspects.
+// Replace `com.example.app.service` with your package.
+
+package com.example.app.service
+
+import ru.tinkoff.kora.common.Component
+import ru.tinkoff.kora.logging.common.annotation.Log
+import ru.tinkoff.kora.logging.common.annotation.Mdc
+import java.util.UUID
+
+@Component
+open class OrdersService {                                                // open, not final
+
+    @Log
+    @Mdc(key = "tenant", value = "\${tenantId}")
+    @Mdc(key = "operation", value = "create-order")
+    open fun create(
+        @Mdc tenantId: String,
+        @Log.off idempotencyKey: String
+    ): String = "order-${UUID.randomUUID()}"
+
+    @Log.out
+    open fun get(@Log.off id: UUID): String = "order-$id"
+}

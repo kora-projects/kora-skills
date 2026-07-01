@@ -1,0 +1,73 @@
+// Declarative S3 client demonstrating get / head / list / put / delete patterns.
+// Inject `DocumentsClient` like any Kora component — Kora generates the implementation.
+// Replace `com.example.app.storage` with your package.
+
+package com.example.app.storage;
+
+import ru.tinkoff.kora.s3.client.annotation.S3;
+import ru.tinkoff.kora.s3.client.model.S3Body;
+import ru.tinkoff.kora.s3.client.model.S3Object;
+import ru.tinkoff.kora.s3.client.model.S3ObjectList;
+import ru.tinkoff.kora.s3.client.model.S3ObjectMeta;
+import ru.tinkoff.kora.s3.client.model.S3ObjectMetaList;
+import ru.tinkoff.kora.s3.client.model.S3ObjectUpload;
+
+import java.util.List;
+import java.util.UUID;
+
+@S3.Client("s3client.documents")                                  // matches `s3client.documents.bucket` in config
+public interface DocumentsClient {
+
+    // ---------- Get ----------
+
+    @S3.Get                                                       // key as method arg
+    S3Object get(String key);
+
+    @S3.Get                                                       // metadata only (HEAD request, faster)
+    S3ObjectMeta head(String key);
+
+    @S3.Get("docs/{tenantId}/{docId}.pdf")                        // key template; all method args must be in the template
+    S3Object getDoc(String tenantId, UUID docId);
+
+    @S3.Get                                                       // multi-key — no template allowed
+    List<S3Object> getMany(List<String> keys);
+
+    @S3.Get
+    List<S3ObjectMeta> headMany(List<String> keys);
+
+    // ---------- List ----------
+
+    @S3.List                                                      // prefix as method arg
+    S3ObjectList list(String prefix);
+
+    @S3.List                                                      // metadata only
+    S3ObjectMetaList listMeta(String prefix);
+
+    @S3.List(limit = 100)                                         // S3-imposed max is 1000
+    S3ObjectList listLimited(String prefix);
+
+    @S3.List(value = "docs/{tenantId}/", delimiter = "/")         // folder-style listing
+    S3ObjectList listFolder(String tenantId);
+
+    // ---------- Put ----------
+
+    @S3.Put
+    void put(String key, S3Body body);
+
+    @S3.Put
+    S3ObjectUpload putWithMeta(String key, S3Body body);
+
+    @S3.Put("docs/{tenantId}/{docId}.pdf")                        // key template
+    S3ObjectUpload putDoc(String tenantId, UUID docId, S3Body body);
+
+    // ---------- Delete ----------
+
+    @S3.Delete
+    void delete(String key);
+
+    @S3.Delete
+    void deleteMany(List<String> keys);
+
+    @S3.Delete("docs/{tenantId}/{docId}.pdf")
+    void deleteDoc(String tenantId, UUID docId);
+}

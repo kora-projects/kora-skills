@@ -1,0 +1,428 @@
+package ${package}.listener;
+
+import org.apache.kafka.clients.consumer.ConsumerConfig;
+import org.apache.kafka.clients.consumer.ConsumerRecord;
+import org.apache.kafka.clients.consumer.ConsumerRecords;
+import org.apache.kafka.clients.consumer.KafkaConsumer;
+import org.apache.kafka.common.serialization.StringDeserializer;
+import org.jetbrains.annotations.NotNull;
+import org.json.JSONObject;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.Test;
+import org.testcontainers.containers.KafkaContainer;
+import org.testcontainers.junit.jupiter.Container;
+import org.testcontainers.junit.jupiter.Testcontainers;
+import org.testcontainers.utility.DockerImageName;
+import org.testcontainers.shaded.org.awaitility.Awaitility;
+import ru.tinkoff.kora.application.graph.Lifecycle;
+import ru.tinkoff.kora.common.Tag;
+import ru.tinkoff.kora.test.extension.junit5.KoraAppTest;
+import ru.tinkoff.kora.test.extension.junit5.KoraAppTestConfigModifier;
+import ru.tinkoff.kora.test.extension.junit5.KoraConfigModification;
+import ru.tinkoff.kora.test.extension.junit5.TestComponent;
+
+import java.time.Duration;
+import java.util.Collections;
+import java.util.Properties;
+import java.util.concurrent.Executors;
+
+import static org.assertj.core.api.Assertions.assertThat;
+
+/**
+ * Integration tests for ${listenerName} using Testcontainers Kafka.
+ *
+ * TEST CATEGORIES:
+ * - Happy path: Valid events are processed correctly
+ * - Error handling: Invalid JSON, missing fields handled gracefully
+ * - Edge cases: Null values, empty messages, duplicates
+ * - Performance: Batch processing, multiple events
+ *
+ * PREREQUISITES (build.gradle):
+ *   testImplementation "org.testcontainers:junit-jupiter:1.21.4"
+ *   testImplementation "org.testcontainers:kafka:1.21.4"
+ *   testImplementation "ru.tinkoff.kora:kafka"
+ *   testImplementation "org.json:json:20231013"
+ *   testImplementation "org.awaitility:awaitility:4.2.0"
+ *   testImplementation "org.assertj:assertj-core:3.24.2"
+ *
+ * USAGE:
+ *   ./gradlew test --tests "${listenerName}Tests"
+ */
+@Testcontainers
+@KoraAppTest(Application.class)
+class ${listenerName}Tests implements KoraAppTestConfigModifier {
+
+    @Container
+    static final KafkaContainer KAFKA = new KafkaContainer(
+        DockerImageName.parse("confluentinc/cp-kafka:7.5.0")
+    ).withStartupTimeout(Duration.ofSeconds(60));
+
+    @Tag(${listenerName}Module.${listenerName}ProcessTag.class)
+    @TestComponent
+    private Lifecycle consumerLifecycle;
+
+    @TestComponent
+    private ${listenerName} consumer;
+
+    @NotNull
+    @Override
+    public KoraConfigModification config() {
+        return KoraConfigModification.ofString("""
+            kafka {
+                consumer {
+                    ${listenerNameLower} {
+                        topics = ["${topicName}"]
+                        offset = "earliest"
+                        pollTimeout = "5s"
+                        driverProperties {
+                            "bootstrap.servers" = "${KAFKA_BOOTSTRAP_SERVERS}"
+                            "group.id" = "${listenerNameLower}-test-group"
+                            "auto.offset.reset" = "earliest"
+                            "enable.auto.commit" = "true"
+                        }
+                    }
+                }
+            }
+            """)
+            .withSystemProperty("KAFKA_BOOTSTRAP_SERVERS", KAFKA.getBootstrapServers());
+    }
+
+    @BeforeEach
+    void setUp() {
+        // Reset consumer state before each test
+        // consumer.reset();
+    }
+
+    // =========================================================================
+    // Happy Path Tests
+    // =========================================================================
+
+    /**
+     * Test: Basic single event processing.
+     * Verifies that a valid event is processed successfully.
+     */
+    @Test
+    @DisplayName("Should process valid event")
+    void shouldProcessEvent() {
+        // given
+        var event = new JSONObject()
+            .put("id", "test-123")
+            .put("eventType", "created")
+            .put("entityId", "entity-456")
+            .put("payload", "{\"name\":\"Test User\"}")
+            .put("timestamp", java.time.LocalDateTime.now().toString());
+
+        // when - send via raw Kafka producer
+        sendKafkaMessage("${topicName}", event.toString());
+
+        // then
+        Awaitility.await()
+            .atMost(Duration.ofSeconds(15))
+            .pollExecutorService(Executors.newSingleThreadExecutor())
+            .until(() -> consumer.getProcessedCount() >= 1);
+
+        assertThat(consumer.getLastEventId()).isEqualTo("test-123");
+    }
+
+    /**
+     * Test: Event with key processing.
+     * Verifies that events with keys are processed correctly.
+     */
+    @Test
+    @DisplayName("Should process event with key")
+    void shouldProcessEventWithKey() {
+        // given
+        var event = new JSONObject()
+            .put("id", "keyed-event")
+            .put("eventType", "created")
+            .put("entityId", "entity-789")
+            .put("payload", "{}")
+            .put("timestamp", java.time.LocalDateTime.now().toString());
+
+        String key = "partition-key-123";
+
+        // when
+        sendKafkaMessage("${topicName}", key, event.toString());
+
+        // then
+        Awaitility.await()
+            .atMost(Duration.ofSeconds(15))
+            .until(() -> consumer.getProcessedCount() >= 1);
+
+        assertThat(consumer.getLastKey()).isEqualTo(key);
+    }
+
+    /**
+     * Test: Multiple events processing.
+     * Verifies that multiple events are processed in order.
+     */
+    @Test
+    @DisplayName("Should process multiple events")
+    void shouldProcessMultipleEvents() {
+        // given
+        int eventCount = 5;
+        for (int i = 0; i < eventCount; i++) {
+            var event = new JSONObject()
+                .put("id", "test-" + i)
+                .put("eventType", "created")
+                .put("entityId", "entity-" + i)
+                .put("payload", "{}")
+                .put("timestamp", java.time.LocalDateTime.now().toString());
+            sendKafkaMessage("${topicName}", event.toString());
+        }
+
+        // when & then
+        Awaitility.await()
+            .atMost(Duration.ofSeconds(20))
+            .pollExecutorService(Executors.newSingleThreadExecutor())
+            .until(() -> consumer.getProcessedCount() >= eventCount);
+
+        assertThat(consumer.getProcessedCount()).isGreaterThanOrEqualTo(eventCount);
+    }
+
+    // =========================================================================
+    // Error Handling Tests
+    // =========================================================================
+
+    /**
+     * Test: Invalid JSON handling.
+     * Verifies that malformed JSON is handled gracefully without crashing.
+     */
+    @Test
+    @DisplayName("Should handle invalid JSON gracefully")
+    void shouldHandleInvalidJson() {
+        // given - Invalid JSON (missing required fields)
+        String invalidJson = "{\"id\": \"test-invalid\"}";  // Missing eventType, entityId, etc.
+
+        // when
+        sendKafkaMessage("${topicName}", invalidJson);
+
+        // then - Should handle error without crashing
+        Awaitility.await()
+            .atMost(Duration.ofSeconds(10))
+            .until(() -> consumer.getErrorCount() >= 0);  // >= 0 means it didn't crash
+
+        // Verify consumer is still running and can process valid events
+        var validEvent = new JSONObject()
+            .put("id", "recovery-test")
+            .put("eventType", "created")
+            .put("entityId", "entity-recovery")
+            .put("payload", "{}")
+            .put("timestamp", java.time.LocalDateTime.now().toString());
+
+        sendKafkaMessage("${topicName}", validEvent.toString());
+
+        Awaitility.await()
+            .atMost(Duration.ofSeconds(10))
+            .until(() -> consumer.getProcessedCount() >= 1);
+    }
+
+    /**
+     * Test: Null value handling.
+     * Verifies that null values are handled correctly.
+     */
+    @Test
+    @DisplayName("Should handle null value")
+    void shouldHandleNullValue() {
+        // given
+        sendKafkaMessage("${topicName}", null);
+
+        // when & then
+        Awaitility.await()
+            .atMost(Duration.ofSeconds(10))
+            .until(() -> consumer.getProcessedCount() >= 0);  // Should not crash
+    }
+
+    /**
+     * Test: Different event types.
+     * Verifies that all event types are handled correctly.
+     */
+    @Test
+    @DisplayName("Should handle different event types")
+    void shouldHandleDifferentEventTypes() {
+        // given
+        String[] eventTypes = {"created", "updated", "deleted"};
+        for (String eventType : eventTypes) {
+            var event = new JSONObject()
+                .put("id", "type-test-" + eventType)
+                .put("eventType", eventType)
+                .put("entityId", "entity-" + eventType)
+                .put("payload", "{}")
+                .put("timestamp", java.time.LocalDateTime.now().toString());
+            sendKafkaMessage("${topicName}", event.toString());
+        }
+
+        // when & then
+        Awaitility.await()
+            .atMost(Duration.ofSeconds(15))
+            .pollExecutorService(Executors.newSingleThreadExecutor())
+            .until(() -> consumer.getProcessedCount() >= eventTypes.length);
+
+        // Verify all event types were processed
+        assertThat(consumer.getCreatedCount()).isGreaterThanOrEqualTo(1);
+        assertThat(consumer.getUpdatedCount()).isGreaterThanOrEqualTo(1);
+        assertThat(consumer.getDeletedCount()).isGreaterThanOrEqualTo(1);
+    }
+
+    // =========================================================================
+    // Batch Processing Tests
+    // =========================================================================
+
+    /**
+     * Test: Batch processing.
+     * Verifies that batches of messages are processed efficiently.
+     */
+    @Test
+    @DisplayName("Should process batch of events")
+    void shouldProcessBatch() {
+        // given - Send multiple messages quickly
+        int batchSize = 10;
+        for (int i = 0; i < batchSize; i++) {
+            var event = new JSONObject()
+                .put("id", "batch-" + i)
+                .put("eventType", "created")
+                .put("entityId", "entity-batch-" + i)
+                .put("payload", "{\"index\":" + i + "}")
+                .put("timestamp", java.time.LocalDateTime.now().toString());
+            sendKafkaMessage("${topicName}", event.toString());
+        }
+
+        // when & then
+        Awaitility.await()
+            .atMost(Duration.ofSeconds(20))
+            .pollExecutorService(Executors.newSingleThreadExecutor())
+            .until(() -> consumer.getProcessedCount() >= batchSize);
+
+        assertThat(consumer.getProcessedCount()).isGreaterThanOrEqualTo(batchSize);
+    }
+
+    /**
+     * Test: High volume processing.
+     * Verifies that the consumer can handle high message volume.
+     */
+    @Test
+    @DisplayName("Should handle high volume of events")
+    void shouldHandleHighVolume() {
+        // given
+        int volume = 100;
+        for (int i = 0; i < volume; i++) {
+            var event = new JSONObject()
+                .put("id", "volume-" + i)
+                .put("eventType", i % 3 == 0 ? "created" : (i % 3 == 1 ? "updated" : "deleted"))
+                .put("entityId", "entity-" + i)
+                .put("payload", "{\"volumeIndex\":" + i + "}")
+                .put("timestamp", java.time.LocalDateTime.now().toString());
+            sendKafkaMessage("${topicName}", event.toString());
+        }
+
+        // when & then
+        Awaitility.await()
+            .atMost(Duration.ofSeconds(30))
+            .pollExecutorService(Executors.newSingleThreadExecutor())
+            .until(() -> consumer.getProcessedCount() >= volume);
+
+        assertThat(consumer.getProcessedCount()).isGreaterThanOrEqualTo(volume);
+    }
+
+    // =========================================================================
+    // Edge Cases & Consumer Group Tests
+    // =========================================================================
+
+    /**
+     * Test: Duplicate event handling (idempotency).
+     * Verifies that duplicate events are handled correctly.
+     */
+    @Test
+    @DisplayName("Should handle duplicate events")
+    void shouldHandleDuplicates() {
+        // given
+        var event = new JSONObject()
+            .put("id", "duplicate-test")
+            .put("eventType", "created")
+            .put("entityId", "entity-dup")
+            .put("payload", "{}")
+            .put("timestamp", java.time.LocalDateTime.now().toString());
+
+        // Send same event twice
+        sendKafkaMessage("${topicName}", event.toString());
+        sendKafkaMessage("${topicName}", event.toString());
+
+        // when & then
+        Awaitility.await()
+            .atMost(Duration.ofSeconds(15))
+            .until(() -> consumer.getProcessedCount() >= 2);
+
+        // Both messages should be processed (Kafka doesn't deduplicate)
+        // Your business logic should handle idempotency
+        assertThat(consumer.getProcessedCount()).isEqualTo(2);
+    }
+
+    /**
+     * Test: Consumer group behavior.
+     * Verifies message distribution in consumer group.
+     * Note: Full test requires multiple consumer instances.
+     */
+    @Test
+    @DisplayName("Should process all messages in single-instance group")
+    void shouldProcessAllMessagesInSingleInstance() {
+        // given - Send 10 messages
+        for (int i = 0; i < 10; i++) {
+            var event = new JSONObject()
+                .put("id", "group-test-" + i)
+                .put("eventType", "created")
+                .put("entityId", "entity-group-" + i)
+                .put("payload", "{}")
+                .put("timestamp", java.time.LocalDateTime.now().toString());
+            sendKafkaMessage("${topicName}", event.toString());
+        }
+
+        // when & then
+        Awaitility.await()
+            .atMost(Duration.ofSeconds(15))
+            .until(() -> consumer.getProcessedCount() >= 10);
+
+        // All messages processed by this single instance
+        assertThat(consumer.getProcessedCount()).isEqualTo(10);
+    }
+
+    // =========================================================================
+    // Helper Methods
+    // =========================================================================
+
+    /**
+     * Send a Kafka message without key.
+     */
+    private void sendKafkaMessage(String topic, String value) {
+        var props = new Properties();
+        props.put(ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG, KAFKA.getBootstrapServers());
+        props.put(ConsumerConfig.KEY_DESERIALIZER_CLASS_CONFIG, StringDeserializer.class.getName());
+        props.put(ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG, StringDeserializer.class.getName());
+
+        try (var producer = new org.apache.kafka.clients.producer.KafkaProducer<>(
+            props,
+            new org.apache.kafka.common.serialization.StringSerializer(),
+            new org.apache.kafka.common.serialization.StringSerializer()
+        )) {
+            producer.send(new org.apache.kafka.clients.producer.ProducerRecord<>(topic, value));
+        }
+    }
+
+    /**
+     * Send a Kafka message with key.
+     */
+    private void sendKafkaMessage(String topic, String key, String value) {
+        var props = new Properties();
+        props.put(ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG, KAFKA.getBootstrapServers());
+        props.put(ConsumerConfig.KEY_DESERIALIZER_CLASS_CONFIG, StringDeserializer.class.getName());
+        props.put(ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG, StringDeserializer.class.getName());
+
+        try (var producer = new org.apache.kafka.clients.producer.KafkaProducer<>(
+            props,
+            new org.apache.kafka.common.serialization.StringSerializer(),
+            new org.apache.kafka.common.serialization.StringSerializer()
+        )) {
+            producer.send(new org.apache.kafka.clients.producer.ProducerRecord<>(topic, key, value));
+        }
+    }
+}

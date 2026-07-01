@@ -1,0 +1,104 @@
+{
+  "evals": [
+    {
+      "id": "kora-database-migration-flyway-quickstart",
+      "skills": ["kora-database-migration"],
+      "query": "Set up Flyway database migrations on startup for a new Kora service: add the dependency, enable the module, and create the first migration with a users table (id, email, created_at).",
+      "expected_behavior": [
+        "Adds the ru.tinkoff.kora:database-flyway dependency alongside ru.tinkoff.kora:database-jdbc",
+        "Includes annotationProcessor \"ru.tinkoff.kora:annotation-processors\" (or ksp \"ru.tinkoff.kora:symbol-processors\" for Kotlin) and the kora-parent BOM",
+        "Plugs FlywayJdbcDatabaseModule into the @KoraApp interface",
+        "Creates src/main/resources/db/migration/V1__*.sql with CREATE TABLE users",
+        "Does not rely on classpath autoconfiguration or field injection; uses @KoraApp and constructor injection"
+      ],
+      "tags": ["flyway", "basic"]
+    },
+    {
+      "id": "kora-database-migration-flyway-config",
+      "skills": ["kora-database-migration"],
+      "query": "Configure Flyway in my Kora app to use the location db/migration/custom and validate checksums before migrating.",
+      "expected_behavior": [
+        "Sets flyway.locations = [\"db/migration/custom\"] in the flyway config section",
+        "Sets flyway.validateOnMigrate = true",
+        "Keeps the keys within the real FlywayConfig surface (enabled, locations, executeInTransaction, validateOnMigrate, mixed, configurationProperties)",
+        "Does not invent non-existent keys such as cleanDisabled or a per-script transactional comment"
+      ],
+      "tags": ["flyway", "config"]
+    },
+    {
+      "id": "kora-database-migration-liquibase-sql",
+      "skills": ["kora-database-migration"],
+      "query": "Use Liquibase with SQL changesets in my Kora service instead of Flyway. Set up the dependency, the module, and a master changelog with an orders table and a rollback.",
+      "expected_behavior": [
+        "Adds ru.tinkoff.kora:database-liquibase plus ru.tinkoff.kora:database-jdbc",
+        "Plugs LiquibaseJdbcDatabaseModule into the @KoraApp interface",
+        "Sets liquibase.changelog to the master changelog path",
+        "Writes a formatted-SQL changelog starting with --liquibase formatted sql and using --changeset <author>:<id> plus --rollback",
+        "Does not plug FlywayJdbcDatabaseModule in at the same time"
+      ],
+      "tags": ["liquibase", "basic"]
+    },
+    {
+      "id": "kora-database-migration-mixed-concurrent-index",
+      "skills": ["kora-database-migration"],
+      "query": "My Flyway migration with CREATE INDEX CONCURRENTLY on PostgreSQL fails because it cannot run inside a transaction. How do I fix it in Kora?",
+      "expected_behavior": [
+        "Explains that CREATE INDEX CONCURRENTLY cannot run inside a transaction",
+        "Sets flyway.mixed = true so the whole run executes without a transaction",
+        "Notes this is controlled by config (mixed / executeInTransaction), not a per-script comment",
+        "Stays within real FlywayConfig keys and does not invent a non-Kora migration property"
+      ],
+      "tags": ["flyway", "advanced"]
+    },
+    {
+      "id": "kora-database-migration-checksum-error",
+      "skills": ["kora-database-migration"],
+      "query": "On startup my Kora app fails with 'Validation failed. Checksum changed' from Flyway. What went wrong and how do I recover?",
+      "expected_behavior": [
+        "Identifies that an already-applied migration script was edited",
+        "Advises never editing applied scripts and adding a new versioned V*.sql instead",
+        "Mentions repairing the history out-of-process (Flyway repair) to realign checksums",
+        "Treats disabling validateOnMigrate as a last resort, not the recommended fix"
+      ],
+      "tags": ["flyway", "troubleshooting"]
+    },
+    {
+      "id": "kora-database-migration-horizontal-scaling",
+      "skills": ["kora-database-migration"],
+      "query": "Our Kora service runs with 5 replicas in Kubernetes and the in-app Flyway migrations race on deploy. What is the recommended migration strategy?",
+      "expected_behavior": [
+        "Recommends running migrations out-of-process for horizontally scaled services",
+        "Sets flyway.enabled = false (or removes the module) in the app",
+        "Proposes a Kubernetes Job with restartPolicy: Never run once before rollout, or a CI step",
+        "Mentions the Flyway Gradle plugin (flywayMigrate) for local development",
+        "Does not recommend keeping per-replica startup migrations as the production approach"
+      ],
+      "tags": ["production", "advanced"]
+    },
+    {
+      "id": "kora-database-migration-testing",
+      "skills": ["kora-database-migration"],
+      "query": "How do I run my db/migration Flyway scripts against a throwaway Postgres in Kora integration tests?",
+      "expected_behavior": [
+        "Uses the io.goodforgod:testcontainers-extensions-postgres extension with @TestcontainersPostgreSQL",
+        "Declares @Migration(engine = Migration.Engines.FLYWAY) to apply the db/migration scripts",
+        "Combines it with @KoraAppTest for the application graph",
+        "Does not hand-write Flyway.configure().load().migrate() boilerplate",
+        "Does not use field injection or non-Kora test bootstrap annotations in place of @KoraAppTest"
+      ],
+      "tags": ["testing", "advanced"]
+    },
+    {
+      "id": "kora-database-migration-choose-tool",
+      "skills": ["kora-database-migration"],
+      "query": "Should I pick Flyway or Liquibase for migrations in my new Kora service?",
+      "expected_behavior": [
+        "Defaults to Flyway (database-flyway / FlywayJdbcDatabaseModule) as the simplest SQL-only option",
+        "Recommends Liquibase (database-liquibase / LiquibaseJdbcDatabaseModule) when declarative rollback or an existing changelog is needed",
+        "States that exactly one module should be plugged into @KoraApp",
+        "Frames the choice in Kora module terms, not third-party framework starters"
+      ],
+      "tags": ["decision", "basic"]
+    }
+  ]
+}

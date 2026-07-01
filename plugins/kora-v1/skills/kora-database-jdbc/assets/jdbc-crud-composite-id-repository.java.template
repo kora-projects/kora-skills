@@ -1,0 +1,135 @@
+package ${package};
+
+import jakarta.annotation.Nullable;
+import java.util.List;
+import ru.tinkoff.kora.database.common.UpdateCount;
+import ru.tinkoff.kora.database.common.annotation.Batch;
+import ru.tinkoff.kora.database.common.annotation.Query;
+import ru.tinkoff.kora.database.common.annotation.Repository;
+import ru.tinkoff.kora.database.jdbc.JdbcRepository;
+
+/**
+ * CRUD repository with composite ID using SQL macros.
+ *
+ * Composite keys are used when a single column cannot uniquely identify a row.
+ * The composite ID must be marked with @Id and @Embedded annotations in the entity.
+ *
+ * SQL macros used:
+ * - %{return#selects}: Generates column list for SELECT
+ * - %{return#table}: Generates table name from entity's @Table annotation
+ * - %{id#where}: Generates WHERE clause for composite key (field_a = :id.fieldA AND field_b = :id.fieldB)
+ * - %{entity#inserts}: Generates INSERT statement with values
+ * - %{entity#updates}: Generates UPDATE statement with SET clause
+ * - %{entity#table}: Generates table name for INSERT/UPDATE
+ * - %{entity#where = @id}: Generates WHERE clause filtering by ID fields only
+ *
+ * Best practices:
+ * - Use @Nullable for nullable return types (not Optional)
+ * - %{id#where} expands to: field_a = :id.fieldA AND field_b = :id.fieldB
+ * - ON CONFLICT clause must explicitly name all key columns
+ * - Use explicit SQL for complex composite key queries (macros may be limited)
+ *
+ * Example SQL for composite key (order_items table):
+ *   CREATE TABLE order_items (
+ *       order_id BIGINT NOT NULL,
+ *       product_id BIGINT NOT NULL,
+ *       quantity INT NOT NULL,
+ *       price DECIMAL NOT NULL,
+ *       PRIMARY KEY (order_id, product_id)
+ *   );
+ */
+@Repository
+public interface ${repository_name} extends JdbcRepository {
+
+    /**
+     * Find entity by composite ID.
+     *
+     * @param id composite entity ID
+     * @return entity or null if not found
+     */
+    @Query("SELECT %{return#selects} FROM %{return#table} WHERE %{id#where}")
+    @Nullable
+    ${entity_name} findById(${entity_name}.ID id);
+
+    /**
+     * Find all entities.
+     *
+     * @return list of all entities (empty list if none found)
+     */
+    @Query("SELECT %{return#selects} FROM %{return#table}")
+    List<${entity_name}> findAll();
+
+    /**
+     * Insert single entity.
+     * For composite keys, ID is typically provided (not auto-generated).
+     *
+     * @param entity entity to insert
+     * @return update count (should be 1)
+     */
+    @Query("INSERT INTO %{entity#inserts}")
+    UpdateCount insert(${entity_name} entity);
+
+    /**
+     * Insert multiple entities in batch.
+     *
+     * @param entities list of entities to insert
+     * @return update count (number of rows inserted)
+     */
+    @Query("INSERT INTO %{entity#inserts}")
+    UpdateCount insertBatch(@Batch List<${entity_name}> entities);
+
+    /**
+     * Update single entity by composite ID.
+     * Uses macro to generate UPDATE with WHERE clause for composite key.
+     *
+     * @param entity entity to update (ID must be set)
+     * @return update count (should be 1)
+     */
+    @Query("UPDATE %{entity#table} SET %{entity#updates} WHERE %{entity#where = @id}")
+    UpdateCount update(${entity_name} entity);
+
+    /**
+     * Update multiple entities in batch.
+     *
+     * @param entities list of entities to update
+     * @return update count (number of rows updated)
+     */
+    @Query("UPDATE %{entity#table} SET %{entity#updates} WHERE %{entity#where = @id}")
+    UpdateCount updateBatch(@Batch List<${entity_name}> entities);
+
+    /**
+     * Upsert single entity (insert or update on conflict).
+     * ON CONFLICT must list all columns of the composite primary key.
+     *
+     * @param entity entity to upsert
+     * @return update count (1 if inserted, 1 if updated)
+     */
+    @Query("INSERT INTO %{entity#inserts} ON CONFLICT (${id1_column}, ${id2_column}) DO UPDATE SET %{entity#updates}")
+    UpdateCount upsert(${entity_name} entity);
+
+    /**
+     * Upsert multiple entities in batch.
+     *
+     * @param entities list of entities to upsert
+     * @return update count (number of rows affected)
+     */
+    @Query("INSERT INTO %{entity#inserts} ON CONFLICT (${id1_column}, ${id2_column}) DO UPDATE SET %{entity#updates}")
+    UpdateCount upsertBatch(@Batch List<${entity_name}> entities);
+
+    /**
+     * Delete entity by composite ID.
+     *
+     * @param id composite entity ID
+     * @return update count (1 if deleted, 0 if not found)
+     */
+    @Query("DELETE FROM %{entity#table} WHERE %{id#where}")
+    UpdateCount deleteById(${entity_name}.ID id);
+
+    /**
+     * Delete all entities.
+     *
+     * @return update count (number of rows deleted)
+     */
+    @Query("DELETE FROM %{entity#table}")
+    UpdateCount deleteAll();
+}

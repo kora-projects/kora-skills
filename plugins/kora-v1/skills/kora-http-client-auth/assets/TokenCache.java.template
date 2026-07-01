@@ -1,0 +1,84 @@
+package ${package};
+
+import jakarta.annotation.Nullable;
+import ru.tinkoff.kora.common.Component;
+
+import java.time.Duration;
+import java.time.Instant;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.CompletionStage;
+import java.util.function.Supplier;
+
+/**
+ * Thread-safe in-memory token cache with time-based expiry.
+ *
+ * <p>Used by an {@code HttpClientTokenProvider} to avoid re-fetching a token on
+ * every request. Refresh ahead of expiry with a margin so a token never expires
+ * mid-flight. {@code getOrRefresh} uses double-checked locking so concurrent
+ * requests trigger at most one refresh.</p>
+ */
+@Component
+public final class TokenCache {
+
+    private static final Duration DEFAULT_MARGIN = Duration.ofSeconds(60);
+
+    @Nullable
+    private volatile String token;
+
+    @Nullable
+    private volatile Instant expiryTime;
+
+    private final Object refreshLock = new Object();
+
+    /** Returns the cached token, or null if missing or already expired. */
+    @Nullable
+    public String get() {
+        synchronized (refreshLock) {
+            if (token == null || expiryTime == null || Instant.now().isAfter(expiryTime)) {
+                return null;
+            }
+            return token;
+        }
+    }
+
+    /** Stores a token with the given lifetime. */
+    public void set(String token, Duration expiresIn) {
+        synchronized (refreshLock) {
+            this.token = token;
+            this.expiryTime = Instant.now().plus(expiresIn);
+        }
+    }
+
+    /** True when the token will expire within the given margin. */
+    public boolean isExpiringSoon(Duration margin) {
+        synchronized (refreshLock) {
+            return expiryTime != null && Instant.now().plus(margin).isAfter(expiryTime);
+        }
+    }
+
+    /**
+     * Returns the cached token, or fetches a new one under a lock (double-checked).
+     * The supplier should call {@link #set} to record the real lifetime; a one-hour
+     * fallback is applied otherwise.
+     */
+    public CompletionStage<String> getOrRefresh(Supplier<CompletionStage<String>> refreshSupplier) {
+        var cached = get();
+        if (cached != null && !isExpiringSoon(DEFAULT_MARGIN)) {
+            return CompletableFuture.completedFuture(cached);
+        }
+        synchronized (refreshLock) {
+            cached = get();
+            if (cached != null && !isExpiringSoon(DEFAULT_MARGIN)) {
+                return CompletableFuture.completedFuture(cached);
+            }
+            return refreshSupplier.get()
+                    .thenApply(newToken -> {
+                        this.token = newToken;
+                        if (this.expiryTime == null || Instant.now().isAfter(this.expiryTime)) {
+                            this.expiryTime = Instant.now().plus(Duration.ofHours(1));
+                        }
+                        return newToken;
+                    });
+        }
+    }
+}

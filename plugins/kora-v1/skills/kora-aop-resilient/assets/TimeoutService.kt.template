@@ -1,0 +1,56 @@
+// Timeout pattern for bounding operation latency.
+// Replace `com.example.app.service` with your package.
+// Class must be `open` for aspects to work.
+
+package com.example.app.service
+
+import ru.tinkoff.kora.common.Component
+import ru.tinkoff.kora.resilient.timeout.annotation.Timeout
+import ru.tinkoff.kora.resilient.retry.annotation.Retry
+
+@Component
+open class ReportService(                                               // open, not final
+    private val engine: ReportEngine
+) {
+
+    @Timeout("report.generate")
+    open fun generate(request: ReportRequest): Report {
+        return engine.generate(request)
+    }
+
+    // Per-attempt timeout with retry:
+    // @Retry outside @Timeout means timeout applies to each retry attempt
+    @Retry("report.generate")
+    @Timeout("report.generate.perAttempt")
+    open fun generateWithRetry(request: ReportRequest): Report {
+        return engine.generate(request)
+    }
+}
+
+// Report data class
+data class Report(val content: String)
+
+// ReportRequest data class
+data class ReportRequest(val id: String)
+
+// ReportEngine placeholder
+@Component
+open class ReportEngine {
+    open fun generate(request: ReportRequest): Report = Report("Report content")
+}
+
+// Config (HOCON):
+//
+// resilient.timeout {
+//   default { duration = "1s" }
+//   "report.generate" { duration = "30s" }
+//   "report.generate.perAttempt" { duration = "5s" }
+// }
+//
+// With retry:
+//
+// resilient.retry."report.generate" {
+//   delay = "500ms"
+//   attempts = 3
+//   delayStep = "500ms"
+// }

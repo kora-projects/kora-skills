@@ -1,0 +1,38 @@
+package ${packagePath};
+
+import ru.tinkoff.kora.common.Component;
+
+/**
+ * Example Component class with constructor injection.
+ *
+ * @Component classes are automatically created by Kora at compile time.
+ * The class must:
+ * - Be final (not abstract)
+ * - Have exactly one public constructor
+ * - Have all constructor parameters resolvable from the container
+ *
+ * See: references/component-registration-reference.md
+ */
+@Component
+public final class ${Service}Service {
+    private final ${Repository}Repository repository;
+
+    /**
+     * Constructor injection - single public constructor is automatically used.
+     *
+     * @param repository Injected dependency
+     */
+    public ${Service}Service(${Repository}Repository repository) {
+        this.repository = repository;
+    }
+
+    /**
+     * Business method example.
+     *
+     * @param id Entity ID
+     * @return Entity or null
+     */
+    public ${Entity} findById(String id) {
+        return repository.findById(id);
+    }
+}

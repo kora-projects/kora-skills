@@ -1,0 +1,102 @@
+package com.example.api;
+
+import com.example.api.PetApiResponses.*;
+import com.example.model.Pet;
+import com.example.model.Message;
+import ru.tinkoff.kora.common.Component;
+
+/**
+ * Example delegate implementation for Pet API
+ *
+ * Key points:
+ * - Annotated with @Component for DI discovery
+ * - Implements generated PetApiDelegate interface
+ * - Returns the generated sealed *ApiResponses records (Kora has no ResponseEntity)
+ * - Each HTTP status is a separate ApiResponse record
+ * - Delegate handles business logic, controller handles HTTP
+ *
+ * Generated from: openapi-spec.yaml.template
+ */
+@Component
+public final class PetApiDelegateImpl implements PetApiDelegate {
+
+    private final PetService petService;
+
+    public PetApiDelegateImpl(PetService petService) {
+        this.petService = petService;
+    }
+
+    /**
+     * GET /pets/{petId}
+     *
+     * Response codes:
+     * - 200: Pet found
+     * - 400: Invalid petId format
+     * - 404: Pet not found
+     */
+    @Override
+    public GetPetByIdApiResponse getPetById(Long petId) {
+        if (petId < 0) {
+            return new GetPetByIdApiResponse.GetPetById400ApiResponse();
+        }
+
+        Pet pet = petService.findById(petId);
+        if (pet == null) {
+            return new GetPetByIdApiResponse.GetPetById404ApiResponse();
+        }
+
+        return new GetPetByIdApiResponse.GetPetById200ApiResponse(pet);
+    }
+
+    /**
+     * POST /pets
+     *
+     * Response codes:
+     * - 200: Pet created successfully
+     * - 400: Invalid request body (validation failed)
+     *
+     * Note: Validation happens automatically before this method is called
+     * when enableServerValidation: "true" is set.
+     */
+    @Override
+    public AddPetApiResponse addPet(Pet body) {
+        Pet created = petService.create(body);
+        return new AddPetApiResponse.AddPet200ApiResponse(
+            new Message("Pet created successfully")
+        );
+    }
+
+    /**
+     * PUT /pets/{petId}
+     *
+     * Response codes:
+     * - 200: Pet updated successfully
+     * - 404: Pet not found
+     */
+    @Override
+    public UpdatePetApiResponse updatePet(Long petId, Pet body) {
+        if (!petService.exists(petId)) {
+            return new UpdatePetApiResponse.UpdatePet404ApiResponse();
+        }
+
+        Pet updated = petService.update(petId, body);
+        return new UpdatePetApiResponse.UpdatePet200ApiResponse(updated);
+    }
+
+    /**
+     * DELETE /pets/{petId}
+     *
+     * Response codes:
+     * - 204: Pet deleted successfully (no content)
+     * - 404: Pet not found
+     */
+    @Override
+    public DeletePetApiResponse deletePet(Long petId) {
+        if (!petService.exists(petId)) {
+            return new DeletePetApiResponse.DeletePet404ApiResponse();
+        }
+
+        petService.delete(petId);
+        return new DeletePetApiResponse.DeletePet204ApiResponse();
+    }
+}

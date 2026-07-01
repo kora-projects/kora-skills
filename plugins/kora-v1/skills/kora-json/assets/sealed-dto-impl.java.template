@@ -1,0 +1,13 @@
+package ${package};
+
+import ru.tinkoff.kora.json.common.annotation.Json;
+import ru.tinkoff.kora.json.common.annotation.JsonDiscriminatorValue;
+
+/**
+ * Implementation of ${sealed_interface_name} for the ${impl_name} case.
+ *
+ * @param ${fields_description}
+ */
+@Json
+@JsonDiscriminatorValue("${discriminator_value}")
+public record ${impl_name}(${fields}) implements ${sealed_interface_name} {}

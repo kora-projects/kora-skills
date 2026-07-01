@@ -1,0 +1,296 @@
+# Delegate Implementation Templates
+
+## Basic Delegate Template (Java)
+
+```java
+package ${API_PACKAGE}.api;
+
+import ${API_PACKAGE}.model.*;
+import ru.tinkoff.kora.common.Component;
+
+/**
+ * Implementation of ${API_NAME} API delegate.
+ *
+ * @see ${API_NAME}ApiDelegate for interface definition
+ * @see ${API_NAME}ApiResponses for response types
+ */
+@Component
+public final class ${API_NAME}ApiDelegateImpl implements ${API_NAME}ApiDelegate {
+
+    private final ${SERVICE_CLASS} ${SERVICE_VAR};
+    private final ${MAPPER_CLASS} ${MAPPER_VAR};
+
+    public ${API_NAME}ApiDelegateImpl(${SERVICE_CLASS} ${SERVICE_VAR}, ${MAPPER_CLASS} ${MAPPER_VAR}) {
+        this.${SERVICE_VAR} = ${SERVICE_VAR};
+        this.${MAPPER_VAR} = ${MAPPER_VAR};
+    }
+
+    /**
+     * GET /${RESOURCE_PATH}
+     *
+     * @param ${PARAM_NAME} ${PARAM_DESCRIPTION}
+     * @return ${RESPONSE_TYPE}
+     */
+    @Override
+    public ${API_NAME}ApiResponses.${OPERATION_NAME}ApiResponse ${operationId}(${PARAM_TYPE} ${PARAM_NAME}) {
+        return ${SERVICE_VAR}.${SERVICE_METHOD}(${PARAM_NAME})
+            .<${API_NAME}ApiResponses.${OPERATION_NAME}ApiResponse>map(result ->
+                new ${API_NAME}ApiResponses.${OPERATION_NAME}ApiResponse.${RESPONSE_200_CLASS}(
+                    ${MAPPER_VAR}.toResponse(result)
+                )
+            )
+            .orElseGet(() ->
+                new ${API_NAME}ApiResponses.${OPERATION_NAME}ApiResponse.${RESPONSE_404_CLASS}(
+                    new ErrorDTO("${RESOURCE_NAME} not found: " + ${PARAM_NAME})
+                )
+            );
+    }
+
+    /**
+     * POST /${RESOURCE_PATH}
+     *
+     * @param request ${PARAM_DESCRIPTION}
+     * @return ${RESPONSE_TYPE}
+     */
+    @Override
+    public ${API_NAME}ApiResponses.${OPERATION_NAME}ApiResponse ${operationId}(${REQUEST_TYPE} request) {
+        // Validate business rules
+        if (${SERVICE_VAR}.exists(request.${KEY_FIELD}())) {
+            return new ${API_NAME}ApiResponses.${OPERATION_NAME}ApiResponse.${RESPONSE_409_CLASS}(
+                new ErrorDTO("${RESOURCE_NAME} already exists: " + request.${KEY_FIELD}())
+            );
+        }
+
+        // Create resource
+        var entity = ${MAPPER_VAR}.toEntity(request);
+        var created = ${SERVICE_VAR}.create(entity);
+
+        return new ${API_NAME}ApiResponses.${OPERATION_NAME}ApiResponse.${RESPONSE_201_CLASS}(
+            ${MAPPER_VAR}.toResponse(created)
+        );
+    }
+
+    /**
+     * DELETE /${RESOURCE_PATH}/{id}
+     *
+     * @param id Resource ID
+     * @return ${RESPONSE_TYPE}
+     */
+    @Override
+    public ${API_NAME}ApiResponses.${OPERATION_NAME}ApiResponse ${operationId}(String id) {
+        if (!${SERVICE_VAR}.exists(id)) {
+            return new ${API_NAME}ApiResponses.${OPERATION_NAME}ApiResponse.${RESPONSE_404_CLASS}(
+                new ErrorDTO("${RESOURCE_NAME} not found: " + id)
+            );
+        }
+
+        ${SERVICE_VAR}.delete(id);
+        return new ${API_NAME}ApiResponses.${OPERATION_NAME}ApiResponse.${RESPONSE_204_CLASS}();
+    }
+}
+```
+
+## Basic Delegate Template (Kotlin)
+
+```kotlin
+package ${API_PACKAGE}.api
+
+import ${API_PACKAGE}.model.*
+import ru.tinkoff.kora.common.Component
+
+/**
+ * Implementation of ${API_NAME} API delegate.
+ *
+ * @see ${API_NAME}ApiDelegate for interface definition
+ * @see ${API_NAME}ApiResponses for response types
+ */
+@Component
+class ${API_NAME}ApiDelegateImpl(
+    private val ${SERVICE_VAR}: ${SERVICE_CLASS},
+    private val ${MAPPER_VAR}: ${MAPPER_CLASS}
+) : ${API_NAME}ApiDelegate {
+
+    /**
+     * GET /${RESOURCE_PATH}
+     */
+    override fun ${operationId}(${PARAM_NAME}: ${PARAM_TYPE}): ${API_NAME}ApiResponses.${OPERATION_NAME}ApiResponse {
+        return ${SERVICE_VAR}.${SERVICE_METHOD}(${PARAM_NAME})
+            .map { result ->
+                ${API_NAME}ApiResponses.${OPERATION_NAME}ApiResponse.${RESPONSE_200_CLASS}(
+                    ${MAPPER_VAR}.toResponse(result)
+                )
+            }
+            .orElseGet {
+                ${API_NAME}ApiResponses.${OPERATION_NAME}ApiResponse.${RESPONSE_404_CLASS}(
+                    ErrorDTO("${RESOURCE_NAME} not found: $${PARAM_NAME}")
+                )
+            }
+    }
+
+    /**
+     * POST /${RESOURCE_PATH}
+     */
+    override fun ${operationId}(request: ${REQUEST_TYPE}): ${API_NAME}ApiResponses.${OPERATION_NAME}ApiResponse {
+        // Validate business rules
+        if (${SERVICE_VAR}.exists(request.${KEY_FIELD})) {
+            return ${API_NAME}ApiResponses.${OPERATION_NAME}ApiResponse.${RESPONSE_409_CLASS}(
+                ErrorDTO("${RESOURCE_NAME} already exists: ${request.${KEY_FIELD}}")
+            )
+        }
+
+        // Create resource
+        val entity = ${MAPPER_VAR}.toEntity(request)
+        val created = ${SERVICE_VAR}.create(entity)
+
+        return ${API_NAME}ApiResponses.${OPERATION_NAME}ApiResponse.${RESPONSE_201_CLASS}(
+            ${MAPPER_VAR}.toResponse(created)
+        )
+    }
+
+    /**
+     * DELETE /${RESOURCE_PATH}/{id}
+     */
+    override fun ${operationId}(id: String): ${API_NAME}ApiResponses.${OPERATION_NAME}ApiResponse {
+        return if (!${SERVICE_VAR}.exists(id)) {
+            ${API_NAME}ApiResponses.${OPERATION_NAME}ApiResponse.${RESPONSE_404_CLASS}(
+                ErrorDTO("${RESOURCE_NAME} not found: $id")
+            )
+        } else {
+            ${SERVICE_VAR}.delete(id)
+            ${API_NAME}ApiResponses.${OPERATION_NAME}ApiResponse.${RESPONSE_204_CLASS}()
+        }
+    }
+}
+```
+
+## Async Delegate Template (CompletionStage)
+
+```java
+package ${API_PACKAGE}.api;
+
+import ${API_PACKAGE}.model.*;
+import ru.tinkoff.kora.common.Component;
+import java.util.concurrent.CompletionStage;
+import java.util.concurrent.CompletableFuture;
+
+@Component
+public final class ${API_NAME}ApiDelegateImpl implements ${API_NAME}ApiDelegate {
+
+    private final ${SERVICE_CLASS} ${SERVICE_VAR};
+    private final ${MAPPER_CLASS} ${MAPPER_VAR};
+
+    public ${API_NAME}ApiDelegateImpl(${SERVICE_CLASS} ${SERVICE_VAR}, ${MAPPER_CLASS} ${MAPPER_VAR}) {
+        this.${SERVICE_VAR} = ${SERVICE_VAR};
+        this.${MAPPER_VAR} = ${MAPPER_VAR};
+    }
+
+    @Override
+    public CompletionStage<${API_NAME}ApiResponses.${OPERATION_NAME}ApiResponse> ${operationId}(${PARAM_TYPE} ${PARAM_NAME}) {
+        return ${SERVICE_VAR}.${SERVICE_METHOD}Async(${PARAM_NAME})
+            .thenApply(result ->
+                result.<${API_NAME}ApiResponses.${OPERATION_NAME}ApiResponse>map(user ->
+                    new ${API_NAME}ApiResponses.${OPERATION_NAME}ApiResponse.${RESPONSE_200_CLASS}(
+                        ${MAPPER_VAR}.toResponse(user)
+                    )
+                )
+                .orElseGet(() ->
+                    new ${API_NAME}ApiResponses.${OPERATION_NAME}ApiResponse.${RESPONSE_404_CLASS}(
+                        new ErrorDTO("${RESOURCE_NAME} not found")
+                    )
+                )
+            );
+    }
+}
+```
+
+## Reactive Delegate Template (Mono)
+
+```java
+package ${API_PACKAGE}.api;
+
+import ${API_PACKAGE}.model.*;
+import ru.tinkoff.kora.common.Component;
+import reactor.core.publisher.Mono;
+
+@Component
+public final class ${API_NAME}ApiDelegateImpl implements ${API_NAME}ApiDelegate {
+
+    private final ${SERVICE_CLASS} ${SERVICE_VAR};
+    private final ${MAPPER_CLASS} ${MAPPER_VAR};
+
+    public ${API_NAME}ApiDelegateImpl(${SERVICE_CLASS} ${SERVICE_VAR}, ${MAPPER_CLASS} ${MAPPER_VAR}) {
+        this.${SERVICE_VAR} = ${SERVICE_VAR};
+        this.${MAPPER_VAR} = ${MAPPER_VAR};
+    }
+
+    @Override
+    public Mono<${API_NAME}ApiResponses.${OPERATION_NAME}ApiResponse> ${operationId}(${PARAM_TYPE} ${PARAM_NAME}) {
+        return ${SERVICE_VAR}.${SERVICE_METHOD}Reactive(${PARAM_NAME})
+            .map(result ->
+                new ${API_NAME}ApiResponses.${OPERATION_NAME}ApiResponse.${RESPONSE_200_CLASS}(
+                    ${MAPPER_VAR}.toResponse(result)
+                )
+            )
+            .defaultIfEmpty(
+                new ${API_NAME}ApiResponses.${OPERATION_NAME}ApiResponse.${RESPONSE_404_CLASS}(
+                    new ErrorDTO("${RESOURCE_NAME} not found")
+                )
+            );
+    }
+}
+```
+
+## Kotlin Suspend Delegate Template
+
+```kotlin
+package ${API_PACKAGE}.api
+
+import ${API_PACKAGE}.model.*
+import ru.tinkoff.kora.common.Component
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
+
+@Component
+class ${API_NAME}ApiDelegateImpl(
+    private val ${SERVICE_VAR}: ${SERVICE_CLASS},
+    private val ${MAPPER_VAR}: ${MAPPER_CLASS}
+) : ${API_NAME}ApiDelegate {
+
+    override suspend fun ${operationId}(${PARAM_NAME}: ${PARAM_TYPE}): ${API_NAME}ApiResponses.${OPERATION_NAME}ApiResponse {
+        return withContext(Dispatchers.IO) {
+            val result = ${SERVICE_VAR}.${SERVICE_METHOD}(${PARAM_NAME})
+
+            if (result != null) {
+                ${API_NAME}ApiResponses.${OPERATION_NAME}ApiResponse.${RESPONSE_200_CLASS}(
+                    ${MAPPER_VAR}.toResponse(result)
+                )
+            } else {
+                ${API_NAME}ApiResponses.${OPERATION_NAME}ApiResponse.${RESPONSE_404_CLASS}(
+                    ErrorDTO("${RESOURCE_NAME} not found: $${PARAM_NAME}")
+                )
+            }
+        }
+    }
+}
+```
+
+## Template Variables
+
+| Variable | Description | Example |
+|----------|-------------|---------|
+| `${API_PACKAGE}` | Base package name | com.example.userapi |
+| `${API_NAME}` | API name (PascalCase) | User |
+| `${SERVICE_CLASS}` | Service class name | UserService |
+| `${SERVICE_VAR}` | Service variable name | userService |
+| `${MAPPER_CLASS}` | Mapper class name | UserMapper |
+| `${MAPPER_VAR}` | Mapper variable name | mapper |
+| `${RESOURCE_PATH}` | Resource path | users |
+| `${RESOURCE_NAME}` | Resource name | User |
+| `${PARAM_NAME}` | Parameter name | userId |
+| `${PARAM_TYPE}` | Parameter type | String |
+| `${REQUEST_TYPE}` | Request DTO type | CreateUserRequest |
+| `${RESPONSE_TYPE}` | Response type | UserResponse |
+| `${KEY_FIELD}` | Key field getter | email() |
+| `${OPERATION_NAME}` | Operation name (PascalCase) | GetUser |
+| `${operationId}` | Operation ID (camelCase) | getUser |
+| `${RESPONSE_XXX_CLASS}` | Response class for status | GetUser200ApiResponse |

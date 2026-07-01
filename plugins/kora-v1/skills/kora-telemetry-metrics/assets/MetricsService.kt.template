@@ -1,0 +1,98 @@
+package ${package}
+
+import io.micrometer.core.instrument.Counter
+import io.micrometer.core.instrument.DistributionSummary
+import io.micrometer.core.instrument.MeterRegistry
+import io.micrometer.core.instrument.Timer
+import ru.tinkoff.kora.common.Component
+import java.time.Duration
+import java.util.Locale
+import java.util.concurrent.Callable
+import java.util.concurrent.ConcurrentHashMap
+
+/**
+ * Business metrics service example.
+ *
+ * Demonstrates:
+ * - Timer for operation duration
+ * - Counter with dynamic low-cardinality tag (email provider)
+ * - Gauge for current value
+ * - DistributionSummary for size distribution
+ * - Metric instance caching for high throughput
+ */
+@Component
+class MetricsService(
+    private val meterRegistry: MeterRegistry
+) {
+
+    private val userCreationTimer: Timer
+    private val userCreationCounters = ConcurrentHashMap<String, Counter>()
+    private val payloadSizeSummary: DistributionSummary
+
+    init {
+        // Timer with SLO-based histogram buckets
+        userCreationTimer = Timer.builder("user.creation.duration")
+            .description("Time taken to create users")
+            .serviceLevelObjectives(
+                Duration.ofMillis(50),
+                Duration.ofMillis(100),
+                Duration.ofMillis(250),
+                Duration.ofMillis(500)
+            )
+            .register(meterRegistry)
+
+        // DistributionSummary for payload sizes
+        payloadSizeSummary = DistributionSummary.builder("user.payload.size")
+            .description("User payload size distribution")
+            .baseUnit("bytes")
+            .register(meterRegistry)
+    }
+
+    /**
+     * Records user creation with timer and counter.
+     * Counter is cached by email provider (low-cardinality tag).
+     */
+    fun <T> recordUserCreation(email: String, action: Callable<T>): T {
+        try {
+            val result = userCreationTimer.recordCallable(action)
+            userCreationCounter(emailProvider(email)).increment()
+            return result
+        } catch (e: RuntimeException) {
+            throw e
+        } catch (e: Exception) {
+            throw IllegalStateException("Failed to record user creation metrics", e)
+        }
+    }
+
+    /**
+     * Records payload size.
+     */
+    fun recordPayloadSize(sizeBytes: Int) {
+        payloadSizeSummary.record(sizeBytes.toDouble())
+    }
+
+    /**
+     * Gets or creates counter for email provider.
+     * Uses computeIfAbsent for thread-safe caching.
+     */
+    private fun userCreationCounter(emailProvider: String): Counter {
+        return userCreationCounters.computeIfAbsent(emailProvider) { provider ->
+            Counter.builder("user.creation.total")
+                .description("Total number of users created")
+                .tag("email.provider", provider)
+                .register(meterRegistry)
+        }
+    }
+
+    /**
+     * Extracts email provider (domain) from email address.
+     * Returns "unknown" for invalid emails.
+     */
+    private fun emailProvider(email: String): String {
+        val at = email.indexOf('@')
+        if (at < 0 || at == email.length - 1) {
+            return "unknown"
+        }
+        return email.substring(at + 1).lowercase(Locale.ROOT)
+    }
+}

@@ -1,0 +1,76 @@
+// Circuit breaker pattern for cascading failure protection.
+// Replace `com.example.app.service` with your package.
+
+package com.example.app.service;
+
+import ru.tinkoff.kora.common.Component;
+import ru.tinkoff.kora.resilient.circuitbreaker.annotation.CircuitBreaker;
+
+@Component
+public class OrderClient {                                              // NOT final
+
+    private final HttpClient httpClient;
+
+    public OrderClient(HttpClient httpClient) {
+        this.httpClient = httpClient;
+    }
+
+    @CircuitBreaker("order.service")
+    public Order getOrder(String orderId) {
+        return httpClient.get("/orders/" + orderId);
+    }
+}
+
+// Order DTO
+class Order {
+    private final String id;
+    private final String customerId;
+    public Order(String id, String customerId) {
+        this.id = id;
+        this.customerId = customerId;
+    }
+    public String getId() { return id; }
+    public String getCustomerId() { return customerId; }
+}
+
+// HttpClient placeholder
+@Component
+class HttpClient {
+    public Order get(String path) {
+        return new Order("123", "456");
+    }
+}
+
+// Config (HOCON):
+//
+// resilient.circuitbreaker {
+//   default {
+//     slidingWindowSize = 100
+//     minimumRequiredCalls = 10
+//     failureRateThreshold = 50
+//     waitDurationInOpenState = "30s"
+//     permittedCallsInHalfOpenState = 5
+//   }
+//   "order.service" {
+//     slidingWindowSize = 50
+//     minimumRequiredCalls = 5
+//     failureRateThreshold = 30
+//     waitDurationInOpenState = "60s"
+//     failurePredicateName = "IgnoreBusinessErrors"
+//   }
+// }
+//
+// Custom predicate example:
+//
+// @Component
+// public final class IgnoreBusinessErrors implements CircuitBreakerPredicate {
+//     @Override
+//     public String name() { return "IgnoreBusinessErrors"; }
+//     @Override
+//     public boolean test(Throwable t) {
+//         if (t instanceof HttpClientResponseException httpEx) {
+//             return httpEx.code() >= 500;  // Server errors only
+//         }
+//         return true;
+//     }
+// }

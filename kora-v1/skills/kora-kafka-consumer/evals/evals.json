@@ -1,0 +1,127 @@
+{
+  "evals": [
+    {
+      "id": "kora-kafka-consumer-basic-listener",
+      "skills": ["kora-kafka-consumer"],
+      "query": "In my Kora service, consume plain String messages from the topic configured at kafka.consumer.userEvents and log each value.",
+      "expected_behavior": [
+        "Annotates a method on a @Component class with @KafkaListener(\"kafka.consumer.userEvents\")",
+        "Uses the void process(String value) signature for simple value consumption",
+        "Adds KafkaModule to the @KoraApp interface via extends (not implements)",
+        "Provides application.conf with kafka.consumer.userEvents.topics and driverProperties bootstrap.servers",
+        "Does not use field injection or @Autowired-style wiring; relies on Kora constructor injection"
+      ],
+      "tags": ["consumer", "basic"]
+    },
+    {
+      "id": "kora-kafka-consumer-json-deserialization",
+      "skills": ["kora-kafka-consumer"],
+      "query": "Deserialize incoming Kafka messages into a UserEvent record with userId and eventType fields using Kora JSON.",
+      "expected_behavior": [
+        "Declares the record annotated with @Json",
+        "Annotates the @KafkaListener method parameter with @Json (e.g. void process(@Json UserEvent event))",
+        "Adds the ru.tinkoff.kora:json-module dependency and JsonModule to the @KoraApp interface",
+        "Does not register a manual Jackson Deserializer class in driverProperties for the JSON value"
+      ],
+      "tags": ["serialization", "basic"]
+    },
+    {
+      "id": "kora-kafka-consumer-deser-error-handling",
+      "skills": ["kora-kafka-consumer"],
+      "query": "Make my JSON Kafka listener resilient: when a message fails to deserialize, log it and continue instead of crashing the consumer.",
+      "expected_behavior": [
+        "Uses the nullable signature void process(@Nullable @Json Event event, @Nullable Exception exception)",
+        "Checks exception != null before processing the event",
+        "Explains that an uncaught exception causes Kora to restart the consumer",
+        "Optionally mentions RecordValueDeserializationException and getRecord() to retrieve the raw ConsumerRecord<byte[], byte[]>",
+        "Does not invent a @KoraTransaction annotation or a separate error-handler component"
+      ],
+      "tags": ["error-handling", "advanced"]
+    },
+    {
+      "id": "kora-kafka-consumer-skip-record",
+      "skills": ["kora-kafka-consumer"],
+      "query": "Skip messages whose userId is null or blank in my Kafka listener, while still counting them in metrics.",
+      "expected_behavior": [
+        "Throws KafkaSkipRecordException imported from ru.tinkoff.kora.kafka.common.exceptions",
+        "Passes the underlying cause to the KafkaSkipRecordException constructor",
+        "Notes that skipping commits the offset and continues to the next record",
+        "Does not throw a plain RuntimeException expecting the consumer to silently skip"
+      ],
+      "tags": ["error-handling", "advanced"]
+    },
+    {
+      "id": "kora-kafka-consumer-manual-commit",
+      "skills": ["kora-kafka-consumer"],
+      "query": "I need exactly-once-style processing: only commit the Kafka offset after the database write succeeds.",
+      "expected_behavior": [
+        "Adds a Consumer<K, V> parameter to the @KafkaListener method to switch to manual commit",
+        "Calls consumer.commitSync() only after the business logic succeeds",
+        "Does not commit on exception so the record is reprocessed",
+        "Does not rely on enable.auto.commit for the commit-after-write guarantee"
+      ],
+      "tags": ["offset", "advanced"]
+    },
+    {
+      "id": "kora-kafka-consumer-batch",
+      "skills": ["kora-kafka-consumer"],
+      "query": "Process Kafka records in batches for higher throughput and log the batch size.",
+      "expected_behavior": [
+        "Uses the ConsumerRecords<K, V> parameter signature so the whole poll batch is delivered",
+        "Iterates over records and uses records.count() for the batch size",
+        "Notes that commitSync() is called automatically after the whole batch",
+        "May tune max.poll.records / fetch.min.bytes in driverProperties",
+        "Does not fall back to a single-record signature when batch throughput is requested"
+      ],
+      "tags": ["batch", "advanced"]
+    },
+    {
+      "id": "kora-kafka-consumer-rebalance",
+      "skills": ["kora-kafka-consumer"],
+      "query": "Commit offsets and clear a local cache when partitions are revoked during a Kafka rebalance.",
+      "expected_behavior": [
+        "Implements ru.tinkoff.kora.kafka.common.consumer.ConsumerAwareRebalanceListener as a @Component",
+        "Annotates the rebalance listener with @Tag matching the listener's tag class",
+        "Commits in onPartitionsRevoked via consumer.commitSync() and avoids committing in onPartitionsLost",
+        "Does not use the raw Kafka ConsumerRebalanceListener or @Qualifier; uses Kora @Tag"
+      ],
+      "tags": ["rebalance", "advanced"]
+    },
+    {
+      "id": "kora-kafka-consumer-strategies",
+      "skills": ["kora-kafka-consumer"],
+      "query": "One consumer must load-balance work across instances, another must broadcast every message to all instances. How do I configure both in Kora?",
+      "expected_behavior": [
+        "Configures the load-balanced consumer with a group.id in driverProperties (subscribe strategy)",
+        "Configures the broadcast consumer without a group.id (assign strategy) and notes only one topic is allowed",
+        "Keeps both under kafka.consumer.<name> with topics and bootstrap.servers",
+        "Does not claim group.id is required for the broadcast/assign consumer"
+      ],
+      "tags": ["strategies", "basic"]
+    },
+    {
+      "id": "kora-kafka-consumer-testing",
+      "skills": ["kora-kafka-consumer"],
+      "query": "Write an integration test for my Kafka listener that spins up a real Kafka broker.",
+      "expected_behavior": [
+        "Uses @KoraAppTest(Application.class) and injects the listener with @TestComponent",
+        "Starts Kafka with Testcontainers and overrides bootstrap.servers via KoraConfigModification / KoraAppTestConfigModifier",
+        "Asserts asynchronously with Awaitility against state the listener records",
+        "Does not mock the @KafkaListener method; uses a real broker via Testcontainers"
+      ],
+      "tags": ["testing", "advanced"]
+    },
+    {
+      "id": "kora-kafka-consumer-transactional-publish",
+      "skills": ["kora-kafka-consumer"],
+      "query": "After consuming a record I want to publish two messages atomically so consumers only see them if both succeed.",
+      "expected_behavior": [
+        "Declares a @KafkaPublisher interface extending TransactionalPublisher<P> for the transactional producer",
+        "Sends both messages inside publisher.inTx(producer -> { ... }) so they commit or abort together",
+        "Configures idPrefix / maxPoolSize / maxWaitTime for the transactional publisher and read_committed isolation on the consumer",
+        "Does not use a non-existent @KoraTransaction annotation or KafkaTransactionContext consumer parameter"
+      ],
+      "tags": ["transactions", "advanced"]
+    }
+  ]
+}

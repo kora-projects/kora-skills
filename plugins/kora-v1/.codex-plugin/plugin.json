@@ -1,0 +1,54 @@
+{
+  "name": "kora-v1",
+  "version": "0.1.0",
+  "description": "Kora Framework 1.x development — compile-time DI, HTTP, Database, Kafka, gRPC, SOAP, OpenAPI, Telemetry, AOP. Zero reflection, zero proxies. Java/Kotlin microservices.",
+  "author": {
+    "name": "Anton Kurako",
+    "url": "https://github.com/kora-projects"
+  },
+  "license": "Apache-2.0",
+  "homepage": "https://kora-projects.github.io/kora-docs",
+  "keywords": [
+    "kora",
+    "kora-v1",
+    "kora-1x",
+    "kora-1.x",
+    "java",
+    "kotlin",
+    "compile-time-di",
+    "microservices",
+    "http-server",
+    "http-client",
+    "jdbc",
+    "cassandra",
+    "kafka",
+    "grpc",
+    "openapi",
+    "telemetry",
+    "caching",
+    "resilience"
+  ],
+  "skills": "skills",
+  "interface": {
+    "displayName": "Kora 1.x",
+    "shortDescription": "Kora Framework 1.x Java/Kotlin microservice skills.",
+    "longDescription": "AI coding agent skills for building Kora Framework 1.x services with compile-time DI, HTTP, database, Kafka, gRPC, SOAP/WSDL, OpenAPI, telemetry, AOP, testing, and project setup guidance.",
+    "developerName": "Kora Framework",
+    "category": "Developer Tools",
+    "capabilities": [
+      "Kora service development",
+      "Kora code developer",
+      "Kora code generation",
+      "Kora code review",
+      "Kora documentation",
+      "Testing"
+    ],
+    "websiteURL": "https://kora-projects.github.io/kora-docs/",
+    "brandColor": "#2E7D32",
+    "defaultPrompt": [
+      "Create a Kora 1.x microservice.",
+      "Add a Kora SOAP client.",
+      "Debug a Kora DI graph error."
+    ]
+  }
+}

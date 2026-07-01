@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<configuration>
+    <!-- JSON Console Appender for ELK/Datadog/Splunk -->
+    <appender name="JSON_CONSOLE" class="ch.qos.logback.core.ConsoleAppender">
+        <encoder class="net.logstash.logback.encoder.LogstashEncoder">
+            <customFields>{"service":"${SERVICE_NAME:-my-service}","environment":"${SERVICE_ENV:-dev}"}</customFields>
+            <includeMdcKeyName>traceId</includeMdcKeyName>
+            <includeMdcKeyName>requestId</includeMdcKeyName>
+            <includeMdcKeyName>userId</includeMdcKeyName>
+            <timestampPattern>yyyy-MM-dd'T'HH:mm:ss.SSS'Z'</timestampPattern>
+        </encoder>
+    </appender>
+
+    <!-- Async Wrapper for Non-Blocking I/O. KoraAsyncAppender extends Logback
+         AsyncAppenderBase: use queueSize / discardingThreshold (0 = never drop). -->
+    <appender name="ASYNC_JSON" class="ru.tinkoff.kora.logging.logback.KoraAsyncAppender">
+        <appender-ref ref="JSON_CONSOLE"/>
+        <queueSize>8192</queueSize>
+        <discardingThreshold>0</discardingThreshold>
+    </appender>
+
+    <!-- Per-package levels are configured in the Kora config (logging.levels);
+         only the root level is set here. -->
+    <root level="INFO">
+        <appender-ref ref="ASYNC_JSON"/>
+    </root>
+</configuration>

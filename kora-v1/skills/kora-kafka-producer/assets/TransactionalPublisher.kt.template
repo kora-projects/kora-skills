@@ -1,0 +1,58 @@
+package ${packagePath}.publisher
+
+import ru.tinkoff.kora.kafka.common.producer.TransactionalPublisher
+import ru.tinkoff.kora.kafka.common.annotation.KafkaPublisher
+import ru.tinkoff.kora.kafka.common.annotation.KafkaPublisher.Topic
+
+/**
+ * Base publisher for use in transactions.
+ */
+@KafkaPublisher("kafka.producer.myPublisher")
+interface MyPublisher {
+    
+    @Topic("kafka.producer.myTopic")
+    fun send(key: String, value: String)
+}
+
+/**
+ * Transactional publisher.
+ *
+ * Extends TransactionalPublisher<T> where T is the base publisher.
+ * All messages sent within inTx() will be atomically
+ * committed or rolled back on error.
+ */
+@KafkaPublisher("kafka.producer.myTransactionalPublisher")
+interface MyTransactionalPublisher : TransactionalPublisher<MyPublisher>
+
+/**
+ * Example usage of the transactional publisher.
+ */
+// @Component
+// class MyService(
+//     private val transactionalPublisher: MyTransactionalPublisher
+// ) {
+//
+//     /**
+//      * Send messages in a transaction (lambda style)
+//      */
+//     fun sendInTransaction() {
+//         transactionalPublisher.inTx { producer ->
+//             producer.send("key1", "value1")
+//             producer.send("key2", "value2")
+//             // All messages will be committed atomically
+//         }
+//     }
+//
+//     /**
+//      * Send messages with manual transaction management
+//      */
+//     fun sendManual(somethingBad: Boolean) {
+//         transactionalPublisher.begin().use { transaction ->
+//             transaction.publisher().send("key", "value")
+//             if (somethingBad) {
+//                 transaction.abort()  // rollback; close() will not commit
+//             }
+//             // otherwise: commit on use block close
+//         }
+//     }
+// }

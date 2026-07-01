@@ -1,0 +1,40 @@
+package ${package}
+
+import java.util.concurrent.CompletableFuture
+import ru.tinkoff.kora.common.Module
+import ru.tinkoff.kora.common.Principal
+import ru.tinkoff.kora.common.Tag
+import ru.tinkoff.kora.config.common.annotation.ConfigSource
+import ru.tinkoff.kora.http.server.common.auth.HttpServerPrincipalExtractor
+
+/**
+ * API-key authentication wired to an OpenAPI security scheme.
+ *
+ * The generated controller invokes this extractor before the delegate, passing the value
+ * of the header named in the OpenAPI `apiKey` scheme as `value`.
+ *
+ * Replace `ApiSecurity` with the class generated from your OpenAPI contract. Throw a
+ * [SecurityException] to reject; map it to 401/403 in an error `HttpServerInterceptor`.
+ */
+@Module
+interface ApiKeyExtractor {
+
+    /** API-key principal. Must implement [Principal]. */
+    data class ApiKeyPrincipal(val clientId: String) : Principal
+
+    /** Externalized expected key: `auth.apiKey.value = ${API_KEY}`. */
+    @ConfigSource("auth.apiKey")
+    interface ApiKeyConfig {
+        fun value(): String
+    }
+
+    @Tag(ApiSecurity.ApiKeyAuth::class)
+    fun apiKeyHttpServerPrincipalExtractor(config: ApiKeyConfig): HttpServerPrincipalExtractor<Principal> {
+        return HttpServerPrincipalExtractor { _, value ->
+            if (value == null || config.value() != value) {
+                throw SecurityException("Invalid API key")
+            }
+            CompletableFuture.completedFuture(ApiKeyPrincipal("api-client"))
+        }
+    }
+}

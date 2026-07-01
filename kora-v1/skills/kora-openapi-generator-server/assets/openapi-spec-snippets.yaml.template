@@ -1,0 +1,291 @@
+# OpenAPI Spec Templates
+
+## Basic REST API Template
+
+Minimal CRUD operations for a single entity:
+
+```yaml
+openapi: 3.0.3
+info:
+  title: ${API_TITLE}
+  version: ${API_VERSION}
+tags:
+  - name: ${ENTITY_PLURAL}
+    description: ${ENTITY_DESCRIPTION}
+paths:
+  /${ENTITY_PLURAL}:
+    get:
+      tags: [${ENTITY_PLURAL}]
+      operationId: list${ENTITY_PASCAL}
+      parameters:
+        - name: offset
+          in: query
+          schema:
+            type: integer
+            default: 0
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 20
+      responses:
+        "200":
+          description: List of ${ENTITY_PLURAL}
+    post:
+      tags: [${ENTITY_PLURAL}]
+      operationId: create${ENTITY_PASCAL}
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/${ENTITY_PASCAL}CreateRequest'
+      responses:
+        "201":
+          description: Created
+        "400":
+          description: Invalid input
+  /${ENTITY_PLURAL}/{${ENTITY_SNAKE}_id}:
+    get:
+      tags: [${ENTITY_PLURAL}]
+      operationId: get${ENTITY_PASCAL}
+      parameters:
+        - name: ${ENTITY_SNAKE}_id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        "200":
+          description: ${ENTITY_PASCAL} details
+        "404":
+          description: Not found
+    put:
+      tags: [${ENTITY_PLURAL}]
+      operationId: update${ENTITY_PASCAL}
+      parameters:
+        - name: ${ENTITY_SNAKE}_id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/${ENTITY_PASCAL}UpdateRequest'
+      responses:
+        "200":
+          description: Updated
+        "404":
+          description: Not found
+    delete:
+      tags: [${ENTITY_PLURAL}]
+      operationId: delete${ENTITY_PASCAL}
+      parameters:
+        - name: ${ENTITY_SNAKE}_id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        "204":
+          description: Deleted
+        "404":
+          description: Not found
+components:
+  schemas:
+    ${ENTITY_PASCAL}CreateRequest:
+      type: object
+      required: [name]
+      properties:
+        name:
+          type: string
+    ${ENTITY_PASCAL}UpdateRequest:
+      type: object
+      properties:
+        name:
+          type: string
+    ${ENTITY_PASCAL}Response:
+      type: object
+      required: [id, name]
+      properties:
+        id:
+          type: string
+          format: uuid
+        name:
+          type: string
+```
+
+## Polymorphic Request Template
+
+Using discriminator for different request types:
+
+```yaml
+components:
+  schemas:
+    Task:
+      type: object
+      description: Migration task with discriminator
+      oneOf:
+        - $ref: '#/components/schemas/TaskUnconfirmed'
+        - $ref: '#/components/schemas/TaskConfirmed'
+      discriminator:
+        propertyName: migrationType
+        mapping:
+          UNCONFIRMED: '#/components/schemas/TaskUnconfirmed'
+          CONFIRMED: '#/components/schemas/TaskConfirmed'
+
+    TaskCommon:
+      type: object
+      required: [migrationType, targetRepos]
+      properties:
+        migrationType:
+          $ref: '#/components/schemas/MigrationType'
+        targetRepos:
+          type: array
+          items:
+            $ref: '#/components/schemas/TargetRepository'
+
+    TaskUnconfirmed:
+      allOf:
+        - $ref: '#/components/schemas/TaskCommon'
+        - type: object
+          required: [script]
+          properties:
+            script:
+              $ref: '#/components/schemas/MigrationScript'
+
+    TaskConfirmed:
+      allOf:
+        - $ref: '#/components/schemas/TaskCommon'
+        - type: object
+          required: [scriptKey]
+          properties:
+            scriptKey:
+              type: string
+              format: uuid
+```
+
+## Pagination Template
+
+Standard pagination parameters and response:
+
+```yaml
+components:
+  schemas:
+    PageRequest:
+      type: object
+      properties:
+        offset:
+          type: integer
+          minimum: 0
+          default: 0
+        limit:
+          type: integer
+          minimum: 1
+          maximum: 100
+          default: 20
+        sortBy:
+          type: string
+        sortOrder:
+          type: string
+          enum: [asc, desc]
+          default: asc
+
+    PageResponse:
+      type: object
+      required: [items, total, offset, limit]
+      properties:
+        items:
+          type: array
+        total:
+          type: integer
+          description: Total number of items
+        offset:
+          type: integer
+        limit:
+          type: integer
+        hasNext:
+          type: boolean
+```
+
+## Error Response Template
+
+Standardized error format:
+
+```yaml
+components:
+  schemas:
+    ErrorResponse:
+      type: object
+      required: [code, message]
+      properties:
+        code:
+          type: string
+          description: Error code (e.g., VALIDATION_ERROR, NOT_FOUND)
+        message:
+          type: string
+          description: Human-readable message
+        details:
+          type: array
+          items:
+            $ref: '#/components/schemas/ErrorDetail'
+
+    ErrorDetail:
+      type: object
+      required: [field, message]
+      properties:
+        field:
+          type: string
+          description: Field name that caused the error
+        message:
+          type: string
+          description: Validation error message
+        rejectedValue:
+          description: The value that failed validation
+```
+
+## Authentication Template
+
+Bearer token authentication:
+
+```yaml
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: JWT token obtained from /auth/login endpoint
+
+  responses:
+    UnauthorizedError:
+      description: Access token is missing or invalid
+    ForbiddenError:
+      description: Access token does not have required scope
+
+security:
+  - bearerAuth: []
+```
+
+## Template Variables
+
+| Variable | Description | Example |
+|----------|-------------|---------|
+| `${API_TITLE}` | API title | User Management API |
+| `${API_VERSION}` | API version | 1.0.0 |
+| `${ENTITY_PLURAL}` | Entity plural (lowercase) | users |
+| `${ENTITY_PASCAL}` | Entity PascalCase | User |
+| `${ENTITY_SNAKE}` | Entity snake_case | user |
+| `${ENTITY_DESCRIPTION}` | Entity description | User management operations |
+
+## Usage
+
+1. Copy template to your spec file
+2. Replace variables with your values
+3. Validate with `scripts/validate_openapi.py`
+4. Configure in `build.gradle`
+5. Run `./gradlew openApiGenerateHttpServer`

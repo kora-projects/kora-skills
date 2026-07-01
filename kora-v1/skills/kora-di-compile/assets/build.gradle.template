@@ -1,0 +1,62 @@
+plugins {
+    id "java"
+    id "application"
+}
+
+configurations {
+    koraBom
+    annotationProcessor.extendsFrom(koraBom)
+    compileOnly.extendsFrom(koraBom)
+    implementation.extendsFrom(koraBom)
+    api.extendsFrom(koraBom)
+}
+
+dependencies {
+    koraBom platform("ru.tinkoff.kora:kora-parent:1.2.17")
+    annotationProcessor "ru.tinkoff.kora:annotation-processors"
+
+    // Basic dependencies
+    implementation "ru.tinkoff.kora:logging-logback"
+    implementation "ru.tinkoff.kora:config-hocon"
+
+    // Add more dependencies as needed:
+    // implementation "ru.tinkoff.kora:database-jdbc"
+    // implementation "ru.tinkoff.kora:validation-module"
+    // implementation "ru.tinkoff.kora:micrometer-module"
+}
+
+java {
+    sourceCompatibility = JavaVersion.VERSION_25
+    targetCompatibility = JavaVersion.VERSION_25
+}
+
+application {
+    applicationName = "application"
+    mainClass = "${packagePath}.Application"
+    applicationDefaultJvmArgs = ["-Dfile.encoding=UTF-8"]
+}
+
+run {
+    environment([
+            // Add environment variables here
+            // "DATABASE_URL": "postgres://localhost/myapp"
+    ])
+}
+
+distTar {
+    archiveFileName = "application.tar"
+}
+
+compileJava {
+    options.encoding("UTF-8")
+    options.incremental(true)
+    options.fork = false
+}
+
+test {
+    useJUnitPlatform()
+    testLogging {
+        events "passed", "skipped", "failed"
+        showStandardStreams = true
+    }
+}

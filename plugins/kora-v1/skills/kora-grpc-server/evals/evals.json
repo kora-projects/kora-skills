@@ -1,0 +1,104 @@
+{
+  "evals": [
+    {
+      "id": "kora-grpc-server-quickstart",
+      "skills": ["kora-grpc-server"],
+      "query": "Set up a gRPC server in my Kora service that serves a UserService defined in a .proto file. Show me the dependencies and the handler.",
+      "expected_behavior": [
+        "Adds ru.tinkoff.kora:grpc-server and io.grpc:grpc-protobuf plus the com.google.protobuf Gradle plugin with the proto srcDirs source sets",
+        "Includes the annotation processor: annotationProcessor \"ru.tinkoff.kora:annotation-processors\" (or ksp \"ru.tinkoff.kora:symbol-processors\" for Kotlin)",
+        "Extends GrpcServerModule on the @KoraApp interface",
+        "Implements a handler annotated @Component that extends the generated UserServiceGrpc.UserServiceImplBase and uses StreamObserver",
+        "Imports @Component from ru.tinkoff.kora.common.Component",
+        "Does not use field injection or non-Kora stereotype annotations (e.g. @GrpcService, @Service, @Autowired); uses constructor injection and @Component"
+      ],
+      "tags": ["grpc-server", "basic"]
+    },
+    {
+      "id": "kora-grpc-server-config-port",
+      "skills": ["kora-grpc-server"],
+      "query": "Where do I set the gRPC port and turn on request logging for the Kora gRPC server?",
+      "expected_behavior": [
+        "Configures the grpcServer section with port (e.g. grpcServer.port)",
+        "Enables grpcServer.telemetry.logging.enabled = true (logging defaults to false)",
+        "Suggests externalizing the port via an environment variable such as ${GRPC_PORT}",
+        "Does not invent a foreign-framework server.port style property; uses the Kora grpcServer config section"
+      ],
+      "tags": ["grpc-server", "config", "basic"]
+    },
+    {
+      "id": "kora-grpc-server-error-status",
+      "skills": ["kora-grpc-server"],
+      "query": "My gRPC handler should return a proper not-found error when the user does not exist instead of a generic failure.",
+      "expected_behavior": [
+        "Uses io.grpc.Status.NOT_FOUND with withDescription(...).asRuntimeException()",
+        "Sends the error through responseObserver.onError(...) or throws the StatusRuntimeException",
+        "Explains that exactly one terminal call (onError or onCompleted) must be sent per RPC",
+        "Does not map the error to an HTTP status code or a foreign-framework response wrapper; stays gRPC-native with io.grpc.Status"
+      ],
+      "tags": ["grpc-server", "error-handling", "basic"]
+    },
+    {
+      "id": "kora-grpc-server-reflection",
+      "skills": ["kora-grpc-server"],
+      "query": "I want to test my Kora gRPC service with grpcurl without compiling proto stubs. How do I enable that?",
+      "expected_behavior": [
+        "Adds the io.grpc:grpc-services dependency",
+        "Sets grpcServer.reflectionEnabled = true (notes the default is false)",
+        "Shows a grpcurl list command against the server port",
+        "Recommends keeping reflection disabled in production unless the endpoint is internal"
+      ],
+      "tags": ["grpc-server", "reflection", "basic"]
+    },
+    {
+      "id": "kora-grpc-server-streaming",
+      "skills": ["kora-grpc-server"],
+      "query": "Add a server-streaming RPC GetAllUsers and a client-streaming RPC CreateUsers to my Kora gRPC handler.",
+      "expected_behavior": [
+        "Server streaming: void getAllUsers(Empty, StreamObserver<UserResponse>) emitting multiple onNext then a single onCompleted",
+        "Client streaming: returns StreamObserver<CreateUserRequest> that accumulates onNext values and replies in onCompleted",
+        "Defines the rpc methods with the stream keyword in the .proto contract",
+        "Keeps business logic in an injected service component, not in the generated protobuf types",
+        "Does not introduce non-Kora streaming or controller abstractions; uses StreamObserver and @Component handlers"
+      ],
+      "tags": ["grpc-server", "streaming", "advanced"]
+    },
+    {
+      "id": "kora-grpc-server-auth-interceptor",
+      "skills": ["kora-grpc-server"],
+      "query": "Add API key authentication to my Kora gRPC server by checking the authorization metadata header.",
+      "expected_behavior": [
+        "Implements io.grpc.ServerInterceptor annotated @Component so GrpcServerModule discovers it",
+        "Reads the header via Metadata.Key.of(\"authorization\", Metadata.ASCII_STRING_MARSHALLER)",
+        "Rejects with call.close(Status.UNAUTHENTICATED, ...) and returns an empty ServerCall.Listener",
+        "Reads the expected key from a typed @ConfigSource interface injected as a component, not from a @ConfigSource-annotated constructor parameter",
+        "Does not use a servlet filter or foreign-framework security chain; authentication lives in a Kora ServerInterceptor @Component"
+      ],
+      "tags": ["grpc-server", "auth", "interceptor", "advanced"]
+    },
+    {
+      "id": "kora-grpc-server-default-interceptors",
+      "skills": ["kora-grpc-server"],
+      "query": "Which interceptors does the Kora gRPC server register by default, and how do I replace them?",
+      "expected_behavior": [
+        "Lists the default interceptors: ContextServerInterceptor, CoroutineContextInjectInterceptor, MetricCollectorServerInterceptor, LoggingServerInterceptor",
+        "Explains that overriding the serverBuilder method from GrpcModule replaces the default list",
+        "Notes that a custom @Component implementing ServerInterceptor is added on top of the defaults",
+        "Does not reference foreign-framework interceptor APIs; stays with io.grpc.ServerInterceptor and GrpcModule"
+      ],
+      "tags": ["grpc-server", "interceptor", "advanced"]
+    },
+    {
+      "id": "kora-grpc-server-telemetry",
+      "skills": ["kora-grpc-server"],
+      "query": "What metrics does the Kora gRPC server emit and how do I add custom tags to them?",
+      "expected_behavior": [
+        "Names rpc.server.duration, rpc.server.requests_per_rpc, and rpc.server.responses_per_rpc metrics",
+        "Configures grpcServer.telemetry.metrics.tags for custom metric tags and telemetry.tracing.attributes for span attributes",
+        "Notes metrics and tracing default to enabled while logging defaults to disabled",
+        "Does not suggest a separate actuator or @Timed annotation as the mechanism; the grpcServer.telemetry module emits the metrics automatically"
+      ],
+      "tags": ["grpc-server", "telemetry", "advanced"]
+    }
+  ]
+}

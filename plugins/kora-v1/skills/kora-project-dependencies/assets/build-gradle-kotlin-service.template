@@ -1,0 +1,67 @@
+// Kora Kotlin Service - build.gradle.kts template
+// HTTP server with JSON and Micrometer metrics (metrics/probes on the private HTTP port).
+
+plugins {
+    application
+    jacoco
+    kotlin("jvm") version "1.9.25"
+    id("com.google.devtools.ksp") version "1.9.25-1.0.20"
+}
+
+val koraBom: Configuration by configurations.creating
+configurations {
+    ksp.get().extendsFrom(koraBom)
+    compileOnly.get().extendsFrom(koraBom)
+    api.get().extendsFrom(koraBom)
+    implementation.get().extendsFrom(koraBom)
+    testImplementation.get().extendsFrom(koraBom)
+}
+
+val koraVersion: String by project
+dependencies {
+    // Kora BOM - owns every Kora module version
+    koraBom(platform("ru.tinkoff.kora:kora-parent:$koraVersion"))
+
+    // KSP - required for compile-time code generation
+    ksp("ru.tinkoff.kora:symbol-processors")
+    kspTest("ru.tinkoff.kora:symbol-processors")
+
+    // Core modules
+    implementation("ru.tinkoff.kora:logging-logback")
+    implementation("ru.tinkoff.kora:config-hocon")
+    implementation("ru.tinkoff.kora:json-module")
+
+    // HTTP server (Undertow)
+    implementation("ru.tinkoff.kora:http-server-undertow")
+
+    // Telemetry - Micrometer metrics on the private HTTP port
+    implementation("ru.tinkoff.kora:micrometer-module")
+
+    // Testing
+    testImplementation("ru.tinkoff.kora:test-junit5")
+    testImplementation("org.skyscreamer:jsonassert:1.5.1")
+}
+
+kotlin {
+    jvmToolchain {
+        languageVersion.set(JavaLanguageVersion.of(21))
+        vendor.set(JvmVendorSpec.ADOPTIUM)
+    }
+    sourceSets.main { kotlin.srcDir("build/generated/ksp/main/kotlin") }
+    sourceSets.test { kotlin.srcDir("build/generated/ksp/test/kotlin") }
+}
+
+application {
+    applicationName = "application"
+    mainClass.set("com.example.app.ApplicationKt")
+    applicationDefaultJvmArgs = listOf("-Dfile.encoding=UTF-8")
+}
+
+tasks.test {
+    useJUnitPlatform()
+    testLogging {
+        showStandardStreams = true
+        events("passed", "skipped", "failed")
+        exceptionFormat = org.gradle.api.tasks.testing.logging.TestExceptionFormat.FULL
+    }
+}

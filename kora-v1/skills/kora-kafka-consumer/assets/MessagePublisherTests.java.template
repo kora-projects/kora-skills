@@ -1,0 +1,149 @@
+package ${package}.publisher;
+
+import org.apache.kafka.clients.consumer.ConsumerConfig;
+import org.apache.kafka.clients.consumer.KafkaConsumer;
+import org.apache.kafka.common.serialization.StringDeserializer;
+import org.jetbrains.annotations.NotNull;
+import org.json.JSONObject;
+import org.junit.jupiter.api.Test;
+import org.testcontainers.containers.KafkaContainer;
+import org.testcontainers.junit.jupiter.Container;
+import org.testcontainers.junit.jupiter.Testcontainers;
+import org.testcontainers.utility.DockerImageName;
+import ru.tinkoff.kora.test.extension.junit5.KoraAppTest;
+import ru.tinkoff.kora.test.extension.junit5.KoraAppTestConfigModifier;
+import ru.tinkoff.kora.test.extension.junit5.KoraConfigModification;
+import ru.tinkoff.kora.test.extension.junit5.TestComponent;
+
+import java.time.Duration;
+import java.util.List;
+import java.util.Properties;
+
+import static org.junit.jupiter.api.Assertions.*;
+
+/**
+ * Tests for the ${publisherName} producer.
+ *
+ * Usage:
+ * 1. Make sure the dependencies are added in build.gradle:
+ *    testImplementation "org.testcontainers:testcontainers:1.19.3"
+ *    testImplementation "org.testcontainers:kafka:1.19.3"
+ *    testImplementation "org.testcontainers:junit-jupiter:1.19.3"
+ *    testRuntimeOnly "org.apache.kafka:kafka-clients:3.5.1"
+ *    testImplementation "org.json:json:20231013"
+ *
+ * 2. Run tests: ./gradlew test
+ */
+@Testcontainers
+@KoraAppTest(Application.class)
+class ${publisherName}Tests implements KoraAppTestConfigModifier {
+
+    @Container
+    static final KafkaContainer KAFKA = new KafkaContainer(
+        DockerImageName.parse("confluentinc/cp-kafka:7.5.0")
+    ).withStartupTimeout(Duration.ofSeconds(60));
+
+    @TestComponent
+    private ${publisherName} publisher;
+
+    @NotNull
+    @Override
+    public KoraConfigModification config() {
+        return KoraConfigModification.ofSystemProperty(
+            "KAFKA_BOOTSTRAP",
+            KAFKA.getBootstrapServers()
+        );
+    }
+
+    @Test
+    void shouldSendMessage() {
+        // given
+        var message = "test-message-" + System.currentTimeMillis();
+        var consumerProps = createConsumerProps();
+
+        // when
+        publisher.send(message);
+
+        // then
+        try (var consumer = new KafkaConsumer<String, String>(consumerProps)) {
+            consumer.subscribe(List.of("${topicName}"));
+            var records = consumer.poll(Duration.ofSeconds(5));
+            assertFalse(records.isEmpty());
+            assertEquals(message, records.iterator().next().value());
+        }
+    }
+
+    @Test
+    void shouldSendMessageWithKey() {
+        // given
+        var key = "test-key-123";
+        var value = "test-value-456";
+        var consumerProps = createConsumerProps();
+
+        // when
+        publisher.send(key, value);
+
+        // then
+        try (var consumer = new KafkaConsumer<String, String>(consumerProps)) {
+            consumer.subscribe(List.of("${topicName}"));
+            var records = consumer.poll(Duration.ofSeconds(5));
+            assertFalse(records.isEmpty());
+            var record = records.iterator().next();
+            assertEquals(key, record.key());
+            assertEquals(value, record.value());
+        }
+    }
+
+    @Test
+    void shouldSendJsonMessage() {
+        // given
+        var event = new JSONObject()
+            .put("orderId", "order-123")
+            .put("customerId", "cust-456")
+            .put("amount", 99.99);
+        var consumerProps = createConsumerProps();
+
+        // when
+        publisher.sendEvent(event.toString());
+
+        // then
+        try (var consumer = new KafkaConsumer<String, String>(consumerProps)) {
+            consumer.subscribe(List.of("${topicName}"));
+            var records = consumer.poll(Duration.ofSeconds(5));
+            assertFalse(records.isEmpty());
+            var json = new JSONObject(records.iterator().next().value());
+            assertEquals("order-123", json.getString("orderId"));
+            assertEquals("cust-456", json.getString("customerId"));
+            assertEquals(99.99, json.getDouble("amount"), 0.01);
+        }
+    }
+
+    @Test
+    void shouldSendMultipleMessages() {
+        // given
+        var consumerProps = createConsumerProps();
+
+        // when
+        for (int i = 0; i < 5; i++) {
+            publisher.send("message-" + i);
+        }
+
+        // then
+        try (var consumer = new KafkaConsumer<String, String>(consumerProps)) {
+            consumer.subscribe(List.of("${topicName}"));
+            var records = consumer.poll(Duration.ofSeconds(5));
+            assertFalse(records.isEmpty());
+            assertTrue(records.count() >= 5);
+        }
+    }
+
+    private Properties createConsumerProps() {
+        var props = new Properties();
+        props.put(ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG, KAFKA.getBootstrapServers());
+        props.put(ConsumerConfig.GROUP_ID_CONFIG, "${publisherName.lower()}-test-group");
+        props.put(ConsumerConfig.KEY_DESERIALIZER_CLASS_CONFIG, StringDeserializer.class.getName());
+        props.put(ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG, StringDeserializer.class.getName());
+        props.put(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, "earliest");
+        return props;
+    }
+}

@@ -1,0 +1,100 @@
+{
+  "evals": [
+    {
+      "id": "kora-testing-junit-java-component-basic",
+      "skills": ["kora-testing-junit-java"],
+      "query": "Write a JUnit 5 component test for my Kora UserService. It has a method createUser(UserRequest) that returns a UserResponse. Inject the real service from the application graph.",
+      "expected_behavior": [
+        "Annotates the test class with @KoraAppTest(Application.class) from ru.tinkoff.kora.test.extension.junit5",
+        "Injects UserService with @TestComponent",
+        "Adds testImplementation \"ru.tinkoff.kora:test-junit5\" and the mandatory annotationProcessor \"ru.tinkoff.kora:annotation-processors\"",
+        "Does not use foreign-framework test annotations or field injection"
+      ],
+      "tags": ["component", "basic"]
+    },
+    {
+      "id": "kora-testing-junit-java-mock-component",
+      "skills": ["kora-testing-junit-java"],
+      "query": "I need to test OrderService which depends on UserRepository, but I want to mock the repository inside the Kora graph and verify the calls.",
+      "expected_behavior": [
+        "Combines @Mock with @TestComponent on the UserRepository field so the mock enters the Kora graph",
+        "Stubs with Mockito.when(...).thenReturn(...) and checks interactions with verify(...)",
+        "Explicitly avoids @ExtendWith(MockitoExtension.class) because it conflicts with @KoraAppTest",
+        "Does not rely on a mock-bean construct or any foreign-framework testing construct"
+      ],
+      "tags": ["mock", "basic"]
+    },
+    {
+      "id": "kora-testing-junit-java-config-modifier",
+      "skills": ["kora-testing-junit-java"],
+      "query": "How do I override configuration in a Kora test, substituting environment-style placeholders like POSTGRES_JDBC_URL without a separate config file?",
+      "expected_behavior": [
+        "Implements KoraAppTestConfigModifier and returns a KoraConfigModification from config()",
+        "Uses KoraConfigModification.ofSystemProperty(...).withSystemProperty(...) (or ofString/ofResourceFile)",
+        "Notes that KoraAppTestConfigModifier must be used via the interface method, not the constructor",
+        "Does not use a foreign @TestPropertySource mechanism or application-test.properties conventions"
+      ],
+      "tags": ["config", "basic"]
+    },
+    {
+      "id": "kora-testing-junit-java-postgres-testcontainers",
+      "skills": ["kora-testing-junit-java"],
+      "query": "Write an integration test for my UserRepository against a real PostgreSQL using Testcontainers, with Flyway migrations applied.",
+      "expected_behavior": [
+        "Uses @Testcontainers with a static @Container PostgreSQLContainer",
+        "Implements KoraAppTestConfigModifier to feed POSTGRES.getJdbcUrl()/getUsername()/getPassword() into the db config",
+        "Adds ru.tinkoff.kora:database-jdbc and ru.tinkoff.kora:database-flyway plus the testcontainers postgresql artifact, and sets flyway.locations",
+        "Does not use a foreign data/ORM layer, a JdbcTemplate, or a @DataJpaTest slice"
+      ],
+      "tags": ["integration", "database", "advanced"]
+    },
+    {
+      "id": "kora-testing-junit-java-test-application-submodule",
+      "skills": ["kora-testing-junit-java"],
+      "query": "My production graph has no cleanup repository. How do I add a test-only repository with deleteAll() and findAll() for integration tests?",
+      "expected_behavior": [
+        "Declares a @KoraApp TestApplication interface extending the production Application in the test source set",
+        "Adds an inner @Repository interface extending JdbcRepository with @Query methods, plus a @Root @Tag default method that consumes it so it enters the graph",
+        "Enables -Akora.app.submodule.enabled=true on the production module and adds testAnnotationProcessor \"ru.tinkoff.kora:annotation-processors\", excluding generated classes via filter excludeTestsMatching '*$*'",
+        "Does not use a foreign-framework @Repository bean or classpath component scanning"
+      ],
+      "tags": ["integration", "submodule", "advanced"]
+    },
+    {
+      "id": "kora-testing-junit-java-graph-modifier",
+      "skills": ["kora-testing-junit-java"],
+      "query": "In a Kora test I want to add a Supplier<Integer> component to the graph and also replace an existing component with a value derived from the real one.",
+      "expected_behavior": [
+        "Implements KoraAppTestGraphModifier and returns KoraGraphModification.create()",
+        "Uses addComponent(TypeRef.of(Supplier.class, Integer.class), ...) and replaceComponent(...) with a graph -> graph.getFirst(TypeRef.of(...)) lambda",
+        "Passes the @Tag class list as the middle argument of replaceComponent when the target is tagged",
+        "Does not use foreign @Primary/@Qualifier annotations or ApplicationContext bean overriding"
+      ],
+      "tags": ["graph", "advanced"]
+    },
+    {
+      "id": "kora-testing-junit-java-spy-strictness",
+      "skills": ["kora-testing-junit-java"],
+      "query": "I want a partial mock (spy) of a Kora component and I want unused stubs to fail the test.",
+      "expected_behavior": [
+        "Uses @Spy with @TestComponent, optionally from a field initializer, to keep original behavior",
+        "Adds @MockitoStrictness(Strictness.STRICT_STUBS) so unused stubs raise UnnecessaryStubbingException",
+        "Keeps the Mockito lifecycle under @KoraAppTest without attaching MockitoExtension",
+        "Does not introduce foreign-framework test slices or PowerMock"
+      ],
+      "tags": ["mock", "advanced"]
+    },
+    {
+      "id": "kora-testing-junit-java-kafka-testcontainers",
+      "skills": ["kora-testing-junit-java"],
+      "query": "Write an integration test for a Kora @KafkaListener and @KafkaPublisher against a Kafka container.",
+      "expected_behavior": [
+        "Uses @Testcontainers with a static @Container KafkaContainer and a long withStartupTimeout",
+        "Feeds KAFKA.getBootstrapServers() into per-listener driverProperties { \"bootstrap.servers\" = ... } with offset = \"earliest\", not a flat kafka.bootstrapServers key",
+        "Verifies asynchronous delivery with Awaitility instead of Thread.sleep",
+        "Does not use a foreign Kafka test framework, @EmbeddedKafka, or a KafkaTemplate"
+      ],
+      "tags": ["integration", "kafka", "advanced"]
+    }
+  ]
+}

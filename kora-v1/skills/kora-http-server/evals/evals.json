@@ -1,0 +1,129 @@
+{
+  "evals": [
+    {
+      "id": "kora-http-server-crud-controller",
+      "skills": ["kora-http-server"],
+      "query": "Create a Kora ProductController with GET list, GET by id, POST create, PUT update and DELETE routes for products.",
+      "expected_behavior": [
+        "Annotates the class with @Component and @HttpController (no path argument on @HttpController)",
+        "Declares each route with @HttpRoute(method = HttpMethod.GET/POST/PUT/DELETE, path = ...) including the full prefix in each path",
+        "Binds the id with @Path and the JSON body with @Json on both the method and the body parameter",
+        "Returns 201 from create via HttpResponseEntity.of(...) and 204 from delete via HttpServerResponse.of(204, HttpBody.empty())",
+        "Does not use foreign-framework REST annotations (e.g. @RestController/@GetMapping/@RequestBody) or field injection; uses constructor injection only"
+      ],
+      "tags": ["controller", "basic"]
+    },
+    {
+      "id": "kora-http-server-param-binding",
+      "skills": ["kora-http-server"],
+      "query": "I need a Kora search endpoint GET /search/{category} that also reads optional page, size and sort query params plus an optional X-Request-Id header.",
+      "expected_behavior": [
+        "Uses @Path for the category segment (name matching the {category} segment or the argument name)",
+        "Uses @Query for page/size/sort and marks the optional ones @Nullable (Kotlin: nullable type)",
+        "Uses @Header for X-Request-Id and marks it @Nullable",
+        "Does not invent a required=false attribute on @Query or @Header; relies on @Nullable for optionality",
+        "Does not use foreign-framework @RequestParam/@PathVariable annotations; uses Kora @Query/@Path"
+      ],
+      "tags": ["request-mapping", "basic"]
+    },
+    {
+      "id": "kora-http-server-json-created",
+      "skills": ["kora-http-server"],
+      "query": "Build a Kora POST /orders endpoint that accepts a JSON OrderRequest and returns 201 Created with a Location header and a JSON OrderResponse body.",
+      "expected_behavior": [
+        "Puts @Json on the method and @Json on the OrderRequest body parameter and depends on ru.tinkoff.kora:json-module",
+        "Returns HttpResponseEntity.of(201, HttpHeaders.of(\"Location\", ...), response) for the created resource",
+        "Defines OrderRequest/OrderResponse as DTOs (records/data classes) annotated @Json",
+        "Does not use a fluent HttpServerResponse.ok()/created().body() builder (it does not exist) - uses HttpResponseEntity.of/HttpServerResponse.of"
+      ],
+      "tags": ["json", "basic"]
+    },
+    {
+      "id": "kora-http-server-error-exception",
+      "skills": ["kora-http-server"],
+      "query": "In a Kora controller, how do I return a 404 when a user is not found and a 400 on invalid input?",
+      "expected_behavior": [
+        "Throws HttpServerResponseException.of(404, message) when the resource is missing",
+        "Throws HttpServerResponseException.of(400, message) for invalid input (or returns an HttpResponseEntity with status 400)",
+        "Does not reference fabricated helpers like HttpServerResponseException.notFound()/badRequest()",
+        "Does not rely on a foreign-framework @ExceptionHandler/@ControllerAdvice; per-route errors are thrown directly via HttpServerResponseException"
+      ],
+      "tags": ["error-handling", "basic"]
+    },
+    {
+      "id": "kora-http-server-global-error-interceptor",
+      "skills": ["kora-http-server"],
+      "query": "Add centralized exception handling to my Kora HTTP service that converts exceptions to JSON error responses for all routes.",
+      "expected_behavior": [
+        "Implements HttpServerInterceptor and registers it globally with @Tag(HttpServerModule.class) and @Component",
+        "Continues the chain with chain.process(context, request) and maps errors via .exceptionally(...)",
+        "Unwraps CompletionException before inspecting the cause and re-emits HttpServerResponseException with its own code()",
+        "Builds the JSON body with a JsonWriter and HttpBody.json(...), returning HttpServerResponse.of(code, body)",
+        "Does not use a global @ControllerAdvice-style handler or a non-existent HttpServerExceptionHandler type; handling is done in the interceptor"
+      ],
+      "tags": ["error-handling", "interceptors", "advanced"]
+    },
+    {
+      "id": "kora-http-server-logging-interceptor",
+      "skills": ["kora-http-server"],
+      "query": "Write a Kora interceptor that logs the method, path, status code and duration of every request.",
+      "expected_behavior": [
+        "Implements HttpServerInterceptor with intercept(Context, HttpServerRequest, InterceptChain) returning CompletionStage<HttpServerResponse>",
+        "Registers globally with @Tag(HttpServerModule.class) and @Component",
+        "Returns chain.process(context, request).whenComplete(...) and reads request.method(), request.path() and response.code()",
+        "Does not use a fabricated void intercept(request, HttpServerCall) signature or call.proceed(request)"
+      ],
+      "tags": ["interceptors", "advanced"]
+    },
+    {
+      "id": "kora-http-server-interceptor-scopes",
+      "skills": ["kora-http-server"],
+      "query": "How do I apply one interceptor to every route, another to just one controller, and a third to a single route in Kora?",
+      "expected_behavior": [
+        "Uses @Tag(HttpServerModule.class) for the global interceptor and notes only one global interceptor is allowed",
+        "Uses @InterceptWith(X.class) on the controller class for the controller-scoped interceptor",
+        "Uses @InterceptWith(X.class) on a single @HttpRoute method for the route-scoped interceptor",
+        "Describes the execution order as global -> controller -> method -> handler",
+        "Does not use a foreign-framework HandlerInterceptor or web-config registration; scope is controlled by @Tag and @InterceptWith"
+      ],
+      "tags": ["interceptors", "advanced"]
+    },
+    {
+      "id": "kora-http-server-config-ports",
+      "skills": ["kora-http-server"],
+      "query": "Set up the httpServer configuration for a Kora service with separate ports for traffic and metrics, virtual threads, and probe endpoints.",
+      "expected_behavior": [
+        "Sets httpServer.publicApiHttpPort for traffic and httpServer.privateApiHttpPort for metrics/probes separately",
+        "Configures privateApiHttpMetricsPath, privateApiHttpReadinessPath and privateApiHttpLivenessPath on the private port",
+        "Enables virtual threads with virtualThreadsEnabled = true and notes it requires Java 21+",
+        "Plugs in UndertowHttpServerModule on the @KoraApp interface",
+        "Does not invent unsupported keys such as httpServer.tls/httpServer.cors blocks"
+      ],
+      "tags": ["configuration", "basic"]
+    },
+    {
+      "id": "kora-http-server-custom-mapper",
+      "skills": ["kora-http-server"],
+      "query": "I want to build a UserContext object from request headers in a Kora controller without parsing them in every handler.",
+      "expected_behavior": [
+        "Implements HttpServerRequestMapper<UserContext> and reads values via request.headers().getFirst(...)",
+        "Binds the parameter with @Mapping(RequestMapper.class)",
+        "Mentions HttpServerResponseMapper + @Mapping for the symmetric custom response case",
+        "Does not use a foreign-framework argument resolver; uses HttpServerRequestMapper with @Mapping"
+      ],
+      "tags": ["request-mapping", "advanced"]
+    },
+    {
+      "id": "kora-http-server-deps-setup",
+      "skills": ["kora-http-server"],
+      "query": "What Gradle dependencies and annotation processor do I need to start a Kora HTTP server in Java?",
+      "expected_behavior": [
+        "Adds the kora-parent BOM via platform(\"ru.tinkoff.kora:kora-parent:<version>\") and lets all kora artifacts inherit the version",
+        "Adds annotationProcessor \"ru.tinkoff.kora:annotation-processors\" (Kotlin: ksp \"ru.tinkoff.kora:symbol-processors\")",
+        "Adds implementation \"ru.tinkoff.kora:http-server-undertow\" and ru.tinkoff.kora:json-module for JSON",
+        "Does not version individual ru.tinkoff.kora artifacts and does not use foreign-framework starter dependencies"
+      ],
+      "tags": ["setup", "basic"]
+    }
+  ]
+}

@@ -1,0 +1,94 @@
+// Fallback pattern for graceful degradation.
+// Replace `com.example.app.service` with your package.
+
+package com.example.app.service;
+
+import ru.tinkoff.kora.common.Component;
+import ru.tinkoff.kora.resilient.fallback.annotation.Fallback;
+
+@Component
+public class ProductService {                                           // NOT final
+
+    private final ProductRepository repository;
+    private final Cache cache;
+
+    public ProductService(ProductRepository repository, Cache cache) {
+        this.repository = repository;
+        this.cache = cache;
+    }
+
+    // Fallback to cache when primary method fails
+    @Fallback(value = "product.read", method = "getFromCache(id)")
+    public Product getProduct(String id) {
+        return repository.findById(id)
+            .orElseThrow(() -> new NotFoundException(id));
+    }
+
+    // Fallback method signature rules:
+    // 1. Return type must be assignable to primary method return type
+    // 2. Parameters must be subset of primary method parameters (same order)
+    // 3. Must be in same class, protected or public visibility
+    protected Product getFromCache(String id) {
+        return cache.get(id, () -> Product.unknown());
+    }
+}
+
+// Product DTO
+class Product {
+    private final String id;
+    private final String name;
+    public Product(String id, String name) {
+        this.id = id;
+        this.name = name;
+    }
+    public String getId() { return id; }
+    public String getName() { return name; }
+
+    public static Product unknown() {
+        return new Product("unknown", "Unknown");
+    }
+}
+
+// NotFoundException
+class NotFoundException extends RuntimeException {
+    public NotFoundException(String id) {
+        super("Product not found: " + id);
+    }
+}
+
+// Repository placeholder
+@Component
+class ProductRepository {
+    public java.util.Optional<Product> findById(String id) {
+        return java.util.Optional.empty();
+    }
+}
+
+// Cache placeholder
+@Component
+class Cache {
+    public Product get(String id, java.util.function.Supplier<Product> fallback) {
+        return fallback.get();
+    }
+}
+
+// Config (HOCON):
+//
+// resilient.fallback {
+//   default { enabled = true }
+//   "product.read" {
+//     failurePredicateName = "CacheableErrors"
+//   }
+// }
+//
+// Custom predicate example:
+//
+// @Component
+// public final class CacheableErrors implements FallbackPredicate {
+//     @Override
+//     public String name() { return "CacheableErrors"; }
+//     @Override
+//     public boolean test(Throwable t) {
+//         return t instanceof SQLException || t instanceof DatabaseException;
+//     }
+// }

@@ -1,0 +1,38 @@
+package com.example.interceptor
+
+import java.util.concurrent.CompletionStage
+import org.slf4j.LoggerFactory
+import ru.tinkoff.kora.common.Component
+import ru.tinkoff.kora.common.Context
+import ru.tinkoff.kora.common.Tag
+import ru.tinkoff.kora.http.server.common.HttpServerInterceptor
+import ru.tinkoff.kora.http.server.common.HttpServerModule
+import ru.tinkoff.kora.http.server.common.HttpServerRequest
+import ru.tinkoff.kora.http.server.common.HttpServerResponse
+
+/**
+ * Global request logging interceptor (Kotlin).
+ *
+ * - @Tag(HttpServerModule::class) registers it globally (only one global interceptor is allowed).
+ * - Continue the chain by returning chain.process(context, request).
+ * - Run "after" logic in whenComplete, where the resulting response/status is available.
+ */
+@Tag(HttpServerModule::class)
+@Component
+class LoggingInterceptor : HttpServerInterceptor {
+
+    private val log = LoggerFactory.getLogger(LoggingInterceptor::class.java)
+
+    override fun intercept(
+        context: Context,
+        request: HttpServerRequest,
+        chain: HttpServerInterceptor.InterceptChain
+    ): CompletionStage<HttpServerResponse> {
+        val started = System.nanoTime()
+        return chain.process(context, request).whenComplete { response, _ ->
+            val ms = (System.nanoTime() - started) / 1_000_000
+            val code = response?.code() ?: 500
+            log.info("{} {} -> {} ({} ms)", request.method(), request.path(), code, ms)
+        }
+    }
+}

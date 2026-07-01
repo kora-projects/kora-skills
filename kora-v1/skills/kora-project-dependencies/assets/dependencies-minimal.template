@@ -1,0 +1,33 @@
+// Minimal Kora dependencies for a basic application
+// Use this as a starting point and add modules as needed
+
+dependencies {
+    // Kora BOM - manages all Kora module versions
+    koraBom platform("ru.tinkoff.kora:kora-parent:$koraVersion")
+
+    // Annotation processor (Java) - required for compile-time code generation
+    annotationProcessor "ru.tinkoff.kora:annotation-processors"
+
+    // For Kotlin projects, use KSP instead:
+    // ksp "ru.tinkoff.kora:symbol-processors"
+
+    // ===========================================
+    // ALWAYS NEEDED (core modules)
+    // ===========================================
+
+    // Logging - SLF4J with Logback backend
+    implementation "ru.tinkoff.kora:logging-logback"
+
+    // Configuration - HOCON format (application.conf)
+    implementation "ru.tinkoff.kora:config-hocon"
+
+    // Alternative: YAML configuration (application.yaml)
+    // implementation "ru.tinkoff.kora:config-yaml"
+
+    // JSON - (de)serialization for DTOs, HTTP, Kafka
+    implementation "ru.tinkoff.kora:json-module"
+}
+
+// Note: Don't version Kora dependencies explicitly!
+// The BOM (kora-parent) manages all versions.
+// Just use: implementation "ru.tinkoff.kora:module-name"

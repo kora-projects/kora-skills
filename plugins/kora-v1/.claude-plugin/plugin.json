@@ -1,0 +1,41 @@
+{
+  "$schema": "https://json.schemastore.org/claude-code-plugin-manifest.json",
+  "name": "kora-v1",
+  "version": "0.1.0",
+  "description": "Kora Framework 1.x development — compile-time DI, HTTP, Database, Kafka, gRPC, SOAP, OpenAPI, Telemetry, AOP. Zero reflection, zero proxies. Java/Kotlin microservices.",
+  "author": {
+    "name": "Anton Kurako",
+    "url": "https://github.com/kora-projects"
+  },
+  "license": "Apache-2.0",
+  "homepage": "https://kora-projects.github.io/kora-docs",
+  "keywords": [
+    "kora",
+    "kora-v1",
+    "kora-1x",
+    "kora-1.x",
+    "java",
+    "kotlin",
+    "compile-time-di",
+    "microservices",
+    "http-server",
+    "http-client",
+    "jdbc",
+    "cassandra",
+    "kafka",
+    "grpc",
+    "openapi",
+    "telemetry",
+    "caching",
+    "resilience"
+  ],
+  "skills": [
+    "SKILL.md",
+    "skills"
+  ],
+  "commands": [],
+  "agents": [],
+  "hooks": [],
+  "mcpServers": [],
+  "lspServers": []
+}

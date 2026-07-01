@@ -1,0 +1,27 @@
+# =============================================================================
+# Kora Application Configuration (HOCON)
+# Place at: src/main/resources/application.conf
+# Loaded by HoconConfigModule (ru.tinkoff.kora:config-hocon).
+# =============================================================================
+
+# Application info section -> maps to @ConfigSource("app")
+app {
+  name = "my-service"
+  name = ${?APP_NAME}                 # optional override from env
+  version = ${APP_VERSION}            # required: startup fails if unset
+  environment = "development"
+  environment = ${?APP_ENV}
+}
+
+# Database section -> maps to @ConfigSource("app.database") or a sub-object
+app.database {
+  url = ${DATABASE_URL}               # required credential, externalized
+  username = ${DATABASE_USER}
+  password = ${DATABASE_PASSWORD}
+
+  # Default-then-override: keeps 20 unless DB_POOL_SIZE is set
+  poolSize = 20
+  poolSize = ${?DB_POOL_SIZE}
+
+  connectionTimeout = 30s             # mapped to java.time.Duration
+}

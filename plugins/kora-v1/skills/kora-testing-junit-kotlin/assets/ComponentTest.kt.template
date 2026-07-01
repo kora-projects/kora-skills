@@ -1,0 +1,38 @@
+package ${package}
+
+import io.mockk.every
+import io.mockk.impl.annotations.MockK
+import io.mockk.verify
+import org.junit.jupiter.api.Assertions.assertNotNull
+import org.junit.jupiter.api.BeforeEach
+import org.junit.jupiter.api.Test
+import ru.tinkoff.kora.test.extension.junit5.KoraAppTest
+import ru.tinkoff.kora.test.extension.junit5.TestComponent
+
+// Component test: a real ${componentName} from the Graph with a mocked dependency.
+// @MockK creates the mock; @TestComponent registers it in the Graph in place of the
+// real ${dependencyName}. Do NOT add a "= mockk()" initializer and do NOT attach
+// MockKExtension — @KoraAppTest owns the mock lifecycle.
+@KoraAppTest(Application::class)
+class ${componentName}Test {
+
+    @MockK
+    @TestComponent
+    lateinit var ${dependencyVarName}: ${dependencyName}
+
+    @TestComponent
+    lateinit var ${componentVarName}: ${componentName}
+
+    @BeforeEach
+    fun setup() {
+        every { ${dependencyVarName}.someMethod(any()) } returns someValue
+    }
+
+    @Test
+    fun `should do something`() {
+        val result = ${componentVarName}.doSomething()
+
+        assertNotNull(result)
+        verify { ${dependencyVarName}.someMethod(any()) }
+    }
+}

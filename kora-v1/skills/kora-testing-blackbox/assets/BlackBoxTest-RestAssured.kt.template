@@ -1,0 +1,214 @@
+package ${package}
+
+import io.restassured.RestAssured
+import io.restassured.RestAssured.given
+import io.restassured.http.ContentType
+import org.hamcrest.Matchers.*
+import org.junit.jupiter.api.AfterAll
+import org.junit.jupiter.api.BeforeAll
+import org.junit.jupiter.api.Test
+import java.nio.file.Paths
+import java.time.Duration
+import org.testcontainers.containers.GenericContainer
+import org.testcontainers.utility.DockerImageName
+import org.testcontainers.images.builder.ImageFromDockerfile
+import org.testcontainers.containers.wait.strategy.Wait
+
+/**
+ * Black-box tests with RestAssured for the HTTP API.
+ *
+ * Runs the application in a Docker container using GenericContainer and tests it via the HTTP API.
+ * Uses RestAssured for concise BDD-style tests with JSON assertions.
+ *
+ * For database testing, add PostgreSQLContainer and configure the connection:
+ *   @JvmField
+ *   @Container
+ *   val postgres = PostgreSQLContainer("postgres:15-alpine")
+ *       .withNetwork(network)
+ *       .withInitScript("db/migration/V1__init.sql")
+ *
+ * @see [RestAssured Documentation](https://rest-assured.io/)
+ * @see [Testcontainers PostgreSQL](https://java.testcontainers.org/modules/databases/postgres/)
+ */
+class ${className} {
+
+    companion object {
+        // Application container using GenericContainer directly
+        private val container = createAppContainer()
+
+        // Helper method to create application container
+        private fun createAppContainer(): GenericContainer<*> {
+            val appImage = System.getenv("APP_IMAGE")
+            val c = if (appImage != null && appImage.isNotBlank()) {
+                GenericContainer(DockerImageName.parse(appImage))
+            } else {
+                GenericContainer(ImageFromDockerfile("myapp:test")
+                    .withDockerfile(Paths.get("Dockerfile").toAbsolutePath()))
+            }
+
+            return c.withExposedPorts(8080, 8085)
+                .withStartupTimeout(Duration.ofSeconds(120))
+                .waitingFor(Wait.forHttp("/system/readiness").forPort(8085).forStatusCode(200))
+        }
+
+        @BeforeAll
+        @JvmStatic
+        fun setup() {
+            // For applications with a DB, uncomment:
+            // container.withEnv(mapOf(
+            //     "DB_URL" to "jdbc:postgresql://localhost:5432/test",
+            //     "DB_USER" to "postgres",
+            //     "DB_PASS" to "postgres"
+            // ))
+            container.start()
+            RestAssured.baseURI = "http://" + container.host + ":" + container.getMappedPort(8080)
+        }
+
+        @AfterAll
+        @JvmStatic
+        fun cleanup() {
+            container.stop()
+        }
+    }
+
+    @Test
+    fun `should report liveness`() {
+        given()
+            .baseUri(RestAssured.baseURI)
+        .`when`()
+            .get("/system/liveness")
+        .then()
+            .statusCode(200)
+    }
+
+    @Test
+    fun `should create and get entity`() {
+        // Arrange
+        val createBody = """
+            {
+                "name": "test-entity",
+                "description": "Test description"
+            }
+            """
+
+        // Act & Assert - Create
+        val entityId = given()
+            .baseUri(RestAssured.baseURI)
+            .contentType(ContentType.JSON)
+            .body(createBody)
+        .`when`()
+            .post("/api/entities")
+        .then()
+            .statusCode(200)
+            .body("id", notNullValue())
+        .extract()
+            .path<Int>("id")
+
+        // Act & Assert - Get
+        given()
+            .baseUri(RestAssured.baseURI)
+        .`when`()
+            .get("/api/entities/\$entityId")
+        .then()
+            .statusCode(200)
+            .body("name", equalTo("test-entity"))
+            .body("description", equalTo("Test description"))
+    }
+
+    @Test
+    fun `should update entity`() {
+        // Arrange - create entity
+        val createBody = """
+            {
+                "name": "original-name"
+            }
+            """
+
+        val entityId = given()
+            .baseUri(RestAssured.baseURI)
+            .contentType(ContentType.JSON)
+            .body(createBody)
+        .`when`()
+            .post("/api/entities")
+        .then()
+            .statusCode(200)
+            .extract()
+            .path<Int>("id")
+
+        // Act - update
+        val updateBody = """
+            {
+                "name": "updated-name",
+                "description": "Updated description"
+            }
+            """
+
+        given()
+            .baseUri(RestAssured.baseURI)
+            .contentType(ContentType.JSON)
+            .body(updateBody)
+        .`when`()
+            .put("/api/entities/\$entityId")
+        .then()
+            .statusCode(200)
+            .body("name", equalTo("updated-name"))
+            .body("description", equalTo("Updated description"))
+    }
+
+    @Test
+    fun `should delete entity`() {
+        // Arrange - create entity
+        val createBody = """
+            {
+                "name": "to-delete"
+            }
+            """
+
+        val entityId = given()
+            .baseUri(RestAssured.baseURI)
+            .contentType(ContentType.JSON)
+            .body(createBody)
+        .`when`()
+            .post("/api/entities")
+        .then()
+            .statusCode(200)
+            .extract()
+            .path<Int>("id")
+
+        // Act - delete
+        given()
+            .baseUri(RestAssured.baseURI)
+        .`when`()
+            .delete("/api/entities/\$entityId")
+        .then()
+            .statusCode(200)
+
+        // Assert - verify deleted
+        given()
+            .baseUri(RestAssured.baseURI)
+        .`when`()
+            .get("/api/entities/\$entityId")
+        .then()
+            .statusCode(404)
+    }
+
+    @Test
+    fun `should handle validation error`() {
+        // Arrange - invalid body (missing required field)
+        val invalidBody = """
+            {
+                "description": "Missing name field"
+            }
+            """
+
+        // Act & Assert
+        given()
+            .baseUri(RestAssured.baseURI)
+            .contentType(ContentType.JSON)
+            .body(invalidBody)
+        .`when`()
+            .post("/api/entities")
+        .then()
+            .statusCode(400)
+    }
+}

@@ -1,0 +1,130 @@
+package ${package};
+
+import jakarta.annotation.Nullable;
+import java.util.List;
+import ru.tinkoff.kora.database.common.UpdateCount;
+import ru.tinkoff.kora.database.common.annotation.Batch;
+import ru.tinkoff.kora.database.common.annotation.Id;
+import ru.tinkoff.kora.database.common.annotation.Query;
+import ru.tinkoff.kora.database.common.annotation.Repository;
+import ru.tinkoff.kora.database.jdbc.JdbcRepository;
+
+/**
+ * CRUD repository with single-field ID and SQL macros.
+ *
+ * Extends JdbcRepository for base functionality.
+ * Uses SQL macros for automatic query generation at compile time.
+ *
+ * SQL macros used:
+ * - %{return#selects}: Generates column list for SELECT (e.g., "id, email, name")
+ * - %{return#table}: Generates table name from entity's @Table annotation
+ * - %{entity#inserts}: Generates INSERT statement with values
+ * - %{entity#updates}: Generates UPDATE statement with SET clause
+ * - %{entity#table}: Generates table name for INSERT/UPDATE
+ *
+ * Best practices:
+ * - Use @Nullable for nullable return types (not Optional)
+ * - Use @Batch for batch operations (required for List parameters)
+ * - Prefer sync signatures with Virtual Threads
+ * - Use macros for standard CRUD, write explicit SQL for complex queries
+ * - Add @Id to insert methods to return generated ID
+ *
+ * ID type must match entity's @Id field type exactly (Long, UUID, String, etc.)
+ */
+@Repository
+public interface ${repository_name} extends JdbcRepository {
+
+    /**
+     * Find entity by ID.
+     *
+     * @param id entity ID (type must match entity's @Id field)
+     * @return entity or null if not found
+     */
+    @Query("SELECT %{return#selects} FROM %{return#table} WHERE id = :id")
+    @Nullable
+    ${entity_name} findById(${id_type} id);
+
+    /**
+     * Find all entities.
+     *
+     * @return list of all entities (empty list if none found)
+     */
+    @Query("SELECT %{return#selects} FROM %{return#table}")
+    List<${entity_name}> findAll();
+
+    /**
+     * Insert single entity.
+     * Uses macro to generate INSERT with all fields.
+     *
+     * @param entity entity to insert
+     * @return update count (should be 1)
+     */
+    @Query("INSERT INTO %{entity#inserts}")
+    UpdateCount insert(${entity_name} entity);
+
+    /**
+     * Insert single entity and return generated ID.
+     * Use for auto-generated IDs (sequence/identity).
+     *
+     * @param entity entity to insert (ID can be null)
+     * @return generated ID
+     */
+    @Query("INSERT INTO %{entity#inserts-= @id} RETURNING id")
+    @Id
+    ${id_type} insertAndGetId(${entity_name} entity);
+
+    /**
+     * Insert multiple entities in batch.
+     *
+     * @param entities list of entities to insert
+     * @return update count (number of rows inserted)
+     */
+    @Query("INSERT INTO %{entity#inserts}")
+    UpdateCount insertBatch(@Batch List<${entity_name}> entities);
+
+    /**
+     * Insert multiple entities and return generated IDs.
+     *
+     * @param entities list of entities to insert
+     * @return list of generated IDs in same order as input
+     */
+    @Query("INSERT INTO %{entity#inserts-= @id} RETURNING id")
+    @Id
+    List<${id_type}> insertBatchAndGetIds(@Batch List<${entity_name}> entities);
+
+    /**
+     * Update single entity by ID.
+     * Uses macro to generate UPDATE with SET clause.
+     *
+     * @param entity entity to update (ID must be set)
+     * @return update count (should be 1)
+     */
+    @Query("UPDATE %{entity#table} SET %{entity#updates} WHERE %{entity#where = @id}")
+    UpdateCount update(${entity_name} entity);
+
+    /**
+     * Update multiple entities in batch.
+     *
+     * @param entities list of entities to update
+     * @return update count (number of rows updated)
+     */
+    @Query("UPDATE %{entity#table} SET %{entity#updates} WHERE %{entity#where = @id}")
+    UpdateCount updateBatch(@Batch List<${entity_name}> entities);
+
+    /**
+     * Delete entity by ID.
+     *
+     * @param id entity ID
+     * @return update count (1 if deleted, 0 if not found)
+     */
+    @Query("DELETE FROM %{entity#table} WHERE id = :id")
+    UpdateCount deleteById(${id_type} id);
+
+    /**
+     * Delete all entities.
+     *
+     * @return update count (number of rows deleted)
+     */
+    @Query("DELETE FROM %{entity#table}")
+    UpdateCount deleteAll();
+}

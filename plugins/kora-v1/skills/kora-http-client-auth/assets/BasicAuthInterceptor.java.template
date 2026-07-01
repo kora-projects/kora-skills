@@ -1,0 +1,46 @@
+package ${package};
+
+import ru.tinkoff.kora.common.Component;
+import ru.tinkoff.kora.common.Context;
+import ru.tinkoff.kora.http.client.common.interceptor.HttpClientInterceptor;
+import ru.tinkoff.kora.http.client.common.request.HttpClientRequest;
+import ru.tinkoff.kora.http.client.common.response.HttpClientResponse;
+
+import java.nio.charset.StandardCharsets;
+import java.util.Base64;
+import java.util.concurrent.CompletionStage;
+
+/**
+ * Custom Basic-auth interceptor for an outgoing Kora HTTP client.
+ *
+ * <p>Prefer the built-in {@code BasicAuthHttpClientInterceptor(username, password)}
+ * (in {@code http-client-common}) — it already Base64-encodes the credentials.
+ * Use this hand-written variant only when you need extra behavior the built-in
+ * does not cover.</p>
+ *
+ * <p>Attach with {@code @InterceptWith(BasicAuthClientInterceptor.class)} on the
+ * {@code @HttpClient} interface or on a single {@code @HttpRoute} method. The URL
+ * is set in config under {@code httpClient.<client>.url}, not on the annotation.</p>
+ */
+@Component
+public final class BasicAuthClientInterceptor implements HttpClientInterceptor {
+
+    private final String authorizationHeader;
+
+    // Bind credentials through a @ConfigSource interface (no @Value in Kora).
+    public BasicAuthClientInterceptor(BasicAuthConfig config) {
+        var credentials = config.username() + ":" + config.password();
+        var encoded = Base64.getEncoder()
+                .encodeToString(credentials.getBytes(StandardCharsets.UTF_8));
+        this.authorizationHeader = "Basic " + encoded;
+    }
+
+    @Override
+    public CompletionStage<HttpClientResponse> processRequest(
+            Context ctx, InterceptChain chain, HttpClientRequest request) throws Exception {
+        var authorized = request.toBuilder()
+                .header("Authorization", authorizationHeader)
+                .build();
+        return chain.process(ctx, authorized);
+    }
+}

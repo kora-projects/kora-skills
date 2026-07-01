@@ -1,0 +1,39 @@
+# Kora Metrics Configuration (HOCON)
+# Local reference: .kora-agent/kora-docs/mkdocs/docs/en/documentation/metrics.md
+
+httpServer {
+    # Public API port (business traffic)
+    publicApiHttpPort = 8080
+
+    # Private management port (metrics, probes, admin)
+    privateApiHttpPort = 8085
+
+    # Prometheus scrape endpoint, served on the private port
+    privateApiHttpMetricsPath = "/metrics"
+
+    # Health probes (require the probes/HTTP server setup)
+    privateApiHttpLivenessPath = "/liveness"
+    privateApiHttpReadinessPath = "/readiness"
+
+    # Per-module metrics telemetry: enable/disable, set SLO buckets (ms), extra tags
+    telemetry {
+        metrics {
+            enabled = true
+            slo = [ 1, 10, 50, 100, 200, 500, 1000, 2000, 5000, 10000, 20000, 30000, 60000, 90000 ]
+        }
+    }
+}
+
+# Metrics naming standard (MetricsConfig)
+metrics {
+    # V120 - original OpenTelemetry semantic conventions (default)
+    # V123 - newer conventions, available since Kora 1.1.0
+    opentelemetrySpec = "V120"
+}
+
+# Logging levels
+logging.level {
+    "root": "WARN"
+    "ru.tinkoff.kora": "INFO"
+    "ru.tinkoff.kora.micrometer": "INFO"  # raise to DEBUG to troubleshoot metrics
+}

@@ -1,0 +1,85 @@
+package ${package};
+
+import io.micrometer.core.instrument.Counter;
+import io.micrometer.core.instrument.DistributionSummary;
+import io.micrometer.core.instrument.MeterRegistry;
+import io.micrometer.core.instrument.Timer;
+import ru.tinkoff.kora.common.Component;
+
+import java.time.Duration;
+
+/**
+ * Payment processing metrics example.
+ *
+ * Demonstrates complete metrics pattern:
+ * - Timer for processing duration with SLO buckets
+ * - Counter for success/failure counts
+ * - DistributionSummary for payment amounts
+ * - Proper tag usage (bounded values)
+ */
+@Component
+public final class PaymentMetricsService {
+
+    private final Counter paymentsCounter;
+    private final Counter failuresCounter;
+    private final Timer paymentTimer;
+    private final DistributionSummary paymentAmount;
+    private final MeterRegistry registry;
+
+    public PaymentMetricsService(MeterRegistry registry) {
+        this.registry = registry;
+
+        // Counters for event counting (success/failure)
+        this.paymentsCounter = registry.counter("payment.processed.total", "status", "success");
+        this.failuresCounter = registry.counter("payment.processed.total", "status", "failed");
+
+        // Timer for latency with custom buckets matching SLOs
+        this.paymentTimer = Timer.builder("payment.processing.duration")
+            .description("Time taken to process payment")
+            .serviceLevelObjectives(
+                Duration.ofMillis(50),    // Excellent
+                Duration.ofMillis(100),   // Good (p90 target)
+                Duration.ofMillis(500),   // Healthy (p95 target)
+                Duration.ofSeconds(1),    // Warning (p99 target)
+                Duration.ofSeconds(5)     // Degradation threshold
+            )
+            .register(registry);
+
+        // DistributionSummary for payment amount distribution
+        this.paymentAmount = DistributionSummary.builder("payment.amount")
+            .description("Payment amount distribution")
+            .tag("currency", "RUB")
+            .baseUnit("rubles")
+            .register(registry);
+    }
+
+    /**
+     * Records payment processing with full metrics.
+     */
+    public PaymentResult process(Payment payment) {
+        return paymentTimer.record(() -> {
+            try {
+                var result = executePayment(payment);
+
+                paymentsCounter.increment();
+                paymentAmount.record(payment.amount());
+
+                return result;
+            } catch (PaymentException e) {
+                failuresCounter.increment();
+                throw e;
+            }
+        });
+    }
+
+    private PaymentResult executePayment(Payment payment) {
+        // Business logic here
+        return new PaymentResult(true, "Payment processed successfully");
+    }
+
+    public record Payment(double amount, String currency) {}
+    public record PaymentResult(boolean success, String message) {}
+    public static class PaymentException extends RuntimeException {
+        public PaymentException(String message) { super(message); }
+    }
+}

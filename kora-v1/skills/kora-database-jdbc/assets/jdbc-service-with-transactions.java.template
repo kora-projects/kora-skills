@@ -1,0 +1,141 @@
+package ${package};
+
+import jakarta.annotation.Nullable;
+import java.math.BigDecimal;
+import java.time.LocalDateTime;
+import ru.tinkoff.kora.common.Component;
+import ru.tinkoff.kora.database.common.annotation.Column;
+import ru.tinkoff.kora.database.common.annotation.Id;
+import ru.tinkoff.kora.database.common.annotation.Query;
+import ru.tinkoff.kora.database.common.annotation.Repository;
+import ru.tinkoff.kora.database.common.annotation.Table;
+import ru.tinkoff.kora.database.jdbc.EntityJdbc;
+import ru.tinkoff.kora.database.jdbc.JdbcConnectionFactory;
+import ru.tinkoff.kora.database.jdbc.JdbcRepository;
+
+/**
+ * Service example demonstrating transaction management with Kora JDBC.
+ *
+ * Shows:
+ * - JdbcConnectionFactory.inTx() for transaction boundaries
+ * - SELECT ... FOR UPDATE pessimistic locking inside a transaction
+ * - Post-commit / post-rollback actions
+ *
+ * Database schema example:
+ *   CREATE TABLE accounts (
+ *       id      BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+ *       name    VARCHAR(255) NOT NULL,
+ *       balance DECIMAL(19, 2) NOT NULL DEFAULT 0
+ *   );
+ *   CREATE TABLE transfers (
+ *       id              BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+ *       from_account_id BIGINT NOT NULL,
+ *       to_account_id   BIGINT NOT NULL,
+ *       amount          DECIMAL(19, 2) NOT NULL,
+ *       created_at      TIMESTAMP NOT NULL DEFAULT NOW()
+ *   );
+ */
+@EntityJdbc
+@Table("accounts")
+record Account(
+    @Id @Column("id") Long id,
+    @Column("name") String name,
+    @Column("balance") BigDecimal balance
+) {
+    Account(String name, BigDecimal balance) {
+        this(null, name, balance);
+    }
+}
+
+@EntityJdbc
+@Table("transfers")
+record Transfer(
+    @Id @Column("id") Long id,
+    @Column("from_account_id") Long fromAccountId,
+    @Column("to_account_id") Long toAccountId,
+    @Column("amount") BigDecimal amount,
+    @Column("created_at") LocalDateTime createdAt
+) {
+    Transfer(Long fromAccountId, Long toAccountId, BigDecimal amount) {
+        this(null, fromAccountId, toAccountId, amount, LocalDateTime.now());
+    }
+}
+
+@Repository
+interface AccountRepository extends JdbcRepository {
+
+    @Query("SELECT %{return#selects} FROM %{return#table} WHERE id = :id FOR UPDATE")
+    @Nullable
+    Account findByIdForUpdate(Long id);
+
+    @Query("INSERT INTO %{entity#inserts-= @id}")
+    @Id
+    Long insert(Account account);
+
+    @Query("UPDATE %{entity#table} SET balance = :balance WHERE id = :id")
+    void updateBalance(Long id, BigDecimal balance);
+}
+
+@Repository
+interface TransferRepository extends JdbcRepository {
+
+    @Query("INSERT INTO %{entity#inserts-= @id}")
+    @Id
+    Long insert(Transfer transfer);
+}
+
+/**
+ * Service performing a money transfer atomically.
+ */
+@Component
+public final class AccountService {
+
+    private final AccountRepository accountRepository;
+    private final TransferRepository transferRepository;
+    private final JdbcConnectionFactory connectionFactory;
+
+    public AccountService(AccountRepository accountRepository,
+                          TransferRepository transferRepository,
+                          JdbcConnectionFactory connectionFactory) {
+        this.accountRepository = accountRepository;
+        this.transferRepository = transferRepository;
+        this.connectionFactory = connectionFactory;
+    }
+
+    /**
+     * Transfers money between accounts. The whole block runs in one transaction;
+     * any thrown exception rolls everything back.
+     */
+    public Long transfer(Long fromId, Long toId, BigDecimal amount) {
+        return connectionFactory.inTx(() -> {
+            var from = accountRepository.findByIdForUpdate(fromId);
+            var to = accountRepository.findByIdForUpdate(toId);
+            if (from == null || to == null) {
+                throw new IllegalArgumentException("Account not found");
+            }
+            if (from.balance().compareTo(amount) < 0) {
+                throw new IllegalStateException("Insufficient funds");
+            }
+
+            accountRepository.updateBalance(fromId, from.balance().subtract(amount));
+            accountRepository.updateBalance(toId, to.balance().add(amount));
+
+            var transferId = transferRepository.insert(new Transfer(fromId, toId, amount));
+
+            // Side effect that must run only after the transaction commits
+            var context = connectionFactory.currentConnectionContext();
+            context.addPostCommitAction(conn -> notifyTransferCompleted(transferId));
+            context.addPostRollbackAction((conn, ex) -> logTransferFailed(fromId, toId, ex));
+
+            return transferId;
+        });
+    }
+
+    private void notifyTransferCompleted(Long transferId) {
+        // publish event / send notification after commit
+    }
+
+    private void logTransferFailed(Long fromId, Long toId, Throwable ex) {
+        // log the failed transfer after rollback
+    }
+}

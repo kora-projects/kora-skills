@@ -1,0 +1,26 @@
+// Example proto file for gRPC service
+// Save as: src/main/proto/${service_name}.proto
+
+syntax = "proto3";
+
+option java_multiple_files = true;
+option java_package = "${proto_package}";
+option java_outer_classname = "${service_name}Proto";
+
+package ${package};
+
+// The service definition.
+service ${service_name} {
+  // Unary RPC method.
+  rpc ${method_name} (${request_class}) returns (${response_class}) {}
+}
+
+// The request message
+message ${request_class} {
+  string name = 1;
+}
+
+// The response message
+message ${response_class} {
+  string message = 1;
+}

@@ -1,0 +1,54 @@
+kafka {
+  # Producer configuration
+  producer {
+    # Producer section: matches @KafkaPublisher("kafka.producer.myPublisher")
+    myPublisher {
+      # Kafka driver properties (required)
+      driverProperties {
+        "bootstrap.servers" = ${KAFKA_BOOTSTRAP_SERVERS}
+        "acks" = "all"
+        "retries" = 3
+        "linger.ms" = 5
+        "batch.size" = 16384
+      }
+
+      # Telemetry
+      telemetry {
+        logging {
+          enabled = true
+        }
+        metrics {
+          enabled = true
+          slo = [1, 10, 50, 100, 200, 500, 1000, 2000, 5000, 10000]
+        }
+        tracing {
+          enabled = true
+        }
+      }
+    }
+
+    # Topic section: matches @Topic("kafka.producer.myTopic")
+    myTopic {
+      topic = "my-topic"
+      # partition = 0  # optional
+    }
+
+    # Transactional publisher (optional):
+    # matches @KafkaPublisher("kafka.producer.myTransactionalPublisher")
+    # extending TransactionalPublisher<...>
+    # myTransactionalPublisher {
+    #   idPrefix = "my-app-"
+    #   maxPoolSize = 10
+    #   maxWaitTime = "10s"
+    #   driverProperties {
+    #     "bootstrap.servers" = ${KAFKA_BOOTSTRAP_SERVERS}
+    #   }
+    # }
+  }
+}
+
+# Logging
+logging.level {
+  "root": "INFO"
+  "ru.tinkoff.kora": "INFO"
+}

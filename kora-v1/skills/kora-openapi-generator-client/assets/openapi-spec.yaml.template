@@ -1,0 +1,401 @@
+openapi: 3.0.3
+info:
+  title: My API
+  description: API for managing my resources with discriminator support
+  version: 1.0.0
+servers:
+  - url: http://localhost:8080/api/v1
+paths:
+  /items:
+    get:
+      operationId: listItems
+      tags:
+        - items
+      summary: List all items
+      parameters:
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            default: 20
+        - name: offset
+          in: query
+          schema:
+            type: integer
+            default: 0
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Item'
+    post:
+      operationId: createItem
+      tags:
+        - items
+      summary: Create a new item
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ItemCreate'
+      responses:
+        '201':
+          description: Item created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Item'
+        '400':
+          description: Invalid input
+  /items/{id}:
+    get:
+      operationId: getItemById
+      tags:
+        - items
+      summary: Get item by ID
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Item'
+        '404':
+          description: Item not found
+    put:
+      operationId: updateItem
+      tags:
+        - items
+      summary: Update an existing item
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ItemUpdate'
+      responses:
+        '200':
+          description: Item updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Item'
+        '404':
+          description: Item not found
+    delete:
+      operationId: deleteItem
+      tags:
+        - items
+      summary: Delete an item
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '204':
+          description: Item deleted
+        '404':
+          description: Item not found
+
+  # Example endpoint with discriminator (complex case)
+  /migrations:
+    post:
+      operationId: createMigration
+      tags:
+        - migrations
+      summary: Create a migration task (UNCONFIRMED or CONFIRMED)
+      description: |
+        Creates a migration task. Supports two migration types via discriminator:
+        - **UNCONFIRMED** — test migration to verify the scenario (returns patches)
+        - **CONFIRMED** — final migration applying changes (requires scriptKey)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Task'
+      responses:
+        '201':
+          description: Migration task created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TaskResponse'
+        '400':
+          description: Invalid request
+components:
+  schemas:
+    Item:
+      type: object
+      required:
+        - id
+        - name
+        - status
+      properties:
+        id:
+          type: string
+          format: uuid
+        name:
+          type: string
+          minLength: 1
+          maxLength: 100
+        description:
+          type: string
+          maxLength: 1000
+        status:
+          type: string
+          enum:
+            - active
+            - inactive
+            - archived
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+    ItemCreate:
+      type: object
+      required:
+        - name
+      properties:
+        name:
+          type: string
+          minLength: 1
+          maxLength: 100
+        description:
+          type: string
+          maxLength: 1000
+    ItemUpdate:
+      type: object
+      properties:
+        name:
+          type: string
+          minLength: 1
+          maxLength: 100
+        description:
+          type: string
+          maxLength: 1000
+        status:
+          type: string
+          enum:
+            - active
+            - inactive
+            - archived
+
+    # =========================================
+    # Example of a complex contract with discriminator
+    # =========================================
+    # oneOf + allOf + discriminator — pattern for polymorphic requests
+    # Used when there are multiple request variants with a common base
+
+    Task:
+      type: object
+      description: |
+        Migration creation request. Uses a discriminator to select the migration type:
+        - **UNCONFIRMED** — test migration (returns patches for review)
+        - **CONFIRMED** — final migration (applies changes, requires scriptKey)
+
+        **Pattern:** oneOf (variants) + allOf (common base) + discriminator (selection key)
+      oneOf:
+        - $ref: '#/components/schemas/TaskUnconfirmed'
+        - $ref: '#/components/schemas/TaskConfirmed'
+      allOf:
+        - $ref: '#/components/schemas/TaskCommon'
+      discriminator:
+        propertyName: migrationType
+        mapping:
+          UNCONFIRMED: '#/components/schemas/TaskUnconfirmed'
+          CONFIRMED: '#/components/schemas/TaskConfirmed'
+      example:
+        migrationType: UNCONFIRMED
+        targetRepos:
+          - tenant: "example-tenant"
+            repositories: ["repo1", "repo2"]
+        script:
+          name: "Replace URL migration"
+          steps:
+            - functionName: "replace-text"
+              args: { "from": "old.com", "to": "new.com" }
+
+    TaskCommon:
+      type: object
+      description: |
+        Common parameters for all migration types.
+        Contains basic information: scope and metadata.
+      required:
+        - migrationType
+        - targetRepos
+      properties:
+        migrationType:
+          $ref: '#/components/schemas/MigrationType'
+        targetRepos:
+          type: array
+          description: List of tenants and repositories for migration
+          items:
+            $ref: '#/components/schemas/TargetRepository'
+        jiraTask:
+          type: string
+          description: Jira task for tracking
+          example: "MIGRATION-123"
+        assignee:
+          type: string
+          description: Person responsible for the migration
+          example: "@username"
+
+    TaskUnconfirmed:
+      type: object
+      description: |
+        Test migration — executed to verify the scenario.
+        Result: a set of patches to review before applying.
+
+        **Requires:** migrationType = UNCONFIRMED, script
+      allOf:
+        - $ref: '#/components/schemas/TaskCommon'
+        - type: object
+          required:
+            - migrationType
+            - script
+          properties:
+            migrationType:
+              description: Migration type — always UNCONFIRMED
+              example: UNCONFIRMED
+            script:
+              $ref: '#/components/schemas/MigrationScript'
+
+    TaskConfirmed:
+      type: object
+      description: |
+        Final migration — applies changes and creates an MR.
+        Requires the scenario key from test migration results.
+
+        **Requires:** migrationType = CONFIRMED, scriptKey
+      allOf:
+        - $ref: '#/components/schemas/TaskCommon'
+        - type: object
+          required:
+            - migrationType
+            - scriptKey
+          properties:
+            migrationType:
+              description: Migration type — always CONFIRMED
+              example: CONFIRMED
+            scriptKey:
+              type: string
+              description: Scenario key from the test migration
+              example: "script-abc123"
+            resultFormat:
+              $ref: '#/components/schemas/MigrationResultFormat'
+
+    # -----------------------------------------
+    # Auxiliary schemas
+    # -----------------------------------------
+
+    MigrationType:
+      type: string
+      enum:
+        - UNCONFIRMED
+        - CONFIRMED
+      description: Migration operation type
+
+    TargetRepository:
+      type: object
+      description: Tenant and list of repositories
+      required:
+        - tenant
+      properties:
+        tenant:
+          type: string
+          description: Logical group of repositories
+          example: "backend-team"
+        repositories:
+          type: array
+          description: List of repositories (empty = all)
+          items:
+            type: string
+          example: ["repo1", "repo2"]
+
+    MigrationScript:
+      type: object
+      description: Migration scenario with steps
+      required:
+        - name
+        - steps
+      properties:
+        name:
+          type: string
+          description: Scenario name
+          example: "Replace old domain with new domain"
+        steps:
+          type: array
+          description: Migration steps
+          items:
+            $ref: '#/components/schemas/MigrationStep'
+
+    MigrationStep:
+      type: object
+      description: A single migration step
+      required:
+        - functionName
+      properties:
+        functionName:
+          type: string
+          description: Function to execute
+          example: "replace-text"
+        args:
+          type: object
+          description: Function arguments
+          additionalProperties: true
+          example: { "from": "old.com", "to": "new.com" }
+
+    MigrationResultFormat:
+      type: string
+      enum:
+        - PATCH
+        - MERGE_REQUEST
+        - BOTH
+      description: Result format for the final migration
+
+    TaskResponse:
+      type: object
+      description: Response for a migration task creation request
+      required:
+        - taskId
+        - status
+        - script
+      properties:
+        taskId:
+          type: string
+          format: uuid
+          description: ID of the created task
+        status:
+          type: string
+          enum: [PENDING, RUNNING, COMPLETED, FAILED]
+          description: Current task status
+        script:
+          $ref: '#/components/schemas/MigrationScript'
+        scriptKey:
+          type: string
+          description: Scenario key (for UNCONFIRMED — used in CONFIRMED)

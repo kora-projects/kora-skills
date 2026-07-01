@@ -1,0 +1,77 @@
+package ${package};
+
+import jakarta.annotation.Nullable;
+import ru.tinkoff.kora.database.common.annotation.Column;
+import ru.tinkoff.kora.database.common.annotation.Id;
+import ru.tinkoff.kora.database.common.annotation.Embedded;
+import ru.tinkoff.kora.database.common.annotation.Table;
+import ru.tinkoff.kora.database.jdbc.EntityJdbc;
+
+/**
+ * Entity with composite ID for JDBC repository.
+ *
+ * Composite keys are used when a single column cannot uniquely identify a row.
+ * Common scenarios:
+ * - Junction/bridge tables (e.g., user_role, order_item)
+ * - Time-series data (e.g., device_id + timestamp)
+ * - Multi-tenant partitioning (e.g., tenant_id + entity_id)
+ *
+ * Key patterns:
+ * - Nested record for composite key (ID)
+ * - @Embedded flattens the composite key fields into parent table
+ * - @Id on the parent field marks it as primary key
+ * - Each field in composite ID should have @Column mapping
+ *
+ * SQL mapping example (for OrderItem with order_id + product_id):
+ *   CREATE TABLE order_items (
+ *       order_id BIGINT NOT NULL,
+ *       product_id BIGINT NOT NULL,
+ *       quantity INT NOT NULL,
+ *       price DECIMAL NOT NULL,
+ *       PRIMARY KEY (order_id, product_id)
+ *   );
+ *
+ * Repository query pattern:
+ *   @Query("SELECT ... WHERE order_id = :id.orderId AND product_id = :id.productId")
+ */
+@EntityJdbc
+@Table("${table_name}")
+public record ${entity_name}(
+    @Id @Embedded ID id,
+    @Column("name") String name,
+    @Column("field1") String field1,
+    @Column("field2") @Nullable String field2
+) {
+    /**
+     * Composite ID record with two fields.
+     *
+     * Both fields are part of the primary key.
+     * Field types can be Long, UUID, String, or any supported JDBC type.
+     *
+     * SQL columns will be flattened with field names:
+     * - id.field1 -> column "field1" (or use @Column for custom names)
+     * - id.field2 -> column "field2"
+     */
+    @EntityJdbc
+    public record ID(
+        @Column("${id1_column}") ${id1_type} ${id1_field},
+        @Column("${id2_column}") ${id2_type} ${id2_field}
+    ) {}
+
+    /**
+     * Constructor for composite ID entity.
+     */
+    public ${entity_name}(ID id, String name, String field1, @Nullable String field2) {
+        this.id = id;
+        this.name = name;
+        this.field1 = field1;
+        this.field2 = field2;
+    }
+
+    /**
+     * Convenience constructor - creates ID from components.
+     */
+    public ${entity_name}(${id1_type} ${id1_field}, ${id2_type} ${id2_field}, String name, String field1, @Nullable String field2) {
+        this(new ID(${id1_field}, ${id2_field}), name, field1, field2);
+    }
+}

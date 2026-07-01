@@ -1,0 +1,104 @@
+{
+  "evals": [
+    {
+      "id": "kora-http-server-auth-apikey-openapi",
+      "skills": ["kora-http-server-auth"],
+      "query": "My Kora HTTP server is generated from an OpenAPI contract with an apiKey security scheme. How do I validate the API key on every request?",
+      "expected_behavior": [
+        "Implements HttpServerPrincipalExtractor<Principal> and binds it with @Tag(ApiSecurity.ApiKeyAuth.class)",
+        "Declares the extractor as a default method on @KoraApp or a @Module interface that the app extends",
+        "Throws SecurityException when the key is missing or wrong, returning CompletableFuture.completedFuture(principal) otherwise",
+        "Externalizes the expected key via @ConfigSource and ${ENV} substitution rather than inlining it",
+        "Does not call a non-existent Principal.current() or request.getAttribute()"
+      ],
+      "tags": ["openapi", "apikey", "basic"]
+    },
+    {
+      "id": "kora-http-server-auth-bearer-jwt",
+      "skills": ["kora-http-server-auth"],
+      "query": "Add Bearer JWT authentication to my Kora service that generates controllers from OpenAPI.",
+      "expected_behavior": [
+        "Implements HttpServerPrincipalExtractor<Principal> tagged @Tag(ApiSecurity.BearerAuth.class)",
+        "Treats the lambda 'value' parameter as the token after the Bearer prefix and verifies it with the user's own JWT component",
+        "Builds a record implementing ru.tinkoff.kora.common.Principal from the validated claims",
+        "Notes that Kora core ships no JWT verifier, so verification uses a user-supplied @Component",
+        "Does not invent a @PreAuthorize/@Secured annotation or use field injection; uses constructor/parameter injection"
+      ],
+      "tags": ["openapi", "bearer", "advanced"]
+    },
+    {
+      "id": "kora-http-server-auth-oauth-scopes",
+      "skills": ["kora-http-server-auth"],
+      "query": "How do I enforce OAuth2 scopes on my OpenAPI-generated Kora endpoints?",
+      "expected_behavior": [
+        "Returns a PrincipalWithScopes from ru.tinkoff.kora.http.common.auth so the generated transport can enforce required scopes",
+        "Binds the extractor with @Tag(ApiSecurity.OAuth.class)",
+        "Implements the scopes() method returning the token's scopes",
+        "Does not invent a Kora @Scope or @Secured annotation"
+      ],
+      "tags": ["openapi", "oauth", "advanced"]
+    },
+    {
+      "id": "kora-http-server-auth-401-403-mapping",
+      "skills": ["kora-http-server-auth"],
+      "query": "When my principal extractor throws SecurityException the client gets HTTP 500. How do I return 401/403 instead?",
+      "expected_behavior": [
+        "Adds an HttpServerInterceptor that catches SecurityException in chain.process(...).exceptionally(...) and returns HttpServerResponse.of(401 or 403, ...)",
+        "Tags the interceptor @Tag(HttpServerModule.class) to apply to all controllers",
+        "Distinguishes 401 (authentication failed) from 403 (authorization failed)",
+        "Re-throws or returns HttpServerResponseException unchanged and reads its status via .code()",
+        "Does not rely on an automatic SecurityException-to-status mapping that Kora does not provide"
+      ],
+      "tags": ["error-handling", "interceptor", "advanced"]
+    },
+    {
+      "id": "kora-http-server-auth-manual-interceptor",
+      "skills": ["kora-http-server-auth"],
+      "query": "I have a Kora HTTP server without any OpenAPI contract. How do I require an X-API-Key header on all endpoints?",
+      "expected_behavior": [
+        "Implements HttpServerInterceptor and reads the header via request.headers().getFirst(\"X-API-Key\")",
+        "Returns HttpServerResponse.of(401, ...) early when the key is missing or invalid, otherwise calls chain.process(context, request)",
+        "Registers it globally with @Tag(HttpServerModule.class) or scopes it via @InterceptWith on a controller/route",
+        "Does not use request.getAttribute or a thread-local current-principal"
+      ],
+      "tags": ["manual", "interceptor", "apikey"]
+    },
+    {
+      "id": "kora-http-server-auth-request-mapper",
+      "skills": ["kora-http-server-auth"],
+      "query": "How can I turn the x-user-id header into a typed Caller object injected into my Kora controller method?",
+      "expected_behavior": [
+        "Implements HttpServerRequestMapper<Caller> reading request.headers().getFirst(\"x-user-id\")",
+        "Injects it into the @HttpRoute method with @Mapping(CallerMapper.class)",
+        "Throws to reject a missing header, relying on an error interceptor to set the status",
+        "Does not fabricate a request-attribute API or Principal.current()"
+      ],
+      "tags": ["manual", "request-mapper"]
+    },
+    {
+      "id": "kora-http-server-auth-basic",
+      "skills": ["kora-http-server-auth"],
+      "query": "Implement HTTP Basic authentication for the apiKeyAuth-free internal endpoints of my OpenAPI Kora server.",
+      "expected_behavior": [
+        "Binds HttpServerPrincipalExtractor<Principal> with @Tag(ApiSecurity.BasicAuth.class)",
+        "Base64-decodes the value after the Basic prefix and splits username:password",
+        "Validates credentials against a user-supplied service and throws SecurityException on failure",
+        "Recommends serving Basic auth over HTTPS",
+        "Does not invent a built-in Kora basic-auth filter or rely on field injection; the extractor is a graph component wired via @Tag"
+      ],
+      "tags": ["openapi", "basic"]
+    },
+    {
+      "id": "kora-http-server-auth-principal-type",
+      "skills": ["kora-http-server-auth"],
+      "query": "What type should my principal class be in a Kora HTTP server, and where does Principal come from?",
+      "expected_behavior": [
+        "States that Principal is the framework marker interface ru.tinkoff.kora.common.Principal",
+        "Defines the principal as a record/data class implementing Principal (or PrincipalWithScopes for scopes)",
+        "Clarifies there is no local Principal class to define and no Principal.current() accessor",
+        "Does not equate Principal with java.security.Principal or a third-party user-details type, and does not use field injection"
+      ],
+      "tags": ["concept", "principal"]
+    }
+  ]
+}

@@ -1,0 +1,54 @@
+package ${package}
+
+import ru.tinkoff.kora.database.common.UpdateCount
+import ru.tinkoff.kora.database.common.annotation.Batch
+import ru.tinkoff.kora.database.common.annotation.Id
+import ru.tinkoff.kora.database.common.annotation.Query
+import ru.tinkoff.kora.database.common.annotation.Repository
+import ru.tinkoff.kora.database.jdbc.JdbcRepository
+
+/**
+ * Basic CRUD repository with single-field ID (Kotlin).
+ * Extends JdbcRepository; queries are generated at compile time from SQL macros.
+ *
+ * Best practices:
+ * - Use nullable return types (T?) rather than Optional
+ * - Use @Batch for batch operations
+ * - Prefer synchronous signatures with virtual threads
+ * - The id type must match the entity's @Id field
+ */
+@Repository
+interface ${repository_name} : JdbcRepository {
+
+    @Query("SELECT %{return#selects} FROM %{return#table} WHERE id = :id")
+    fun findById(id: ${id_type}): ${entity_name}?
+
+    @Query("SELECT %{return#selects} FROM %{return#table}")
+    fun findAll(): List<${entity_name}>
+
+    @Query("INSERT INTO %{entity#inserts}")
+    fun insert(entity: ${entity_name}): UpdateCount
+
+    /** Insert and return the database-generated id. */
+    @Query("INSERT INTO %{entity#inserts-= @id}")
+    @Id
+    fun insertAndGetId(entity: ${entity_name}): ${id_type}
+
+    @Query("INSERT INTO %{entity#inserts}")
+    fun insertBatch(@Batch entities: List<${entity_name}>): UpdateCount
+
+    @Query("UPDATE %{entity#table} SET %{entity#updates} WHERE %{entity#where = @id}")
+    fun update(entity: ${entity_name}): UpdateCount
+
+    @Query("UPDATE %{entity#table} SET %{entity#updates} WHERE %{entity#where = @id}")
+    fun updateBatch(@Batch entities: List<${entity_name}>): UpdateCount
+
+    @Query("INSERT INTO %{entity#inserts} ON CONFLICT (id) DO UPDATE SET %{entity#updates}")
+    fun upsert(entity: ${entity_name}): UpdateCount
+
+    @Query("DELETE FROM %{entity#table} WHERE id = :id")
+    fun deleteById(id: ${id_type}): UpdateCount
+
+    @Query("DELETE FROM %{entity#table}")
+    fun deleteAll(): UpdateCount
+}

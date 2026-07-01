@@ -1,0 +1,43 @@
+package ${packagePath}.publisher;
+
+import java.util.concurrent.CompletionStage;
+import org.apache.kafka.clients.producer.Callback;
+import org.apache.kafka.clients.producer.RecordMetadata;
+import ru.tinkoff.kora.kafka.common.annotation.KafkaPublisher;
+import ru.tinkoff.kora.kafka.common.annotation.KafkaPublisher.Topic;
+
+/**
+ * Async Kafka publisher with CompletionStage return types.
+ *
+ * Use for non-blocking message publishing with reactive patterns.
+ */
+@KafkaPublisher("kafka.producer.asyncPublisher")
+public interface AsyncMessagePublisher {
+
+    /**
+     * Asynchronous send with CompletionStage
+     * @param value message value
+     * @return CompletionStage with metadata result
+     */
+    @Topic("kafka.producer.events")
+    CompletionStage<RecordMetadata> sendAsync(String value);
+
+    /**
+     * Asynchronous send with key
+     * @param key message key for partitioning
+     * @param value message value
+     * @return CompletionStage with metadata result
+     */
+    @Topic("kafka.producer.events")
+    CompletionStage<RecordMetadata> sendAsync(String key, String value);
+
+    /**
+     * Asynchronous send with callback
+     * @param key message key
+     * @param value message value
+     * @param callback callback for result handling
+     * @return CompletionStage with metadata result
+     */
+    @Topic("kafka.producer.events")
+    CompletionStage<RecordMetadata> sendAsync(String key, String value, Callback callback);
+}

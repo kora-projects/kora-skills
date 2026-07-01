@@ -1,0 +1,58 @@
+{
+  "name": "kora-v1",
+  "version": "0.1.0",
+  "description": "Kora Framework 1.x development — compile-time DI, HTTP, Database, Kafka, gRPC, SOAP, OpenAPI, Telemetry, AOP. Zero reflection, zero proxies. Java/Kotlin microservices.",
+  "author": "Anton Kurako",
+  "license": "Apache-2.0",
+  "homepage": "https://kora-projects.github.io/kora-docs",
+  "tags": [
+    "kora",
+    "kora-v1",
+    "kora-1x",
+    "kora-1.x",
+    "java",
+    "kotlin",
+    "compile-time-di",
+    "microservices",
+    "http-server",
+    "http-client",
+    "jdbc",
+    "cassandra",
+    "kafka",
+    "grpc",
+    "soap",
+    "wsdl",
+    "openapi",
+    "telemetry",
+    "caching",
+    "resilience",
+    "backend"
+  ],
+  "main": "SKILL.md",
+  "files": [
+    "SKILL.md",
+    "skills/**/*"
+  ],
+  "requirements": {
+    "java": "17+ (Recommended 25+)",
+    "kotlin": "1.9+",
+    "gradle": "8+"
+  },
+  "documentation": {
+    "kora_docs": "https://kora-projects.github.io/kora-docs/en/",
+    "examples": "https://github.com/kora-projects/kora-examples",
+    "changelog": "https://kora-projects.github.io/kora-docs/en/changelog/changelog/",
+    "java_template": "https://github.com/kora-projects/kora-java-template",
+    "kotlin_template": "https://github.com/kora-projects/kora-kotlin-template"
+  },
+  "compatibility": [
+    "claude-code",
+    "codex",
+    "pi",
+    "cursor",
+    "omp",
+    "openclaude",
+    "gemini-cli",
+    "openclaw"
+  ]
+}

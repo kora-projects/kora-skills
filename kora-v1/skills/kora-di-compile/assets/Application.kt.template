@@ -1,0 +1,28 @@
+package ${packagePath}
+
+import ru.tinkoff.kora.application.graph.KoraApplication
+import ru.tinkoff.kora.common.KoraApp
+import ru.tinkoff.kora.config.hocon.HoconConfigModule
+import ru.tinkoff.kora.logging.logback.LogbackModule
+
+/**
+ * Main application entry point.
+ *
+ * This is a minimal Kora application interface.
+ * Add more modules as needed:
+ * - JsonModule for JSON serialization (Jackson, Gson)
+ * - JdbcDatabaseModule for database access
+ * - ValidationModule for validation
+ * - MicrometerModule for metrics
+ */
+@KoraApp
+interface Application :
+    HoconConfigModule,
+    LogbackModule
+    // JsonModule - add if using JSON serialization
+    // ValidationModule - add if using validation
+    // MicrometerModule - add if using metrics
+
+fun main() {
+    KoraApplication.run { ApplicationGraph.graph() }
+}

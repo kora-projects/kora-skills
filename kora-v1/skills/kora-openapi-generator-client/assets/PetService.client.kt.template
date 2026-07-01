@@ -1,0 +1,49 @@
+package com.example
+
+import com.example.api.PetApi
+import com.example.api.PetApiResponses
+import com.example.model.Pet
+import ru.tinkoff.kora.common.Component
+import ru.tinkoff.kora.common.annotation.Root
+
+/**
+ * Example usage of the generated HTTP client.
+ *
+ * The generated `PetApi` is injected via the constructor — Kora wires the
+ * implementation at build time.
+ *
+ * IMPORTANT: generated methods return a sealed `*ApiResponses` wrapper, not the
+ * bare model. Branch on the response with `is` / `when` and read `.content()`.
+ */
+@Root
+@Component
+class PetService(
+    private val petApi: PetApi
+) {
+
+    /** Fetch a pet; throws if the remote returns a non-200 variant. */
+    fun getPet(petId: Long): Pet {
+        val response = petApi.getPetById(petId)
+        if (response is PetApiResponses.GetPetByIdApiResponse.GetPetById200ApiResponse) {
+            return response.content()
+        }
+        error("Unexpected response: $response")
+    }
+
+    /** Create a pet via POST with a JSON request body. */
+    fun createPet(pet: Pet): Pet {
+        val response = petApi.addPet(pet)
+        if (response is PetApiResponses.AddPetApiResponse.AddPet200ApiResponse) {
+            return response.content()
+        }
+        error("Unexpected response: $response")
+    }
+
+    /** Branch over multiple status variants with a when expression. */
+    fun getPetOrNull(petId: Long): Pet? =
+        when (val response = petApi.getPetById(petId)) {
+            is PetApiResponses.GetPetByIdApiResponse.GetPetById200ApiResponse -> response.content()
+            is PetApiResponses.GetPetByIdApiResponse.GetPetById404ApiResponse -> null
+            else -> error("Unexpected response: $response")
+        }
+}

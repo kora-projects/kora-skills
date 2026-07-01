@@ -1,0 +1,208 @@
+package ${package};
+
+import static io.restassured.RestAssured.given;
+import static org.hamcrest.Matchers.*;
+
+import io.restassured.RestAssured;
+import io.restassured.http.ContentType;
+import java.nio.file.Paths;
+import java.time.Duration;
+import org.junit.jupiter.api.AfterAll;
+import org.junit.jupiter.api.BeforeAll;
+import org.junit.jupiter.api.Test;
+import org.testcontainers.containers.GenericContainer;
+import org.testcontainers.utility.DockerImageName;
+import org.testcontainers.images.builder.ImageFromDockerfile;
+import org.testcontainers.containers.wait.strategy.Wait;
+
+/**
+ * Black-box tests with RestAssured for the HTTP API.
+ *
+ * Runs the application in a Docker container using GenericContainer and tests it via the HTTP API.
+ * Uses RestAssured for concise BDD-style tests with JSON assertions.
+ *
+ * For database testing, add PostgreSQLContainer and configure the connection:
+ *   @Container
+ *   static final PostgreSQLContainer<?> postgres = new PostgreSQLContainer<>(...)
+ *       .withNetwork(network)
+ *       .withInitScript("db/migration/V1__init.sql");
+ *
+ * @see <a href="https://rest-assured.io/">RestAssured Documentation</a>
+ * @see <a href="https://java.testcontainers.org/modules/databases/postgres/">Testcontainers PostgreSQL</a>
+ */
+class ${className} {
+
+    // Application container using GenericContainer directly
+    private static final GenericContainer<?> container = createAppContainer();
+
+    // Helper method to create application container
+    private static GenericContainer<?> createAppContainer() {
+        String appImage = System.getenv("APP_IMAGE");
+        GenericContainer<?> c = (appImage != null && !appImage.isBlank())
+                ? new GenericContainer<>(DockerImageName.parse(appImage))
+                : new GenericContainer<>(new ImageFromDockerfile("myapp:test")
+                        .withDockerfile(Paths.get("Dockerfile").toAbsolutePath()));
+
+        return c.withExposedPorts(8080, 8085)
+            .withStartupTimeout(Duration.ofSeconds(120))
+            .waitingFor(Wait.forHttp("/system/readiness").forPort(8085).forStatusCode(200));
+    }
+
+    @BeforeAll
+    static void setup() {
+        // For applications with a DB, uncomment:
+        // container.withEnv(Map.of(
+        //     "DB_URL", "jdbc:postgresql://localhost:5432/test",
+        //     "DB_USER", "postgres",
+        //     "DB_PASS", "postgres"
+        // ));
+        container.start();
+        RestAssured.baseURI = "http://" + container.getHost() + ":" + container.getMappedPort(8080);
+    }
+
+    @AfterAll
+    static void cleanup() {
+        container.stop();
+    }
+
+    @Test
+    void shouldReportLiveness() {
+        given()
+                .baseUri(RestAssured.baseURI)
+        .when()
+                .get("/system/liveness")
+        .then()
+                .statusCode(200);
+    }
+
+    @Test
+    void shouldCreateAndGetEntity() {
+        // Arrange
+        var createBody = """
+            {
+                "name": "test-entity",
+                "description": "Test description"
+            }
+            """;
+
+        // Act & Assert - Create
+        var entityId = given()
+                .baseUri(RestAssured.baseURI)
+                .contentType(ContentType.JSON)
+                .body(createBody)
+        .when()
+                .post("/api/entities")
+        .then()
+                .statusCode(200)
+                .body("id", notNullValue())
+        .extract()
+                .path("id");
+
+        // Act & Assert - Get
+        given()
+                .baseUri(RestAssured.baseURI)
+        .when()
+                .get("/api/entities/" + entityId)
+        .then()
+                .statusCode(200)
+                .body("name", equalTo("test-entity"))
+                .body("description", equalTo("Test description"));
+    }
+
+    @Test
+    void shouldUpdateEntity() {
+        // Arrange - create entity
+        var createBody = """
+            {
+                "name": "original-name"
+            }
+            """;
+
+        var entityId = given()
+                .baseUri(RestAssured.baseURI)
+                .contentType(ContentType.JSON)
+                .body(createBody)
+        .when()
+                .post("/api/entities")
+        .then()
+                .statusCode(200)
+                .extract()
+                .path("id");
+
+        // Act - update
+        var updateBody = """
+            {
+                "name": "updated-name",
+                "description": "Updated description"
+            }
+            """;
+
+        given()
+                .baseUri(RestAssured.baseURI)
+                .contentType(ContentType.JSON)
+                .body(updateBody)
+        .when()
+                .put("/api/entities/" + entityId)
+        .then()
+                .statusCode(200)
+                .body("name", equalTo("updated-name"))
+                .body("description", equalTo("Updated description"));
+    }
+
+    @Test
+    void shouldDeleteEntity() {
+        // Arrange - create entity
+        var createBody = """
+            {
+                "name": "to-delete"
+            }
+            """;
+
+        var entityId = given()
+                .baseUri(RestAssured.baseURI)
+                .contentType(ContentType.JSON)
+                .body(createBody)
+        .when()
+                .post("/api/entities")
+        .then()
+                .statusCode(200)
+                .extract()
+                .path("id");
+
+        // Act - delete
+        given()
+                .baseUri(RestAssured.baseURI)
+        .when()
+                .delete("/api/entities/" + entityId)
+        .then()
+                .statusCode(200);
+
+        // Assert - verify deleted
+        given()
+                .baseUri(RestAssured.baseURI)
+        .when()
+                .get("/api/entities/" + entityId)
+        .then()
+                .statusCode(404);
+    }
+
+    @Test
+    void shouldHandleValidationError() {
+        // Arrange - invalid body (missing required field)
+        var invalidBody = """
+            {
+                "description": "Missing name field"
+            }
+            """;
+
+        // Act & Assert
+        given()
+                .baseUri(RestAssured.baseURI)
+                .contentType(ContentType.JSON)
+                .body(invalidBody)
+        .when()
+                .post("/api/entities")
+        .then()
+                .statusCode(400);
+    }
+}

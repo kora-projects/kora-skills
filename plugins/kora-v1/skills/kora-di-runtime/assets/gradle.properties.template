@@ -1,0 +1,9 @@
+org.gradle.caching=true
+org.gradle.configuration-cache=true
+org.gradle.parallel=true
+#
+# Kora version — use the same version for all Kora dependencies
+koraVersion=1.2.17
+#
+# Java version — always use Java 25 for new Java projects
+# org.gradle.java.home=/path/to/jdk-25  # Optional: specify JDK location

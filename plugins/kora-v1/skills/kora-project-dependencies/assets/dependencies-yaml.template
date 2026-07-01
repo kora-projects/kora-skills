@@ -1,0 +1,22 @@
+// YAML Configuration dependencies
+// Alternative to HOCON - choose one format (HOCON is recommended)
+
+dependencies {
+    // YAML configuration module
+    implementation "ru.tinkoff.kora:config-yaml"
+
+    // Logging (required for config change notifications)
+    implementation "ru.tinkoff.kora:logging-logback"
+}
+
+// Usage in @KoraApp interface:
+// @KoraApp
+// public interface Application extends YamlConfigModule { ... }
+//
+// Configuration file: src/main/resources/application.yaml
+//
+// YAML substitution syntax:
+// - Required substitution:  url: ${DATABASE_URL}
+// - Optional substitution:  password: ${?DATABASE_PASSWORD}   (omitted if unset)
+// - Default value:          port: ${?PORT:8080}               (8080 unless PORT is set)
+// - Standard YAML structure

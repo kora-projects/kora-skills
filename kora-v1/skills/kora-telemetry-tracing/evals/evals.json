@@ -1,0 +1,101 @@
+{
+  "evals": [
+    {
+      "id": "kora-telemetry-tracing-grpc-setup",
+      "skills": ["kora-telemetry-tracing"],
+      "query": "Set up OpenTelemetry tracing in my Kora service and export traces to Jaeger over gRPC. The service name should be order-service.",
+      "expected_behavior": [
+        "Adds the ru.tinkoff.kora:opentelemetry-tracing-exporter-grpc artifact and keeps it BOM-versioned via kora-parent (no explicit version on the artifact)",
+        "Extends OpentelemetryGrpcExporterModule from package ru.tinkoff.kora.opentelemetry.tracing.exporter.grpc on the @KoraApp interface",
+        "Sets tracing.exporter.endpoint to a Jaeger gRPC URL on port 4317 and tracing.attributes.\"service.name\" to order-service",
+        "Includes the mandatory annotation processor (annotationProcessor \"ru.tinkoff.kora:annotation-processors\" for Java, ksp \"ru.tinkoff.kora:symbol-processors\" for Kotlin)",
+        "Does not use foreign-framework annotations, field injection, or a foreign application-bootstrap annotation"
+      ],
+      "tags": ["setup", "basic"]
+    },
+    {
+      "id": "kora-telemetry-tracing-http-zipkin",
+      "skills": ["kora-telemetry-tracing"],
+      "query": "I want to send traces to Zipkin at http://zipkin:9411 using the HTTP exporter instead of gRPC.",
+      "expected_behavior": [
+        "Uses the ru.tinkoff.kora:opentelemetry-tracing-exporter-http artifact and extends OpentelemetryHttpExporterModule",
+        "Sets tracing.exporter.endpoint to http://zipkin:9411/api/v2/spans",
+        "Sets tracing.exporter.compression to \"none\" for Zipkin",
+        "Does not invent a tracing.exporter.protocol config key (protocol is determined by the chosen module)"
+      ],
+      "tags": ["exporter", "basic"]
+    },
+    {
+      "id": "kora-telemetry-tracing-manual-span",
+      "skills": ["kora-telemetry-tracing"],
+      "query": "Add a manual span around my processOrder business method that records exceptions and reports trace status.",
+      "expected_behavior": [
+        "Injects io.opentelemetry.api.trace.Tracer via the constructor of a @Component",
+        "Reads ru.tinkoff.kora.common.Context.current() and OpentelemetryContext.get(ctx), then parents the span with setParent(otctx.getContext())",
+        "Registers the span with OpentelemetryContext.set(ctx, otctx.add(span)) and restores the previous context in finally",
+        "Calls span.recordException(e) and span.setStatus(StatusCode.ERROR, ...) on failure and span.end() in finally",
+        "Does not use field injection or @Autowired"
+      ],
+      "tags": ["spans", "basic"]
+    },
+    {
+      "id": "kora-telemetry-tracing-async-fork",
+      "skills": ["kora-telemetry-tracing"],
+      "query": "How do I keep the trace context connected when I move work to a CompletableFuture.supplyAsync in a Kora service?",
+      "expected_behavior": [
+        "Calls Context.current().fork() before the async hop to copy the Kora context",
+        "Calls OpentelemetryContext.set(...) inside the async body so the span becomes current on the worker thread",
+        "Ends the span in whenComplete (or finally) and sets OK/ERROR status",
+        "Does not rely on a foreign @Async-style mechanism or a ThreadLocal-only propagation assumption"
+      ],
+      "tags": ["async", "advanced"]
+    },
+    {
+      "id": "kora-telemetry-tracing-coroutine",
+      "skills": ["kora-telemetry-tracing"],
+      "query": "In my Kotlin Kora service I have a suspend function and I want the manual span to stay inside the request trace.",
+      "expected_behavior": [
+        "Builds the span with setParent(otctx.context) from OpentelemetryContext.get(ctx)",
+        "Wraps the suspend body in withContext(Context.Kotlin.asCoroutineContext(ctx))",
+        "Restores the previous OpentelemetryContext and calls span.end() in finally",
+        "Uses constructor injection of Tracer in a @Component, not field injection"
+      ],
+      "tags": ["coroutines", "advanced"]
+    },
+    {
+      "id": "kora-telemetry-tracing-sampler",
+      "skills": ["kora-telemetry-tracing"],
+      "query": "I only want to sample about 10% of traces in production. How do I configure the sampler in Kora?",
+      "expected_behavior": [
+        "Explains that sampling is not a HOCON config key and there is no tracing.sampler block",
+        "Overrides opentelemetryTracingSampler() in the @KoraApp interface to shadow the @DefaultComponent",
+        "Returns a Sampler from io.opentelemetry.sdk.trace.samplers, e.g. Sampler.parentBased(Sampler.traceIdRatioBased(0.1))",
+        "Does not fabricate tracing.sampler.probability or tracing.sampler.type keys"
+      ],
+      "tags": ["sampling", "advanced"]
+    },
+    {
+      "id": "kora-telemetry-tracing-tempo",
+      "skills": ["kora-telemetry-tracing"],
+      "query": "Configure tracing export to Grafana Tempo over OTLP gRPC.",
+      "expected_behavior": [
+        "Uses OpentelemetryGrpcExporterModule with tracing.exporter.endpoint set to a Tempo gRPC URL on port 4317",
+        "Sets tracing.exporter.compression to \"none\" for Tempo",
+        "Keeps tracing.attributes.\"service.name\" set so the service is findable in the UI"
+      ],
+      "tags": ["exporter", "basic"]
+    },
+    {
+      "id": "kora-telemetry-tracing-reusable-component",
+      "skills": ["kora-telemetry-tracing"],
+      "query": "I keep repeating the span boilerplate everywhere. Give me a reusable component that wraps any operation in a span with correct context handling.",
+      "expected_behavior": [
+        "Creates a @Component (e.g. TracingService) with a generic method taking an operation name and a Supplier/lambda",
+        "Manages the full span lifecycle: setParent on the request context, OpentelemetryContext.add/set, status, recordException, span.end() and context restore in finally",
+        "Injects Tracer through the constructor",
+        "Does not use foreign-framework AOP, @Aspect, or field injection"
+      ],
+      "tags": ["spans", "advanced"]
+    }
+  ]
+}

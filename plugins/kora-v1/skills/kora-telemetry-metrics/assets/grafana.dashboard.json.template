@@ -1,0 +1,105 @@
+# Grafana Dashboard Configuration Example
+
+# Import this dashboard JSON into Grafana for visualizing Kora application metrics.
+# Works with Prometheus as data source.
+
+{
+  "dashboard": {
+    "title": "Kora Application Metrics",
+    "tags": ["kora", "micrometer", "prometheus"],
+    "timezone": "browser",
+    "panels": [
+      {
+        "id": 1,
+        "title": "Request Rate",
+        "type": "timeseries",
+        "gridPos": {"h": 8, "w": 12, "x": 0, "y": 0},
+        "targets": [
+          {
+            "expr": "sum(rate(http_server_request_duration_milliseconds_count[5m])) by (http_request_method, http_route)",
+            "legendFormat": "{{http_request_method}} {{http_route}}"
+          }
+        ]
+      },
+      {
+        "id": 2,
+        "title": "Error Rate",
+        "type": "timeseries",
+        "gridPos": {"h": 8, "w": 12, "x": 12, "y": 0},
+        "targets": [
+          {
+            "expr": "sum(rate(http_server_request_duration_milliseconds_count{http_response_status_code=~\"5..\"}[5m])) / sum(rate(http_server_request_duration_milliseconds_count[5m])) * 100",
+            "legendFormat": "Error Rate %"
+          }
+        ]
+      },
+      {
+        "id": 3,
+        "title": "Latency Percentiles",
+        "type": "timeseries",
+        "gridPos": {"h": 8, "w": 12, "x": 0, "y": 8},
+        "targets": [
+          {
+            "expr": "histogram_quantile(0.50, sum(rate(http_server_request_duration_milliseconds_bucket[5m])) by (le))",
+            "legendFormat": "p50"
+          },
+          {
+            "expr": "histogram_quantile(0.90, sum(rate(http_server_request_duration_milliseconds_bucket[5m])) by (le))",
+            "legendFormat": "p90"
+          },
+          {
+            "expr": "histogram_quantile(0.95, sum(rate(http_server_request_duration_milliseconds_bucket[5m])) by (le))",
+            "legendFormat": "p95"
+          },
+          {
+            "expr": "histogram_quantile(0.99, sum(rate(http_server_request_duration_milliseconds_bucket[5m])) by (le))",
+            "legendFormat": "p99"
+          }
+        ]
+      },
+      {
+        "id": 4,
+        "title": "JVM Memory",
+        "type": "timeseries",
+        "gridPos": {"h": 8, "w": 12, "x": 12, "y": 8},
+        "targets": [
+          {
+            "expr": "jvm_memory_used_bytes{area=\"heap\"}",
+            "legendFormat": "Heap Used"
+          },
+          {
+            "expr": "jvm_memory_max_bytes{area=\"heap\"}",
+            "legendFormat": "Heap Max"
+          }
+        ]
+      },
+      {
+        "id": 5,
+        "title": "Business Metrics - User Registrations",
+        "type": "stat",
+        "gridPos": {"h": 4, "w": 6, "x": 0, "y": 16},
+        "targets": [
+          {
+            "expr": "sum(increase(user_creation_total[1h]))",
+            "legendFormat": "Registrations (1h)"
+          }
+        ]
+      },
+      {
+        "id": 6,
+        "title": "Business Metrics - Payment Success Rate",
+        "type": "gauge",
+        "gridPos": {"h": 4, "w": 6, "x": 6, "y": 16},
+        "targets": [
+          {
+            "expr": "sum(rate(payment_processed_total{status=\"success\"}[5m])) / sum(rate(payment_processed_total[5m])) * 100",
+            "legendFormat": "Success Rate %"
+          }
+        ]
+      }
+    ],
+    "refresh": "30s",
+    "schemaVersion": 38,
+    "version": 1
+  }
+}

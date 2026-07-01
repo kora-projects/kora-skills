@@ -1,0 +1,35 @@
+package ${package}
+
+import ru.tinkoff.kora.database.common.annotation.Column
+import ru.tinkoff.kora.database.common.annotation.Embedded
+import ru.tinkoff.kora.database.jdbc.EntityJdbc
+import ru.tinkoff.kora.database.common.annotation.Id
+import ru.tinkoff.kora.database.common.annotation.Table
+import java.util.UUID
+
+/**
+ * Entity with composite ID (two UUID fields).
+ * Composite ID is implemented as a nested data class with @Embedded annotation.
+ *
+ * Key patterns:
+ * - Nested data class for the composite key (ID)
+ * - @field:Embedded flattens the composite key fields into the parent table
+ * - @field:Id marks the composite key as the primary key
+ * - Use %{id#where} in repository queries to match all key columns
+ */
+@EntityJdbc
+@Table("${table_name}")
+data class ${entity_name}(
+    @field:Id @field:Embedded val id: ID,
+    @field:Column("name") val name: String,
+    @field:Column("field1") val field1: String,
+    @field:Column("field2") val field2: String? = null
+) {
+    /**
+     * Composite ID class with two fields.
+     */
+    data class ID(
+        @field:Column("${id1_column}") val ${id1_field}: ${id1_type},
+        @field:Column("${id2_column}") val ${id2_field}: ${id2_type}
+    )
+}

@@ -1,0 +1,90 @@
+{
+  "evals": [
+    {
+      "id": "kora-aop-scheduling-quartz-cron-daily",
+      "skills": ["kora-aop-scheduling-quartz"],
+      "query": "In my Kora service I need a job that runs every day at 3 AM to generate a nightly report. How do I schedule it?",
+      "expected_behavior": [
+        "Adds the ru.tinkoff.kora:scheduling-quartz dependency and the mandatory annotation processor (annotation-processors for Java or symbol-processors for Kotlin)",
+        "Plugs QuartzModule into the @KoraApp interface",
+        "Annotates a method on a @Component class with @ScheduleWithCron(\"0 0 3 * * ?\") imported from ru.tinkoff.kora.scheduling.quartz",
+        "Places the scheduled method on a @Component class (which may remain final in Java)",
+        "Does not use field injection or a non-Kora @Scheduled-style annotation"
+      ],
+      "tags": ["quartz", "basic"]
+    },
+    {
+      "id": "kora-aop-scheduling-quartz-config-cron",
+      "skills": ["kora-aop-scheduling-quartz"],
+      "query": "I want the cron schedule of my Quartz job to be configurable in application.conf instead of hardcoded in the annotation.",
+      "expected_behavior": [
+        "Uses @ScheduleWithCron(config = \"job\") and points config at a HOCON node",
+        "Defines job { cron = \"...\" } in application.conf",
+        "Explains that the config value takes priority over the annotation value",
+        "Does not invent a non-existent annotation attribute"
+      ],
+      "tags": ["quartz", "config"]
+    },
+    {
+      "id": "kora-aop-scheduling-quartz-custom-trigger",
+      "skills": ["kora-aop-scheduling-quartz"],
+      "query": "I need a Quartz job that fires every 5 seconds using a custom Trigger, not a cron expression, in my Kora app.",
+      "expected_behavior": [
+        "Declares an org.quartz.Trigger built with TriggerBuilder and SimpleScheduleBuilder as a tagged component on the @KoraApp interface using @Tag",
+        "Annotates the job method with @ScheduleWithTrigger(@Tag(SomeClass.class)) matching the Trigger's tag",
+        "Notes that @ScheduleWithTrigger takes a @Tag reference, not a string name",
+        "Does not use field injection or a non-Kora scheduling annotation"
+      ],
+      "tags": ["quartz", "trigger", "advanced"]
+    },
+    {
+      "id": "kora-aop-scheduling-quartz-disallow-concurrent",
+      "skills": ["kora-aop-scheduling-quartz"],
+      "query": "My hourly Quartz job sometimes runs longer than an hour and I get two overlapping executions. How do I prevent that in Kora?",
+      "expected_behavior": [
+        "Adds @DisallowConcurrentExecution alongside @ScheduleWithCron from ru.tinkoff.kora.scheduling.quartz",
+        "Explains that this prevents the same job from running in parallel",
+        "Optionally mentions scheduling.waitForJobComplete for graceful shutdown",
+        "Does not suggest a manual lock as the primary solution instead of the built-in annotation"
+      ],
+      "tags": ["quartz", "concurrency"]
+    },
+    {
+      "id": "kora-aop-scheduling-quartz-vs-jdk",
+      "skills": ["kora-aop-scheduling-quartz"],
+      "query": "I just need to run a cleanup task every 30 seconds in my Kora service. Should I use Quartz for that?",
+      "expected_behavior": [
+        "Recommends the lighter scheduling-jdk module with @ScheduleAtFixedRate or @ScheduleWithFixedDelay for plain fixed intervals",
+        "Explains that Quartz is for cron expressions or custom Triggers, not simple timers",
+        "Does not pull in scheduling-quartz unnecessarily",
+        "Does not reference a non-Kora @Scheduled annotation"
+      ],
+      "tags": ["quartz", "decision"]
+    },
+    {
+      "id": "kora-aop-scheduling-quartz-persistent-jobstore",
+      "skills": ["kora-aop-scheduling-quartz"],
+      "query": "I want my Quartz jobs in Kora to survive restarts and run across a cluster using PostgreSQL for storage.",
+      "expected_behavior": [
+        "Configures the JDBC JobStore via org.quartz.jobStore.class = org.quartz.impl.jdbcjobstore.JobStoreTX in the quartz config block",
+        "Sets a driverDelegateClass (e.g. PostgreSQLDelegate), a dataSource, and clustering with isClustered and instanceId = AUTO",
+        "Mentions creating the Quartz schema tables in the database",
+        "Pairs stateful jobs with @PersistJobDataAfterExecution and @DisallowConcurrentExecution",
+        "Does not claim RAMJobStore (the default) persists across restarts"
+      ],
+      "tags": ["quartz", "persistence", "advanced"]
+    },
+    {
+      "id": "kora-aop-scheduling-quartz-graceful-shutdown",
+      "skills": ["kora-aop-scheduling-quartz"],
+      "query": "My long-running Quartz batch job must stop cleanly when the Kora service receives SIGTERM. How do I handle graceful shutdown?",
+      "expected_behavior": [
+        "Sets scheduling.waitForJobComplete to control whether shutdown waits for running jobs",
+        "Checks Thread.currentThread().isInterrupted() inside the job loop and returns early",
+        "Explains the interrupt is delivered to the running job thread on shutdown",
+        "Does not rely on non-Kora lifecycle hooks"
+      ],
+      "tags": ["quartz", "shutdown", "advanced"]
+    }
+  ]
+}

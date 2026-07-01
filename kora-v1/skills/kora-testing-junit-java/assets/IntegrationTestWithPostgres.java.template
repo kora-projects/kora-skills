@@ -1,0 +1,115 @@
+package ${package};
+
+import static org.junit.jupiter.api.Assertions.*;
+
+import org.jetbrains.annotations.NotNull;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+import org.testcontainers.containers.PostgreSQLContainer;
+import org.testcontainers.junit.jupiter.Container;
+import org.testcontainers.junit.jupiter.Testcontainers;
+import org.testcontainers.utility.DockerImageName;
+
+import ru.tinkoff.kora.test.extension.junit5.KoraAppTest;
+import ru.tinkoff.kora.test.extension.junit5.KoraAppTestConfigModifier;
+import ru.tinkoff.kora.test.extension.junit5.KoraConfigModification;
+import ru.tinkoff.kora.test.extension.junit5.TestComponent;
+
+import java.time.Duration;
+import org.slf4j.LoggerFactory;
+
+/**
+ * Integration test with PostgreSQL + Flyway migrations.
+ *
+ * Uses standard Testcontainers PostgreSQLContainer pattern.
+ */
+@Testcontainers
+@KoraAppTest(TestApplication.class)
+class ${repositoryName}Test implements KoraAppTestConfigModifier {
+
+    @Container
+    static final PostgreSQLContainer<?> POSTGRES =
+        new PostgreSQLContainer<>(DockerImageName.parse("postgres:16"))
+            .withStartupTimeout(Duration.ofSeconds(30))
+            .withDatabaseName("testdb")
+            .withUsername("test")
+            .withPassword("test");
+
+    @TestComponent
+    private ${repositoryName} ${repositoryVarName};
+
+    @TestComponent
+    private TestApplication.Test${entityName}Repository testRepository;
+
+    @NotNull
+    @Override
+    public KoraConfigModification config() {
+        return KoraConfigModification.ofSystemProperty(
+                "DB_JDBC_URL", POSTGRES.getJdbcUrl())
+            .withSystemProperty("DB_USER", POSTGRES.getUsername())
+            .withSystemProperty("DB_PASS", POSTGRES.getPassword());
+    }
+
+    @BeforeEach
+    void cleanup() {
+        testRepository.deleteAll();
+    }
+
+    @Test
+    void shouldSaveAndFind() {
+        // given
+        var entity = new ${entityName}("test-data");
+
+        // when
+        ${repositoryVarName}.save(entity);
+        var found = ${repositoryVarName}.findById(entity.id());
+
+        // then
+        assertNotNull(found);
+        assertEquals(entity.data(), found.data());
+    }
+
+    @Test
+    void shouldDelete() {
+        // given
+        var entity = new ${entityName}("test-data");
+        ${repositoryVarName}.save(entity);
+
+        // when
+        ${repositoryVarName}.deleteById(entity.id());
+
+        // then
+        var found = ${repositoryVarName}.findById(entity.id());
+        assertNull(found);
+    }
+
+    @Test
+    void shouldUpdate() {
+        // given
+        var entity = new ${entityName}("original-data");
+        ${repositoryVarName}.save(entity);
+
+        // when
+        var updated = new ${entityName}(entity.id(), "updated-data");
+        ${repositoryVarName}.update(updated);
+
+        // then
+        var found = ${repositoryVarName}.findById(entity.id());
+        assertNotNull(found);
+        assertEquals("updated-data", found.data());
+    }
+
+    @Test
+    void shouldFindAll() {
+        // given
+        ${repositoryVarName}.save(new ${entityName}("data-1"));
+        ${repositoryVarName}.save(new ${entityName}("data-2"));
+        ${repositoryVarName}.save(new ${entityName}("data-3"));
+
+        // when
+        var all = testRepository.findAll();
+
+        // then
+        assertEquals(3, all.size());
+    }
+}

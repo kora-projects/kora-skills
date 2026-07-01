@@ -1,0 +1,14 @@
+package ${package};
+
+import ru.tinkoff.kora.json.common.annotation.Json;
+${imports}
+
+/**
+ * DTO for ${entity_name}.
+ *
+ * <p>Used for JSON serialization/deserialization via the Kora JSON module.</p>
+ *
+ * @param ${fields_description}
+ */
+@Json
+${record_class_modifier} ${dto_name}(${fields}) {}

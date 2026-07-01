@@ -1,0 +1,97 @@
+package ${packagePath};
+
+import ru.tinkoff.kora.common.Component;
+import ru.tinkoff.kora.common.Tag;
+
+/**
+ * Component with tag for disambiguation.
+ *
+ * Usage:
+ * - Multiple implementations of the same interface
+ * - Strategy pattern with runtime selection
+ * - Multi-tenant components (different databases, caches)
+ * - Environment-specific implementations (prod vs dev)
+ *
+ * Tag classes should be simple marker classes, NOT custom annotations.
+ *
+ * Good:
+ *   public final class RedisTag {}
+ *   public final class PrimaryTag {}
+ *
+ * Bad (unnecessary complexity):
+ *   @Target({...})
+ *   @Retention(RetentionPolicy.RUNTIME)
+ *   @Tag(RedisTag.class)
+ *   public @interface RedisCache {}
+ */
+@Tag(${TagClass}.class)
+@Component
+public final class ${ComponentName} implements ${InterfaceName} {
+
+    // TODO: Add implementation-specific fields
+
+    public ${ComponentName}(/* Dependencies */) {
+        // TODO: Initialize implementation-specific resources
+    }
+
+    @Override
+    public void doSomething() {
+        // TODO: Implementation-specific logic
+        System.out.println("${ComponentName} doing something (tagged with ${TagClass})");
+    }
+}
+
+// ============================================================================
+// EXAMPLE USAGE
+// ============================================================================
+//
+// // Tag classes (simple marker classes)
+// public final class RedisTag {}
+// public final class CaffeineTag {}
+//
+// // Tagged implementations
+// @Tag(RedisTag.class)
+// @Component
+// public final class RedisCache implements Cache { ... }
+//
+// @Tag(CaffeineTag.class)
+// @Component
+// public final class CaffeineCache implements Cache { ... }
+//
+// // Tagged injection
+// @Component
+// public final class UserService {
+//     private final Cache redisCache;
+//     private final Cache localCache;
+//
+//     public UserService(
+//         @Tag(RedisTag.class) Cache redisCache,
+//         @Tag(CaffeineTag.class) Cache localCache
+//     ) {
+//         this.redisCache = redisCache;
+//         this.localCache = localCache;
+//     }
+// }
+//
+// // Collect ALL caches (including tagged)
+// @Component
+// public final class CacheManager {
+//     private final List<Cache> allCaches;
+//
+//     public CacheManager(@Tag(Tag.Any.class) List<Cache> allCaches) {
+//         this.allCaches = allCaches;
+//     }
+// }
+//
+// // Collect only Redis caches
+// @Component
+// public final class RedisCacheManager {
+//     private final List<Cache> redisCaches;
+//
+//     public RedisCacheManager(
+//         @Tag(RedisTag.class)
+//         All<Cache> redisCaches
+//     ) {
+//         this.redisCaches = redisCaches;
+//     }
+// }

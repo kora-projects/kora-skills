@@ -1,0 +1,46 @@
+package ${package}
+
+import java.util.Base64
+import java.util.concurrent.CompletableFuture
+import ru.tinkoff.kora.common.Module
+import ru.tinkoff.kora.common.Principal
+import ru.tinkoff.kora.common.Tag
+import ru.tinkoff.kora.http.server.common.auth.HttpServerPrincipalExtractor
+
+/**
+ * HTTP Basic authentication wired to an OpenAPI security scheme.
+ *
+ * The generated controller invokes this extractor before the delegate, passing the
+ * credential after the `Basic ` prefix (base64 of `username:password`) as `value`. Throw a
+ * [SecurityException] to reject; map it to 401/403 in an error `HttpServerInterceptor`.
+ *
+ * Replace `ApiSecurity` with the class generated from your OpenAPI contract. Always serve
+ * Basic auth over HTTPS: credentials are only base64-encoded, not encrypted.
+ */
+@Module
+interface BasicAuthExtractor {
+
+    /** Basic-auth principal. Must implement [Principal]. */
+    data class BasicAuthPrincipal(val userId: String, val roles: List<String>) : Principal
+
+    /** Validates credentials against your user store (DB, LDAP, ...). */
+    interface CredentialService {
+        fun validate(username: String, password: String): Boolean
+        fun roles(username: String): List<String>
+    }
+
+    @Tag(ApiSecurity.BasicAuth::class)
+    fun basicHttpServerPrincipalExtractor(creds: CredentialService): HttpServerPrincipalExtractor<Principal> {
+        return HttpServerPrincipalExtractor { _, value ->
+            if (value == null) {
+                throw SecurityException("Missing credentials")
+            }
+            val decoded = String(Base64.getDecoder().decode(value), Charsets.UTF_8)
+            val parts = decoded.split(":", limit = 2)
+            if (parts.size != 2 || !creds.validate(parts[0], parts[1])) {
+                throw SecurityException("Invalid credentials")
+            }
+            CompletableFuture.completedFuture(BasicAuthPrincipal(parts[0], creds.roles(parts[0])))
+        }
+    }
+}

@@ -1,0 +1,61 @@
+package ${package}.service;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import ru.tinkoff.kora.common.Component;
+import ru.tinkoff.kora.logging.common.MDC;
+import ru.tinkoff.kora.logging.common.arg.StructuredArgument;
+
+import java.util.Map;
+
+/**
+ * Example service demonstrating Kora structured logging patterns.
+ */
+@Component
+public class UserService {
+    private static final Logger log = LoggerFactory.getLogger(UserService.class);
+
+    /**
+     * Structured argument: a parameter interpolated into the message.
+     */
+    public User createUser(String userId, String email, String role) {
+        // Typed Map overload renders a nested JSON object; avoids manual generator calls.
+        var userArg = StructuredArgument.arg("user", Map.of(
+            "id", userId,
+            "email", email,
+            "role", role));
+
+        log.info("Creating user {}", userArg);
+        User user = new User(userId, email, role);
+        log.info("Created user {}", userArg);
+        return user;
+    }
+
+    /**
+     * Kora MDC: structured context attached to every record in scope.
+     * Propagated by KoraAsyncAppender. Remove what you put.
+     */
+    public void processOrder(String orderId, String userId) {
+        MDC.put("orderId", orderId);
+        MDC.put("userId", userId);
+        try {
+            log.info("Processing order");   // orderId and userId attached to the record
+            log.info("Order processed");
+        } finally {
+            MDC.remove("orderId");
+            MDC.remove("userId");
+        }
+    }
+
+    /**
+     * Marker: structured metadata that is not interpolated into the message.
+     */
+    public void auditAction(String action, String userId) {
+        var marker = StructuredArgument.marker("audit", Map.of(
+            "action", action,
+            "userId", userId));
+        log.info(marker, "Audit event: {}", action);
+    }
+
+    public record User(String id, String email, String role) {}
+}

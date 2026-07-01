@@ -1,0 +1,95 @@
+package ${package}
+
+import ru.tinkoff.kora.common.Mapping
+import ru.tinkoff.kora.database.common.UpdateCount
+import ru.tinkoff.kora.database.common.annotation.Column
+import ru.tinkoff.kora.database.common.annotation.Id
+import ru.tinkoff.kora.database.common.annotation.Query
+import ru.tinkoff.kora.database.common.annotation.Repository
+import ru.tinkoff.kora.database.common.annotation.Table
+import ru.tinkoff.kora.database.jdbc.EntityJdbc
+import ru.tinkoff.kora.database.jdbc.JdbcRepository
+import ru.tinkoff.kora.database.jdbc.mapper.parameter.JdbcParameterColumnMapper
+import ru.tinkoff.kora.database.jdbc.mapper.result.JdbcResultColumnMapper
+import java.sql.PreparedStatement
+import java.sql.ResultSet
+import java.sql.Types
+
+/**
+ * Repository example with custom mappers for an enum stored as an integer code (Kotlin).
+ *
+ * Supply a JdbcResultColumnMapper (read) and a JdbcParameterColumnMapper (write); select
+ * both by repeating @Mapping on the property. In Kotlin, mappers only need to handle T?.
+ *
+ * Database schema example:
+ *   CREATE TABLE tasks (
+ *       id     BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+ *       title  VARCHAR(255) NOT NULL,
+ *       status INT NOT NULL
+ *   );
+ */
+@EntityJdbc
+@Table("${table_name}")
+data class Task(
+    @field:Id @field:Column("id") val id: Long?,
+    @field:Column("title") val title: String,
+    @field:Mapping(TaskStatusResultMapper::class)
+    @field:Mapping(TaskStatusParameterMapper::class)
+    @field:Column("status") val status: TaskStatus
+) {
+    constructor(title: String, status: TaskStatus) : this(null, title, status)
+}
+
+/** Enum stored as an integer code. */
+enum class TaskStatus(val code: Int) {
+    UNKNOWN(-10),
+    PENDING(0),
+    IN_PROGRESS(10),
+    COMPLETED(20);
+
+    companion object {
+        private val ALL = entries.toTypedArray()
+
+        fun fromCode(code: Int): TaskStatus = ALL.find { it.code == code } ?: UNKNOWN
+    }
+}
+
+/** Reads the integer column into a TaskStatus. */
+class TaskStatusResultMapper : JdbcResultColumnMapper<TaskStatus> {
+    override fun apply(rs: ResultSet, index: Int): TaskStatus = TaskStatus.fromCode(rs.getInt(index))
+}
+
+/** Writes a TaskStatus as its integer code. */
+class TaskStatusParameterMapper : JdbcParameterColumnMapper<TaskStatus> {
+    override fun set(stmt: PreparedStatement, index: Int, value: TaskStatus?) {
+        if (value != null) {
+            stmt.setInt(index, value.code)
+        } else {
+            stmt.setNull(index, Types.INTEGER)
+        }
+    }
+}
+
+/**
+ * Repository using the enum-mapped entity.
+ */
+@Repository
+interface TaskRepository : JdbcRepository {
+
+    @Query("SELECT %{return#selects} FROM %{return#table} WHERE id = :id")
+    fun findById(id: Long): Task?
+
+    @Query("SELECT %{return#selects} FROM %{return#table}")
+    fun findAll(): List<Task>
+
+    // Enum query parameters need their own @Mapping (the property mappers apply to the entity only)
+    @Query("SELECT %{return#selects} FROM %{return#table} WHERE status = :status")
+    fun findByStatus(@Mapping(TaskStatusParameterMapper::class) status: TaskStatus): List<Task>
+
+    @Query("INSERT INTO %{entity#inserts-= @id}")
+    @Id
+    fun insert(task: Task): Long
+
+    @Query("UPDATE %{entity#table} SET %{entity#updates} WHERE %{entity#where = @id}")
+    fun update(task: Task): UpdateCount
+}

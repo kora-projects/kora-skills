@@ -1,0 +1,43 @@
+package ${package};
+
+import jakarta.annotation.Nullable;
+import java.time.Duration;
+import ru.tinkoff.kora.config.common.annotation.ConfigSource;
+import ru.tinkoff.kora.config.common.annotation.ConfigValueExtractor;
+
+/**
+ * Application configuration mapped from the "app" section of application.conf.
+ *
+ * Required values are plain methods (startup fails if absent).
+ * Optional values use @Nullable.
+ * Default values use a Java default method (Kora has no @DefaultValue annotation).
+ * Nested objects use @ConfigValueExtractor, never @ConfigSource.
+ */
+@ConfigSource("app")
+public interface AppConfig {
+
+    String name();          // required
+
+    String version();       // required
+
+    @Nullable
+    String environment();   // optional
+
+    DatabaseConfig database();
+
+    @ConfigValueExtractor
+    interface DatabaseConfig {
+
+        String url();
+        String username();
+        String password();
+
+        default int poolSize() {
+            return 20;
+        }
+
+        default Duration connectionTimeout() {
+            return Duration.ofSeconds(30);
+        }
+    }
+}

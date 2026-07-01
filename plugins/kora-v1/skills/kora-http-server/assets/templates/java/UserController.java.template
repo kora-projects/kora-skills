@@ -1,0 +1,93 @@
+package com.example.controller;
+
+import jakarta.annotation.Nullable;
+import java.util.List;
+import java.util.Optional;
+import ru.tinkoff.kora.common.Component;
+import ru.tinkoff.kora.http.common.HttpMethod;
+import ru.tinkoff.kora.http.common.HttpResponseEntity;
+import ru.tinkoff.kora.http.common.annotation.HttpRoute;
+import ru.tinkoff.kora.http.common.annotation.Path;
+import ru.tinkoff.kora.http.common.annotation.Query;
+import ru.tinkoff.kora.http.common.body.HttpBody;
+import ru.tinkoff.kora.http.common.header.HttpHeaders;
+import ru.tinkoff.kora.http.server.common.HttpServerResponse;
+import ru.tinkoff.kora.http.server.common.HttpServerResponseException;
+import ru.tinkoff.kora.http.server.common.annotation.HttpController;
+import ru.tinkoff.kora.json.common.annotation.Json;
+
+/**
+ * CRUD controller template.
+ *
+ * Demonstrates:
+ * - @HttpController (no base path; the prefix lives on each @HttpRoute path)
+ * - @HttpRoute with HttpMethod + path
+ * - @Path / @Query parameter binding (@Nullable for optional)
+ * - @Json for request and response bodies
+ * - HttpResponseEntity / HttpServerResponse for status and headers
+ * - HttpServerResponseException for error short-circuit
+ */
+@Component
+@HttpController
+public final class UserController {
+
+    private final UserService userService;
+
+    public UserController(UserService userService) {
+        this.userService = userService;
+    }
+
+    @HttpRoute(method = HttpMethod.GET, path = "/users/{userId}")
+    @Json
+    public UserResponse getUser(@Path String userId) {
+        return userService.findById(userId)
+                .orElseThrow(() -> HttpServerResponseException.of(404, "User not found: " + userId));
+    }
+
+    @HttpRoute(method = HttpMethod.GET, path = "/users")
+    @Json
+    public List<UserResponse> listUsers(@Nullable @Query("page") Integer page,
+                                        @Nullable @Query("size") Integer size) {
+        int pageNum = page == null ? 0 : page;
+        int pageSize = size == null ? 10 : size;
+        return userService.findAll(pageNum, pageSize);
+    }
+
+    @HttpRoute(method = HttpMethod.POST, path = "/users")
+    @Json
+    public HttpResponseEntity<UserResponse> createUser(@Json UserRequest request) {
+        UserResponse created = userService.create(request);
+        return HttpResponseEntity.of(201, HttpHeaders.of("Location", "/users/" + created.id()), created);
+    }
+
+    @HttpRoute(method = HttpMethod.PUT, path = "/users/{userId}")
+    @Json
+    public UserResponse updateUser(@Path String userId, @Json UserRequest request) {
+        return userService.update(userId, request)
+                .orElseThrow(() -> HttpServerResponseException.of(404, "User not found: " + userId));
+    }
+
+    @HttpRoute(method = HttpMethod.DELETE, path = "/users/{userId}")
+    public HttpServerResponse deleteUser(@Path String userId) {
+        userService.delete(userId);
+        return HttpServerResponse.of(204, HttpBody.empty());
+    }
+
+    // DTOs (typically in separate files)
+
+    @Json
+    public record UserRequest(String email, String name) {}
+
+    @Json
+    public record UserResponse(String id, String email, String name) {}
+
+    // Application service (typically in a separate file)
+
+    public interface UserService {
+        Optional<UserResponse> findById(String id);
+        List<UserResponse> findAll(int page, int size);
+        UserResponse create(UserRequest request);
+        Optional<UserResponse> update(String id, UserRequest request);
+        void delete(String id);
+    }
+}

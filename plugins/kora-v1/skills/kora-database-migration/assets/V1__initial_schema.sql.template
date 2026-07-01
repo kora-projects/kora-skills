@@ -1,0 +1,38 @@
+-- V1__initial_schema.sql
+-- Initial database schema migration
+-- Kora Framework + Flyway
+
+-- Enable UUID extension (PostgreSQL)
+CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
+
+-- Users table
+CREATE TABLE users (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    email VARCHAR(255) NOT NULL UNIQUE,
+    first_name VARCHAR(100),
+    last_name VARCHAR(100),
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
+-- Index for email lookups
+CREATE INDEX idx_users_email ON users(email);
+
+-- Created at index for sorting
+CREATE INDEX idx_users_created_at ON users(created_at DESC);
+
+-- Audit log table
+CREATE TABLE audit_log (
+    id BIGSERIAL PRIMARY KEY,
+    table_name VARCHAR(255) NOT NULL,
+    record_id UUID NOT NULL,
+    action VARCHAR(50) NOT NULL,  -- INSERT, UPDATE, DELETE
+    old_data JSONB,
+    new_data JSONB,
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    created_by UUID
+);
+
+-- Index for audit lookups
+CREATE INDEX idx_audit_table_record ON audit_log(table_name, record_id);
+CREATE INDEX idx_audit_created_at ON audit_log(created_at DESC);

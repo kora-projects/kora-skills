@@ -1,0 +1,61 @@
+plugins {
+    kotlin("jvm") version "1.9.25"
+    id("com.google.devtools.ksp") version "1.9.25-1.0.20"
+    id("application")
+}
+
+val koraBom: Configuration by configurations.creating
+configurations {
+    ksp.get().extendsFrom(koraBom)
+    compileOnly.get().extendsFrom(koraBom)
+    api.get().extendsFrom(koraBom)
+    implementation.get().extendsFrom(koraBom)
+}
+
+val koraVersion: String by project
+dependencies {
+    koraBom(platform("ru.tinkoff.kora:kora-parent:$koraVersion"))
+    ksp("ru.tinkoff.kora:symbol-processors")
+
+    // Basic dependencies
+    implementation("ru.tinkoff.kora:logging-logback")
+    implementation("ru.tinkoff.kora:config-hocon")
+
+    // Add more dependencies as needed:
+    // implementation("ru.tinkoff.kora:database-jdbc")
+    // implementation("ru.tinkoff.kora:validation-module")
+    // implementation("ru.tinkoff.kora:micrometer-module")
+}
+
+kotlin {
+    jvmToolchain(25)
+    sourceSets.main {
+        kotlin.srcDir("build/generated/ksp/main/kotlin")
+        kotlin.srcDir("build/generated/kora/main/kotlin")
+    }
+}
+
+application {
+    applicationName = "application"
+    mainClass.set("${packagePath}.ApplicationKt")
+    applicationDefaultJvmArgs = listOf("-Dfile.encoding=UTF-8")
+}
+
+tasks.distTar {
+    archiveFileName.set("application.tar")
+}
+
+tasks.compileKotlin {
+    kotlinOptions {
+        // jvmTarget is automatically set by jvmToolchain
+        freeCompilerArgs = listOf("-Xjsr305=strict")
+    }
+}
+
+tasks.test {
+    useJUnitPlatform()
+    testLogging {
+        events("passed", "skipped", "failed")
+        showStandardStreams = true
+    }
+}

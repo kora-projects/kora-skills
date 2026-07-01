@@ -1,0 +1,112 @@
+{
+  "evals": [
+    {
+      "id": "kora-aop-resilient-module-setup",
+      "skills": ["kora-aop-resilient"],
+      "query": "How do I enable Kora's resilience features (retry, circuit breaker, timeout) in my application?",
+      "expected_behavior": [
+        "Adds implementation \"ru.tinkoff.kora:resilient-kora\" to the dependencies",
+        "Includes the mandatory annotation processor (Java annotationProcessor \"ru.tinkoff.kora:annotation-processors\", Kotlin ksp \"ru.tinkoff.kora:symbol-processors\")",
+        "Has the @KoraApp interface extend ResilientModule",
+        "Does not pin a version on the ru.tinkoff.kora:resilient-kora artifact (versions come from the kora-parent BOM)"
+      ],
+      "tags": ["setup", "basic"]
+    },
+    {
+      "id": "kora-aop-resilient-retry-basic",
+      "skills": ["kora-aop-resilient"],
+      "query": "Add a retry to a UserService.findById method so transient failures are retried, using the config key 'user.read'.",
+      "expected_behavior": [
+        "Annotates the method with @Retry(\"user.read\") imported from ru.tinkoff.kora.resilient.retry.annotation",
+        "Keeps the class @Component and non-final in Java (or open in Kotlin) so the AOP proxy applies",
+        "Configures resilient.retry.\"user.read\" with attempts and delay (and optionally delayStep)",
+        "Does not use field injection or a non-Kora @Retryable annotation"
+      ],
+      "tags": ["retry", "basic"]
+    },
+    {
+      "id": "kora-aop-resilient-circuitbreaker-config",
+      "skills": ["kora-aop-resilient"],
+      "query": "Configure a circuit breaker for 'order.service' with a sliding window of 50, a 30% failure threshold, and a 60s open wait.",
+      "expected_behavior": [
+        "Writes HOCON under resilient.circuitbreaker.\"order.service\" with slidingWindowSize = 50, failureRateThreshold = 30, waitDurationInOpenState = \"60s\"",
+        "Uses minimumRequiredCalls (not minimumNumberOfCalls) for the minimum-calls key",
+        "Applies @CircuitBreaker(\"order.service\") whose value matches the config key",
+        "Explains the CLOSED/OPEN/HALF_OPEN states and permittedCallsInHalfOpenState"
+      ],
+      "tags": ["circuit-breaker", "config"]
+    },
+    {
+      "id": "kora-aop-resilient-timeout-per-attempt",
+      "skills": ["kora-aop-resilient"],
+      "query": "I want a search method retried 3 times, where each attempt is limited to 2 seconds. How do I wire timeout and retry?",
+      "expected_behavior": [
+        "Places @Timeout as the inner (last-listed) annotation and @Retry outside it so the timeout bounds each attempt",
+        "Sets resilient.retry attempts = 3 and resilient.timeout duration = \"2s\" under matching config keys",
+        "Notes that a TimeoutExhaustedException is thrown when the timeout duration is exceeded",
+        "Does not claim @Timeout wraps the whole retry chain when it is the innermost aspect"
+      ],
+      "tags": ["timeout", "retry", "advanced"]
+    },
+    {
+      "id": "kora-aop-resilient-fallback-signature",
+      "skills": ["kora-aop-resilient"],
+      "query": "Add a fallback to getProduct(String id, boolean includeDetails) that returns a cached product but only takes the id.",
+      "expected_behavior": [
+        "Uses @Fallback(value = \"...\", method = \"getFromCacheFallback(id)\") from ru.tinkoff.kora.resilient.fallback.annotation",
+        "Declares the fallback method in the same class with protected or public visibility",
+        "Gives the fallback a return type assignable to the primary method and parameters that are an ordered subset of the primary parameters",
+        "Does not make the fallback method private"
+      ],
+      "tags": ["fallback", "advanced"]
+    },
+    {
+      "id": "kora-aop-resilient-custom-cb-predicate",
+      "skills": ["kora-aop-resilient"],
+      "query": "My circuit breaker trips on HTTP 404 business errors. Make it only count server errors (5xx).",
+      "expected_behavior": [
+        "Implements CircuitBreakerPredicate as a @Component, returning a unique name() and a test(Throwable) that returns true only for server (5xx) errors",
+        "References the predicate via resilient.circuitbreaker.\"<name>\".failurePredicateName matching the name() value",
+        "Inspects HttpClientResponseException.code() to distinguish business from infrastructure failures",
+        "Does not reach for a non-Kora resilience predicate API"
+      ],
+      "tags": ["circuit-breaker", "predicate", "advanced"]
+    },
+    {
+      "id": "kora-aop-resilient-custom-retry-predicate",
+      "skills": ["kora-aop-resilient"],
+      "query": "I only want to retry on connection-level failures like SocketTimeoutException and ConnectException, not on every exception.",
+      "expected_behavior": [
+        "Implements RetryPredicate as a @Component with name() and test(Throwable) checking the transient exception types",
+        "Wires it via resilient.retry.\"<name>\".failurePredicateName equal to the predicate's name()",
+        "Notes that Kora retries on all exceptions by default until a predicate narrows it",
+        "Does not annotate the predicate with a non-Kora stereotype or use field injection"
+      ],
+      "tags": ["retry", "predicate", "advanced"]
+    },
+    {
+      "id": "kora-aop-resilient-combined-stack",
+      "skills": ["kora-aop-resilient"],
+      "query": "Wrap a payment charge call with full resilience: timeout per attempt, retry on transient failures, a circuit breaker, and a fallback for graceful degradation.",
+      "expected_behavior": [
+        "Stacks @Fallback, @CircuitBreaker, @Retry, @Timeout on one @Component method, with @Timeout innermost (listed last) and @Fallback outermost",
+        "Provides resilient.* config for all four aspects under matching keys",
+        "Adds a same-class protected fallback method with a compatible signature",
+        "Does not introduce a non-Kora @CircuitBreaker/@Retryable or external resilience-library wiring"
+      ],
+      "tags": ["combination", "advanced"]
+    },
+    {
+      "id": "kora-aop-resilient-imperative-api",
+      "skills": ["kora-aop-resilient"],
+      "query": "I can't annotate the method I need to protect. How do I use a circuit breaker imperatively in Kora?",
+      "expected_behavior": [
+        "Injects CircuitBreakerManager into the @Component via constructor injection",
+        "Resolves the breaker with manager.get(\"<config-name>\") and runs work through circuitBreaker.accept(...)",
+        "Notes the same imperative pattern exists via RetryManager, TimeoutManager, and FallbackManager",
+        "Does not rely on a runtime proxy or reflection-based interceptor"
+      ],
+      "tags": ["imperative", "advanced"]
+    }
+  ]
+}

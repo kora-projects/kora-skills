@@ -1,0 +1,73 @@
+// Fallback pattern for graceful degradation.
+// Replace `com.example.app.service` with your package.
+// Class must be `open` for aspects to work.
+
+package com.example.app.service
+
+import ru.tinkoff.kora.common.Component
+import ru.tinkoff.kora.resilient.fallback.annotation.Fallback
+import java.util.Optional
+import java.util.function.Supplier
+
+@Component
+open class ProductService(                                              // open, not final
+    private val repository: ProductRepository,
+    private val cache: Cache
+) {
+
+    // Fallback to cache when primary method fails
+    @Fallback(value = "product.read", method = "getFromCache(id)")
+    open fun getProduct(id: String): Product {
+        return repository.findById(id)
+            .orElseThrow { NotFoundException(id) }
+    }
+
+    // Fallback method signature rules:
+    // 1. Return type must be assignable to primary method return type
+    // 2. Parameters must be subset of primary method parameters (same order)
+    // 3. Must be in same class, protected or public visibility
+    protected open fun getFromCache(id: String): Product {
+        return cache.get(id) { Product.unknown() }
+    }
+}
+
+// Product data class
+data class Product(val id: String, val name: String) {
+    companion object {
+        fun unknown(): Product = Product("unknown", "Unknown")
+    }
+}
+
+// NotFoundException
+class NotFoundException(id: String) : RuntimeException("Product not found: $id")
+
+// Repository placeholder
+@Component
+open class ProductRepository {
+    open fun findById(id: String): Optional<Product> = Optional.empty()
+}
+
+// Cache placeholder
+@Component
+open class Cache {
+    open fun get(id: String, fallback: Supplier<Product>): Product = fallback.get()
+}
+
+// Config (HOCON):
+//
+// resilient.fallback {
+//   default { enabled = true }
+//   "product.read" {
+//     failurePredicateName = "CacheableErrors"
+//   }
+// }
+//
+// Custom predicate example:
+//
+// @Component
+// class CacheableErrors : FallbackPredicate {
+//     override fun name(): String = "CacheableErrors"
+//     override fun test(t: Throwable): Boolean {
+//         return t is SQLException || t is DatabaseException
+//     }
+// }

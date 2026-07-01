@@ -1,0 +1,230 @@
+package ${packagePath};
+
+import ru.tinkoff.kora.common.Component;
+import ru.tinkoff.kora.common.Tag;
+
+import java.util.List;
+
+/**
+ * Component collecting all implementations of a type.
+ *
+ * Usage:
+ * - Event buses with multiple handlers
+ * - Validation chains
+ * - Plugin architectures
+ * - Health check aggregators
+ * - Multi-tenant processors
+ *
+ * Collection injection options:
+ * - All<T> or List<T> — untagged implementations only
+ * - @Tag(Tag.Any.class) List<T> — ALL implementations (tagged + untagged)
+ * - @Tag(SpecificTag.class) All<T> — only implementations with specific tag
+ */
+@Component
+public final class ${ComponentName} {
+
+    private final List<${ComponentType}> components;
+
+    /**
+     * Inject all untagged implementations.
+     */
+    public ${ComponentName}(All<${ComponentType}> components) {
+        this.components = List.copyOf(components);
+        System.out.println("${ComponentName} collected " + components.size() + " implementations");
+    }
+
+    /**
+     * Process using all collected components.
+     */
+    public void processAll(${DataType} data) {
+        for (${ComponentType} component : components) {
+            component.process(data);
+        }
+    }
+
+    // ========================================================================
+    // EXAMPLE: Event Bus with Multiple Handlers
+    // ========================================================================
+    //
+    // // Event handler interface
+    // public interface EventHandler<T> {
+    //     void handle(T event);
+    // }
+    //
+    // // Multiple handlers
+    // @Component
+    // public final class EmailNotificationHandler implements EventHandler<OrderCreated> {
+    //     public void handle(OrderCreated event) {
+    //         // Send confirmation email
+    //     }
+    // }
+    //
+    // @Component
+    // public final class InventoryHandler implements EventHandler<OrderCreated> {
+    //     public void handle(OrderCreated event) {
+    //         // Reserve inventory
+    //     }
+    // }
+    //
+    // @Component
+    // public final class AnalyticsHandler implements EventHandler<OrderCreated> {
+    //     public void handle(OrderCreated event) {
+    //         // Track analytics
+    //     }
+    // }
+    //
+    // // Event bus collecting all handlers
+    // @Component
+    // public final class EventBus {
+    //     private final List<EventHandler<OrderCreated>> handlers;
+    //
+    //     public EventBus(All<EventHandler<OrderCreated>> handlers) {
+    //         this.handlers = handlers;
+    //     }
+    //
+    //     public void publish(OrderCreated event) {
+    //         handlers.forEach(h -> h.handle(event));
+    //     }
+    // }
+
+    // ========================================================================
+    // EXAMPLE: Validation Chain
+    // ========================================================================
+    //
+    // // Validator interface
+    // public interface Validator {
+    //     ValidationResult validate(Request request);
+    // }
+    //
+    // // Multiple validators
+    // @Component
+    // public final class AuthValidator implements Validator {
+    //     public ValidationResult validate(Request request) { /* Check auth */ }
+    // }
+    //
+    // @Component
+    // public final class RateLimitValidator implements Validator {
+    //     public ValidationResult validate(Request request) { /* Check rate limit */ }
+    // }
+    //
+    // @Component
+    // public final class SchemaValidator implements Validator {
+    //     public ValidationResult validate(Request request) { /* Validate schema */ }
+    // }
+    //
+    // // Validation service with chain
+    // @Component
+    // public final class ValidationService {
+    //     private final List<Validator> validators;
+    //
+    //     public ValidationService(All<Validator> validators) {
+    //         this.validators = validators;
+    //     }
+    //
+    //     public ValidationResult validate(Request request) {
+    //         for (Validator validator : validators) {
+    //             var result = validator.validate(request);
+    //             if (!result.isValid()) {
+    //                 return result;  // Fail fast
+    //             }
+    //         }
+    //         return ValidationResult.ok();
+    //     }
+    // }
+
+    // ========================================================================
+    // EXAMPLE: Health Check Aggregator
+    // ========================================================================
+    //
+    // // Health check interface
+    // public interface HealthCheck {
+    //     String name();
+    //     void run() throws Exception;
+    // }
+    //
+    // // Multiple health checks
+    // @Component
+    // public final class DatabaseHealthCheck implements HealthCheck {
+    //     public String name() { return "database"; }
+    //     public void run() { /* Check DB connection */ }
+    // }
+    //
+    // @Component
+    // public final class CacheHealthCheck implements HealthCheck {
+    //     public String name() { return "cache"; }
+    //     public void run() { /* Check cache */ }
+    // }
+    //
+    // @Component
+    // public final class KafkaHealthCheck implements HealthCheck {
+    //     public String name() { return "kafka"; }
+    //     public void run() { /* Check Kafka consumer */ }
+    // }
+    //
+    // // Health checker collecting all checks
+    // @Component
+    // public final class HealthChecker {
+    //     private final All<HealthCheck> healthChecks;
+    //
+    //     public HealthChecker(All<HealthCheck> healthChecks) {
+    //         this.healthChecks = healthChecks;
+    //     }
+    //
+    //     public Map<String, Boolean> checkAll() {
+    //         Map<String, Boolean> results = new HashMap<>();
+    //         for (HealthCheck check : healthChecks) {
+    //             try {
+    //                 check.run();
+    //                 results.put(check.name(), true);
+    //             } catch (Exception e) {
+    //                 results.put(check.name(), false);
+    //             }
+    //         }
+    //         return results;
+    //     }
+    // }
+
+    // ========================================================================
+    // EXAMPLE: Collecting All Tagged Components
+    // ========================================================================
+    //
+    // // Tag classes
+    // public final class AsyncTag {}
+    // public final class SyncTag {}
+    //
+    // // Tagged handlers
+    // @Tag(AsyncTag.class)
+    // @Component
+    // public final class AsyncHandler implements EventHandler {}
+    //
+    // @Tag(AsyncTag.class)
+    // @Component
+    // public final class BatchHandler implements EventHandler {}
+    //
+    // @Tag(SyncTag.class)
+    // @Component
+    // public final class SyncHandler implements EventHandler {}
+    //
+    // // Collect only async handlers
+    // @Component
+    // public final class AsyncEventBus {
+    //     private final List<EventHandler> asyncHandlers;
+    //
+    //     public AsyncEventBus(
+    //         @Tag(AsyncTag.class)
+    //         All<EventHandler> asyncHandlers
+    //     ) {
+    //         this.asyncHandlers = asyncHandlers;
+    //     }
+    // }
+    //
+    // // Collect ALL handlers (tagged + untagged)
+    // @Component
+    // public final class AllEventBus {
+    //     private final List<EventHandler> allHandlers;
+    //
+    //     public AllEventBus(@Tag(Tag.Any.class) All<EventHandler> allHandlers) {
+    //         this.allHandlers = allHandlers;
+    //     }
+    // }
+}

@@ -1,0 +1,125 @@
+// Kotlin scheduled jobs — JDK and Quartz examples.
+// @ScheduleAtFixedRate / @ScheduleWithFixedDelay / @ScheduleOnce — JDK (scheduling-jdk).
+// @ScheduleWithCron / @ScheduleWithTrigger — Quartz (scheduling-quartz).
+// Place scheduled methods on a @Component class. Kora generates a separate Job
+// wrapper at compile time, so the class need not be `open` (the canonical Kotlin
+// examples use a plain `class`). Only method-wrapping aspects (@Log, @Retry) require `open`.
+// `open` here is harmless and left in so the same class also works with such aspects.
+// Replace `com.example.app.jobs` with your package.
+
+package com.example.app.jobs
+
+import org.slf4j.LoggerFactory
+import ru.tinkoff.kora.common.Component
+import ru.tinkoff.kora.scheduling.jdk.annotation.ScheduleAtFixedRate
+import ru.tinkoff.kora.scheduling.jdk.annotation.ScheduleOnce
+import ru.tinkoff.kora.scheduling.jdk.annotation.ScheduleWithFixedDelay
+// Uncomment when using scheduling-quartz:
+// import ru.tinkoff.kora.scheduling.quartz.ScheduleWithCron
+// import ru.tinkoff.kora.scheduling.quartz.DisallowConcurrentExecution
+import java.time.temporal.ChronoUnit
+
+@Component
+open class ScheduledJobs {
+
+    private val log = LoggerFactory.getLogger(ScheduledJobs::class.java)
+
+    // ============== JDK SCHEDULING ==============
+
+    /**
+     * Fixed-rate: runs every [period] regardless of previous execution time.
+     * Overlap possible if execution exceeds [period].
+     * Use for: heartbeat, metrics collection, health checks.
+     */
+    @ScheduleAtFixedRate(initialDelay = 30, period = 60, unit = ChronoUnit.SECONDS)
+    open fun heartbeat() {
+        // Lightweight task — keep execution time < period to avoid overlap
+        log.info("Heartbeat tick")
+    }
+
+    /**
+     * Fixed-delay: waits [delay] after previous execution completes.
+     * Never overlaps — safe for long-running tasks.
+     * Use for: batch processing, data sync, cleanup.
+     */
+    @ScheduleWithFixedDelay(config = "jobs.cleanup")                    // config-driven
+    open fun cleanup() {
+        if (Thread.currentThread().isInterrupted) return                // graceful shutdown
+        log.info("Running cleanup")
+        // ... do batch cleanup ...
+    }
+
+    /**
+     * One-shot: runs once after [delay].
+     * Use for: cache warming, late binding, startup tasks.
+     */
+    @ScheduleOnce(delay = 5, unit = ChronoUnit.MINUTES)
+    open fun warmup() {
+        log.info("Warming up caches")
+        // ... populate caches, fetch initial state ...
+    }
+
+    // ============== QUARTZ SCHEDULING (uncomment when using scheduling-quartz) ==============
+
+    /**
+     * Cron: runs at times specified by cron expression.
+     * Requires: QuartzModule instead of SchedulingJdkModule.
+     * Use for: daily reports, hourly checks, complex schedules.
+     */
+    // @DisallowConcurrentExecution                                    // prevent overlap
+    // @ScheduleWithCron("0 0 3 * * ?")                                // daily at 03:00
+    // open fun nightlyReport() {
+    //     log.info("Generating nightly report")
+    //     // ... generate report ...
+    // }
+
+    /**
+     * Cron with config: cron expression from configuration.
+     * Config has priority over annotation value.
+     */
+    // @ScheduleWithCron(config = "jobs.hourly")
+    // open fun hourlyCheck() {
+    //     log.info("Running hourly check")
+    // }
+}
+
+// ============== CONFIGURATION ==============
+
+// application.conf snippet (HOCON):
+//
+// scheduling {
+//   threads = 4                # JDK pool size (default: 2)
+//   shutdownWait = "30s"       # Grace period for in-flight jobs
+//   telemetry {
+//     logging.enabled = false
+//     metrics.enabled = true
+//     tracing.enabled = true
+//   }
+// }
+//
+// jobs.cleanup {
+//   initialDelay = "30s"
+//   delay        = "1m"
+// }
+//
+// jobs.hourly.cron = "0 0 * * * ?"
+
+// application.yml snippet (YAML):
+//
+// scheduling:
+//   threads: 4
+//   shutdownWait: "30s"
+//   telemetry:
+//     logging:
+//       enabled: false
+//     metrics:
+//       enabled: true
+//     tracing:
+//       enabled: true
+//
+// jobs:
+//   cleanup:
+//     initialDelay: "30s"
+//     delay: "1m"
+//   hourly:
+//     cron: "0 0 * * * ?"
