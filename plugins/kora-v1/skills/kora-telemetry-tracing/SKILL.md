@@ -1,9 +1,11 @@
 ---
 name: kora-telemetry-tracing
-description: "Kora OpenTelemetry distributed tracing — OTLP exporter modules (OpentelemetryGrpcExporterModule / OpentelemetryHttpExporterModule), tracing.exporter config, Tracer injection, manual spans, and OpentelemetryContext propagation tied to the Kora request Context. Use when adding the ru.tinkoff.kora:opentelemetry-tracing-exporter-grpc or -http artifact, configuring an OTLP endpoint to Jaeger/Zipkin/Tempo, creating manual spans around business operations, propagating trace context across async/coroutine boundaries, or overriding the default Sampler in a @KoraApp."
+description: "Kora OpenTelemetry tracing — OTLP gRPC/HTTP exporter modules, tracing.exporter config, Tracer injection, manual spans, context propagation. Use when exporting traces to Jaeger/Zipkin/Tempo or adding manual spans."
 ---
 
 # Kora Telemetry Tracing
+
+> **Kora sub-skill — obey the [kora-v1 meta rules](../../SKILL.md) on every task:** **R0** ensure `.kora-agent/` docs+examples are cloned · **R1** read this sub-skill before writing code · **R2** Kora APIs only — no Spring/Micronaut/Quarkus, no invented annotations or config keys · **R3** journal any incorrect Kora usage. Add comments/Javadoc only if asked.
 
 Kora collects traces in the OpenTelemetry standard and exports them in OTLP format. The framework already emits baseline spans for supported modules (HTTP server/client, database, Kafka, gRPC); you add an exporter module, point it at a collector, and optionally create manual spans for business steps the framework cannot infer.
 
@@ -23,7 +25,7 @@ The example repo pins the BOM via `kora-parent`; all Kora artifacts inherit that
 === "Java"
     ```groovy
     dependencies {
-        koraBom platform("ru.tinkoff.kora:kora-parent:1.2.17")
+        koraBom platform("ru.tinkoff.kora:kora-parent:1.2.19")
         annotationProcessor "ru.tinkoff.kora:annotation-processors"
 
         // OTLP over gRPC (recommended)
@@ -36,7 +38,7 @@ The example repo pins the BOM via `kora-parent`; all Kora artifacts inherit that
 === "Kotlin"
     ```groovy
     dependencies {
-        koraBom platform("ru.tinkoff.kora:kora-parent:1.2.17")
+        koraBom platform("ru.tinkoff.kora:kora-parent:1.2.19")
         ksp "ru.tinkoff.kora:symbol-processors"
 
         implementation("ru.tinkoff.kora:opentelemetry-tracing-exporter-grpc")
@@ -207,7 +209,7 @@ Manual spans wrap business steps. Read the current Kora `Context`, take the `Ope
 
 ## Assets
 
-Templates in `assets/` (see [assets/README.md](assets/README.md)):
+Templates in `assets/`:
 
 | File | Purpose |
 |------|---------|

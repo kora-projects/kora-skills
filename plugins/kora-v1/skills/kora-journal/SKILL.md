@@ -1,9 +1,11 @@
 ---
 name: kora-journal
-description: "Journal for Kora Framework incorrect usage (agent self-realized or user-pointed). Global shared journal at ~/.kora-journal/<project>/<module>/<YYYY-MM-DD>_slug.md. Each entry is a separate file. Use when - agent used wrong Kora annotation, hallucinated Kora API, misapplied Kora pattern, violated Kora best practices, skill docs unclear/wrong. Triggers - kora_journal.py add/list/export/integrate/status/search. NOT for project-specific business logic."
+description: "Journal for incorrect Kora usage (kora_journal.py add/search/integrate). Global shared store at ~/.kora-journal/. Use when you or the user find a wrong Kora annotation, hallucinated API, or misapplied pattern. Not for project business logic."
 ---
 
 # Kora Journal — Continuous Improvement for Kora Skills
+
+> **Kora sub-skill — obey the [kora-v1 meta rules](../../SKILL.md) on every task:** **R0** ensure `.kora-agent/` docs+examples are cloned · **R1** read this sub-skill before writing code · **R2** Kora APIs only — no Spring/Micronaut/Quarkus, no invented annotations or config keys · **R3** journal any incorrect Kora usage. Add comments/Javadoc only if asked.
 
 **Location:** `~/.kora-journal/<project>/<module>/<YYYY-MM-DD>_slug.md`
 

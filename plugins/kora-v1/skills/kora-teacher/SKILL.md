@@ -1,9 +1,11 @@
 ---
 name: kora-teacher
-description: "Kora Framework teacher for beginners. Helps new users learn Kora from scratch by guiding through official guides, implementing example services, explaining every nuance. STRICT hierarchy - Guides (.kora-agent/kora-docs/mkdocs/docs/en/guides/) -> Docs (.kora-agent/kora-docs/mkdocs/docs/en/documentation/) -> Example apps (.kora-agent/kora-examples/). Never invent - only teach what's documented. Triggers - learn Kora, new to Kora, how to start, tutorial, guide me, explain Kora, beginner, study Kora, Kora course, walkthrough."
+description: "Teach Kora to beginners strictly from official docs/guides/examples under .kora-agent/, never inventing. Use when a user wants to learn Kora from scratch, asks for a tutorial, or needs a concept explained."
 ---
 
 # Kora Teacher — Learn Kora Framework from Scratch
+
+> **Kora sub-skill — obey the [kora-v1 meta rules](../../SKILL.md) on every task:** **R0** ensure `.kora-agent/` docs+examples are cloned · **R1** read this sub-skill before writing code · **R2** Kora APIs only — no Spring/Micronaut/Quarkus, no invented annotations or config keys · **R3** journal any incorrect Kora usage. Add comments/Javadoc only if asked.
 
 **Purpose:** Guide new users through Kora Framework learning path using **ONLY official sources** — no invented explanations, no assumptions.
 
@@ -164,7 +166,7 @@ When user asks a question:
 
 **Never say:** "I think...", "Probably...", "Similar to Spring..."
 
-**Always say:** "According to [guide](path)...", "The guide app shows...", "Kora generates..."
+**Always say:** "According to the guide...", "The guide app shows...", "Kora generates..."
 
 ---
 
@@ -238,7 +240,7 @@ public final class HelloController {
    - "What do you want to build?"
 
 2. Setup verification
-   - Check JDK version (25+ for Java, 21+ for Kotlin)
+   - Check JDK version (25+ for Java, 21 for Kotlin)
    - Check Gradle version (9+)
    - Clone .kora-agent/ if missing
 

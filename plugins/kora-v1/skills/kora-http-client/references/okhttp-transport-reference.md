@@ -26,7 +26,7 @@ OkHttp is the recommended transport for Kora HTTP clients. It supports HTTP/1.1,
 
 ```groovy
 dependencies {
-    koraBom platform("ru.tinkoff.kora:kora-parent:1.2.17")
+    koraBom platform("ru.tinkoff.kora:kora-parent:1.2.19")
 
     annotationProcessor "ru.tinkoff.kora:annotation-processors"
 

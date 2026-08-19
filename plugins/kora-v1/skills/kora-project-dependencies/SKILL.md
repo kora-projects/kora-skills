@@ -1,9 +1,11 @@
 ---
 name: kora-project-dependencies
-description: "Catalog of Kora Framework Gradle artifacts plus a project generator. Covers the kora-parent BOM, annotation processors (Java annotation-processors) and KSP (Kotlin symbol-processors), the koraBom configuration with extendsFrom, real module artifact names (http-server-undertow, http-client-ok, database-jdbc, kafka, micrometer-module, opentelemetry-tracing-exporter-grpc, resilient-kora, cache-caffeine, validation-module, s3-client-aws), externally versioned deps (JDBC drivers, Testcontainers), and which versions the BOM owns. Use when wiring a build.gradle / build.gradle.kts, choosing Kora modules, fixing \"dependency not found\" or transitive version conflicts, or scaffolding a new service. Not for writing DI/HTTP/repository code."
+description: "Kora Gradle artifacts + project generator — kora-parent BOM, annotation-processors/symbol-processors, koraBom, real module names, externally-versioned deps. Use when wiring build.gradle, choosing modules, or fixing \"dependency not found\"/version conflicts."
 ---
 
 # Kora Project Dependencies — Module Catalog
+
+> **Kora sub-skill — obey the [kora-v1 meta rules](../../SKILL.md) on every task:** **R0** ensure `.kora-agent/` docs+examples are cloned · **R1** read this sub-skill before writing code · **R2** Kora APIs only — no Spring/Micronaut/Quarkus, no invented annotations or config keys · **R3** journal any incorrect Kora usage. Add comments/Javadoc only if asked.
 
 **BOM:** `ru.tinkoff.kora:kora-parent` (pin the version once; every Kora artifact inherits it)
 **Java:** 21+ (examples build on JDK 21) | **Kotlin:** 1.9.25 | **KSP:** 1.9.25-1.0.20 | **Gradle:** 9+
@@ -28,7 +30,7 @@ Pin the BOM version in `gradle.properties` and reference it via `$koraVersion`.
 ### gradle.properties
 
 ```properties
-koraVersion=1.2.17
+koraVersion=1.2.19
 ```
 
 ### Java (build.gradle)
@@ -280,7 +282,6 @@ dependencies {
     // Testing
     testImplementation "ru.tinkoff.kora:test-junit5"
     testImplementation "org.testcontainers:junit-jupiter:1.21.4"
-    testImplementation "io.goodforgod:testcontainers-extensions-postgres:0.13.1"
     testImplementation "org.mockito:mockito-core:5.14.2"   // Java mocks
     testImplementation "io.mockk:mockk:1.13.13"            // Kotlin mocks
 }
@@ -348,7 +349,6 @@ dependencies {
     implementation "ru.tinkoff.kora:config-hocon"
 
     testImplementation "ru.tinkoff.kora:test-junit5"
-    testImplementation "io.goodforgod:testcontainers-extensions-postgres:0.13.1"
 }
 ```
 

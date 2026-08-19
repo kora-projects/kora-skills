@@ -84,7 +84,7 @@ subprojects {
     }
 
     dependencies {
-        koraBom(platform("ru.tinkoff.kora:kora-parent:1.2.17"))
+        koraBom(platform("ru.tinkoff.kora:kora-parent:1.2.19"))
         add("ksp", "ru.tinkoff.kora:symbol-processors")
         add("testImplementation", "ru.tinkoff.kora:test-junit5")
     }

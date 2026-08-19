@@ -25,7 +25,7 @@ configurations {
 
 dependencies {
     // One version for all Kora artifacts; never version individual ru.tinkoff.kora:* deps.
-    koraBom(platform("ru.tinkoff.kora:kora-parent:1.2.17"))
+    koraBom(platform("ru.tinkoff.kora:kora-parent:1.2.19"))
 
     // Mandatory: without the symbol processors no Kora code is generated.
     ksp("ru.tinkoff.kora:symbol-processors")

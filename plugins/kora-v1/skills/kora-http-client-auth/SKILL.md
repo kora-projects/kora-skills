@@ -1,9 +1,11 @@
 ---
 name: kora-http-client-auth
-description: "Authentication for outgoing Kora HTTP clients. Covers the built-in BasicAuthHttpClientInterceptor, ApiKeyHttpClientInterceptor and BearerAuthHttpClientInterceptor, the HttpClientTokenProvider interface, attaching them with @InterceptWith, and hand-written HttpClientInterceptor classes for custom schemes (OAuth2 client credentials, JWT with caching/refresh). Use when adding Basic/Bearer/API-key authorization to a @HttpClient, implementing token refresh for service-to-service calls, or debugging 401 responses from an external API. Not for server-side auth (use kora-http-server-auth)."
+description: "Auth for outgoing Kora HTTP clients — Basic/ApiKey/Bearer interceptors, HttpClientTokenProvider, @InterceptWith, custom OAuth2/JWT schemes. Use when authorizing a @HttpClient or debugging 401s. For server-side auth see kora-http-server-auth."
 ---
 
 # Kora HTTP Client Auth
+
+> **Kora sub-skill — obey the [kora-v1 meta rules](../../SKILL.md) on every task:** **R0** ensure `.kora-agent/` docs+examples are cloned · **R1** read this sub-skill before writing code · **R2** Kora APIs only — no Spring/Micronaut/Quarkus, no invented annotations or config keys · **R3** journal any incorrect Kora usage. Add comments/Javadoc only if asked.
 
 Authenticate outgoing requests from a declarative `@HttpClient`. Kora ships
 ready-made `HttpClientInterceptor` implementations for Basic, API-key and Bearer
@@ -33,7 +35,7 @@ or write your own `HttpClientInterceptor`.
 
 ```groovy
 dependencies {
-    koraBom platform("ru.tinkoff.kora:kora-parent:1.2.17")
+    koraBom platform("ru.tinkoff.kora:kora-parent:1.2.19")
 
     annotationProcessor "ru.tinkoff.kora:annotation-processors"
 
@@ -139,7 +141,7 @@ Do **not** use this skill when you:
 | Thread-safe token cache | [references/token-cache-reference.md](references/token-cache-reference.md) |
 | OAuth2 client-credentials end-to-end | [references/oauth2-client-credentials-reference.md](references/oauth2-client-credentials-reference.md) |
 
-Templates and a generator script live in [assets/](assets/README.md).
+Templates and a generator script live in `assets/`.
 
 ---
 

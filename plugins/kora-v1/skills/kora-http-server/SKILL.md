@@ -1,9 +1,11 @@
 ---
 name: kora-http-server
-description: "Builds Kora HTTP server controllers on the Undertow transport — @HttpController, @HttpRoute, parameter binding (@Path/@Query/@Header/@Cookie), @Json bodies, HttpServerResponse / HttpResponseEntity responses, HttpServerResponseException errors, and HttpServerInterceptor (global via @Tag(HttpServerModule.class) or per-route via @InterceptWith). Use when building REST endpoints, mapping requests to typed methods, returning custom status codes/headers, handling errors centrally, or wiring UndertowHttpServerModule and httpServer ports/telemetry."
+description: "Kora HTTP server controllers on Undertow — @HttpController, @HttpRoute, @Path/@Query/@Header, @Json, HttpResponseEntity, HttpServerInterceptor. Use when building REST endpoints or wiring UndertowHttpServerModule."
 ---
 
 # Kora HTTP Server
+
+> **Kora sub-skill — obey the [kora-v1 meta rules](../../SKILL.md) on every task:** **R0** ensure `.kora-agent/` docs+examples are cloned · **R1** read this sub-skill before writing code · **R2** Kora APIs only — no Spring/Micronaut/Quarkus, no invented annotations or config keys · **R3** journal any incorrect Kora usage. Add comments/Javadoc only if asked.
 
 Declarative HTTP request handlers compiled (not reflected) into a router. Annotate a `@Component` `@HttpController` with `@HttpRoute` methods; Kora generates the handler/router at build time via the annotation processor.
 
@@ -23,7 +25,7 @@ configurations {
 }
 
 dependencies {
-    koraBom platform("ru.tinkoff.kora:kora-parent:1.2.17")
+    koraBom platform("ru.tinkoff.kora:kora-parent:1.2.19")
     annotationProcessor "ru.tinkoff.kora:annotation-processors"  // mandatory
 
     implementation "ru.tinkoff.kora:http-server-undertow"
@@ -260,7 +262,7 @@ httpServer {
   privateApiHttpMetricsPath  = "/metrics"
   privateApiHttpReadinessPath = "/system/readiness"
   privateApiHttpLivenessPath  = "/system/liveness"
-  virtualThreadsEnabled = false   // true requires Java 21+
+  virtualThreadsEnabled = false   // true requires Java 24+
   maxRequestBodySize = "256MiB"
   telemetry {
     logging { enabled = false }

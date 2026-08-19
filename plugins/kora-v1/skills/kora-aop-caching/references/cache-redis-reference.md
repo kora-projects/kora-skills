@@ -282,10 +282,6 @@ class RedisCacheTest {
 }
 ```
 
-The Redis example wires Testcontainers via `io.goodforgod:testcontainers-extensions-redis`
-and sets `REDIS_URL` so the Lettuce driver connects to the container; see
-`.kora-agent/kora-examples/examples/java/kora-java-cache-redis/`.
-
 ---
 
 ## Troubleshooting

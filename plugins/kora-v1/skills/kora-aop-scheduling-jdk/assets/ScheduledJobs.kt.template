@@ -1,7 +1,7 @@
-// Kotlin scheduled jobs — JDK and Quartz examples.
-// @ScheduleAtFixedRate / @ScheduleWithFixedDelay / @ScheduleOnce — JDK (scheduling-jdk).
-// @ScheduleWithCron / @ScheduleWithTrigger — Quartz (scheduling-quartz).
-// Class must be `open` for aspect codegen (Kotlin classes are final by default).
+// Kotlin JDK scheduled jobs (scheduling-jdk).
+// @ScheduleAtFixedRate / @ScheduleWithFixedDelay / @ScheduleOnce.
+// For cron / custom triggers use the sibling skill kora-aop-scheduling-quartz.
+// Class/methods must be `open` for @Log/@Retry aspect codegen (Kotlin is final by default).
 // Replace `com.example.app.jobs` with your package.
 
 package com.example.app.jobs
@@ -11,17 +11,12 @@ import ru.tinkoff.kora.common.Component
 import ru.tinkoff.kora.scheduling.jdk.annotation.ScheduleAtFixedRate
 import ru.tinkoff.kora.scheduling.jdk.annotation.ScheduleOnce
 import ru.tinkoff.kora.scheduling.jdk.annotation.ScheduleWithFixedDelay
-// Uncomment when using scheduling-quartz:
-// import ru.tinkoff.kora.scheduling.quartz.ScheduleWithCron
-// import ru.tinkoff.kora.scheduling.quartz.DisallowConcurrentExecution
 import java.time.temporal.ChronoUnit
 
 @Component
-open class ScheduledJobs {                                              // open for aspects
+open class ScheduledJobs {
 
     private val log = LoggerFactory.getLogger(ScheduledJobs::class.java)
-
-    // ============== JDK SCHEDULING ==============
 
     /**
      * Fixed-rate: runs every [period] regardless of previous execution time.
@@ -39,9 +34,9 @@ open class ScheduledJobs {                                              // open 
      * Never overlaps — safe for long-running tasks.
      * Use for: batch processing, data sync, cleanup.
      */
-    @ScheduleWithFixedDelay(config = "scheduling.jobs.cleanup")         // config-driven
+    @ScheduleWithFixedDelay(config = "jobs.cleanup")             // config-driven
     open fun cleanup() {
-        if (Thread.currentThread().isInterrupted) return                // graceful shutdown
+        if (Thread.currentThread().isInterrupted) return          // graceful shutdown
         log.info("Running cleanup")
         // ... do batch cleanup ...
     }
@@ -55,29 +50,6 @@ open class ScheduledJobs {                                              // open 
         log.info("Warming up caches")
         // ... populate caches, fetch initial state ...
     }
-
-    // ============== QUARTZ SCHEDULING (uncomment when using scheduling-quartz) ==============
-
-    /**
-     * Cron: runs at times specified by cron expression.
-     * Requires: QuartzModule instead of SchedulingJdkModule.
-     * Use for: daily reports, hourly checks, complex schedules.
-     */
-    // @DisallowConcurrentExecution                                    // prevent overlap
-    // @ScheduleWithCron("0 0 3 * * ?")                                // daily at 03:00
-    // open fun nightlyReport() {
-    //     log.info("Generating nightly report")
-    //     // ... generate report ...
-    // }
-
-    /**
-     * Cron with config: cron expression from configuration.
-     * Config has priority over annotation value.
-     */
-    // @ScheduleWithCron(config = "scheduling.jobs.hourly")
-    // open fun hourlyCheck() {
-    //     log.info("Running hourly check")
-    // }
 }
 
 // ============== CONFIGURATION ==============
@@ -92,30 +64,9 @@ open class ScheduledJobs {                                              // open 
 //     metrics.enabled = true
 //     tracing.enabled = true
 //   }
-//   jobs {
-//     cleanup {
-//       initialDelay = "30s"
-//       delay        = "1m"
-//     }
-//     hourly.cron = "0 0 * * * ?"   # Quartz only
-//   }
 // }
-
-// application.yml snippet (YAML):
 //
-// scheduling:
-//   threads: 4
-//   shutdownWait: "30s"
-//   telemetry:
-//     logging:
-//       enabled: false
-//     metrics:
-//       enabled: true
-//     tracing:
-//       enabled: true
-//   jobs:
-//     cleanup:
-//       initialDelay: "30s"
-//       delay: "1m"
-//     hourly:
-//       cron: "0 0 * * * ?"   # Quartz only
+// jobs.cleanup {
+//   initialDelay = "30s"
+//   delay        = "1m"
+// }

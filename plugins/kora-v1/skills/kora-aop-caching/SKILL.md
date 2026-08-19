@@ -1,9 +1,11 @@
 ---
 name: kora-aop-caching
-description: "Declarative and imperative caching for Kora via compile-time AOP. Covers @Cacheable (read-through), @CachePut (write-through), @CacheInvalidate (evict / invalidateAll), the typed @Cache contract over CaffeineCache (artifact cache-caffeine, in-process) and RedisCache (artifact cache-redis, Lettuce-backed, distributed), CacheKeyMapper + @Mapping for composite/derived keys, the parameters key attribute, @Json on Redis value types, LoadableCache, and stacked annotations for multi-level L1/L2 caching. Use when adding caching to a Kora service, choosing Caffeine vs Redis, configuring a cache via @ConfigSource paths (maximumSize, expireAfterWrite, keyPrefix), fixing \"required keyPrefix\" graph build failures, or when aspects do not fire because a class is final/not open."
+description: "Kora caching via compile-time AOP — @Cacheable/@CachePut/@CacheInvalidate over Caffeine (in-process) or Redis (distributed). Use when adding caching, choosing Caffeine vs Redis, or fixing \"required keyPrefix\" graph errors."
 ---
 
 # Kora AOP Caching Skill
+
+> **Kora sub-skill — obey the [kora-v1 meta rules](../../SKILL.md) on every task:** **R0** ensure `.kora-agent/` docs+examples are cloned · **R1** read this sub-skill before writing code · **R2** Kora APIs only — no Spring/Micronaut/Quarkus, no invented annotations or config keys · **R3** journal any incorrect Kora usage. Add comments/Javadoc only if asked.
 
 **Focus:** Declarative caching via compile-time AOP annotations for Caffeine (in-process) and Redis (distributed) caches.
 
@@ -26,7 +28,7 @@ never generated.
 
 ```groovy
 dependencies {
-    koraBom platform("ru.tinkoff.kora:kora-parent:$koraVersion")  // e.g. 1.2.17
+    koraBom platform("ru.tinkoff.kora:kora-parent:$koraVersion")  // e.g. 1.2.19
     annotationProcessor "ru.tinkoff.kora:annotation-processors"   // Kotlin: ksp "ru.tinkoff.kora:symbol-processors"
 
     // Local cache (Caffeine) - recommended for most cases
@@ -271,7 +273,7 @@ for the full testing approach.
 
 Templates: `OrderCache.java.template`, `OrderCache.kt.template`, `CacheConfig.java.template`, `CacheConfig.kt.template`
 
-See [assets/README.md](assets/README.md).
+See `assets/`.
 
 ---
 

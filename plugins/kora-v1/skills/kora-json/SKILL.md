@@ -1,9 +1,11 @@
 ---
 name: kora-json
-description: "Compile-time, reflection-free JSON in Kora via the json-module and @Json. Generates JsonReader/JsonWriter at build time for records and data classes. Use when defining HTTP request/response DTOs, polymorphic JSON with sealed types (@JsonDiscriminatorField/@JsonDiscriminatorValue), renaming or skipping fields (@JsonField/@JsonSkip), optional fields (@Nullable), distinguishing missing vs null on PATCH (JsonNullable), serialization levels (@JsonInclude), enums, or registering a custom JsonReader/JsonWriter factory for an unsupported type. Also covers swapping in Jackson via JacksonModule. Triggers - @Json, @JsonReader, @JsonWriter, @JsonField, @JsonSkip, @JsonInclude, @JsonDiscriminatorField, JsonNullable, JsonModule, sealed interface JSON, JsonReader not found."
+description: "Compile-time JSON in Kora — @Json generates JsonReader/JsonWriter for records/data classes; sealed discriminators, @JsonField/@JsonSkip, JsonNullable, custom factories, Jackson swap. Use for HTTP DTOs or polymorphic JSON."
 ---
 
 # Kora JSON — compile-time JSON processing
+
+> **Kora sub-skill — obey the [kora-v1 meta rules](../../SKILL.md) on every task:** **R0** ensure `.kora-agent/` docs+examples are cloned · **R1** read this sub-skill before writing code · **R2** Kora APIs only — no Spring/Micronaut/Quarkus, no invented annotations or config keys · **R3** journal any incorrect Kora usage. Add comments/Javadoc only if asked.
 
 Kora generates `JsonReader<T>` / `JsonWriter<T>` at compile time from `@Json`-annotated
 records (Java) or data classes (Kotlin). No reflection, no runtime mapper discovery:
@@ -19,7 +21,7 @@ never pin individual `ru.tinkoff.kora:*` versions):
 
 ```groovy
 dependencies {
-    koraBom platform("ru.tinkoff.kora:kora-parent:1.2.17")
+    koraBom platform("ru.tinkoff.kora:kora-parent:1.2.19")
 
     annotationProcessor "ru.tinkoff.kora:annotation-processors" // mandatory: generates readers/writers
     implementation "ru.tinkoff.kora:json-module"

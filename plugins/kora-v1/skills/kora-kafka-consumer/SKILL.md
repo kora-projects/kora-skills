@@ -1,9 +1,11 @@
 ---
 name: kora-kafka-consumer
-description: "Declarative Apache Kafka consumers in Kora via @KafkaListener over a @Component method, plus the KafkaModule. Covers consume strategies (subscribe with group.id vs assign), method signatures (value, key+value, Headers, ConsumerRecord, ConsumerRecords, manual Consumer commit), @Json deserialization with @Tag, deserialization-error handling with @Nullable Exception, KafkaSkipRecordException, ConsumerAwareRebalanceListener, batch processing, and telemetry. Use when consuming Kafka messages in a Kora service, wiring kafka.consumer config under @KafkaListener, choosing a commit/offset strategy, handling RecordValueDeserializationException, or testing a listener with @KoraAppTest and Testcontainers."
+description: "Kora Kafka consumers — @KafkaListener on a @Component method (KafkaModule), commit strategies, @Json deserialization, error handling, batch. Use when consuming Kafka messages or configuring kafka.consumer."
 ---
 
 # Kora Kafka Consumer Skill
+
+> **Kora sub-skill — obey the [kora-v1 meta rules](../../SKILL.md) on every task:** **R0** ensure `.kora-agent/` docs+examples are cloned · **R1** read this sub-skill before writing code · **R2** Kora APIs only — no Spring/Micronaut/Quarkus, no invented annotations or config keys · **R3** journal any incorrect Kora usage. Add comments/Javadoc only if asked.
 
 **Languages:** Java, Kotlin | **Build:** Gradle
 
@@ -18,7 +20,7 @@ description: "Declarative Apache Kafka consumers in Kora via @KafkaListener over
 **1. Dependencies** (Kora artifacts inherit their version from the `kora-parent` BOM — never pin them individually):
 ```groovy
 dependencies {
-    koraBom platform("ru.tinkoff.kora:kora-parent:1.2.17")
+    koraBom platform("ru.tinkoff.kora:kora-parent:1.2.19")
     annotationProcessor "ru.tinkoff.kora:annotation-processors"
 
     implementation "ru.tinkoff.kora:kafka"
@@ -270,46 +272,11 @@ compile time, and every consumer is a `@Component` with `@KafkaListener` methods
 
 Assets: `ConsumerListener.java.template`, `JsonMessageListener.java.template`, `ConsumerListenerTests.java.template`, `application.conf.template`
 
-See [assets/README.md](assets/README.md) for generator script.
+See `assets/` for generator script.
 
 ---
 
 ## Testing
-
-Use `@KoraAppTest`, inject the listener with `@TestComponent`, await the consumer's
-own collected state with Awaitility, and drive Kafka with Testcontainers. The example
-app uses `io.goodforgod:testcontainers-extensions-kafka` for a thin `KafkaConnection`:
-
-```java
-@TestcontainersKafka(mode = ContainerMode.PER_RUN, topics = @Topics("my-topic-consumer"))
-@KoraAppTest(Application.class)
-class MyListenerTests implements KoraAppTestConfigModifier {
-
-    @ConnectionKafka
-    private KafkaConnection connection;
-
-    @TestComponent
-    private MyListener consumer;
-
-    @Override
-    public KoraConfigModification config() {
-        return KoraConfigModification
-            .ofSystemProperty("KAFKA_BOOTSTRAP", connection.params().bootstrapServers());
-    }
-
-    @Test
-    void processed() {
-        connection.send("my-topic-consumer", Event.ofValueAndRandomKey("hello".getBytes()));
-
-        Awaitility.await().atMost(Duration.ofSeconds(15))
-            .until(() -> consumer.received().size() == 1);
-    }
-}
-```
-
-The matching config keeps `${KAFKA_BOOTSTRAP}` as the placeholder used in
-`application.conf`. To await the consumer container starting, inject its generated tag
-as `Lifecycle`: `@Tag(MyListenerModule.MyListenerProcessTag.class) @TestComponent Lifecycle`.
 
 **Details:** [Testing Reference](references/kafka-testing-reference.md)
 

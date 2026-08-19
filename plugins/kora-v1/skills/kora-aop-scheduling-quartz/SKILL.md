@@ -1,9 +1,11 @@
 ---
 name: kora-aop-scheduling-quartz
-description: "Quartz-backed declarative scheduling in Kora via the scheduling-quartz artifact and QuartzModule. Covers @ScheduleWithCron for cron expressions, @ScheduleWithTrigger(@Tag(...)) for a custom Quartz Trigger component, @DisallowConcurrentExecution to prevent overlap, and @PersistJobDataAfterExecution for stateful jobs. Use when scheduling cron jobs, externalizing a cron via config, wiring a Quartz Trigger, or controlling concurrency and graceful shutdown of scheduled methods. For plain fixed-rate/fixed-delay timers without cron use kora-aop-scheduling-jdk instead."
+description: "Quartz scheduling in Kora — @ScheduleWithCron, @ScheduleWithTrigger, @DisallowConcurrentExecution, @PersistJobDataAfterExecution (scheduling-quartz). Use for cron/custom-trigger/persistent jobs; for plain timers use kora-aop-scheduling-jdk."
 ---
 
 # Kora Quartz Scheduling
+
+> **Kora sub-skill — obey the [kora-v1 meta rules](../../SKILL.md) on every task:** **R0** ensure `.kora-agent/` docs+examples are cloned · **R1** read this sub-skill before writing code · **R2** Kora APIs only — no Spring/Micronaut/Quarkus, no invented annotations or config keys · **R3** journal any incorrect Kora usage. Add comments/Javadoc only if asked.
 
 Annotation-driven scheduling backed by the Quartz library. Annotate a method on
 a `@Component` with `@ScheduleWithCron` or `@ScheduleWithTrigger`; Kora generates
@@ -31,7 +33,7 @@ deps yourself.
 ```groovy
 // build.gradle (Java)
 dependencies {
-    koraBom platform("ru.tinkoff.kora:kora-parent:1.2.17")
+    koraBom platform("ru.tinkoff.kora:kora-parent:1.2.19")
     annotationProcessor "ru.tinkoff.kora:annotation-processors"   // mandatory
 
     implementation "ru.tinkoff.kora:scheduling-quartz"
@@ -43,7 +45,7 @@ dependencies {
 ```kotlin
 // build.gradle.kts (Kotlin)
 dependencies {
-    koraBom(platform("ru.tinkoff.kora:kora-parent:1.2.17"))
+    koraBom(platform("ru.tinkoff.kora:kora-parent:1.2.19"))
     ksp("ru.tinkoff.kora:symbol-processors")                      // mandatory
 
     implementation("ru.tinkoff.kora:scheduling-quartz")
@@ -94,8 +96,7 @@ public class CronScheduler {
 | [references/quartz-scheduling-reference.md](references/quartz-scheduling-reference.md) | Every Quartz annotation, cron grammar, config, error handling |
 | [references/scheduling-config-reference.md](references/scheduling-config-reference.md) | Full HOCON/YAML config, telemetry, JDBC JobStore, shutdown |
 | [references/graceful-shutdown-reference.md](references/graceful-shutdown-reference.md) | Interrupt handling for long-running jobs |
-| [references/jdk-scheduling-reference.md](references/jdk-scheduling-reference.md) | JDK alternative (fixed-rate/delay/once) for comparison |
-| [assets/ScheduledJobs.java.template](assets/ScheduledJobs.java.template) | Java jobs starter (JDK + Quartz) |
+| [assets/ScheduledJobs.java.template](assets/ScheduledJobs.java.template) | Java jobs starter |
 | [assets/ScheduledJobs.kt.template](assets/ScheduledJobs.kt.template) | Kotlin jobs starter |
 | [scripts/create-cron-job.sh](scripts/create-cron-job.sh) | Generate a cron job class + config entry |
 | [scripts/validate-cron.sh](scripts/validate-cron.sh) | Sanity-check a Quartz cron expression |
@@ -114,7 +115,7 @@ public class CronScheduler {
 
 Don't pull in `scheduling-quartz` only to run something every N seconds —
 `@ScheduleAtFixedRate` / `@ScheduleWithFixedDelay` from `scheduling-jdk` are
-lighter. See [jdk-scheduling-reference.md](references/jdk-scheduling-reference.md).
+lighter. See [kora-aop-scheduling-jdk](../kora-aop-scheduling-jdk/SKILL.md).
 
 ---
 

@@ -1,9 +1,11 @@
 ---
 name: kora-grpc-client
-description: "Builds gRPC clients in Kora via GrpcClientModule, the protobuf Gradle plugin, and generated stubs injected directly into components. Covers grpcClient.<ServiceName> HOCON/YAML config, plaintext vs TLS through the URL scheme, custom ClientInterceptor scoped with @Tag(ServiceGrpc.class) for metadata auth and logging, and unary plus server/client/bidirectional streaming with blocking and async stubs. Use when wiring an outbound gRPC call, injecting a *BlockingStub / *FutureStub / *Stub, adding authorization headers via gRPC metadata, configuring keepAliveTime/timeout/loadBalancingPolicy, or debugging UNAVAILABLE/UNAUTHENTICATED and missing-stub graph errors."
+description: "Kora gRPC clients — GrpcClientModule with generated stubs injected as components, grpcClient.<Service> config, @Tag interceptors, streaming. Use when wiring an outbound gRPC call or adding gRPC metadata auth."
 ---
 
 # Kora gRPC Client
+
+> **Kora sub-skill — obey the [kora-v1 meta rules](../../SKILL.md) on every task:** **R0** ensure `.kora-agent/` docs+examples are cloned · **R1** read this sub-skill before writing code · **R2** Kora APIs only — no Spring/Micronaut/Quarkus, no invented annotations or config keys · **R3** journal any incorrect Kora usage. Add comments/Javadoc only if asked.
 
 Generate gRPC client stubs from a `.proto` contract and inject them as components through `GrpcClientModule`. Kora wires the configured channel and the generated stubs into the application graph; your code just builds protobuf requests and calls stub methods.
 
@@ -40,7 +42,7 @@ configurations {
 }
 
 dependencies {
-    koraBom platform("ru.tinkoff.kora:kora-parent:1.2.17")
+    koraBom platform("ru.tinkoff.kora:kora-parent:1.2.19")
     annotationProcessor "ru.tinkoff.kora:annotation-processors"
 
     implementation "ru.tinkoff.kora:grpc-client"
@@ -233,5 +235,5 @@ Server streaming can be consumed with a `*BlockingStub` (returns an `Iterator`) 
 | [references/grpc-client-config-reference.md](references/grpc-client-config-reference.md) | Full config + protobuf plugin setup |
 | [references/grpc-client-interceptors-reference.md](references/grpc-client-interceptors-reference.md) | Interceptor patterns, metadata, GraphInterceptor |
 | [references/grpc-client-streaming-reference.md](references/grpc-client-streaming-reference.md) | Server/client/bidirectional streaming |
-| [assets/README.md](assets/README.md) | Template catalog and usage |
+| `assets/` | Template catalog and usage |
 </invoke>

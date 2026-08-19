@@ -1,9 +1,11 @@
 ---
 name: kora-di-compile
-description: "Compile-time dependency injection in Kora Framework. Use when creating @KoraApp applications, @Component classes, @Module interfaces, @KoraSubmodule multi-module projects, @Root startup components, @Tag disambiguation, All<T> collections, ValueOf lazy dependencies, Lifecycle management, or debugging DI container errors - no factory found, ambiguous dependency, circular dependencies. Triggers - dependency injection, DI, compile-time, container, graph, component, factory, submodule, auto-wiring, constructor injection."
+description: "Compile-time DI in Kora — @KoraApp, @Component, @Module, @KoraSubmodule, @Root. Use when wiring the application graph or debugging \"no factory found\"/ambiguous/circular dependency errors. For runtime DI behavior see kora-di-runtime."
 ---
 
 # Kora DI Compile — Compile-Time Dependency Injection
+
+> **Kora sub-skill — obey the [kora-v1 meta rules](../../SKILL.md) on every task:** **R0** ensure `.kora-agent/` docs+examples are cloned · **R1** read this sub-skill before writing code · **R2** Kora APIs only — no Spring/Micronaut/Quarkus, no invented annotations or config keys · **R3** journal any incorrect Kora usage. Add comments/Javadoc only if asked.
 
 **Version:** Kora 1.x | **Java:** 25+ | **Kotlin:** 1.9+ | **Gradle:** 9+
 
@@ -38,7 +40,7 @@ configurations {
 }
 
 dependencies {
-    koraBom platform("ru.tinkoff.kora:kora-parent:1.2.17")
+    koraBom platform("ru.tinkoff.kora:kora-parent:1.2.19")
     annotationProcessor "ru.tinkoff.kora:annotation-processors"
     implementation "ru.tinkoff.kora:config-hocon"
     implementation "ru.tinkoff.kora:logging-logback"

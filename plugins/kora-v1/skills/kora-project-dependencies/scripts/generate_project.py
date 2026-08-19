@@ -148,7 +148,7 @@ Examples:
     parser.add_argument("--package", help="Base package, e.g. com.example (required unless --list-modules)")
     parser.add_argument("--lang", choices=["java", "kotlin"], default="java", help="Language")
     parser.add_argument("--output", default=".", help="Output directory")
-    parser.add_argument("--kora-version", default="1.2.17", help="Kora version")
+    parser.add_argument("--kora-version", default="1.2.19", help="Kora version")
     parser.add_argument("--modules", "-m", help="Comma-separated modules")
     parser.add_argument("--list-modules", action="store_true", help="List available modules")
     parser.add_argument("--multi-module", action="store_true", help="Create multi-module project")
@@ -329,7 +329,7 @@ def generate_settings_gradle(name: str, lang: str, multi_module: bool = False) -
         return f"rootProject.name = '{name}'"
 
 
-def generate_gradle_properties(kora_version: str = "1.2.17") -> str:
+def generate_gradle_properties(kora_version: str = "1.2.19") -> str:
     """Generate gradle.properties content."""
     return f"""# Kora Framework
 koraVersion={kora_version}
