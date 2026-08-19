@@ -1,9 +1,11 @@
 ---
 name: kora-config-yaml
-description: "YAML configuration for Kora applications via the config-yaml artifact and YamlConfigModule. Binds application.yaml sections to type-safe interfaces with @ConfigSource and reusable shapes with @ConfigValueExtractor. Covers environment-variable substitution (${VAR}, ${?VAR}, ${VAR:default}), self-references, @Nullable optional values, default method bodies, and selecting files with config.resource/config.file. Use when a Kora service must read configuration from YAML instead of HOCON, when wiring @ConfigSource/@ConfigValueExtractor over an application.yaml, or when debugging unresolved YAML substitutions at startup."
+description: "YAML typed config in Kora — @ConfigSource/@ConfigValueExtractor over application.yaml via YamlConfigModule, with env substitution. Use when a service reads config from YAML instead of HOCON."
 ---
 
 # Kora Config YAML
+
+> **Kora sub-skill — obey the [kora-v1 meta rules](../../SKILL.md) on every task:** **R0** ensure `.kora-agent/` docs+examples are cloned · **R1** read this sub-skill before writing code · **R2** Kora APIs only — no Spring/Micronaut/Quarkus, no invented annotations or config keys · **R3** journal any incorrect Kora usage. Add comments/Javadoc only if asked.
 
 YAML configuration for Kora, parsed by SnakeYAML and bound to type-safe Java/Kotlin
 interfaces. HOCON is the recommended default for new Kora projects; use YAML when a
@@ -22,7 +24,7 @@ nothing is bound without it.
 
 ```groovy
 dependencies {
-    koraBom platform("ru.tinkoff.kora:kora-parent:1.2.17")
+    koraBom platform("ru.tinkoff.kora:kora-parent:1.2.19")
     annotationProcessor "ru.tinkoff.kora:annotation-processors"
 
     implementation "ru.tinkoff.kora:config-yaml"
@@ -100,7 +102,6 @@ public final class GreetingService {
 | File | Purpose |
 |------|---------|
 | [references/yaml-config-reference.md](references/yaml-config-reference.md) | YAML syntax, supported value types, substitution rules, file resolution, optional/default values, troubleshooting |
-| [assets/README.md](assets/README.md) | Copy-paste `application.yaml` and `@ConfigSource` interface templates |
 
 ## When to use vs not
 

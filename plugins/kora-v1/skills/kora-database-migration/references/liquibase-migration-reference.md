@@ -168,35 +168,6 @@ Each included file is itself a formatted-SQL changelog beginning with
 
 ---
 
-## Testing
-
-Use the Testcontainers extension with the Liquibase engine; it runs the master
-changelog against a disposable Postgres container:
-
-```java
-@TestcontainersPostgreSQL(
-        network = @Network(shared = true),
-        mode = ContainerMode.PER_RUN,
-        migration = @Migration(
-                engine = Migration.Engines.LIQUIBASE,
-                apply  = Migration.Mode.PER_METHOD,
-                drop   = Migration.Mode.PER_METHOD))
-@KoraAppTest(Application.class)
-class OrderRepositoryTest implements KoraAppTestConfigModifier {
-
-    @ConnectionPostgreSQL
-    private JdbcConnection connection;
-}
-```
-
-```groovy
-testImplementation "io.goodforgod:testcontainers-extensions-postgres:0.13.1"
-testImplementation "org.testcontainers:junit-jupiter:1.21.4"
-testImplementation "ru.tinkoff.kora:test-junit5"
-```
-
----
-
 ## Pitfalls
 
 | Symptom | Fix |

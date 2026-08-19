@@ -85,7 +85,7 @@ subprojects {
     }
     
     dependencies {
-        koraBom platform("ru.tinkoff.kora:kora-parent:1.2.17")
+        koraBom platform("ru.tinkoff.kora:kora-parent:1.2.19")
         annotationProcessor "ru.tinkoff.kora:annotation-processors"
     }
     
@@ -117,7 +117,7 @@ include ':app'
 ### gradle.properties
 
 ```properties
-koraVersion=1.2.17
+koraVersion=1.2.19
 org.gradle.caching=true
 org.gradle.configuration-cache=true
 org.gradle.parallel=true

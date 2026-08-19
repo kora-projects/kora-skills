@@ -1,9 +1,11 @@
 ---
 name: kora-telemetry-metrics
-description: "Kora Micrometer metrics via the micrometer-module — MetricsModule wires a PrometheusMeterRegistry and a MeterRegistry into the graph for custom Counter/Gauge/Timer/DistributionSummary, exposed in Prometheus format on the private HTTP port (privateApiHttpMetricsPath). Covers MetricsConfig (metrics.opentelemetrySpec V120/V123), per-module telemetry.metrics.slo buckets, PrometheusMeterRegistryInitializer for common tags, and tag-cardinality safety. Use when adding business metrics, configuring the /metrics scrape endpoint, tuning latency buckets, or debugging missing/high-cardinality metrics."
+description: "Kora Micrometer metrics (micrometer-module) — PrometheusMeterRegistry + MeterRegistry, custom Counter/Gauge/Timer, /metrics scrape endpoint, SLO buckets. Use when adding business metrics or tuning latency buckets."
 ---
 
 # Kora Telemetry Metrics
+
+> **Kora sub-skill — obey the [kora-v1 meta rules](../../SKILL.md) on every task:** **R0** ensure `.kora-agent/` docs+examples are cloned · **R1** read this sub-skill before writing code · **R2** Kora APIs only — no Spring/Micronaut/Quarkus, no invented annotations or config keys · **R3** journal any incorrect Kora usage. Add comments/Javadoc only if asked.
 
 Kora collects metrics with [Micrometer](https://docs.micrometer.io/micrometer/reference/concepts.html). Adding `MetricsModule` registers a `PrometheusMeterRegistry`, instruments every Kora module (HTTP, gRPC, JDBC, Kafka, cache, JVM), and publishes a `MeterRegistry` component you inject to record custom business metrics. Metrics are served in Prometheus text format on the **private** HTTP port — never the public one.
 
@@ -19,7 +21,7 @@ The `micrometer-module` already brings the `PrometheusMeterRegistry`; no separat
 
     ```groovy
     dependencies {
-        koraBom platform("ru.tinkoff.kora:kora-parent:1.2.17")
+        koraBom platform("ru.tinkoff.kora:kora-parent:1.2.19")
         annotationProcessor "ru.tinkoff.kora:annotation-processors"
 
         implementation "ru.tinkoff.kora:micrometer-module"
@@ -33,7 +35,7 @@ The `micrometer-module` already brings the `PrometheusMeterRegistry`; no separat
 
     ```kotlin
     dependencies {
-        koraBom(platform("ru.tinkoff.kora:kora-parent:1.2.17"))
+        koraBom(platform("ru.tinkoff.kora:kora-parent:1.2.19"))
         ksp("ru.tinkoff.kora:symbol-processors")
 
         implementation("ru.tinkoff.kora:micrometer-module")
@@ -156,7 +158,7 @@ public final class MetricsService {
 | [references/metrics-cardinality-reference.md](references/metrics-cardinality-reference.md) | Good vs bad tags, memory-leak prevention, cardinality checklist |
 | [references/metrics-export-reference.md](references/metrics-export-reference.md) | Prometheus pull model, scrape config, verification |
 | [references/metrics-reference.md](references/metrics-reference.md) | Catalogue of built-in Kora metrics with real OpenTelemetry tag names |
-| [assets/](assets/README.md) | Application, config, service, and monitoring templates |
+| `assets/` | Application, config, service, and monitoring templates |
 
 ---
 

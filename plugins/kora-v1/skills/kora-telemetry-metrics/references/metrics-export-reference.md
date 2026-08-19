@@ -53,7 +53,7 @@ Expected (truncated) output uses OpenTelemetry semantic-convention names rendere
 ```
 # HELP kora_up Application status indicator
 # TYPE kora_up gauge
-kora_up{version="1.2.17"} 1.0
+kora_up{version="1.2.19"} 1.0
 # HELP http_server_request_duration_milliseconds HTTP server request duration
 # TYPE http_server_request_duration_milliseconds histogram
 http_server_request_duration_milliseconds_bucket{http_request_method="GET",http_route="/api/users",http_response_status_code="200",le="100.0"} 42

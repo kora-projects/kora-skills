@@ -1,9 +1,11 @@
 ---
 name: kora-config-hocon
-description: "HOCON configuration in Kora services via the config-hocon module and HoconConfigModule. Maps application.conf into type-safe interfaces with @ConfigSource (application config) and @ConfigValueExtractor (reusable/library config). Covers required vs @Nullable vs default-method values, environment substitution (${VAR}, ${?VAR}, default = ${?VAR} override), supported types (Duration, Period, Size, UUID, List/Set/Map, nested objects), injecting the raw Config with @Environment/@SystemProperties/@ApplicationConfig tags, and the config file watcher. Use when adding typed config to a Kora app, choosing @ConfigSource vs @ConfigValueExtractor, wiring credentials through env vars, or debugging \"config value not found\" graph build failures."
+description: "HOCON typed config in Kora — @ConfigSource/@ConfigValueExtractor over application.conf via HoconConfigModule, with env substitution. Use when adding typed config or debugging \"config value not found\"."
 ---
 
 # Kora Config HOCON
+
+> **Kora sub-skill — obey the [kora-v1 meta rules](../../SKILL.md) on every task:** **R0** ensure `.kora-agent/` docs+examples are cloned · **R1** read this sub-skill before writing code · **R2** Kora APIs only — no Spring/Micronaut/Quarkus, no invented annotations or config keys · **R3** journal any incorrect Kora usage. Add comments/Javadoc only if asked.
 
 **Artifact:** `ru.tinkoff.kora:config-hocon` | **Module:** `HoconConfigModule` | **Annotations package:** `ru.tinkoff.kora.config.common.annotation`
 
@@ -15,7 +17,7 @@ HOCON is the recommended config format for Kora. The `config-hocon` module maps 
 
 ```groovy
 dependencies {
-    koraBom platform("ru.tinkoff.kora:kora-parent:1.2.17")
+    koraBom platform("ru.tinkoff.kora:kora-parent:1.2.19")
 
     // MANDATORY — without the annotation processor nothing is generated
     annotationProcessor "ru.tinkoff.kora:annotation-processors"

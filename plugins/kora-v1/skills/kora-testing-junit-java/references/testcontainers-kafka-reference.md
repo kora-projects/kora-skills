@@ -23,7 +23,7 @@ Integration testing Kora Kafka consumers (`@KafkaListener`) and producers
 
 ```groovy
 dependencies {
-    koraBom platform("ru.tinkoff.kora:kora-parent:1.2.17")
+    koraBom platform("ru.tinkoff.kora:kora-parent:1.2.19")
 
     testImplementation "org.testcontainers:junit-jupiter:1.21.4"
     testImplementation "org.testcontainers:kafka:1.21.4"

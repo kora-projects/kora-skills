@@ -6,7 +6,7 @@
       "query": "Create a new Kora service in Java from scratch with Gradle.",
       "expected_behavior": [
         "Creates build.gradle with the application and java plugins",
-        "Imports the BOM via koraBom platform(\"ru.tinkoff.kora:kora-parent:1.2.17\") declared once",
+        "Imports the BOM via koraBom platform(\"ru.tinkoff.kora:kora-parent:1.2.19\") declared once",
         "Adds annotationProcessor \"ru.tinkoff.kora:annotation-processors\"",
         "Defines an @KoraApp interface as the graph root",
         "Does not version individual ru.tinkoff.kora:* artifacts",
@@ -57,7 +57,7 @@
       "skills": ["kora-project-setup-java"],
       "query": "Which JDK and Gradle version should I use for a Kora Java project, and how do I configure the toolchain?",
       "expected_behavior": [
-        "States JDK 17 minimum, 21 recommended",
+        "States JDK 17 minimum, 25 recommended",
         "Configures the Java toolchain with JavaLanguageVersion in build.gradle",
         "Adds the foojay-resolver-convention plugin in settings.gradle",
         "Notes Gradle 7+ is required and the wrapper pins a current distribution"

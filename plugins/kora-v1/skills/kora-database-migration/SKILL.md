@@ -1,9 +1,11 @@
 ---
 name: kora-database-migration
-description: "Kora database migration modules for Flyway and Liquibase that run schema migrations on application startup. Covers the FlywayJdbcDatabaseModule and LiquibaseJdbcDatabaseModule, the database-flyway and database-liquibase artifacts, FlywayConfig/LiquibaseConfig keys (locations, changelog, executeInTransaction, validateOnMigrate, mixed), versioned SQL scripts, and the recommended out-of-process strategy (Flyway Gradle plugin, K8s Job, CI) for horizontally scaled services. Use when wiring migrations into a @KoraApp, picking Flyway vs Liquibase, configuring flyway/liquibase config sections, or fixing checksum/race-condition failures on startup."
+description: "Kora startup schema migrations — Flyway (FlywayJdbcDatabaseModule) or Liquibase (LiquibaseJdbcDatabaseModule). Use when wiring migrations into @KoraApp, choosing Flyway vs Liquibase, or fixing checksum/race failures."
 ---
 
 # Kora Database Migration — Flyway and Liquibase
+
+> **Kora sub-skill — obey the [kora-v1 meta rules](../../SKILL.md) on every task:** **R0** ensure `.kora-agent/` docs+examples are cloned · **R1** read this sub-skill before writing code · **R2** Kora APIs only — no Spring/Micronaut/Quarkus, no invented annotations or config keys · **R3** journal any incorrect Kora usage. Add comments/Javadoc only if asked.
 
 Kora ships two optional modules that run database migrations during the
 application's `Lifecycle` startup, on top of the JDBC datasource:
@@ -33,7 +35,7 @@ mandatory: without it `@KoraApp` generates nothing.
 
 ```groovy
 dependencies {
-    koraBom platform("ru.tinkoff.kora:kora-parent:1.2.17")
+    koraBom platform("ru.tinkoff.kora:kora-parent:1.2.19")
     annotationProcessor "ru.tinkoff.kora:annotation-processors"
 
     implementation "ru.tinkoff.kora:database-jdbc"     // required datasource
@@ -238,43 +240,6 @@ run can still block startup — out-of-process avoids this entirely.
 
 ---
 
-## Testing migrations
-
-The `kora-java-crud` example does not call Flyway by hand in tests. It uses the
-Testcontainers extension `io.goodforgod:testcontainers-extensions-postgres`, which
-runs the same `db/migration` scripts against a throwaway Postgres container:
-
-```java
-@TestcontainersPostgreSQL(
-        network = @Network(shared = true),
-        mode = ContainerMode.PER_RUN,
-        migration = @Migration(
-                engine = Migration.Engines.FLYWAY,
-                apply  = Migration.Mode.PER_METHOD,
-                drop   = Migration.Mode.PER_METHOD))
-@KoraAppTest(Application.class)
-class IntegrationTests implements KoraAppTestConfigModifier {
-
-    @ConnectionPostgreSQL
-    private JdbcConnection connection;
-
-    // @TestComponent-injected repositories use the migrated schema
-}
-```
-
-Test dependency:
-
-```groovy
-testImplementation "io.goodforgod:testcontainers-extensions-postgres:0.13.1"
-testImplementation "org.testcontainers:junit-jupiter:1.21.4"
-testImplementation "ru.tinkoff.kora:test-junit5"
-```
-
-`Migration.Engines.LIQUIBASE` switches the same extension to Liquibase. See
-[kora-testing-junit-java](../kora-testing-junit-java/SKILL.md) for `@KoraAppTest`.
-
----
-
 ## What's in references/ and assets/
 
 | File | Purpose |
@@ -284,7 +249,7 @@ testImplementation "ru.tinkoff.kora:test-junit5"
 | [assets/V1__initial_schema.sql.template](assets/V1__initial_schema.sql.template) | Flyway initial migration starter |
 | [assets/002-orders-table.sql.template](assets/002-orders-table.sql.template) | Follow-up Flyway/Liquibase change starter |
 | [assets/db.changelog-master.sql.template](assets/db.changelog-master.sql.template) | Liquibase formatted-SQL master changelog |
-| [assets/README.md](assets/README.md) | How to copy and rename the templates |
+| `assets/` | How to copy and rename the templates |
 
 ---
 

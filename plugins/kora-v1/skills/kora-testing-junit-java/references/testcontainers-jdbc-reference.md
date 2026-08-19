@@ -22,7 +22,7 @@ Integration testing a Kora JDBC service against a real PostgreSQL via Testcontai
 
 ```groovy
 dependencies {
-    koraBom platform("ru.tinkoff.kora:kora-parent:1.2.17")
+    koraBom platform("ru.tinkoff.kora:kora-parent:1.2.19")
 
     testRuntimeOnly "org.postgresql:postgresql:42.7.3"
     testImplementation "org.testcontainers:junit-jupiter:1.21.4"

@@ -1,9 +1,11 @@
 ---
 name: kora-grpc-server
-description: "Builds gRPC server handlers in Kora using GrpcServerModule, @Component handlers that extend the generated *GrpcImplBase, io.grpc ServerInterceptor beans, grpcServer HOCON/YAML config (port, maxMessageSize, telemetry), the com.google.protobuf Gradle plugin, and gRPC Server Reflection. Use when serving gRPC RPCs (unary/server/client/bidirectional streaming) from a Kora service, mapping protobuf messages to a service layer, returning io.grpc.Status errors, or enabling reflection for grpcurl. Triggers on grpc-server, GrpcServerModule, *GrpcImplBase, StreamObserver, ServerInterceptor, reflectionEnabled."
+description: "Kora gRPC server handlers — GrpcServerModule, @Component extending the generated *GrpcImplBase, ServerInterceptor, grpcServer config, reflection. Use when serving gRPC RPCs (unary/streaming) from a Kora service."
 ---
 
 # Kora gRPC Server
+
+> **Kora sub-skill — obey the [kora-v1 meta rules](../../SKILL.md) on every task:** **R0** ensure `.kora-agent/` docs+examples are cloned · **R1** read this sub-skill before writing code · **R2** Kora APIs only — no Spring/Micronaut/Quarkus, no invented annotations or config keys · **R3** journal any incorrect Kora usage. Add comments/Javadoc only if asked.
 
 Serve gRPC RPCs from a Kora application. The `.proto` contract is the source of truth: the `protobuf` Gradle plugin generates message classes and a `*Grpc.*ImplBase` base type, and you implement a Kora `@Component` that extends that base. `GrpcServerModule` discovers every `@Component` handler and `ServerInterceptor` and starts the server — no reflection-based wiring, everything is resolved through the compile-time graph.
 
@@ -26,7 +28,7 @@ Do NOT use this skill for:
 
 ```groovy
 dependencies {
-    koraBom platform("ru.tinkoff.kora:kora-parent:1.2.17")
+    koraBom platform("ru.tinkoff.kora:kora-parent:1.2.19")
     annotationProcessor "ru.tinkoff.kora:annotation-processors"
 
     implementation "ru.tinkoff.kora:grpc-server"
@@ -170,7 +172,7 @@ The gRPC method's full name is `<proto package>.<service>/<Method>`.
 | [references/grpc-error-handling-reference.md](references/grpc-error-handling-reference.md) | `io.grpc.Status` codes, error metadata, streaming errors |
 | [references/grpc-reflection-reference.md](references/grpc-reflection-reference.md) | Reflection setup and `grpcurl`/Postman usage |
 
-Assets (templates): see [assets/README.md](assets/README.md).
+Assets (templates): see `assets/`.
 
 ---
 

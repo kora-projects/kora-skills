@@ -1,21 +1,20 @@
-# Scheduling Configuration Reference
+# JDK Scheduling Configuration Reference
 
-Complete configuration reference for both JDK and Quartz scheduling.
+Configuration for `scheduling-jdk` (in-process `ScheduledExecutorService`). For Quartz
+(cron, persistence, clustering) see the sibling skill
+[kora-aop-scheduling-quartz](../../kora-aop-scheduling-quartz/SKILL.md).
 
 ## Contents
 
 - [Module Configuration](#module-configuration)
 - [Global Configuration](#global-configuration) — HOCON and YAML
 - [Job-Specific Configuration](#job-specific-configuration)
-- [Quartz Persistence (JDBC JobStore)](#quartz-persistence-jdbc-jobstore)
 - [Telemetry Reference](#telemetry-reference)
 - [Shutdown Configuration](#shutdown-configuration)
 
 ---
 
 ## Module Configuration
-
-### JDK Module
 
 ```java
 @KoraApp
@@ -29,29 +28,11 @@ public interface Application extends
 **Artifact (with mandatory BOM + processor):**
 ```groovy
 dependencies {
-    koraBom platform("ru.tinkoff.kora:kora-parent:1.2.17")
+    koraBom platform("ru.tinkoff.kora:kora-parent:1.2.19")
     annotationProcessor "ru.tinkoff.kora:annotation-processors"   // Kotlin: ksp "ru.tinkoff.kora:symbol-processors"
     implementation "ru.tinkoff.kora:scheduling-jdk"
 }
 ```
-
-### Quartz Module
-
-```java
-@KoraApp
-public interface Application extends
-    HoconConfigModule,
-    LogbackModule,
-    QuartzModule {
-}
-```
-
-**Artifact:**
-```groovy
-implementation "ru.tinkoff.kora:scheduling-quartz"
-```
-
-See [kora-aop-scheduling-quartz](../../kora-aop-scheduling-quartz/SKILL.md) for the dedicated Quartz skill.
 
 ---
 
@@ -60,11 +41,10 @@ See [kora-aop-scheduling-quartz](../../kora-aop-scheduling-quartz/SKILL.md) for 
 ### HOCON (application.conf)
 
 ```hocon
-# JDK Configuration
 scheduling {
   threads = 2                    # ScheduledExecutorService pool size
   shutdownWait = "30s"           # Grace period for SIGTERM
-  
+
   telemetry {
     logging {
       enabled = false            # Job execution logging
@@ -84,24 +64,11 @@ scheduling {
     }
   }
 }
-
-# Quartz Configuration
-quartz {
-  "org.quartz.scheduler.instanceName" = "MyScheduler"
-  "org.quartz.threadPool.threadCount" = "10"
-  "org.quartz.threadPool.threadPriority" = "5"
-  "org.quartz.jobStore.misfireThreshold" = "60000"
-}
-
-scheduling {
-  waitForJobComplete = true      # Block shutdown until jobs finish
-}
 ```
 
 ### YAML (application.yml)
 
 ```yaml
-# JDK Configuration
 scheduling:
   threads: 2
   shutdownWait: "30s"
@@ -117,16 +84,6 @@ scheduling:
       enabled: true
       attributes:
         service: "my-service"
-
-# Quartz Configuration
-quartz:
-  org.quartz.scheduler.instanceName: "MyScheduler"
-  org.quartz.threadPool.threadCount: "10"
-  org.quartz.threadPool.threadPriority: "5"
-  org.quartz.jobStore.misfireThreshold: "60000"
-
-scheduling:
-  waitForJobComplete: true
 ```
 
 ---
@@ -134,8 +91,6 @@ scheduling:
 ## Job-Specific Configuration
 
 Config has **priority over annotation parameters**. Annotation values become defaults.
-
-### JDK Jobs
 
 ```java
 @ScheduleAtFixedRate(config = "jobs.heartbeat")
@@ -178,56 +133,6 @@ jobs:
     delay: "5m"
 ```
 
-### Quartz Jobs
-
-```java
-@ScheduleWithCron(config = "jobs.nightly")
-void nightlyReport() { ... }
-
-@ScheduleWithCron(config = "jobs.hourly")
-void hourlyCheck() { ... }
-```
-
-**HOCON:**
-```hocon
-jobs {
-  nightly {
-    cron = "0 0 3 * * ?"
-  }
-  hourly {
-    cron = "0 0 * * * ?"
-  }
-}
-```
-
-**YAML:**
-```yaml
-jobs:
-  nightly:
-    cron: "0 0 3 * * ?"
-  hourly:
-    cron: "0 0 * * * ?"
-```
-
----
-
-## Quartz Persistence (JDBC JobStore)
-
-For persistent job state that survives restarts:
-
-```hocon
-quartz {
-  "org.quartz.jobStore.class" = "org.quartz.impl.jdbcjobstore.JobStoreTX"
-  "org.quartz.jobStore.driverDelegateClass" = "org.quartz.impl.jdbcjobstore.PostgreSQLDelegate"
-  "org.quartz.jobStore.dataSource" = "myDS"
-  "org.quartz.jobStore.tablePrefix" = "QRTZ_"
-  "org.quartz.jobStore.isClustered" = "true"
-  "org.quartz.scheduler.instanceId" = "AUTO"
-}
-```
-
-**Database tables:** Run Quartz schema for your database (e.g., `tables_postgres.sql`).
-
 ---
 
 ## Telemetry Reference
@@ -261,23 +166,16 @@ quartz {
 
 ## Shutdown Configuration
 
-### JDK
-
 | Property | Type | Default | Description |
 |----------|------|---------|-------------|
 | `scheduling.shutdownWait` | duration | `30s` | Grace period for in-flight jobs |
 
-### Quartz
-
-| Property | Type | Default | Description |
-|----------|------|---------|-------------|
-| `scheduling.waitForJobComplete` | boolean | `false` | Block shutdown until jobs finish |
+See [graceful-shutdown-reference.md](graceful-shutdown-reference.md) for interrupt-handling patterns.
 
 ---
 
 ## See Also
 
-- Kora docs: `.kora-agent/kora-docs/mkdocs/docs/en/documentation/scheduling.md` — full scheduling documentation
+- Kora docs: `.kora-agent/kora-docs/mkdocs/docs/en/documentation/scheduling.md` (section `#native`)
 - [jdk-scheduling-reference.md](jdk-scheduling-reference.md) — JDK scheduling annotations
-- [quartz-scheduling-reference.md](quartz-scheduling-reference.md) — Quartz scheduling
 - [graceful-shutdown-reference.md](graceful-shutdown-reference.md) — Interrupt handling

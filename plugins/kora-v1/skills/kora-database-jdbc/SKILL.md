@@ -1,9 +1,11 @@
 ---
 name: kora-database-jdbc
-description: "JDBC relational database integration for Kora. Builds compile-time @Repository interfaces extending JdbcRepository with @Query, @EntityJdbc records, @Table/@Column/@Id mapping, SQL macros (%{return#selects}, %{entity#inserts}, %{entity#where = @id}), @Batch, UpdateCount, @Id-on-method generated identifiers, transactions via JdbcConnectionFactory.inTx(), and custom JdbcResultSetMapper/JdbcRowMapper/JdbcResultColumnMapper/JdbcParameterColumnMapper. Connection pooling is HikariCP, configured under the `db` HOCON/YAML section of JdbcDatabaseConfig. Use when adding a Hikari-backed PostgreSQL/MySQL/Oracle repository to a Kora service, wiring JdbcDatabaseModule, debugging \"JdbcRepository not found\" graph errors, or choosing repository return signatures."
+description: "Kora JDBC repositories — @Repository extends JdbcRepository, @Query, @EntityJdbc, SQL macros, @Batch, transactions via inTx(), HikariCP under `db`. Use when adding a Postgres/MySQL/Oracle repository or debugging repository graph errors."
 ---
 
 # Kora Database JDBC
+
+> **Kora sub-skill — obey the [kora-v1 meta rules](../../SKILL.md) on every task:** **R0** ensure `.kora-agent/` docs+examples are cloned · **R1** read this sub-skill before writing code · **R2** Kora APIs only — no Spring/Micronaut/Quarkus, no invented annotations or config keys · **R3** journal any incorrect Kora usage. Add comments/Javadoc only if asked.
 
 JDBC-based relational database access (PostgreSQL, MySQL, Oracle) with HikariCP. Repositories are `@Repository` interfaces whose implementations are generated at compile time by the annotation processor — no reflection, no runtime proxies.
 
@@ -17,7 +19,7 @@ JDBC-based relational database access (PostgreSQL, MySQL, Oracle) with HikariCP.
 
 ```groovy
 dependencies {
-    koraBom platform("ru.tinkoff.kora:kora-parent:1.2.17")
+    koraBom platform("ru.tinkoff.kora:kora-parent:1.2.19")
     annotationProcessor "ru.tinkoff.kora:annotation-processors"  // mandatory: generates *RepositoryImpl
 
     implementation "ru.tinkoff.kora:database-jdbc"
@@ -225,42 +227,6 @@ python scripts/generate_repository.py --entity User --table users --id-type Long
 
 ---
 
-## Testing
-
-Use `@KoraAppTest` with `test-junit5` plus a Testcontainers PostgreSQL extension; inject the real repository with `@TestComponent` and point the config at the container.
-
-```java
-@TestcontainersPostgreSQL(mode = ContainerMode.PER_RUN,
-        migration = @Migration(engine = Migration.Engines.FLYWAY,
-                apply = Migration.Mode.PER_METHOD, drop = Migration.Mode.PER_METHOD))
-@KoraAppTest(Application.class)
-class EntityRepositoryTest implements KoraAppTestConfigModifier {
-
-    @ConnectionPostgreSQL
-    private JdbcConnection connection;
-
-    @TestComponent
-    private EntityRepository repository;
-
-    @Override
-    public KoraConfigModification config() {
-        return KoraConfigModification.ofSystemProperty("POSTGRES_JDBC_URL", connection.params().jdbcUrl())
-                .withSystemProperty("POSTGRES_USER", connection.params().username())
-                .withSystemProperty("POSTGRES_PASS", connection.params().password());
-    }
-
-    @Test
-    void insertThenFind() {
-        repository.insert(new Entity(null, 1, "two", null));
-        assertFalse(repository.findAll().isEmpty());
-    }
-}
-```
-
-Test dependencies: `testImplementation "ru.tinkoff.kora:test-junit5"` and `testImplementation "io.goodforgod:testcontainers-extensions-postgres:0.13.1"`.
-
----
-
 ## Common pitfalls
 
 | Symptom | Fix |
@@ -289,7 +255,7 @@ For advanced mapper patterns (auto-discovery, generic enum mappers, @Batch limit
 
 | Component | Version |
 |-----------|---------|
-| Kora BOM (`kora-parent`) | 1.2.17 |
+| Kora BOM (`kora-parent`) | 1.2.19 |
 | Java | 21+ |
 | Gradle | 9+ |
 | PostgreSQL driver | 42.7.x |

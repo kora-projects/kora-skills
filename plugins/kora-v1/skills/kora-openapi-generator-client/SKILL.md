@@ -1,9 +1,11 @@
 ---
 name: kora-openapi-generator-client
-description: "Generates declarative Kora HTTP clients from an OpenAPI 3.x contract using the org.openapi.generator Gradle plugin with generatorName \"kora\". Produces typed *Api interfaces whose methods return sealed *ApiResponses wrappers, plus model records. Use when scaffolding a Gradle GenerateTask for an OpenAPI client, choosing a client mode (java-client, java-async-client, java-reactive-client, kotlin-client, kotlin-suspend-client), wiring the generated *Api into a @Component, setting clientConfigPrefix, attaching @InterceptWith auth interceptors (ApiKeyHttpClientInterceptor, BasicAuthHttpClientInterceptor, BearerAuthHttpClientInterceptor) or generator securityConfigPrefix/primaryAuth, or testing the client with @KoraAppTest and MockServer."
+description: "Generate Kora HTTP clients from an OpenAPI 3.x spec (org.openapi.generator, generatorName \"kora\") — typed *Api + sealed *ApiResponses. Use when scaffolding a contract-first client, choosing a client mode, or wiring auth interceptors."
 ---
 
 # Kora OpenAPI Generator — HTTP Client
+
+> **Kora sub-skill — obey the [kora-v1 meta rules](../../SKILL.md) on every task:** **R0** ensure `.kora-agent/` docs+examples are cloned · **R1** read this sub-skill before writing code · **R2** Kora APIs only — no Spring/Micronaut/Quarkus, no invented annotations or config keys · **R3** journal any incorrect Kora usage. Add comments/Javadoc only if asked.
 
 Generate a typed, declarative Kora HTTP client from an OpenAPI 3.x contract. The
 `org.openapi.generator` Gradle plugin with `generatorName = "kora"` emits a
@@ -38,7 +40,7 @@ A generated client needs an HTTP client transport plus the JSON module. Pick one
 
 ```groovy
 dependencies {
-    koraBom platform("ru.tinkoff.kora:kora-parent:1.2.17")
+    koraBom platform("ru.tinkoff.kora:kora-parent:1.2.19")
     annotationProcessor "ru.tinkoff.kora:annotation-processors"   // MANDATORY — nothing generates without it
 
     implementation "ru.tinkoff.kora:http-client-jdk"   // JdkHttpClientModule (or http-client-ok / http-client-async)
@@ -263,9 +265,6 @@ class PetApiTest implements KoraAppTestConfigModifier {
     }
 }
 ```
-
-Test dependency: `ru.tinkoff.kora:test-junit5` plus
-`io.goodforgod:testcontainers-extensions-mockserver`.
 
 ---
 

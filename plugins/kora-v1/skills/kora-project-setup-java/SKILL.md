@@ -1,9 +1,11 @@
 ---
 name: kora-project-setup-java
-description: "Scaffolds a new Kora microservice in Java with Gradle — the @KoraApp graph root, the kora-parent BOM, the mandatory annotationProcessor \"ru.tinkoff.kora:annotation-processors\", the koraBom configuration wiring, the Gradle wrapper, and the application plugin. Use when starting a Java Kora project from scratch, writing or fixing build.gradle / settings.gradle / gradle.properties, getting \"annotation processor did not run\" or \"ApplicationGraph not found\" build errors, or deciding the JDK toolchain and BOM version for a Kora service."
+description: "Scaffold a new Java Kora service (Gradle) — @KoraApp root, kora-parent BOM, annotation-processors, koraBom, wrapper. Use when starting a Java project or fixing \"annotation processor did not run\"/\"ApplicationGraph not found\". For Kotlin see kora-project-setup-kotlin."
 ---
 
 # Kora Project Setup — Java
+
+> **Kora sub-skill — obey the [kora-v1 meta rules](../../SKILL.md) on every task:** **R0** ensure `.kora-agent/` docs+examples are cloned · **R1** read this sub-skill before writing code · **R2** Kora APIs only — no Spring/Micronaut/Quarkus, no invented annotations or config keys · **R3** journal any incorrect Kora usage. Add comments/Javadoc only if asked.
 
 Scaffold a minimal, compilable Kora service in Java. Kora is a compile-time
 framework: its annotation processor generates `ApplicationGraph`, controllers,
@@ -11,9 +13,9 @@ JSON readers/writers and aspects during `compileJava`. If the processor is not
 wired into the Gradle build, **nothing is generated and nothing works**. This
 skill gets that wiring right the first time.
 
-**BOM version:** `ru.tinkoff.kora:kora-parent:1.2.17` (declared once; every
+**BOM version:** `ru.tinkoff.kora:kora-parent:1.2.19` (declared once; every
 `ru.tinkoff.kora:*` artifact inherits it — never version them individually).
-**JDK:** 17 minimum, 21 recommended. **Gradle:** 7+ (wrapper pins 9.5.1).
+**JDK:** 17 minimum, 25 recommended. **Gradle:** 9+ (wrapper pins 9.5.1).
 
 ---
 
@@ -35,7 +37,7 @@ plugins {
 
 java {
     toolchain {
-        languageVersion = JavaLanguageVersion.of(21)
+        languageVersion = JavaLanguageVersion.of(25)
         vendor = JvmVendorSpec.ADOPTIUM
     }
 }
@@ -54,7 +56,7 @@ configurations {
 }
 
 dependencies {
-    koraBom platform("ru.tinkoff.kora:kora-parent:1.2.17")
+    koraBom platform("ru.tinkoff.kora:kora-parent:1.2.19")
 
     // Mandatory: without this nothing is generated.
     annotationProcessor "ru.tinkoff.kora:annotation-processors"
@@ -211,7 +213,7 @@ my-app/
 ## The four things that must be right
 
 1. **`koraBom` configuration wiring.** A custom `koraBom` configuration holds
-   the `platform("ru.tinkoff.kora:kora-parent:1.2.17")` and is extended by
+   the `platform("ru.tinkoff.kora:kora-parent:1.2.19")` and is extended by
    `annotationProcessor`, `implementation`, `compileOnly`, and the `test*`
    configurations. The annotation-processor classpath is separate from the
    application classpath, so it needs the BOM explicitly — otherwise the

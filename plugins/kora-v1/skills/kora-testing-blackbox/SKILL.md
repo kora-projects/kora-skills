@@ -1,9 +1,11 @@
 ---
 name: kora-testing-blackbox
-description: "Black-box end-to-end testing of a packaged Kora application through its public HTTP API. Covers a GenericContainer AppContainer wrapper that builds the app Dockerfile, standard Testcontainers (PostgreSQLContainer, KafkaContainer) on Network.SHARED, readiness gating via Wait.forHttp(\"/system/readiness\") on the private port 8085, and driving the app with java.net.http.HttpClient or RestAssured. Use when testing the real Docker artifact end-to-end, wiring Testcontainers infrastructure for a Kora service, building the distTar/installDist image, or asserting HTTP status codes, JSON bodies, and persisted state without touching the Kora graph. For in-process component tests with @KoraAppTest see kora-testing-junit-java."
+description: "Black-box E2E tests of a packaged Kora app via its HTTP API — AppContainer (Docker), Testcontainers on Network.SHARED, readiness gating, RestAssured/HttpClient. Use for real-artifact E2E. For in-process tests see kora-testing-junit-java."
 ---
 
 # Kora Testing Black-Box — E2E via HTTP API
+
+> **Kora sub-skill — obey the [kora-v1 meta rules](../../SKILL.md) on every task:** **R0** ensure `.kora-agent/` docs+examples are cloned · **R1** read this sub-skill before writing code · **R2** Kora APIs only — no Spring/Micronaut/Quarkus, no invented annotations or config keys · **R3** journal any incorrect Kora usage. Add comments/Javadoc only if asked.
 
 Black-box tests run the **packaged application** (the `distTar`/`installDist` artifact) inside a Docker container and exercise it only through the public HTTP API. The test never injects into or modifies the Kora graph — it runs the same code that ships.
 
@@ -25,13 +27,13 @@ Kora builds its dependency graph at compile time, so startup is fast enough to m
 
 ## Quick Start
 
-Pin all Kora artifacts through the `kora-parent` BOM; never version `ru.tinkoff.kora:*` deps individually. The example repo uses BOM `1.2.17`.
+Pin all Kora artifacts through the `kora-parent` BOM; never version `ru.tinkoff.kora:*` deps individually. The example repo uses BOM `1.2.19`.
 
 ### 1. Dependencies (`build.gradle`)
 
 ```groovy
 dependencies {
-    koraBom platform("ru.tinkoff.kora:kora-parent:1.2.17")
+    koraBom platform("ru.tinkoff.kora:kora-parent:1.2.19")
 
     // Annotation processor is mandatory for any Kora module to generate code.
     annotationProcessor "ru.tinkoff.kora:annotation-processors"

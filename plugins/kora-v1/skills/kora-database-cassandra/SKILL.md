@@ -1,9 +1,11 @@
 ---
 name: kora-database-cassandra
-description: "Kora Cassandra/ScyllaDB repositories over the DataStax driver via CassandraDatabaseModule. Covers @Repository extends CassandraRepository, @Query CQL, @EntityCassandra DAO records, @Column/@Id, @UDT user-defined types, @Batch writes, @CassandraProfile per-method consistency, custom CassandraRowMapper/CassandraResultSetMapper/CassandraParameterColumnMapper, and async signatures (CompletionStage, Mono/Flux, Kotlin suspend/Flow). Use when adding a Cassandra repository, mapping rows or UDTs, tuning consistency/timeout under cassandra.basic.request, or wiring contact points and keyspace."
+description: "Kora Cassandra/ScyllaDB repositories — @Repository extends CassandraRepository, @Query CQL, @EntityCassandra, @UDT, @Batch, per-method @CassandraProfile. Use when adding a Cassandra repository or mapping rows/UDTs."
 ---
 
 # Kora Database Cassandra Skill
+
+> **Kora sub-skill — obey the [kora-v1 meta rules](../../SKILL.md) on every task:** **R0** ensure `.kora-agent/` docs+examples are cloned · **R1** read this sub-skill before writing code · **R2** Kora APIs only — no Spring/Micronaut/Quarkus, no invented annotations or config keys · **R3** journal any incorrect Kora usage. Add comments/Javadoc only if asked.
 
 **Focus:** Cassandra/ScyllaDB distributed database integration using DataStax Java Driver 4.x.
 
@@ -27,7 +29,7 @@ without it no repository implementation is generated.
 
 ```groovy
 dependencies {
-    koraBom platform("ru.tinkoff.kora:kora-parent:1.2.17")
+    koraBom platform("ru.tinkoff.kora:kora-parent:1.2.19")
     annotationProcessor "ru.tinkoff.kora:annotation-processors"   // Java
     // ksp "ru.tinkoff.kora:symbol-processors"                    // Kotlin (instead of annotationProcessor)
 

@@ -1,9 +1,11 @@
 ---
 name: kora-http-server-auth
-description: "HTTP server authentication and authorization in Kora. Covers HttpServerPrincipalExtractor<T> wired to OpenAPI-generated ApiSecurity markers (BearerAuth/BasicAuth/ApiKeyAuth/OAuth) via @Tag, the Principal / PrincipalWithScopes marker interfaces, SecurityException-to-403 mapping through an HttpServerInterceptor, and the manual HttpServerInterceptor + HttpServerRequestMapper path for non-OpenAPI auth. Use when securing @HttpController/@HttpRoute endpoints, validating Bearer/JWT/API-key/Basic credentials, integrating an OpenAPI security scheme, or returning 401/403 from a Kora HTTP server."
+description: "HTTP server auth in Kora — HttpServerPrincipalExtractor, Principal/PrincipalWithScopes, SecurityException→403 via interceptor. Use when securing @HttpController endpoints or integrating an OpenAPI security scheme. For client-side auth see kora-http-client-auth."
 ---
 
 # Kora HTTP Server Auth
+
+> **Kora sub-skill — obey the [kora-v1 meta rules](../../SKILL.md) on every task:** **R0** ensure `.kora-agent/` docs+examples are cloned · **R1** read this sub-skill before writing code · **R2** Kora APIs only — no Spring/Micronaut/Quarkus, no invented annotations or config keys · **R3** journal any incorrect Kora usage. Add comments/Javadoc only if asked.
 
 Authenticate and authorize Kora HTTP server endpoints. Kora has no `@Secured`-style
 annotation and no thread-local "current user". Authentication is implemented in one of
@@ -16,7 +18,7 @@ two ways:
   short-circuits, and/or an `HttpServerRequestMapper<P>` turns the request into a typed
   argument injected via `@Mapping`.
 
-All Kora artifacts inherit the version from the `kora-parent` BOM (`1.2.17` in
+All Kora artifacts inherit the version from the `kora-parent` BOM (`1.2.19` in
 `.kora-agent/kora-examples`). Never pin individual `ru.tinkoff.kora:*` versions.
 
 ---
@@ -27,7 +29,7 @@ All Kora artifacts inherit the version from the `kora-parent` BOM (`1.2.17` in
 
 ```groovy
 dependencies {
-    koraBom platform("ru.tinkoff.kora:kora-parent:1.2.17")
+    koraBom platform("ru.tinkoff.kora:kora-parent:1.2.19")
     annotationProcessor "ru.tinkoff.kora:annotation-processors" // mandatory: generates the graph + controllers
 
     implementation "ru.tinkoff.kora:http-server-undertow"
@@ -162,7 +164,7 @@ public final class AuthErrorInterceptor implements HttpServerInterceptor {
 | [references/manual-auth-reference.md](references/manual-auth-reference.md) | Non-OpenAPI auth: `HttpServerInterceptor`, `HttpServerRequestMapper` + `@Mapping`, header parsing, 401/403 responses. |
 | `assets/ApiKeyExtractor.java.template` / `.kt.template` | API-key `HttpServerPrincipalExtractor` skeleton. |
 | `assets/BasicAuthExtractor.java.template` / `.kt.template` | HTTP Basic `HttpServerPrincipalExtractor` skeleton. |
-| [assets/README.md](assets/README.md) | How to copy and wire the templates. |
+| `assets/` | How to copy and wire the templates. |
 | `evals/evals.json` | Behavioral evals for this skill. |
 
 ---

@@ -1,9 +1,11 @@
 ---
 name: kora-testing-junit-kotlin
-description: "In-process JUnit 5 component and integration tests for Kora Kotlin services. Covers @KoraAppTest, @TestComponent, @MockK/@SpyK (and Mockito-Kotlin), KoraAppTestConfigModifier, KoraAppTestGraphModifier, the TestApplication submodule pattern, coroutine tests with runTest/coEvery, and Testcontainers. Use when writing the first Kora Kotlin test, mocking a graph dependency, overriding config in a test, adding/replacing graph components, or wiring a PostgreSQL Testcontainer with @KoraAppTest. Artifact ru.tinkoff.kora:test-junit5; processor ksp ru.tinkoff.kora:symbol-processors."
+description: "In-process JUnit 5 tests for Kotlin Kora services — @KoraAppTest, @TestComponent, MockK, config/graph modifiers, coroutine tests, Testcontainers. Use when testing a Kotlin Kora graph. For Java see kora-testing-junit-java."
 ---
 
 # Kora Testing JUnit (Kotlin)
+
+> **Kora sub-skill — obey the [kora-v1 meta rules](../../SKILL.md) on every task:** **R0** ensure `.kora-agent/` docs+examples are cloned · **R1** read this sub-skill before writing code · **R2** Kora APIs only — no Spring/Micronaut/Quarkus, no invented annotations or config keys · **R3** journal any incorrect Kora usage. Add comments/Javadoc only if asked.
 
 In-process JUnit 5 tests that build a real Kora application Graph at compile time and inject its components into the test. `@KoraAppTest` reads a `@KoraApp` interface, builds only the slice of the Graph reachable from the requested `@TestComponent`s, and hands those components to the test. There is no reflection-based runtime container — the same generated `*Graph` code used in production runs in the test.
 

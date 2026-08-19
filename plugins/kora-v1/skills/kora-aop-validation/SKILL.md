@@ -1,9 +1,11 @@
 ---
 name: kora-aop-validation
-description: "Kora declarative validation via its own constraint annotations (@NotBlank, @NotEmpty, @Pattern, @Range, @Size), class/record validation with @Valid (generates Validator<T>), method argument and result validation with @Validate (AOP), custom constraints via @ValidatedBy + ValidatorFactory, and ViolationException handling mapped to HTTP 400 with ValidationHttpServerInterceptor. Use when validating request DTOs, enforcing argument/return rules on services or controllers, building custom constraints, or turning validation failures into structured 400 responses. Kora validation is NOT Jakarta/JSR-380 — annotations live in ru.tinkoff.kora.validation.common.annotation."
+description: "Kora declarative validation — @Valid/@Validate with Kora's own constraints (@NotBlank/@Pattern/@Range/@Size) and custom @ValidatedBy. Use when validating DTOs or service args. Kora validation is NOT Jakarta/JSR-380."
 ---
 
 # Kora AOP Validation
+
+> **Kora sub-skill — obey the [kora-v1 meta rules](../../SKILL.md) on every task:** **R0** ensure `.kora-agent/` docs+examples are cloned · **R1** read this sub-skill before writing code · **R2** Kora APIs only — no Spring/Micronaut/Quarkus, no invented annotations or config keys · **R3** journal any incorrect Kora usage. Add comments/Javadoc only if asked.
 
 Kora validates classes/records and method arguments/results at compile time using its **own** constraint annotations and generated `Validator<T>` components. There is no reflection: `@Valid` generates a `Validator<T>`, `@Validate` weaves an aspect into a method.
 
@@ -218,7 +220,7 @@ public interface Application extends
 | [references/validation-annotations-reference.md](references/validation-annotations-reference.md) | The five constraints, `@Range` boundary enum, `@Pattern` int flags, `@Nullable` opt-out |
 | [references/custom-validators-reference.md](references/custom-validators-reference.md) | Custom constraints via `Validator<T>` + `ValidatorFactory<T>` + `@ValidatedBy` |
 | [references/violation-exception-reference.md](references/violation-exception-reference.md) | `ViolationException`, `Violation`, `ValidationContext`, HTTP 400 mapping, testing |
-| [assets/README.md](assets/README.md) | DTO / service / custom-validator / error-response templates (Java + Kotlin) |
+| `assets/` | DTO / service / custom-validator / error-response templates (Java + Kotlin) |
 
 Working example apps: `.kora-agent/kora-examples/examples/java/kora-java-validation` (plain validation) and `.kora-agent/kora-examples/guides/java/kora-java-guide-validation-app` (HTTP 400 mapping).
 

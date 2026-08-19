@@ -1,9 +1,11 @@
 ---
 name: kora-kafka-producer
-description: "Kafka message production in Kora via the @KafkaPublisher annotation on an interface. Covers @KafkaPublisher.Topic typed contracts, send signatures (void, RecordMetadata, Future/CompletionStage, ProducerRecord, Callback), @Json and @Tag serializer selection, KafkaPublishException handling, and transactional sends with TransactionalPublisher. Use when declaring a Kafka producer, publishing domain events, configuring kafka.producer.* driverProperties, or wiring a transactional Kafka publisher. Requires the ru.tinkoff.kora:kafka module, KafkaModule on @KoraApp, and the annotation-processors (Java) or symbol-processors (Kotlin)."
+description: "Kora Kafka producers — @KafkaPublisher interface (KafkaModule), typed .Topic contracts, send signatures, @Json serializers, transactional sends. Use when publishing domain events or configuring kafka.producer."
 ---
 
 # Kora Kafka Producer
+
+> **Kora sub-skill — obey the [kora-v1 meta rules](../../SKILL.md) on every task:** **R0** ensure `.kora-agent/` docs+examples are cloned · **R1** read this sub-skill before writing code · **R2** Kora APIs only — no Spring/Micronaut/Quarkus, no invented annotations or config keys · **R3** journal any incorrect Kora usage. Add comments/Javadoc only if asked.
 
 Kora generates a Kafka `Producer` implementation at compile time from an
 interface annotated with `@KafkaPublisher`. You declare the contract; the
@@ -25,7 +27,7 @@ For Kafka consumers (`@KafkaListener`), use the `kora-kafka-consumer` skill.
 
 ```groovy
 dependencies {
-    koraBom platform("ru.tinkoff.kora:kora-parent:1.2.17")
+    koraBom platform("ru.tinkoff.kora:kora-parent:1.2.19")
     annotationProcessor "ru.tinkoff.kora:annotation-processors" // KSP for Kotlin: ksp "ru.tinkoff.kora:symbol-processors"
 
     implementation "ru.tinkoff.kora:kafka"
@@ -252,8 +254,7 @@ See [Transactions Reference](references/kafka-transactions-reference.md).
 
 ## Assets
 
-Templates and config live in `assets/`. See
-[assets/README.md](assets/README.md) for the full list and usage.
+Templates and config live in `assets/`.
 
 | Template | Description |
 |----------|-------------|

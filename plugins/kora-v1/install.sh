@@ -37,6 +37,7 @@ install_skill() {
     
     # Copy skill files
     cp -r "${SKILL_SOURCE}/skills" "${dest_dir}/" 2>/dev/null || true
+    cp -r "${SKILL_SOURCE}/references" "${dest_dir}/" 2>/dev/null || true
     cp "${SKILL_SOURCE}/SKILL.md" "${dest_dir}/" 2>/dev/null || true
     
     echo_info "${SKILL_NAME} installed to ${dest_dir}"

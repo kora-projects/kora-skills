@@ -1,9 +1,11 @@
 ---
 name: kora-openapi-management
-description: "Serves OpenAPI specification files plus Swagger UI and RapiDoc viewers over the Kora HTTP server via the OpenApiManagementModule (ru.tinkoff.kora:openapi-management). Use when exposing an OpenAPI document at an /openapi endpoint, enabling a /swagger-ui or /rapidoc UI, publishing multiple spec versions with a selector, or gating documentation endpoints in production. Config lives under openapi.management (file, enabled, endpoint, swaggerui, rapidoc), all toggles default to false. Not for code generation from a spec (kora-openapi-generator-server / kora-openapi-generator-client)."
+description: "Serve OpenAPI spec + Swagger UI/RapiDoc over the Kora HTTP server (OpenApiManagementModule), config under openapi.management. Use to expose /openapi or /swagger-ui. Not for code generation (see the openapi-generator skills)."
 ---
 
 # Kora OpenAPI Management
+
+> **Kora sub-skill — obey the [kora-v1 meta rules](../../SKILL.md) on every task:** **R0** ensure `.kora-agent/` docs+examples are cloned · **R1** read this sub-skill before writing code · **R2** Kora APIs only — no Spring/Micronaut/Quarkus, no invented annotations or config keys · **R3** journal any incorrect Kora usage. Add comments/Javadoc only if asked.
 
 **Focus:** Publish OpenAPI documents and serve interactive viewers (Swagger UI, RapiDoc) over the Kora HTTP server using `OpenApiManagementModule`.
 
@@ -207,7 +209,7 @@ Templates in `assets/` (English comments, BOM-pinned versions):
 | `application.dev.conf.template` / `application.prod.conf.template` | Per-environment overrides |
 | `SwaggerUiSecurityInterceptor.java.template` / `.kt.template` | `HttpServerInterceptor` gating the docs endpoints |
 
-See [assets/README.md](assets/README.md) for usage.
+See `assets/` for usage.
 
 ---
 

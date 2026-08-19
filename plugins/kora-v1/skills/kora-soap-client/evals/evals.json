@@ -1,0 +1,66 @@
+{
+  "evals": [
+    {
+      "id": "kora-soap-client-wsdl-setup",
+      "skills": ["kora-soap-client"],
+      "query": "Set up a Kora SOAP client from a WSDL at src/main/resources/wsdl for an external CustomerService, generating Jakarta sources.",
+      "expected_behavior": [
+        "Applies the com.github.bjornvester.wsdl2java Gradle plugin and configures wsdlDir, packageName, useJakarta = true and the generatedSourceDir",
+        "Adds the ru.tinkoff.kora:soap-client-annotation-processor and ru.tinkoff.kora:soap-client dependencies alongside a kora http-client module (e.g. http-client-jdk)",
+        "Plugs SoapClientModule into the @KoraApp interface",
+        "Explains the flow WSDL -> wsdl2java -> @WebService interface -> Kora AP -> *Impl at compile time",
+        "Does not add a runtime SOAP/JAX-WS stack (Apache CXF at runtime, Spring WS) and does not pin versions on ru.tinkoff.kora artifacts"
+      ],
+      "tags": ["soap", "wsdl", "setup", "basic"]
+    },
+    {
+      "id": "kora-soap-client-inject-call",
+      "skills": ["kora-soap-client"],
+      "query": "How do I call the generated Kora SOAP client SimpleService from my own @Component, and how is it configured?",
+      "expected_behavior": [
+        "Injects the generated @WebService interface (SimpleService) by constructor into the @Component",
+        "Calls the operation method directly (e.g. soapClient.test(request)) for a blocking call",
+        "Configures soapClient.SimpleService.url and optional timeout, where the service name comes from @WebService.name / the WSDL portType",
+        "Notes telemetry.logging/metrics/tracing config keys under soapClient.<Service>",
+        "Does not construct the SOAP client manually and does not use field injection or another framework's client"
+      ],
+      "tags": ["soap", "di", "config", "basic"]
+    },
+    {
+      "id": "kora-soap-client-reactive",
+      "skills": ["kora-soap-client"],
+      "query": "I want a non-blocking call to my Kora SOAP service returning a Mono.",
+      "expected_behavior": [
+        "Injects the generated *Impl type (e.g. SimpleServiceImpl) to reach the reactive methods",
+        "Calls the *Reactive variant (e.g. testReactive(request)) which returns Mono<T>",
+        "Keeps the blocking interface method available for synchronous callers",
+        "Does not wrap the blocking call in a manual thread pool or invent an async annotation"
+      ],
+      "tags": ["soap", "reactive", "intermediate"]
+    },
+    {
+      "id": "kora-soap-client-error-handling",
+      "skills": ["kora-soap-client"],
+      "query": "How do I handle SOAP faults and transport failures from a Kora SOAP client call?",
+      "expected_behavior": [
+        "Catches SoapException and reads the fault via e.getSoapFault() for server-side SOAP faults",
+        "Handles SoapRequestMarshallingException for invalid request DTOs and InvalidHttpResponseSoapException for non-SOAP responses",
+        "Distinguishes ConnectException (service unreachable) from SOAP-level errors",
+        "Does not invent per-fault exception classes or catch a generic Exception without branching on the Kora SOAP types"
+      ],
+      "tags": ["soap", "error-handling", "intermediate"]
+    },
+    {
+      "id": "kora-soap-client-not-generated",
+      "skills": ["kora-soap-client"],
+      "query": "My Kora build fails with 'No factory found for SoapService' / the SOAP client class isn't generated. What's wrong?",
+      "expected_behavior": [
+        "Checks that SoapClientModule is added to the @KoraApp interface for the 'no factory found' error",
+        "Verifies the wsdl2java configuration and runs ./gradlew clean build so the WSDL and annotation processors run",
+        "Confirms both soap-client-annotation-processor and the ru.tinkoff.kora:annotation-processors are present",
+        "Does not disable annotation processing or hand-write the @WebService interface to work around generation"
+      ],
+      "tags": ["soap", "troubleshooting", "intermediate"]
+    }
+  ]
+}

@@ -12,7 +12,7 @@ configurations {
 
 dependencies {
     // Pin the Kora BOM; never version individual ru.tinkoff.kora:* artifacts
-    koraBom platform("ru.tinkoff.kora:kora-parent:1.2.17")
+    koraBom platform("ru.tinkoff.kora:kora-parent:1.2.19")
 
     // Mandatory annotation processor
     annotationProcessor "ru.tinkoff.kora:annotation-processors"

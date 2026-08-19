@@ -9,7 +9,7 @@ plugins {
 
 dependencies {
     // Pin the Kora BOM; never version individual ru.tinkoff.kora:* artifacts
-    implementation(platform("ru.tinkoff.kora:kora-parent:1.2.17"))
+    implementation(platform("ru.tinkoff.kora:kora-parent:1.2.19"))
 
     // Mandatory symbol processor
     ksp("ru.tinkoff.kora:symbol-processors")

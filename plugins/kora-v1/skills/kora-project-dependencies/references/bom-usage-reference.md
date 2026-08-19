@@ -28,7 +28,7 @@ ru.tinkoff.kora:kora-parent:<koraVersion>
 Pin `koraVersion` in `gradle.properties` so a single line controls the whole build:
 
 ```properties
-koraVersion=1.2.17
+koraVersion=1.2.19
 ```
 
 ---
@@ -127,7 +127,7 @@ Do not override these versions by hand.
 
 ```groovy
 // WRONG
-implementation "ru.tinkoff.kora:http-server-undertow:1.2.17"
+implementation "ru.tinkoff.kora:http-server-undertow:1.2.19"
 
 // RIGHT
 koraBom platform("ru.tinkoff.kora:kora-parent:$koraVersion")
@@ -217,7 +217,6 @@ dependencies {
     // Testing
     testImplementation "ru.tinkoff.kora:test-junit5"
     testImplementation "org.testcontainers:junit-jupiter:1.21.4"
-    testImplementation "io.goodforgod:testcontainers-extensions-postgres:0.13.1"
     testImplementation "org.mockito:mockito-core:5.14.2"
     testImplementation "io.mockk:mockk:1.13.13"
 }
@@ -256,7 +255,7 @@ Change one property — every module follows:
 
 ```properties
 # gradle.properties
-koraVersion=1.2.17
+koraVersion=1.2.19
 ```
 
 Refresh and rebuild after the bump:

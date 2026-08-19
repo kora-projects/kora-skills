@@ -1,9 +1,11 @@
 ---
 name: kora-mapstruct
-description: "Integrates the MapStruct mapping library with Kora. A @Mapper interface (org.mapstruct.Mapper) is auto-discovered by Kora's MapStruct extension and its generated *MapperImpl is registered as a component in the DI graph - no @Component needed. Use when converting between request/response DTOs, domain entities, and persistence rows; when renaming fields with @Mapping, ignoring fields, computing values with expression/constant/defaultValue, dispatching to @Named helpers, or doing PATCH-style updates with @MappingTarget. Java uses the MapStruct annotationProcessor; Kotlin needs kapt and collides with KSP. Triggers - @Mapper, @Mapping, org.mapstruct mapstruct-processor, DTO-entity mapping."
+description: "MapStruct in Kora — an @Mapper interface is auto-discovered and its generated *MapperImpl registered in the graph (no @Component). Use for DTO↔entity mapping. Java uses the MapStruct processor; Kotlin needs kapt alongside KSP."
 ---
 
 # kora-mapstruct — MapStruct mappers as Kora components
+
+> **Kora sub-skill — obey the [kora-v1 meta rules](../../SKILL.md) on every task:** **R0** ensure `.kora-agent/` docs+examples are cloned · **R1** read this sub-skill before writing code · **R2** Kora APIs only — no Spring/Micronaut/Quarkus, no invented annotations or config keys · **R3** journal any incorrect Kora usage. Add comments/Javadoc only if asked.
 
 MapStruct generates the mapper implementation at compile time. Kora's MapStruct
 extension detects every `@Mapper` interface, finds the generated `*MapperImpl`,
@@ -12,7 +14,7 @@ interface by constructor like any other component — **no `@Module` to plug in 
 no `@Component` on the mapper**.
 
 All Kora artifacts inherit their version from the `kora-parent` BOM
-(`ru.tinkoff.kora:kora-parent:1.2.17` in the example repo) — never version
+(`ru.tinkoff.kora:kora-parent:1.2.19` in the example repo) — never version
 individual `ru.tinkoff.kora:*` dependencies. MapStruct artifacts are versioned
 explicitly (`1.5.5.Final`).
 
@@ -22,7 +24,7 @@ explicitly (`1.5.5.Final`).
 
 ```groovy
 dependencies {
-    koraBom platform("ru.tinkoff.kora:kora-parent:1.2.17")
+    koraBom platform("ru.tinkoff.kora:kora-parent:1.2.19")
 
     // Kora annotation processor (mandatory)
     annotationProcessor "ru.tinkoff.kora:annotation-processors"
