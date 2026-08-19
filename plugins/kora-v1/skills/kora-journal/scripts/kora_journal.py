@@ -230,17 +230,17 @@ def list_entries(limit=10, status=None):
         # Extract title from frontmatter
         title_match = re.search(r'^title:\s*"([^"]+)"', content, re.MULTILINE)
         date_match = re.search(r'^date:\s*(\d{4}-\d{2}-\d{2})', content, re.MULTILINE)
-        status_match = re.search(r'Status:\s*(\w+)', content, re.MULTILINE)
-        
+        status_match = re.search(r'Status:\**\s*(\w+)', content, re.MULTILINE)
+
         title = title_match.group(1) if title_match else entry_path.stem
         date = date_match.group(1) if date_match else 'unknown'
-        status = status_match.group(1) if status_match else 'pending'
-        
+        entry_status = status_match.group(1) if status_match else 'pending'
+
         # Filter by status if specified
-        if status and status != status_match.group(1) if status_match else 'pending':
+        if status and entry_status != status:
             continue
-        
-        print(f"{i}. [{status}] {date} — {title}")
+
+        print(f"{i}. [{entry_status}] {date} — {title}")
         print(f"   File: {entry_path.name}")
 
 
@@ -269,7 +269,7 @@ def export_entries(since_date, status=None):
         
         # Filter by status if specified
         if status:
-            status_match = re.search(r'Status:\s*(\w+)', content, re.MULTILINE)
+            status_match = re.search(r'Status:\**\s*(\w+)', content, re.MULTILINE)
             entry_status = status_match.group(1) if status_match else 'pending'
             if entry_status != status:
                 continue
@@ -307,11 +307,16 @@ def integrate_entry(entry_file, new_status='integrated'):
     
     content = entry_path.read_text(encoding='utf-8')
     
-    # Update status
+    # Update status (tolerate the "**Status:**" markdown emphasis in entries)
     today = datetime.now().strftime('%Y-%m-%d')
     content = re.sub(
-        r'Status:\s*pending',
-        f'Status: {new_status}\n**Integrated:** {today}',
+        r'(Status:\**\s*)pending',
+        rf'\g<1>{new_status}',
+        content
+    )
+    content = re.sub(
+        r'(\*\*Integrated:\*\*)[^\n]*',
+        rf'\g<1> {today}',
         content
     )
     
@@ -350,32 +355,34 @@ def search_entries(query, limit=10, status=None, by_tags=False):
         else:
             # Check if all keywords match in content (title, context, problem, solution, tags)
             if not all(kw in content_lower for kw in keywords):
-            # Filter by status if specified
-            if status and status != 'all':
-                status_match = re.search(r'Status:\s*(\w+)', content, re.MULTILINE)
-                entry_status = status_match.group(1) if status_match else 'pending'
-                if entry_status != status:
-                    continue
-            
-            # Extract metadata
-            title_match = re.search(r'^title:\s*"([^"]+)"', content, re.MULTILINE)
-            date_match = re.search(r'^date:\s*(\d{4}-\d{2}-\d{2})', content, re.MULTILINE)
-            
-            # Calculate relevance
-            if by_tags:
-                relevance = sum(1 for kw in keywords if kw in entry_tags)
-            else:
-                relevance = sum(1 for kw in keywords if kw in content_lower)
-                # Boost relevance if keywords match tags
-                relevance += sum(1 for kw in keywords if kw in entry_tags) * 2
-            
-            results.append({
-                'path': entry_path,
-                'title': title_match.group(1) if title_match else entry_path.stem,
-                'date': date_match.group(1) if date_match else 'unknown',
-                'relevance': relevance,
-                'tags': entry_tags
-            })
+                continue
+
+        # Filter by status if specified
+        if status and status != 'all':
+            status_match = re.search(r'Status:\**\s*(\w+)', content, re.MULTILINE)
+            entry_status = status_match.group(1) if status_match else 'pending'
+            if entry_status != status:
+                continue
+
+        # Extract metadata
+        title_match = re.search(r'^title:\s*"([^"]+)"', content, re.MULTILINE)
+        date_match = re.search(r'^date:\s*(\d{4}-\d{2}-\d{2})', content, re.MULTILINE)
+
+        # Calculate relevance
+        if by_tags:
+            relevance = sum(1 for kw in keywords if kw in entry_tags)
+        else:
+            relevance = sum(1 for kw in keywords if kw in content_lower)
+            # Boost relevance if keywords match tags
+            relevance += sum(1 for kw in keywords if kw in entry_tags) * 2
+
+        results.append({
+            'path': entry_path,
+            'title': title_match.group(1) if title_match else entry_path.stem,
+            'date': date_match.group(1) if date_match else 'unknown',
+            'relevance': relevance,
+            'tags': entry_tags
+        })
     
     # Sort by relevance (keyword matches) and date
     results.sort(key=lambda x: (-x['relevance'], x['date']), reverse=False)
@@ -414,7 +421,7 @@ def status():
         status_counts = {'pending': 0, 'integrated': 0, 'archived': 0}
         for entry in entries:
             content = entry.read_text(encoding='utf-8')
-            status_match = re.search(r'Status:\s*(\w+)', content, re.MULTILINE)
+            status_match = re.search(r'Status:\**\s*(\w+)', content, re.MULTILINE)
             status = status_match.group(1) if status_match else 'pending'
             status_counts[status] = status_counts.get(status, 0) + 1
         
