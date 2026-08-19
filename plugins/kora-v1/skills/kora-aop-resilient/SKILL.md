@@ -1,9 +1,11 @@
 ---
 name: kora-aop-resilient
-description: "Kora resilience aspects — @CircuitBreaker, @Retry, @Timeout, @Fallback from the resilient-kora module (ResilientModule). Covers circuit breaker states (CLOSED/OPEN/HALF_OPEN), retry backoff, execution timeouts, fallback methods, custom CircuitBreakerPredicate/RetryPredicate/FallbackPredicate, the imperative *Manager API, and stacking aspects on one method. Use when adding fault tolerance to outbound HTTP/gRPC calls, database or external-service operations, debugging \"circuit never opens\", TimeoutExhaustedException, or fallback not firing, or wiring resilient.* config keys (failureRateThreshold, minimumRequiredCalls, attempts, delayStep, waitDurationInOpenState)."
+description: "Kora resilience aspects — @CircuitBreaker, @Retry, @Timeout, @Fallback (resilient-kora). Use when adding fault tolerance to outbound calls or tuning resilient.* config keys."
 ---
 
 # Kora AOP Resilient
+
+> **Kora sub-skill — obey the [kora-v1 meta rules](../../SKILL.md) on every task:** **R0** ensure `.kora-agent/` docs+examples are cloned · **R1** read this sub-skill before writing code · **R2** Kora APIs only — no Spring/Micronaut/Quarkus, no invented annotations or config keys · **R3** journal any incorrect Kora usage. Add comments/Javadoc only if asked.
 
 Compile-time AOP annotations for fault tolerance: `@Retry`, `@CircuitBreaker`, `@Timeout`, `@Fallback`. They are generated into `$<Class>__AopProxy` classes at build time — no reflection. Provided by the `resilient-kora` module via `ResilientModule`.
 
@@ -228,7 +230,7 @@ Templates in `assets/`:
 | `TimeoutService.*.template` | @Timeout pattern |
 | `FallbackService.*.template` | @Fallback pattern |
 
-See [assets/README.md](assets/README.md) for usage.
+See `assets/` for usage.
 
 ---
 

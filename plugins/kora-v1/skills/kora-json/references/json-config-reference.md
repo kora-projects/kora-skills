@@ -34,7 +34,7 @@ classes. All Kora artifacts inherit their version from the `kora-parent` BOM.
 
 ```groovy
 dependencies {
-    koraBom platform("ru.tinkoff.kora:kora-parent:1.2.17")
+    koraBom platform("ru.tinkoff.kora:kora-parent:1.2.19")
 
     annotationProcessor "ru.tinkoff.kora:annotation-processors"
     implementation "ru.tinkoff.kora:json-module"

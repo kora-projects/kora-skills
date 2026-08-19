@@ -1,9 +1,11 @@
 ---
 name: kora-openapi-generator-server
-description: "Generates Kora HTTP server code from OpenAPI 3.x contracts with the kora generator of the org.openapi.generator Gradle plugin. Produces a generated *ApiController, an *ApiDelegate interface implemented with @Component, sealed *ApiResponses wrappers (one record per status code), and model records. Use when scaffolding a contract-first Kora HTTP server, choosing the server mode (java-server, java-async-server, java-reactive-server, kotlin-server, kotlin-suspend-server), enabling enableServerValidation, wiring HttpServerPrincipalExtractor for securitySchemes, handling oneOf/allOf discriminators with openapiNormalizer DISABLE_ALL, or exposing /openapi and /swagger-ui via OpenApiManagementModule. Requires the http-server-undertow module plus the Kora annotation processor (annotation-processors) or KSP (symbol-processors)."
+description: "Generate Kora HTTP server code from an OpenAPI 3.x spec (generatorName \"kora\") — *ApiController + *ApiDelegate implemented with @Component + sealed *ApiResponses. Use for a contract-first server; implement the delegate, don't hand-write a controller."
 ---
 
 # Kora OpenAPI Generator — HTTP Server
+
+> **Kora sub-skill — obey the [kora-v1 meta rules](../../SKILL.md) on every task:** **R0** ensure `.kora-agent/` docs+examples are cloned · **R1** read this sub-skill before writing code · **R2** Kora APIs only — no Spring/Micronaut/Quarkus, no invented annotations or config keys · **R3** journal any incorrect Kora usage. Add comments/Javadoc only if asked.
 
 Generate a type-safe Kora HTTP server from an OpenAPI 3.x contract. The `kora`
 generator emits the transport layer (controller, response wrappers, models); you
@@ -13,7 +15,7 @@ routes automatically — never write `@HttpController`/`@HttpRoute` by hand for 
 generated API, and never edit files under `build/generated/`.
 
 All Kora artifacts inherit their version from the `kora-parent` BOM
-(`ru.tinkoff.kora:kora-parent`, e.g. `1.2.17` in the example apps) — never pin a
+(`ru.tinkoff.kora:kora-parent`, e.g. `1.2.19` in the example apps) — never pin a
 version on an individual `ru.tinkoff.kora:*` dependency. The OpenAPI plugin
 `org.openapi.generator` is pinned to `7.14.0`; other versions are not guaranteed
 to be code-compatible.

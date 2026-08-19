@@ -19,7 +19,7 @@ These mirror the Kora example projects.
 
 | Component | Version | Note |
 |-----------|---------|------|
-| Kora BOM (`kora-parent`) | 1.2.17 | Pin once; all Kora artifacts inherit it |
+| Kora BOM (`kora-parent`) | 1.2.19 | Pin once; all Kora artifacts inherit it |
 | Java | 21 | Toolchain used by the example apps |
 | Kotlin | 1.9.25 | JVM target |
 | KSP | 1.9.25-1.0.20 | Must match the Kotlin version |
@@ -127,7 +127,6 @@ Kora's JUnit 5 extension is a Kora artifact (BOM-managed). JUnit and Testcontain
 dependencies {
     testImplementation "ru.tinkoff.kora:test-junit5"
     testImplementation "org.testcontainers:junit-jupiter:1.21.4"
-    testImplementation "io.goodforgod:testcontainers-extensions-postgres:0.13.1"
 }
 ```
 

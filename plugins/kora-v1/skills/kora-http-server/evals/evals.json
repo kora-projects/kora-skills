@@ -95,7 +95,7 @@
       "expected_behavior": [
         "Sets httpServer.publicApiHttpPort for traffic and httpServer.privateApiHttpPort for metrics/probes separately",
         "Configures privateApiHttpMetricsPath, privateApiHttpReadinessPath and privateApiHttpLivenessPath on the private port",
-        "Enables virtual threads with virtualThreadsEnabled = true and notes it requires Java 21+",
+        "Enables virtual threads with virtualThreadsEnabled = true and notes it requires Java 24+",
         "Plugs in UndertowHttpServerModule on the @KoraApp interface",
         "Does not invent unsupported keys such as httpServer.tls/httpServer.cors blocks"
       ],

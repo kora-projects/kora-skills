@@ -283,4 +283,4 @@ void process() {
 - [Official Kora Documentation](../../../.kora-agent/kora-docs/mkdocs/docs/en/documentation/scheduling.md#quartz) — Quartz scheduling
 - [scheduling-config-reference.md](scheduling-config-reference.md) — Full configuration reference
 - [graceful-shutdown-reference.md](graceful-shutdown-reference.md) — Interrupt handling
-- [jdk-scheduling-reference.md](jdk-scheduling-reference.md) — JDK scheduling alternative
+- [kora-aop-scheduling-jdk](../../kora-aop-scheduling-jdk/SKILL.md) — JDK scheduling alternative (fixed-rate/delay/once)

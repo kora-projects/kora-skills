@@ -1,9 +1,11 @@
 ---
 name: kora-telemetry-logging
-description: "Structured logging for Kora services via SLF4J + Logback (LogbackModule), the KoraAsyncAppender for non-blocking output, structured arguments/markers (StructuredArgument), Kora MDC (ru.tinkoff.kora.logging.common.MDC), and the @Log/@Mdc logging aspects (logging-common / LoggingModule). Use when adding logging-logback, wiring logback.xml with KoraAsyncAppender or ConsoleTextRecordEncoder, configuring per-package log levels via logging.levels in HOCON/YAML, enabling module telemetry logging (telemetry.logging.enabled), emitting JSON logs for ELK/Datadog/Splunk, or correlating logs with trace context."
+description: "Structured logging for Kora — SLF4J+Logback (LogbackModule), KoraAsyncAppender, StructuredArgument, Kora MDC, @Log/@Mdc. Use when wiring logback.xml, per-package log levels, or JSON logs for ELK/Datadog/Splunk."
 ---
 
 # Kora Telemetry Logging
+
+> **Kora sub-skill — obey the [kora-v1 meta rules](../../SKILL.md) on every task:** **R0** ensure `.kora-agent/` docs+examples are cloned · **R1** read this sub-skill before writing code · **R2** Kora APIs only — no Spring/Micronaut/Quarkus, no invented annotations or config keys · **R3** journal any incorrect Kora usage. Add comments/Javadoc only if asked.
 
 Kora uses `slf4j-api` as the logging facade for the whole framework; the recommended
 implementation is Logback via `LogbackModule`. On top of SLF4J, Kora adds structured
@@ -38,7 +40,7 @@ The `kora-parent` BOM manages all Kora versions; never pin a version on an indiv
 
 ```groovy
 dependencies {
-    koraBom platform("ru.tinkoff.kora:kora-parent:1.2.17")
+    koraBom platform("ru.tinkoff.kora:kora-parent:1.2.19")
     annotationProcessor "ru.tinkoff.kora:annotation-processors"   // Java; Kotlin: ksp "ru.tinkoff.kora:symbol-processors"
 
     implementation "ru.tinkoff.kora:logging-logback"   // SLF4J + Logback implementation, pulls in logging-common
@@ -161,7 +163,7 @@ with trace context (when a tracing module is present).
 | `LoggingInterceptor.java.template` | HTTP interceptor that seeds trace context into MDC |
 | `LoggingService.java.template` | Structured logging / MDC usage patterns |
 
-See [assets/README.md](assets/README.md) for copy-paste usage.
+See `assets/` for copy-paste usage.
 
 ---
 

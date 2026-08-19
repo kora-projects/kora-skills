@@ -24,11 +24,11 @@ processor are on the annotation-processor classpath.
 ## Java setup
 
 All Kora artifacts inherit their version from the `kora-parent` BOM
-(`1.2.17` in the example repo). MapStruct artifacts are versioned explicitly.
+(`1.2.19` in the example repo). MapStruct artifacts are versioned explicitly.
 
 ```groovy
 dependencies {
-    koraBom platform("ru.tinkoff.kora:kora-parent:1.2.17")
+    koraBom platform("ru.tinkoff.kora:kora-parent:1.2.19")
 
     // Kora annotation processor (mandatory)
     annotationProcessor "ru.tinkoff.kora:annotation-processors"

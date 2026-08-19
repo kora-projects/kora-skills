@@ -1,15 +1,17 @@
 ---
 name: kora-http-client
-description: "Declarative Kora HTTP clients - @HttpClient interface with @HttpRoute, parameter mapping (@Path/@Query/@Header/@Cookie), @Json bodies, HttpResponseEntity, @Mapping and @ResponseCodeMapper, @InterceptWith interceptors, and OkHttp/AsyncHttpClient/JDK transports. Use when building a typed outbound HTTP client in a Kora service, wiring auth interceptors (Basic/ApiKey/Bearer), configuring per-client timeouts and telemetry under httpClient.*, or handling HttpClientResponseException. Not for OpenAPI-generated clients (use kora-openapi-generator-client) or for the inbound @HttpController server (use kora-http-server)."
+description: "Declarative Kora HTTP clients — @HttpClient with @HttpRoute, @Path/@Query/@Header, @Json, interceptors, OkHttp/Async/JDK transports. Use for typed outbound calls. For OpenAPI clients see kora-openapi-generator-client; for the inbound server see kora-http-server."
 ---
 
 # Kora HTTP Client
+
+> **Kora sub-skill — obey the [kora-v1 meta rules](../../SKILL.md) on every task:** **R0** ensure `.kora-agent/` docs+examples are cloned · **R1** read this sub-skill before writing code · **R2** Kora APIs only — no Spring/Micronaut/Quarkus, no invented annotations or config keys · **R3** journal any incorrect Kora usage. Add comments/Javadoc only if asked.
 
 Declarative, compile-time HTTP clients: annotate an interface with `@HttpClient`, declare methods with `@HttpRoute`, and the annotation processor generates the implementation. No reflection, no runtime proxies. Inject the client interface like any other Kora component.
 
 **Dependencies:** `http-client-ok` (transport) + `json-module` (for `@Json`) + `annotation-processors`.
 
-All Kora artifacts inherit their version from the `ru.tinkoff.kora:kora-parent` BOM (the examples pin `1.2.17`). Never version individual `ru.tinkoff.kora:*` artifacts.
+All Kora artifacts inherit their version from the `ru.tinkoff.kora:kora-parent` BOM (the examples pin `1.2.19`). Never version individual `ru.tinkoff.kora:*` artifacts.
 
 ---
 
@@ -19,7 +21,7 @@ All Kora artifacts inherit their version from the `ru.tinkoff.kora:kora-parent` 
 
 ```groovy
 dependencies {
-    koraBom platform("ru.tinkoff.kora:kora-parent:1.2.17")
+    koraBom platform("ru.tinkoff.kora:kora-parent:1.2.19")
 
     annotationProcessor "ru.tinkoff.kora:annotation-processors"
 

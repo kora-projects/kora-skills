@@ -1,9 +1,11 @@
 ---
 name: kora-di-runtime
-description: "Covers Kora runtime dependency-injection behavior - the Graph lifecycle, component init/release, disambiguation, collection injection, lazy/optional wrappers, and interception. Use when a component must start without being a dependency (@Root from ru.tinkoff.kora.common.annotation), when implementing init()/release() via Lifecycle or LifecycleWrapper, when disambiguating multiple beans of one interface with @Tag (tag marker class, @Tag(Tag.Any.class)), when collecting every implementation with All<T>, when breaking refresh chains or cycles with ValueOf<T>, when an optional dependency needs @Nullable, or when wrapping a component during graph build with GraphInterceptor. Does not cover compile-time @KoraApp/@Module/@Component wiring (see kora-di-compile)."
+description: "Kora runtime DI behavior — @Root, Lifecycle init/release, @Tag disambiguation, All<T>, ValueOf<T>, @Nullable, GraphInterceptor. Use for lifecycle/collection/lazy/optional wiring. For compile-time @KoraApp/@Module wiring see kora-di-compile."
 ---
 
 # Kora DI Runtime — Runtime Injection Behavior
+
+> **Kora sub-skill — obey the [kora-v1 meta rules](../../SKILL.md) on every task:** **R0** ensure `.kora-agent/` docs+examples are cloned · **R1** read this sub-skill before writing code · **R2** Kora APIs only — no Spring/Micronaut/Quarkus, no invented annotations or config keys · **R3** journal any incorrect Kora usage. Add comments/Javadoc only if asked.
 
 **Kora Version:** 1.x  
 **Focus:** Runtime DI — lifecycle, tags, collections, lazy dependencies, interception.

@@ -1,86 +1,50 @@
-# Scheduling Configuration Reference
+# Quartz Scheduling Configuration Reference
 
-Complete configuration reference for both JDK and Quartz scheduling.
+Configuration for `scheduling-quartz` (cron, custom triggers, JDBC persistence, clustering).
+For plain fixed-rate/fixed-delay timers see the sibling skill
+[kora-aop-scheduling-jdk](../../kora-aop-scheduling-jdk/SKILL.md).
 
 ## Contents
 
 - [Module Configuration](#module-configuration)
-- [Global Configuration](#global-configuration)
+- [Global Configuration](#global-configuration) — HOCON and YAML
 - [Job-Specific Configuration](#job-specific-configuration)
-- [Quartz Persistence (JDBC JobStore)](#quartz-persistence-jdbc-jobstore)
+- [Persistence (JDBC JobStore)](#persistence-jdbc-jobstore)
 - [Telemetry Reference](#telemetry-reference)
 - [Shutdown Configuration](#shutdown-configuration)
-- [See Also](#see-also)
 
 ---
 
 ## Module Configuration
-
-### JDK Module
 
 ```java
 @KoraApp
 public interface Application extends
     HoconConfigModule,      // or YamlConfigModule
     LogbackModule,
-    SchedulingJdkModule {
-}
-```
-
-**Artifact:**
-```groovy
-implementation "ru.tinkoff.kora:scheduling-jdk"
-```
-
-### Quartz Module
-
-```java
-@KoraApp
-public interface Application extends
-    HoconConfigModule,
-    LogbackModule,
     QuartzModule {
 }
 ```
 
-**Artifact:**
+**Artifact (with mandatory BOM + processor):**
 ```groovy
-implementation "ru.tinkoff.kora:scheduling-quartz"
+dependencies {
+    koraBom platform("ru.tinkoff.kora:kora-parent:1.2.19")
+    annotationProcessor "ru.tinkoff.kora:annotation-processors"   // Kotlin: ksp "ru.tinkoff.kora:symbol-processors"
+    implementation "ru.tinkoff.kora:scheduling-quartz"
+}
 ```
 
 ---
 
 ## Global Configuration
 
+Quartz properties pass through under the `quartz` node; scheduling-level shutdown behavior
+lives under `scheduling`.
+
 ### HOCON (application.conf)
 
 ```hocon
-# JDK Configuration
-scheduling {
-  threads = 2                    # ScheduledExecutorService pool size
-  shutdownWait = "30s"           # Grace period for SIGTERM
-  
-  telemetry {
-    logging {
-      enabled = false            # Job execution logging
-    }
-    metrics {
-      enabled = true             # Micrometer metrics
-      slo = [1, 10, 50, 100, 500, 1000, 5000, 10000]  # Histogram buckets (ms)
-      tags = {                   # Additional metric tags
-        "env" = "prod"
-      }
-    }
-    tracing {
-      enabled = true             # OpenTelemetry spans
-      attributes = {             # Additional span attributes
-        "service" = "my-service"
-      }
-    }
-  }
-}
-
-# Quartz Configuration
 quartz {
   "org.quartz.scheduler.instanceName" = "MyScheduler"
   "org.quartz.threadPool.threadCount" = "10"
@@ -96,24 +60,6 @@ scheduling {
 ### YAML (application.yml)
 
 ```yaml
-# JDK Configuration
-scheduling:
-  threads: 2
-  shutdownWait: "30s"
-  telemetry:
-    logging:
-      enabled: false
-    metrics:
-      enabled: true
-      slo: [1, 10, 50, 100, 500, 1000, 5000, 10000]
-      tags:
-        env: "prod"
-    tracing:
-      enabled: true
-      attributes:
-        service: "my-service"
-
-# Quartz Configuration
 quartz:
   org.quartz.scheduler.instanceName: "MyScheduler"
   org.quartz.threadPool.threadCount: "10"
@@ -128,52 +74,8 @@ scheduling:
 
 ## Job-Specific Configuration
 
-Config has **priority over annotation parameters**. Annotation values become defaults.
-
-### JDK Jobs
-
-```java
-@ScheduleAtFixedRate(config = "jobs.heartbeat")
-void heartbeat() { ... }
-
-@ScheduleWithFixedDelay(config = "jobs.cleanup")
-void cleanup() { ... }
-
-@ScheduleOnce(config = "jobs.warmup")
-void warmup() { ... }
-```
-
-**HOCON:**
-```hocon
-jobs {
-  heartbeat {
-    initialDelay = "10s"
-    period = "30s"
-  }
-  cleanup {
-    initialDelay = "30s"
-    delay = "5m"
-  }
-  warmup {
-    delay = "5m"
-  }
-}
-```
-
-**YAML:**
-```yaml
-jobs:
-  heartbeat:
-    initialDelay: "10s"
-    period: "30s"
-  cleanup:
-    initialDelay: "30s"
-    delay: "5m"
-  warmup:
-    delay: "5m"
-```
-
-### Quartz Jobs
+Config has **priority over annotation parameters**. Point `@ScheduleWithCron(config = ...)`
+at a node holding a `cron` field.
 
 ```java
 @ScheduleWithCron(config = "jobs.nightly")
@@ -206,9 +108,9 @@ jobs:
 
 ---
 
-## Quartz Persistence (JDBC JobStore)
+## Persistence (JDBC JobStore)
 
-For persistent job state that survives restarts:
+For persistent job state that survives restarts and cluster-wide single execution:
 
 ```hocon
 quartz {
@@ -221,7 +123,7 @@ quartz {
 }
 ```
 
-**Database tables:** Run Quartz schema for your database (e.g., `tables_postgres.sql`).
+**Database tables:** Run the Quartz schema for your database (e.g. `tables_postgres.sql`).
 
 ---
 
@@ -237,14 +139,14 @@ quartz {
 
 **Metric:** `scheduling.job.duration` (DistributionSummary)
 
+**Metric tags:** `code.class`, `code.function`, `error.type` (see `metrics.md` section `#scheduling`).
+
 ### Tracing
 
 | Property | Type | Default | Description |
 |----------|------|---------|-------------|
 | `scheduling.telemetry.tracing.enabled` | boolean | `true` | Enable OpenTelemetry spans |
 | `scheduling.telemetry.tracing.attributes` | object | `{}` | Additional span attributes |
-
-**Span:** `{class}.{method}` with attributes `job`, `method`, `class`
 
 ### Logging
 
@@ -256,23 +158,16 @@ quartz {
 
 ## Shutdown Configuration
 
-### JDK
-
-| Property | Type | Default | Description |
-|----------|------|---------|-------------|
-| `scheduling.shutdownWait` | duration | `30s` | Grace period for in-flight jobs |
-
-### Quartz
-
 | Property | Type | Default | Description |
 |----------|------|---------|-------------|
 | `scheduling.waitForJobComplete` | boolean | `false` | Block shutdown until jobs finish |
+
+See [graceful-shutdown-reference.md](graceful-shutdown-reference.md) for interrupt-handling patterns.
 
 ---
 
 ## See Also
 
-- [Official Kora Documentation](../../../.kora-agent/kora-docs/mkdocs/docs/en/documentation/scheduling.md) — Full scheduling documentation
-- [jdk-scheduling-reference.md](jdk-scheduling-reference.md) — JDK scheduling annotations
-- [quartz-scheduling-reference.md](quartz-scheduling-reference.md) — Quartz scheduling
+- Kora docs: `.kora-agent/kora-docs/mkdocs/docs/en/documentation/scheduling.md` — full scheduling documentation
+- [quartz-scheduling-reference.md](quartz-scheduling-reference.md) — Quartz annotations and cron grammar
 - [graceful-shutdown-reference.md](graceful-shutdown-reference.md) — Interrupt handling

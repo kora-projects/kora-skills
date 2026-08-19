@@ -1,15 +1,17 @@
 ---
 name: kora-project-setup-kotlin
-description: "Scaffolds a new Kotlin Kora service with Gradle Kotlin DSL — KSP symbol processors, the kora-parent BOM, the koraBom configuration, jvmToolchain, a @KoraApp interface extending *Module interfaces, and the Gradle wrapper. Use when creating a Kotlin Kora project from scratch, wiring up build.gradle.kts / settings.gradle.kts / gradle.properties, configuring KSP (com.google.devtools.ksp), or splitting a service into Gradle modules with @KoraSubmodule. Use for Kotlin only; for Java use kora-project-setup-java."
+description: "Scaffold a new Kotlin Kora service (Gradle Kotlin DSL) — KSP symbol-processors, kora-parent BOM, koraBom, @KoraApp, wrapper. Use when starting a Kotlin project or configuring KSP. For Java see kora-project-setup-java."
 ---
 
 # Kora Project Setup — Kotlin
+
+> **Kora sub-skill — obey the [kora-v1 meta rules](../../SKILL.md) on every task:** **R0** ensure `.kora-agent/` docs+examples are cloned · **R1** read this sub-skill before writing code · **R2** Kora APIs only — no Spring/Micronaut/Quarkus, no invented annotations or config keys · **R3** journal any incorrect Kora usage. Add comments/Javadoc only if asked.
 
 Scaffold a runnable Kotlin Kora service: Gradle Kotlin DSL build, KSP symbol
 processors, the `kora-parent` BOM, and a `@KoraApp` interface that plugs in Kora
 capabilities by extending `*Module` interfaces.
 
-**Pinned versions** (match `.kora-agent/kora-examples`): Kora BOM `1.2.17`,
+**Pinned versions** (match `.kora-agent/kora-examples`): Kora BOM `1.2.19`,
 Kotlin `1.9.25`, KSP `1.9.25-1.0.20`, Gradle `9.5.1`, JVM toolchain `21`.
 Never version individual `ru.tinkoff.kora:*` artifacts — the BOM aligns them all.
 
@@ -86,7 +88,7 @@ configurations {
 }
 
 dependencies {
-    koraBom(platform("ru.tinkoff.kora:kora-parent:1.2.17"))
+    koraBom(platform("ru.tinkoff.kora:kora-parent:1.2.19"))
 
     // Mandatory: the Kora symbol processors. Without them nothing is generated.
     ksp("ru.tinkoff.kora:symbol-processors")

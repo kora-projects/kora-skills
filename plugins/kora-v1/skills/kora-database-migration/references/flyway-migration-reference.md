@@ -155,32 +155,6 @@ transactional script leaves no partial schema; with `mixed = true` it may.
 
 ---
 
-## Testing
-
-Use the Testcontainers extension `io.goodforgod:testcontainers-extensions-postgres`,
-which runs the same `db/migration` scripts against a disposable container (this is
-the `kora-java-crud` pattern):
-
-```java
-@TestcontainersPostgreSQL(
-        network = @Network(shared = true),
-        mode = ContainerMode.PER_RUN,
-        migration = @Migration(
-                engine = Migration.Engines.FLYWAY,
-                apply  = Migration.Mode.PER_METHOD,
-                drop   = Migration.Mode.PER_METHOD))
-@KoraAppTest(Application.class)
-class UserRepositoryTest implements KoraAppTestConfigModifier {
-
-    @ConnectionPostgreSQL
-    private JdbcConnection connection;
-}
-```
-
-`apply = PER_METHOD` / `drop = PER_METHOD` recreate a clean schema for each test.
-
----
-
 ## Related
 
 - [../SKILL.md](../SKILL.md) — overview and quick start

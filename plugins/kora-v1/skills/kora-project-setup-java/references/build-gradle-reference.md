@@ -38,14 +38,14 @@ import org.gradle.jvm.toolchain.JvmVendorSpec
 
 java {
     toolchain {
-        languageVersion = JavaLanguageVersion.of(21)
+        languageVersion = JavaLanguageVersion.of(25)
         vendor = JvmVendorSpec.ADOPTIUM
     }
 }
 ```
 
 The toolchain decides which JDK compiles the code, independently of `JAVA_HOME`.
-JDK 17 is the minimum Kora supports; 21 is recommended and matches the example
+JDK 17 is the minimum Kora supports; 25 is recommended and matches the example
 apps. Pair this with the foojay resolver in `settings.gradle` so Gradle can
 download the requested JDK when it is not installed locally.
 
@@ -83,7 +83,7 @@ processor dependency resolves without a version and the build fails.
 
 ```groovy
 dependencies {
-    koraBom platform("ru.tinkoff.kora:kora-parent:1.2.17")
+    koraBom platform("ru.tinkoff.kora:kora-parent:1.2.19")
 
     annotationProcessor "ru.tinkoff.kora:annotation-processors"
 

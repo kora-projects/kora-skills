@@ -1,9 +1,11 @@
 ---
 name: kora-aop-logging
-description: "Declarative method logging in Kora via the logging-common module — @Log (args + result), @Log.in / @Log.out / @Log.result, @Log.off to suppress a parameter or method, and @Mdc for Mapped Diagnostic Context (key/value, ${expr} interpolation, global thread scope). Covers the imperative ru.tinkoff.kora.logging.common.MDC API and the SLF4J-MDC import pitfall. Use when adding entry/exit logging to a service method, enriching logs with contextual keys, hiding sensitive arguments from log output, or wiring LoggingModule into a @KoraApp."
+description: "Declarative method logging in Kora — @Log (+ @Log.in/out/result/off) and @Mdc via logging-common. Use when adding entry/exit logging, MDC context keys, or hiding sensitive arguments."
 ---
 
 # Kora AOP Logging — `@Log` and `@Mdc`
+
+> **Kora sub-skill — obey the [kora-v1 meta rules](../../SKILL.md) on every task:** **R0** ensure `.kora-agent/` docs+examples are cloned · **R1** read this sub-skill before writing code · **R2** Kora APIs only — no Spring/Micronaut/Quarkus, no invented annotations or config keys · **R3** journal any incorrect Kora usage. Add comments/Javadoc only if asked.
 
 Declarative, compile-time method logging. The annotation processor generates a `*Aspect` class around your method; there is no reflection or runtime proxy. The aspect writes through SLF4J, so your Logback configuration controls the final format.
 
@@ -21,7 +23,7 @@ Use this skill when you need to:
 
 ```groovy
 dependencies {
-    koraBom platform("ru.tinkoff.kora:kora-parent:1.2.17")
+    koraBom platform("ru.tinkoff.kora:kora-parent:1.2.19")
 
     // Mandatory: without the annotation processor no aspect is generated
     annotationProcessor "ru.tinkoff.kora:annotation-processors"
@@ -216,9 +218,9 @@ Java class must be non-`final`; Kotlin class must be `open`.
 ## References
 
 - [logging-aspect.md](references/logging-aspect.md) — full `@Log` / `@Mdc` / level reference distilled from the docs
-- [logging-mdc.md](references/logging-mdc) — MDC patterns, interpolation, global scope, imperative API
+- [logging-mdc.md](references/logging-mdc.md) — MDC patterns, interpolation, global scope, imperative API
 - [logging-performance.md](references/logging-performance.md) — production tuning, `KoraAsyncAppender`, suppressing large payloads
 
 ## Assets
 
-- `assets/LoggedService.java.template`, `assets/LoggedService.kt.template` — runnable `@Log` + `@Mdc` service templates. See [assets/README.md](assets/README.md).
+- `assets/LoggedService.java.template`, `assets/LoggedService.kt.template` — runnable `@Log` + `@Mdc` service templates.

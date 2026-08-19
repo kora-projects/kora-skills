@@ -1,9 +1,11 @@
 ---
 name: kora-soap-client
-description: "SOAP client integration in Kora Framework. Compile-time generated SOAP clients from JAX-WS annotations (@WebService), WSDL-to-Java (wsdl2java), SoapClientModule, telemetry. Use when integrating with external SOAP services or consuming WSDL-based web services."
+description: "SOAP clients in Kora — compile-time generated from WSDL (wsdl2java) + JAX-WS @WebService, SoapClientModule. Use when consuming an external SOAP/WSDL web service."
 ---
 
 # Kora SOAP Client
+
+> **Kora sub-skill — obey the [kora-v1 meta rules](../../SKILL.md) on every task:** **R0** ensure `.kora-agent/` docs+examples are cloned · **R1** read this sub-skill before writing code · **R2** Kora APIs only — no Spring/Micronaut/Quarkus, no invented annotations or config keys · **R3** journal any incorrect Kora usage. Add comments/Javadoc only if asked.
 
 **Compile-time generated SOAP clients** for external SOAP web services. Zero runtime reflection — all code generated at compile time from JAX-WS annotations (`@WebService`).
 
@@ -138,8 +140,6 @@ WSDL → wsdl2java → @WebService interfaces → Kora AP → *Impl.java → DI
 | `telemetry.tracing.enabled` | No | `true` | OpenTelemetry tracing |
 
 **Service name:** From `@WebService.name` or WSDL `<wsdl:portType name="...">`
-
-**→ [Full Configuration Reference](references/configuration-reference.md)**
 
 ---
 

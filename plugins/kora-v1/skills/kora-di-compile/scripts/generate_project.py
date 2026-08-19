@@ -49,8 +49,8 @@ def parse_args():
     )
     parser.add_argument(
         "--kora-version",
-        default="1.2.17",
-        help="Kora framework version (default: 1.2.17)"
+        default="1.2.19",
+        help="Kora framework version (default: 1.2.19)"
     )
     return parser.parse_args()
 

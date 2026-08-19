@@ -1,9 +1,11 @@
 ---
 name: kora-testing-junit-java
-description: "In-process JUnit 5 component and integration tests for Java Kora services. Covers @KoraAppTest, @TestComponent, @Mock/@Spy via Mockito, @Tag injection, KoraAppTestConfigModifier and KoraAppTestGraphModifier (KoraConfigModification, KoraGraphModification, TypeRef), the @KoraApp TestApplication submodule pattern, and Testcontainers (PostgreSQL + Flyway, Kafka). Use when writing JUnit 5 tests against a Kora dependency graph, mocking a component inside the graph, overriding test config/env, or spinning up a real database/broker. Artifact ru.tinkoff.kora:test-junit5."
+description: "In-process JUnit 5 tests for Java Kora services — @KoraAppTest, @TestComponent, Mockito, config/graph modifiers, Testcontainers (test-junit5). Use when testing a Kora graph, mocking a component, or spinning up a DB/broker."
 ---
 
 # Kora Testing JUnit (Java)
+
+> **Kora sub-skill — obey the [kora-v1 meta rules](../../SKILL.md) on every task:** **R0** ensure `.kora-agent/` docs+examples are cloned · **R1** read this sub-skill before writing code · **R2** Kora APIs only — no Spring/Micronaut/Quarkus, no invented annotations or config keys · **R3** journal any incorrect Kora usage. Add comments/Javadoc only if asked.
 
 In-process JUnit 5 tests for **Java** Kora services. `@KoraAppTest` builds a trimmed
 version of your compile-time dependency graph, then injects the components you ask for
@@ -27,7 +29,7 @@ packaged image (see the `kora-testing-blackbox` skill).
 
 ```groovy
 dependencies {
-    koraBom platform("ru.tinkoff.kora:kora-parent:1.2.17")
+    koraBom platform("ru.tinkoff.kora:kora-parent:1.2.19")
 
     annotationProcessor "ru.tinkoff.kora:annotation-processors"
 

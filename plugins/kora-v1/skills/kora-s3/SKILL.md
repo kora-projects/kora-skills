@@ -1,9 +1,11 @@
 ---
 name: kora-s3
-description: "S3-compatible object storage integration (AWS S3, MinIO) in Kora apps. Declarative @S3.Client interfaces with @S3.Get/@S3.List/@S3.Put/@S3.Delete, imperative S3KoraClient, AWS SDK v2 or MinIO implementations, multipart uploads, and key templates. Use when storing files, images, or binary data. Triggers - @S3.Client, @S3.Get, @S3.Put, AwsS3ClientModule, MinioS3ClientModule, S3Body, S3Object, multipart upload, object storage."
+description: "S3 object storage in Kora (AWS S3, MinIO) — declarative @S3.Client (@S3.Get/List/Put/Delete), imperative S3KoraClient, multipart uploads, key templates. Use when storing files, images, or binary data."
 ---
 
 # kora-s3 — object storage
+
+> **Kora sub-skill — obey the [kora-v1 meta rules](../../SKILL.md) on every task:** **R0** ensure `.kora-agent/` docs+examples are cloned · **R1** read this sub-skill before writing code · **R2** Kora APIs only — no Spring/Micronaut/Quarkus, no invented annotations or config keys · **R3** journal any incorrect Kora usage. Add comments/Javadoc only if asked.
 
 Read this first when:
 - adding S3-compatible storage (AWS S3, MinIO, Ceph) to a Kora app,

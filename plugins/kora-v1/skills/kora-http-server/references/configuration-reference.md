@@ -30,7 +30,7 @@ httpServer {
   socketReadTimeout = "0s"
   socketWriteTimeout = "0s"
   socketKeepAliveEnabled = false
-  virtualThreadsEnabled = false                      # true requires Java 21+
+  virtualThreadsEnabled = false                      # true requires Java 24+
   maxRequestBodySize = "256MiB"
   telemetry {
     logging {
@@ -75,7 +75,7 @@ YAML uses the same keys with YAML syntax (`httpServer:` then nested `key: value`
 - `ioThreads` — number of network (NIO) threads; defaults to CPU cores (min 2).
 - `blockingThreads` — worker threads for blocking handlers; defaults to CPU cores x 2 (min 2).
 - `virtualThreadsEnabled = true` switches request handling to virtual threads instead of
-  `blockingThreads`; requires Java 21+.
+  `blockingThreads`; requires Java 24+.
 
 ---
 

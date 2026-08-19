@@ -1,9 +1,11 @@
 ---
 name: kora-aop-scheduling-jdk
-description: "In-process scheduled tasks in Kora backed by the JVM ScheduledExecutorService, enabled via SchedulingJdkModule and the scheduling-jdk artifact. Covers @ScheduleAtFixedRate (fixed period, may overlap), @ScheduleWithFixedDelay (gap after completion, never overlaps), @ScheduleOnce (single delayed run), externalizing parameters through the config attribute, the scheduling config section (threads, shutdownWait, telemetry), and graceful shutdown via Thread.currentThread().isInterrupted(). Use when adding periodic/heartbeat/cleanup/cache-warm jobs to a Kora service without an external scheduler. For cron expressions, persistent or clustered jobs use kora-aop-scheduling-quartz instead."
+description: "In-process scheduled jobs in Kora — @ScheduleAtFixedRate/@ScheduleWithFixedDelay/@ScheduleOnce (scheduling-jdk). Use for periodic/heartbeat/cleanup jobs; for cron or clustered jobs use kora-aop-scheduling-quartz."
 ---
 
 # Kora AOP Scheduling (JDK)
+
+> **Kora sub-skill — obey the [kora-v1 meta rules](../../SKILL.md) on every task:** **R0** ensure `.kora-agent/` docs+examples are cloned · **R1** read this sub-skill before writing code · **R2** Kora APIs only — no Spring/Micronaut/Quarkus, no invented annotations or config keys · **R3** journal any incorrect Kora usage. Add comments/Javadoc only if asked.
 
 **Artifact:** `ru.tinkoff.kora:scheduling-jdk`
 **Module:** `SchedulingJdkModule`
@@ -23,7 +25,7 @@ All Kora artifacts inherit their version from the `kora-parent` BOM — never ve
 
 ```groovy
 dependencies {
-    koraBom platform("ru.tinkoff.kora:kora-parent:1.2.17")
+    koraBom platform("ru.tinkoff.kora:kora-parent:1.2.19")
     annotationProcessor "ru.tinkoff.kora:annotation-processors"   // mandatory — generates the aspect
 
     implementation "ru.tinkoff.kora:scheduling-jdk"
@@ -202,13 +204,14 @@ void process() {
 | File | Purpose |
 |------|---------|
 | [references/jdk-scheduling-reference.md](references/jdk-scheduling-reference.md) | Per-annotation reference, error handling, telemetry |
-| [references/scheduling-config-reference.md](references/scheduling-config-reference.md) | Full config reference (JDK + Quartz) |
+| [references/scheduling-config-reference.md](references/scheduling-config-reference.md) | JDK scheduling configuration |
 | [references/graceful-shutdown-reference.md](references/graceful-shutdown-reference.md) | Interrupt handling and shutdown patterns |
-| [references/quartz-scheduling-reference.md](references/quartz-scheduling-reference.md) | Cron/trigger reference (see sibling skill) |
 | [assets/ScheduledJobs.java.template](assets/ScheduledJobs.java.template) | Java scheduled-jobs starter |
 | [assets/ScheduledJobs.kt.template](assets/ScheduledJobs.kt.template) | Kotlin scheduled-jobs starter |
 | [scripts/setup-jdk.sh](scripts/setup-jdk.sh) | Add `scheduling-jdk`, template, and config to a project |
-| [scripts/validate-cron.sh](scripts/validate-cron.sh) | Inspect a Quartz cron expression (for the sibling skill) |
+
+For cron expressions, custom triggers, and persistent/clustered jobs, use the sibling skill
+[kora-aop-scheduling-quartz](../kora-aop-scheduling-quartz/SKILL.md).
 
 Source of truth: `.kora-agent/kora-docs/mkdocs/docs/en/documentation/scheduling.md` (section `#native`) and `.kora-agent/kora-examples/examples/java/kora-java-scheduling-jdk`.
 

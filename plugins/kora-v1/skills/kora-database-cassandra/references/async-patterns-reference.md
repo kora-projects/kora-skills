@@ -18,7 +18,7 @@
 
 ## Overview
 
-Cassandra supports multiple async signatures. With Virtual Threads (Java 21+), sync signatures are recommended for simplicity, but async patterns are available for high-concurrency scenarios.
+Cassandra supports multiple async signatures. With Virtual Threads (Java 24+), sync signatures are recommended for simplicity, but async patterns are available for high-concurrency scenarios.
 
 **Async options:**
 1. **CompletionStage** — Standard Java async (recommended)
@@ -271,7 +271,7 @@ public interface EventRepository extends CassandraRepository {
 
 ## Virtual Threads vs Async
 
-### Virtual Threads (Java 21+)
+### Virtual Threads (Java 24+)
 
 With Virtual Threads, sync signatures perform comparably to async:
 
@@ -294,7 +294,7 @@ public interface SyncUserRepository extends CassandraRepository {
 - Stack traces preserved
 - No callback hell
 
-**When to use:** Most use cases with Java 21+
+**When to use:** Most use cases with Java 24+
 
 ### When to Use Async
 
