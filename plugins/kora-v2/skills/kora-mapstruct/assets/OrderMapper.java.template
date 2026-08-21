@@ -1,0 +1,61 @@
+// Top-level @Mapper interface — Kora's MapStruct extension discovers it and registers the impl as a component.
+// Inject `OrderMapper` like any other component; the generated `OrderMapperImpl` is what actually runs.
+// Replace `com.example.app.mapper` with your package.
+
+package com.example.app.mapper;
+
+import com.example.app.dto.CreateOrderDto;
+import com.example.app.dto.OrderDto;
+import com.example.app.dto.PatchOrderDto;
+import com.example.app.entity.Order;
+import com.example.app.entity.OrderStatus;
+import org.mapstruct.BeanMapping;
+import org.mapstruct.Mapper;
+import org.mapstruct.Mapping;
+import org.mapstruct.MappingTarget;
+import org.mapstruct.Named;
+import org.mapstruct.NullValuePropertyMappingStrategy;
+
+import java.time.OffsetDateTime;
+import java.util.UUID;
+
+@Mapper                                                          // no @Component needed; Kora's extension wires it
+public interface OrderMapper {
+
+    // DTO → entity: generate id and timestamp via inline expressions.
+    @Mapping(target = "id", expression = "java(java.util.UUID.randomUUID())")
+    @Mapping(target = "createdAt", expression = "java(java.time.OffsetDateTime.now())")
+    @Mapping(target = "status", constant = "PENDING")
+    Order toEntity(CreateOrderDto dto);
+
+    // Entity → DTO: rename field, format enum via @Named helper.
+    @Mapping(source = "createdAt", target = "created")
+    @Mapping(source = "status", target = "status", qualifiedByName = "statusToString")
+    OrderDto toDto(Order entity);
+
+    // In-place PATCH: only non-null PATCH fields overwrite the existing entity.
+    @BeanMapping(nullValuePropertyMappingStrategy = NullValuePropertyMappingStrategy.IGNORE)
+    @Mapping(target = "id", ignore = true)
+    @Mapping(target = "createdAt", ignore = true)
+    void applyPatch(@MappingTarget Order existing, PatchOrderDto patch);
+
+    // ----- @Named helpers -----
+
+    @Named("statusToString")
+    static String statusToString(OrderStatus s) {
+        return s == null ? null : s.name().toLowerCase();
+    }
+}
+
+// Usage:
+//
+//   @Component
+//   public class OrdersService {
+//       private final OrderMapper mapper;
+//       public OrdersService(OrderMapper mapper) { this.mapper = mapper; }
+//
+//       public OrderDto create(CreateOrderDto body) {
+//           var saved = repo.save(mapper.toEntity(body));
+//           return mapper.toDto(saved);
+//       }
+//   }

@@ -1,0 +1,53 @@
+package ${package};
+
+import io.opentelemetry.api.trace.StatusCode;
+import io.opentelemetry.api.trace.Tracer;
+import ru.tinkoff.kora.common.Component;
+import ru.tinkoff.kora.common.Context;
+import ru.tinkoff.kora.opentelemetry.common.OpentelemetryContext;
+
+import java.util.function.Supplier;
+
+/**
+ * Reusable manual-span wrapper. Centralizes the span lifecycle: parent on the
+ * current request, register the span, set status, record exceptions, and
+ * restore the previous OpentelemetryContext in finally.
+ */
+@Component
+public final class TracingService {
+
+    private final Tracer tracer;
+
+    public TracingService(Tracer tracer) {
+        this.tracer = tracer;
+    }
+
+    public <T> T trace(String operationName, Supplier<T> operation) {
+        var ctx = Context.current();
+        var otctx = OpentelemetryContext.get(ctx);
+        var span = tracer.spanBuilder(operationName)
+                .setParent(otctx.getContext())
+                .startSpan();
+
+        OpentelemetryContext.set(ctx, otctx.add(span));
+        try {
+            T result = operation.get();
+            span.setStatus(StatusCode.OK);
+            return result;
+        } catch (RuntimeException e) {
+            span.recordException(e);
+            span.setStatus(StatusCode.ERROR, e.getMessage());
+            throw e;
+        } finally {
+            span.end();
+            OpentelemetryContext.set(ctx, otctx);
+        }
+    }
+
+    public void trace(String operationName, Runnable operation) {
+        trace(operationName, () -> {
+            operation.run();
+            return null;
+        });
+    }
+}

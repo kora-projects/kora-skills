@@ -1,0 +1,105 @@
+package ${packagePath}
+
+import ru.tinkoff.kora.common.Component
+import ru.tinkoff.kora.common.Tag
+
+/**
+ * Component with tag for disambiguation.
+ *
+ * Usage:
+ * - Multiple implementations of the same interface
+ * - Strategy pattern with runtime selection
+ * - Multi-tenant components (different databases, caches)
+ * - Environment-specific implementations (prod vs dev)
+ *
+ * Tag classes should be simple marker classes, NOT custom annotations.
+ *
+ * Good:
+ *   class RedisTag
+ *   class PrimaryTag
+ *
+ * Bad (unnecessary complexity):
+ *   @Target(...)
+ *   @Retention(AnnotationRetention.RUNTIME)
+ *   @Tag(RedisTag::class)
+ *   annotation class RedisCache
+ */
+@Tag(${TagClass}::class)
+@Component
+class ${ComponentName}(
+    // TODO: Add implementation-specific dependencies
+) : ${InterfaceName} {
+
+    init {
+        // TODO: Initialize implementation-specific resources
+    }
+
+    override fun doSomething() {
+        // TODO: Implementation-specific logic
+        println("${ComponentName} doing something (tagged with ${TagClass})")
+    }
+}
+
+// ============================================================================
+// EXAMPLE USAGE
+// ============================================================================
+//
+// // Tag classes (simple marker classes)
+// class RedisTag
+// class CaffeineTag
+//
+// // Tagged implementations
+// @Tag(RedisTag::class)
+// @Component
+// class RedisCache(
+//     private val redisClient: RedisClient
+// ) : Cache {
+//     override fun get(key: String): String? {
+//         return redisClient.get(key)
+//     }
+// }
+//
+// @Tag(CaffeineTag::class)
+// @Component
+// class CaffeineCache : Cache {
+//     private val cache = Caffeine.newBuilder().build<Any, Any>()
+//
+//     override fun get(key: String): String? {
+//         return cache.getIfPresent(key)?.toString()
+//     }
+// }
+//
+// // Tagged injection
+// @Component
+// class UserService(
+//     @Tag(RedisTag::class) private val redisCache: Cache,
+//     @Tag(CaffeineTag::class) private val localCache: Cache
+// ) {
+//     fun getUser(id: String): User? {
+//         return localCache.get(id) ?: redisCache.get(id)
+//     }
+// }
+//
+// // Collect ALL caches (including tagged)
+// @Component
+// class CacheManager(
+//     @Tag(Tag.Any::class) allCaches: List<Cache>
+// ) {
+//     private val allCaches: List<Cache> = allCaches.toList()
+//
+//     fun invalidateAll() {
+//         allCaches.forEach { it.invalidate() }
+//     }
+// }
+//
+// // Collect only Redis caches
+// @Component
+// class RedisCacheManager(
+//     @Tag(RedisTag::class) redisCaches: All<Cache>
+// ) {
+//     private val redisCaches: List<Cache> = redisCaches.toList()
+//
+//     fun warmupAll() {
+//         redisCaches.forEach { it.warmup() }
+//     }
+// }

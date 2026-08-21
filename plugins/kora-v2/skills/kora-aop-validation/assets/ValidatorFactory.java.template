@@ -1,0 +1,21 @@
+// ValidatorFactory template for custom validators.
+// Replace `com.example.app.validation` with your package.
+
+package com.example.app.validation;
+
+import ru.tinkoff.kora.validation.common.ValidatorFactory;
+
+/**
+ * ValidatorFactory for {@code $typeName$Validator}.
+ * ValidatorFactory<T> is a @FunctionalInterface with a single no-arg create().
+ *
+ * Register in Application (ValidatorModule, or ValidationModule when using HTTP integration):
+ * @KoraApp
+ * public interface Application extends ValidatorModule {
+ *     default $typeName$ValidatorFactory $typeName$ValidatorFactory() {
+ *         return $typeName$Validator::new;   // satisfies create()
+ *     }
+ * }
+ */
+public interface $typeName$ValidatorFactory extends ValidatorFactory<$typeName$> {
+}

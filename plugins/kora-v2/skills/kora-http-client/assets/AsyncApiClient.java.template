@@ -1,0 +1,88 @@
+package com.example.client;
+
+import ru.tinkoff.kora.http.client.common.annotation.HttpClient;
+import ru.tinkoff.kora.http.common.HttpMethod;
+import ru.tinkoff.kora.http.common.annotation.HttpRoute;
+import ru.tinkoff.kora.http.common.annotation.Path;
+import ru.tinkoff.kora.json.common.annotation.Json;
+
+import java.util.concurrent.CompletionStage;
+
+/**
+ * Asynchronous HTTP client with non-blocking calls.
+ * Methods return CompletionStage for composition.
+ *
+ * Required configuration (application.conf):
+ * <pre>
+ * httpClient {
+ *   itemApi {
+ *     url = "http://localhost:8080"
+ *     requestTimeout = "60s"
+ *   }
+ * }
+ * </pre>
+ */
+@HttpClient(configPath = "httpClient.itemApi")
+public interface AsyncApiClient {
+
+    /** Async GET. */
+    @HttpRoute(method = HttpMethod.GET, path = "/items/{id}")
+    @Json
+    CompletionStage<ItemResponse> getItemAsync(@Path String id);
+
+    /** Async POST. */
+    @HttpRoute(method = HttpMethod.POST, path = "/items")
+    @Json
+    CompletionStage<ItemResponse> createItemAsync(@Json CreateItemRequest request);
+
+    /** Async DELETE. */
+    @HttpRoute(method = HttpMethod.DELETE, path = "/items/{id}")
+    CompletionStage<Void> deleteItemAsync(@Path String id);
+
+    // ====================================
+    // Usage example
+    // ====================================
+    //
+    // @Component
+    // public final class ItemService {
+    //     private final AsyncApiClient client;
+    //
+    //     public ItemService(AsyncApiClient client) {
+    //         this.client = client;
+    //     }
+    //
+    //     public CompletableFuture<ItemResponse> getItem(String id) {
+    //         return client.getItemAsync(id).toCompletableFuture();
+    //     }
+    //
+    //     // Parallel fan-out:
+    //     public CompletableFuture<List<ItemResponse>> getItems(List<String> ids) {
+    //         List<CompletableFuture<ItemResponse>> futures = ids.stream()
+    //             .map(id -> client.getItemAsync(id).toCompletableFuture())
+    //             .toList();
+    //         return CompletableFuture
+    //             .allOf(futures.toArray(CompletableFuture[]::new))
+    //             .thenApply(v -> futures.stream().map(CompletableFuture::join).toList());
+    //     }
+    // }
+    // ====================================
+
+    // ====================================
+    // DTO classes
+    // ====================================
+
+    @Json
+    record ItemResponse(
+        String id,
+        String name,
+        String description,
+        Long price
+    ) {}
+
+    @Json
+    record CreateItemRequest(
+        String name,
+        String description,
+        Long price
+    ) {}
+}

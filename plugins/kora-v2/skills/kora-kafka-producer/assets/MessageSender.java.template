@@ -1,0 +1,47 @@
+package ${packagePath}.service;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import ru.tinkoff.kora.kafka.common.exceptions.KafkaPublishException;
+import ${packagePath}.publisher.MessagePublisher;
+
+/**
+ * Example service demonstrating error handling patterns for Kafka publishing.
+ */
+public final class MessageSender {
+    private static final Logger log = LoggerFactory.getLogger(MessageSender.class);
+
+    private final MessagePublisher publisher;
+
+    public MessageSender(MessagePublisher publisher) {
+        this.publisher = publisher;
+    }
+
+    /**
+     * Send message with try-catch error handling
+     */
+    public void sendMessage(String event) {
+        try {
+            publisher.send(event);
+            log.info("Message sent successfully: {}", event);
+        } catch (KafkaPublishException e) {
+            // Handle Kafka-specific error
+            log.error("Failed to publish message: {}", event, e.getCause());
+            throw e;
+        }
+    }
+
+    /**
+     * Send message with async error handling
+     */
+    public void sendMessageAsync(String event) {
+        publisher.sendStage(event)
+            .thenAccept(metadata ->
+                log.info("Message sent to topic: {}", metadata.topic())
+            )
+            .exceptionally(ex -> {
+                log.error("Failed to send message asynchronously", ex);
+                return null;
+            });
+    }
+}

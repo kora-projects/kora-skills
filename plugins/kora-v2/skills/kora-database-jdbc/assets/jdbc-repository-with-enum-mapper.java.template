@@ -1,0 +1,121 @@
+package ${package};
+
+import jakarta.annotation.Nullable;
+import java.sql.PreparedStatement;
+import java.sql.ResultSet;
+import java.sql.SQLException;
+import java.sql.Types;
+import java.util.List;
+import ru.tinkoff.kora.common.Mapping;
+import ru.tinkoff.kora.database.common.UpdateCount;
+import ru.tinkoff.kora.database.common.annotation.Column;
+import ru.tinkoff.kora.database.common.annotation.Id;
+import ru.tinkoff.kora.database.common.annotation.Query;
+import ru.tinkoff.kora.database.common.annotation.Repository;
+import ru.tinkoff.kora.database.common.annotation.Table;
+import ru.tinkoff.kora.database.jdbc.EntityJdbc;
+import ru.tinkoff.kora.database.jdbc.JdbcRepository;
+import ru.tinkoff.kora.database.jdbc.mapper.parameter.JdbcParameterColumnMapper;
+import ru.tinkoff.kora.database.jdbc.mapper.result.JdbcResultColumnMapper;
+
+/**
+ * Repository example with custom mappers for an enum stored as an integer code.
+ *
+ * When an entity has an enum field, supply a JdbcResultColumnMapper (read) and a
+ * JdbcParameterColumnMapper (write); select both by repeating @Mapping on the field.
+ *
+ * Database schema example:
+ *   CREATE TABLE tasks (
+ *       id     BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+ *       title  VARCHAR(255) NOT NULL,
+ *       status INT NOT NULL,
+ *       created_at TIMESTAMP NOT NULL DEFAULT NOW()
+ *   );
+ */
+@EntityJdbc
+@Table("tasks")
+public record ${entity_name}(
+    @Id @Column("id") Long id,
+    @Column("title") String title,
+    @Mapping(${entity_name}.StatusResultMapper.class)
+    @Mapping(${entity_name}.StatusParameterMapper.class)
+    @Column("status") Status status
+) {
+
+    public ${entity_name}(String title, Status status) {
+        this(null, title, status);
+    }
+
+    /** Enum stored as an integer code in the database. */
+    public enum Status {
+        UNKNOWN(-10),
+        PENDING(0),
+        IN_PROGRESS(10),
+        COMPLETED(20);
+
+        private final int code;
+
+        Status(int code) {
+            this.code = code;
+        }
+
+        public int code() {
+            return code;
+        }
+    }
+
+    /** Reads the integer column into a Status. */
+    public static final class StatusResultMapper implements JdbcResultColumnMapper<Status> {
+
+        private static final Status[] ALL = Status.values();
+
+        @Override
+        public Status apply(ResultSet rs, int index) throws SQLException {
+            int code = rs.getInt(index);
+            for (Status status : ALL) {
+                if (status.code() == code) {
+                    return status;
+                }
+            }
+            return Status.UNKNOWN;
+        }
+    }
+
+    /** Writes a Status as its integer code. */
+    public static final class StatusParameterMapper implements JdbcParameterColumnMapper<Status> {
+
+        @Override
+        public void set(PreparedStatement stmt, int index, @Nullable Status value) throws SQLException {
+            if (value != null) {
+                stmt.setInt(index, value.code());
+            } else {
+                stmt.setNull(index, Types.INTEGER);
+            }
+        }
+    }
+}
+
+/**
+ * Repository using the enum-mapped entity.
+ */
+@Repository
+interface ${entity_name}Repository extends JdbcRepository {
+
+    @Query("SELECT %{return#selects} FROM %{return#table} WHERE id = :id")
+    @Nullable
+    ${entity_name} findById(Long id);
+
+    @Query("SELECT %{return#selects} FROM %{return#table}")
+    List<${entity_name}> findAll();
+
+    // Enum query parameters need their own @Mapping (the field-level mappers apply to the entity only)
+    @Query("SELECT %{return#selects} FROM %{return#table} WHERE status = :status")
+    List<${entity_name}> findByStatus(@Mapping(${entity_name}.StatusParameterMapper.class) ${entity_name}.Status status);
+
+    @Query("INSERT INTO %{entity#inserts-= @id}")
+    @Id
+    Long insert(${entity_name} task);
+
+    @Query("UPDATE %{entity#table} SET %{entity#updates} WHERE %{entity#where = @id}")
+    UpdateCount update(${entity_name} task);
+}

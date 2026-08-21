@@ -1,0 +1,103 @@
+{
+  "evals": [
+    {
+      "id": "kora-telemetry-metrics-basic-setup",
+      "skills": ["kora-telemetry-metrics"],
+      "query": "Add Micrometer metrics to my Kora service and expose them for Prometheus scraping.",
+      "expected_behavior": [
+        "Adds the ru.tinkoff.kora:micrometer-module dependency and the Kora annotation processor (annotation-processors for Java or symbol-processors for Kotlin)",
+        "Extends MetricsModule on the @KoraApp interface alongside the HTTP server module",
+        "Configures httpServer.privateApiHttpMetricsPath = \"/metrics\" on the private port (privateApiHttpPort), not the public port",
+        "Does not add a separate io.micrometer:micrometer-registry-prometheus dependency, since micrometer-module already registers PrometheusMeterRegistry",
+        "Does not use external actuator frameworks or field injection; relies on constructor injection and the @KoraApp graph"
+      ],
+      "tags": ["setup", "basic"]
+    },
+    {
+      "id": "kora-telemetry-metrics-custom-business",
+      "skills": ["kora-telemetry-metrics"],
+      "query": "Create a service that records how long user creation takes and counts created users by email provider (gmail.com, ...).",
+      "expected_behavior": [
+        "Injects MeterRegistry through the constructor of a @Component",
+        "Registers a Timer once in the constructor with serviceLevelObjectives(...) buckets",
+        "Caches Counter instances per email provider with ConcurrentHashMap.computeIfAbsent to keep the email.provider tag bounded",
+        "Falls back to a value like \"unknown\" for emails without a domain",
+        "Does not use field injection or @Autowired"
+      ],
+      "tags": ["custom-metrics", "advanced"]
+    },
+    {
+      "id": "kora-telemetry-metrics-common-tags",
+      "skills": ["kora-telemetry-metrics"],
+      "query": "Attach common tags (service, environment, version) to every metric in my Kora app.",
+      "expected_behavior": [
+        "Adds a PrometheusMeterRegistryInitializer as a default method of a @Module",
+        "Calls registry.config().commonTags(...) inside the initializer",
+        "Returns the registry from the initializer because it is a Function<PrometheusMeterRegistry, PrometheusMeterRegistry>",
+        "Does not invent a @Default annotation or any external MeterRegistry customizer type; uses only PrometheusMeterRegistryInitializer"
+      ],
+      "tags": ["config", "basic"]
+    },
+    {
+      "id": "kora-telemetry-metrics-cardinality",
+      "skills": ["kora-telemetry-metrics"],
+      "query": "Review this metrics code that adds userId and requestId as tags on a counter and tell me what is wrong.",
+      "expected_behavior": [
+        "Identifies userId and requestId as unbounded high-cardinality tags that cause unbounded time series growth and a memory leak",
+        "Recommends bounded tag values (such as method, http.response.status_code, http.route template, provider, status)",
+        "Suggests aggregating to a bounded dimension or dropping the tag, optionally caching meters per bounded value with computeIfAbsent",
+        "Does not recommend an external tracing/actuator framework; keeps the fix within Kora's MeterRegistry"
+      ],
+      "tags": ["cardinality", "review"]
+    },
+    {
+      "id": "kora-telemetry-metrics-slo-buckets",
+      "skills": ["kora-telemetry-metrics"],
+      "query": "Configure latency histogram buckets so I can compute p95 and p99 for my API timer.",
+      "expected_behavior": [
+        "Uses Timer.builder(...).serviceLevelObjectives(Duration.ofMillis(...), ...) on the custom meter",
+        "Mentions the per-module config equivalent telemetry.metrics.slo as a millisecond array for built-in module metrics",
+        "Explains that buckets let Prometheus estimate percentiles via histogram_quantile, and notes publishPercentiles adds overhead",
+        "Does not put the metrics endpoint on the public port"
+      ],
+      "tags": ["histogram", "advanced"]
+    },
+    {
+      "id": "kora-telemetry-metrics-opentelemetry-spec",
+      "skills": ["kora-telemetry-metrics"],
+      "query": "How do I switch my Kora metrics to the newer OpenTelemetry naming convention?",
+      "expected_behavior": [
+        "Sets metrics.opentelemetrySpec = \"V123\" in the configuration (described by MetricsConfig)",
+        "Explains V120 is the original default and V123 is available since Kora 1.1.0",
+        "Notes the setting changes metric/tag naming only, not the export transport",
+        "Does not introduce configuration keys from other frameworks; uses only the Kora metrics block"
+      ],
+      "tags": ["config", "opentelemetry"]
+    },
+    {
+      "id": "kora-telemetry-metrics-export-model",
+      "skills": ["kora-telemetry-metrics"],
+      "query": "Can I push Kora metrics directly to Datadog or an OTLP endpoint from the app?",
+      "expected_behavior": [
+        "Explains that Kora's micrometer-module is Prometheus pull-only and serves /metrics on the private HTTP port",
+        "States there is no Kora config to swap the registry to a push exporter from the application",
+        "Recommends scraping /metrics with an agent (Prometheus, OpenTelemetry Collector, vmagent) and forwarding from there",
+        "Distinguishes metric export from tracing export handled by the separate tracing modules",
+        "Does not fabricate micrometer.statsd or micrometer.otlp Kora config keys"
+      ],
+      "tags": ["export", "advanced"]
+    },
+    {
+      "id": "kora-telemetry-metrics-builtin-metrics",
+      "skills": ["kora-telemetry-metrics"],
+      "query": "Which metric and labels does Kora emit for HTTP server request latency, and how do I query the error rate in Prometheus?",
+      "expected_behavior": [
+        "Names http.server.request.duration (Prometheus http_server_request_duration_milliseconds) as a DistributionSummary",
+        "Lists the real OpenTelemetry tags http.request.method, http.response.status_code, http.route",
+        "Writes a Prometheus error-rate query using http_response_status_code=~\"5..\" on the _count series",
+        "Does not invent metric names like http.server.requests or labels like status/route"
+      ],
+      "tags": ["builtin", "advanced"]
+    }
+  ]
+}

@@ -1,0 +1,100 @@
+{
+  "evals": [
+    {
+      "id": "kora-mapstruct-quickstart",
+      "skills": ["kora-mapstruct"],
+      "query": "In my Kora Java service I need to map CreateOrderDto to an Order entity. Generate a UUID for the id and the current timestamp for createdAt on conversion. Set me up.",
+      "expected_behavior": [
+        "Adds annotationProcessor \"org.mapstruct:mapstruct-processor:1.5.5.Final\" and implementation \"org.mapstruct:mapstruct:1.5.5.Final\" alongside the mandatory annotationProcessor \"ru.tinkoff.kora:annotation-processors\"",
+        "Defines an @Mapper interface with a toEntity method using @Mapping(target = \"id\", expression = \"java(java.util.UUID.randomUUID())\") and an expression for createdAt",
+        "Explains the mapper is injected by constructor because Kora's MapStruct extension registers the generated *MapperImpl as a component",
+        "Does not put @Component on the mapper and injects via constructor rather than field injection"
+      ],
+      "tags": ["mapstruct", "basic"]
+    },
+    {
+      "id": "kora-mapstruct-rename-field",
+      "skills": ["kora-mapstruct"],
+      "query": "My Car entity has numberOfSeats but my CarTO DTO has seatCount. How do I map between them with MapStruct in Kora?",
+      "expected_behavior": [
+        "Uses @Mapping(source = \"numberOfSeats\", target = \"seatCount\") on an @Mapper interface method",
+        "Notes that Kora discovers the @Mapper interface automatically and wires the generated CarMapperImpl into the DI graph",
+        "Does not require any *Module to be plugged into @KoraApp for MapStruct",
+        "Injects the mapper by constructor and uses @Tag only if disambiguation is needed, not field-injection annotations from other frameworks"
+      ],
+      "tags": ["mapstruct", "basic"]
+    },
+    {
+      "id": "kora-mapstruct-patch-update",
+      "skills": ["kora-mapstruct"],
+      "query": "I want a PATCH endpoint that updates an existing Order from PatchOrderDto. Only non-null DTO fields should overwrite the entity, and id and createdAt must never change.",
+      "expected_behavior": [
+        "Declares a void applyPatch(@MappingTarget Order existing, PatchOrderDto patch) method",
+        "Uses @BeanMapping(nullValuePropertyMappingStrategy = NullValuePropertyMappingStrategy.IGNORE) for PATCH semantics",
+        "Marks id and createdAt with @Mapping(target = ..., ignore = true)",
+        "Does not create a new entity instance; uses Kora's @HttpController/@HttpRoute for the endpoint rather than annotations from other web frameworks"
+      ],
+      "tags": ["mapstruct", "advanced"]
+    },
+    {
+      "id": "kora-mapstruct-named-helper",
+      "skills": ["kora-mapstruct"],
+      "query": "My Order entity has a status of type OrderStatus enum, but OrderDto needs status as a lowercase String. How do I convert it with MapStruct?",
+      "expected_behavior": [
+        "Defines a @Named(\"statusToString\") helper that lowercases the enum name",
+        "References it from the mapping via @Mapping(source = \"status\", target = \"status\", qualifiedByName = \"statusToString\")",
+        "Keeps the mapper as an @Mapper interface (or abstract class for stateful helpers) with no @Component",
+        "Does not invent a Kora-specific enum-mapping annotation"
+      ],
+      "tags": ["mapstruct", "advanced"]
+    },
+    {
+      "id": "kora-mapstruct-kotlin-kapt",
+      "skills": ["kora-mapstruct"],
+      "query": "Can I use MapStruct in my Kotlin Kora project that already uses KSP? What's the Gradle config and the catch?",
+      "expected_behavior": [
+        "Explains MapStruct on Kotlin needs kapt, which collides with Kora's ksp \"ru.tinkoff.kora:symbol-processors\"",
+        "Pins Kotlin 1.9.10 and KSP 1.9.10-1.0.13 with allowSourcesFromOtherPlugins = true and KspTask dependsOn the kapt tasks",
+        "Warns the first clean build may fail and to run the build a second time, and notes the kora-kotlin-crud example hand-writes mappers instead",
+        "Does not claim KSP processes MapStruct directly and relies on Kora's compile-time component wiring rather than runtime component scanning"
+      ],
+      "tags": ["mapstruct", "kotlin", "advanced"]
+    },
+    {
+      "id": "kora-mapstruct-default-constant",
+      "skills": ["kora-mapstruct"],
+      "query": "When mapping to my Order entity, status should default to PENDING when the source is null, and a type field should always be INTERNAL regardless of input.",
+      "expected_behavior": [
+        "Uses @Mapping(target = \"status\", defaultValue = \"PENDING\") so the value applies only when the source is null",
+        "Uses @Mapping(target = \"type\", constant = \"INTERNAL\") which ignores the source entirely",
+        "Explains the difference between defaultValue and constant",
+        "Keeps the mapper as an @Mapper interface without @Component and uses constructor injection, not field injection"
+      ],
+      "tags": ["mapstruct", "basic"]
+    },
+    {
+      "id": "kora-mapstruct-unmapped-policy",
+      "skills": ["kora-mapstruct"],
+      "query": "My Kora build floods warnings about unmapped target properties on my MapStruct mapper. How do I silence them cleanly?",
+      "expected_behavior": [
+        "Adds @Mapper(unmappedTargetPolicy = ReportingPolicy.IGNORE) as used in the kora-java-crud PetMapper",
+        "Mentions the alternative of explicitly mapping or ignoring each target field",
+        "Confirms this does not affect how Kora registers the generated *MapperImpl as a component",
+        "Does not disable the Kora annotation processor and keeps the fix to the @Mapper annotation"
+      ],
+      "tags": ["mapstruct", "advanced"]
+    },
+    {
+      "id": "kora-mapstruct-decision",
+      "skills": ["kora-mapstruct"],
+      "query": "I only have two DTO-to-entity conversions in my Kora service. Should I add MapStruct?",
+      "expected_behavior": [
+        "Recommends skipping MapStruct for 1-3 simple mappers and writing a plain constructor mapping instead",
+        "Explains MapStruct pays off with many DTO/entity pairs and high field overlap with compile-time verification",
+        "If MapStruct is still chosen, uses @Mapper with no @Component and the MapStruct annotationProcessor",
+        "Does not pull in MapStruct or any unnecessary *Module just for two trivial conversions"
+      ],
+      "tags": ["mapstruct", "decision", "basic"]
+    }
+  ]
+}

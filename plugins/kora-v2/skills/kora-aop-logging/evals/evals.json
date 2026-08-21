@@ -1,0 +1,112 @@
+{
+  "evals": [
+    {
+      "id": "kora-aop-logging-basic-log",
+      "skills": ["kora-aop-logging"],
+      "query": "Add entry/exit logging to the getUser(String id) method of my Kora UserService so I can see arguments and the returned value.",
+      "expected_behavior": [
+        "Annotates getUser with @Log from ru.tinkoff.kora.logging.common.annotation",
+        "Notes the enclosing class must be non-final (Java) or open (Kotlin) for the aspect to weave",
+        "Mentions arguments and result appear only when the class logger is at DEBUG/TRACE, while INFO shows boundary markers > and <",
+        "Does not add a manual SLF4J logger field or use field injection"
+      ],
+      "tags": ["logging", "basic"]
+    },
+    {
+      "id": "kora-aop-logging-setup",
+      "skills": ["kora-aop-logging"],
+      "query": "How do I enable Kora method logging from scratch in a new service? What dependency and module do I need?",
+      "expected_behavior": [
+        "Adds ru.tinkoff.kora:logging-logback (or logging-common) via the kora-parent BOM without pinning an individual version",
+        "Includes the mandatory annotation processor: annotationProcessor \"ru.tinkoff.kora:annotation-processors\" for Java or ksp \"ru.tinkoff.kora:symbol-processors\" for Kotlin",
+        "Extends LoggingModule on the @KoraApp interface",
+        "Does not pin individual ru.tinkoff.kora artifact versions or omit the annotation processor"
+      ],
+      "tags": ["setup", "basic"]
+    },
+    {
+      "id": "kora-aop-logging-mdc-parameter",
+      "skills": ["kora-aop-logging"],
+      "query": "I want every log line in processOrder to include the orderId from the method parameter.",
+      "expected_behavior": [
+        "Adds @Mdc(key = \"orderId\") to the orderId parameter (or bare @Mdc to use the parameter name as the key)",
+        "Imports ru.tinkoff.kora.logging.common.annotation.Mdc, not org.slf4j.MDC",
+        "Keeps @Log on the method so the records are emitted",
+        "Does not call SLF4J MDC.put manually or use field injection"
+      ],
+      "tags": ["mdc", "basic"]
+    },
+    {
+      "id": "kora-aop-logging-suppress-secrets",
+      "skills": ["kora-aop-logging"],
+      "query": "authenticate(username, password, refreshToken) should log the username but never the password or refresh token.",
+      "expected_behavior": [
+        "Annotates the method with @Log",
+        "Adds @Log.off to the password and refreshToken parameters so they are excluded from the log line",
+        "Optionally adds @Mdc to username for context",
+        "Does not log secrets via toString or a manual logger statement"
+      ],
+      "tags": ["security", "selective"]
+    },
+    {
+      "id": "kora-aop-logging-level-value",
+      "skills": ["kora-aop-logging"],
+      "query": "Set the @Log level on debugOperation to DEBUG and completely turn off logging for internalCleanup.",
+      "expected_behavior": [
+        "Uses @Log(Level.DEBUG) passing the level as the annotation value attribute (not level =) with Level from org.slf4j.event.Level",
+        "Uses @Log.off on internalCleanup to disable logging",
+        "States there is no Level.OFF in org.slf4j.event.Level",
+        "Does not invent a @Log(level = Level.OFF) attribute"
+      ],
+      "tags": ["levels", "advanced"]
+    },
+    {
+      "id": "kora-aop-logging-selective-in-out",
+      "skills": ["kora-aop-logging"],
+      "query": "I need one method to log only its entry with arguments, and another to log only its exit with the return value.",
+      "expected_behavior": [
+        "Uses @Log.in for the entry-only method",
+        "Uses @Log.out for the exit-only method",
+        "Notes both default to INFO level and emit only the > or < record respectively",
+        "Does not write a manual logger statement or a hand-rolled around-advice wrapper"
+      ],
+      "tags": ["selective", "advanced"]
+    },
+    {
+      "id": "kora-aop-logging-mdc-interpolation",
+      "skills": ["kora-aop-logging"],
+      "query": "On createOrder add MDC keys for the tenant taken from the tenantId parameter and a generated requestId UUID.",
+      "expected_behavior": [
+        "Adds method-level @Mdc(key = \"tenant\", value = \"${tenantId}\") referencing the parameter by name",
+        "Adds @Mdc(key = \"requestId\", value = \"${java.util.UUID.randomUUID().toString()}\") using expression interpolation",
+        "Relies on @Mdc being repeatable so both annotations apply",
+        "Does not manually call SLF4J MDC.put in the method body"
+      ],
+      "tags": ["mdc", "advanced"]
+    },
+    {
+      "id": "kora-aop-logging-global-mdc",
+      "skills": ["kora-aop-logging"],
+      "query": "Set a tenant value in MDC at the start of request handling so it persists across the rest of the call on this thread, and explain cleanup.",
+      "expected_behavior": [
+        "Uses @Mdc(key = \"tenant\", value = \"${tenantId}\", global = true) so the key persists after the method returns",
+        "Warns that global keys leak on pooled threads and must be removed with the static MDC.remove(\"tenant\")",
+        "States Kora's MDC has no clear() method, so keys are removed individually",
+        "Does not claim MDC.wrap or MDC.clear exist in Kora"
+      ],
+      "tags": ["mdc", "advanced"]
+    },
+    {
+      "id": "kora-aop-logging-large-payload",
+      "skills": ["kora-aop-logging"],
+      "query": "My upload(fileName, byte[] data, fileSize) method logs the whole file bytes and floods the logs. How do I fix it while keeping useful context?",
+      "expected_behavior": [
+        "Adds @Log.off to the byte[] data parameter so the payload is never rendered or logged",
+        "Keeps fileName and fileSize visible, e.g. via @Mdc keys",
+        "Recommends running the class logger at INFO in production and KoraAsyncAppender for async output",
+        "Does not suggest Logback's stock AsyncAppender, which drops Kora MDC and structured args"
+      ],
+      "tags": ["performance", "advanced"]
+    }
+  ]
+}

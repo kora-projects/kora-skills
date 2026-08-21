@@ -1,0 +1,104 @@
+package com.example.client;
+
+import ru.tinkoff.kora.http.client.common.annotation.HttpClient;
+import ru.tinkoff.kora.http.common.HttpMethod;
+import ru.tinkoff.kora.http.common.annotation.HttpRoute;
+import ru.tinkoff.kora.http.common.annotation.Path;
+import ru.tinkoff.kora.http.common.annotation.Query;
+import ru.tinkoff.kora.json.common.annotation.Json;
+import ru.tinkoff.kora.resilient.circuitbreaker.annotation.CircuitBreaker;
+import ru.tinkoff.kora.resilient.fallback.annotation.Fallback;
+import ru.tinkoff.kora.resilient.retry.annotation.Retry;
+import ru.tinkoff.kora.resilient.timeout.annotation.Timeout;
+
+import java.util.List;
+
+/**
+ * Declarative HTTP client with resilience aspects: retry, circuit breaker,
+ * timeout, and fallback. The aspects come from the resilient-kora module,
+ * not the HTTP client itself.
+ *
+ * Required dependency:
+ * <pre>
+ * implementation "ru.tinkoff.kora:http-client-ok"
+ * implementation "ru.tinkoff.kora:resilient-kora"   // and: @KoraApp extends ResilientModule
+ * </pre>
+ *
+ * Each annotation references a named config block - the values live under
+ * resilient.* (there is no inline maxAttempts / failureThreshold / backoff):
+ * <pre>
+ * httpClient {
+ *   itemApi {
+ *     url = "http://localhost:8080"
+ *     requestTimeout = "30s"
+ *   }
+ * }
+ * resilient {
+ *   retry          { itemApi { delay = "100ms", attempts = 3 } }
+ *   circuitbreaker { itemApi { slidingWindowSize = 20, minimumRequiredCalls = 10, failureRateThreshold = 50 } }
+ *   timeout        { itemApi { duration = "5s" } }
+ * }
+ * </pre>
+ */
+@HttpClient(configPath = "httpClient.itemApi")
+public interface ResilientApiClient {
+
+    /** Retried on transient failure per resilient.retry.itemApi. */
+    @Retry("itemApi")
+    @HttpRoute(method = HttpMethod.GET, path = "/items/{id}")
+    @Json
+    ItemResponse getItem(@Path String id);
+
+    /** Protected by the circuit breaker resilient.circuitbreaker.itemApi. */
+    @CircuitBreaker("itemApi")
+    @HttpRoute(method = HttpMethod.POST, path = "/items")
+    @Json
+    ItemResponse createItem(@Json CreateItemRequest request);
+
+    /** Times out per resilient.timeout.itemApi; falls back to an empty list. */
+    @Timeout("itemApi")
+    @Fallback(value = "itemApi", method = "listItemsFallback(page)")
+    @HttpRoute(method = HttpMethod.GET, path = "/items")
+    @Json
+    List<ItemResponse> listItems(@Query("page") int page);
+
+    /**
+     * Fallback for listItems. The method reference in @Fallback passes the
+     * annotated method's arguments in the given order. Graceful degradation.
+     */
+    default List<ItemResponse> listItemsFallback(int page) {
+        return List.of();
+    }
+
+    /** Update with a bounded timeout. */
+    @Timeout("itemApi")
+    @HttpRoute(method = HttpMethod.PUT, path = "/items/{id}")
+    @Json
+    ItemResponse updateItem(@Path String id, @Json UpdateItemRequest request);
+
+    // ====================================
+    // DTO classes
+    // ====================================
+
+    @Json
+    record ItemResponse(
+        String id,
+        String name,
+        String description,
+        Long price
+    ) {}
+
+    @Json
+    record CreateItemRequest(
+        String name,
+        String description,
+        Long price
+    ) {}
+
+    @Json
+    record UpdateItemRequest(
+        String name,
+        String description,
+        Long price
+    ) {}
+}

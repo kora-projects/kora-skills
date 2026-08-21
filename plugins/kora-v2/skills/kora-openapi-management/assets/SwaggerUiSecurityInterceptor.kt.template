@@ -1,0 +1,55 @@
+package com.example.api
+
+import java.util.concurrent.CompletableFuture
+import java.util.concurrent.CompletionStage
+import ru.tinkoff.kora.common.Component
+import ru.tinkoff.kora.common.Context
+import ru.tinkoff.kora.common.Tag
+import ru.tinkoff.kora.http.common.body.HttpBody
+import ru.tinkoff.kora.http.server.common.HttpServerModule
+import ru.tinkoff.kora.http.server.common.HttpServerInterceptor
+import ru.tinkoff.kora.http.server.common.HttpServerRequest
+import ru.tinkoff.kora.http.server.common.HttpServerResponse
+
+/**
+ * Gates the OpenAPI documentation endpoints with a bearer token.
+ *
+ * Registered globally because the OpenAPI management controllers are generated
+ * by OpenApiManagementModule, not by your code: a single interceptor tagged with
+ * @Tag(HttpServerModule::class) runs on every request. Only the docs paths are
+ * checked; all other requests pass through unchanged.
+ *
+ * Set the expected token via the DOCS_API_TOKEN environment variable. If it is
+ * unset, the interceptor allows access (use only in development).
+ */
+@Tag(HttpServerModule::class)
+@Component
+class SwaggerUiSecurityInterceptor : HttpServerInterceptor {
+
+    private val requiredToken: String? = System.getenv("DOCS_API_TOKEN")
+
+    override fun intercept(
+        context: Context,
+        request: HttpServerRequest,
+        chain: HttpServerInterceptor.InterceptChain
+    ): CompletionStage<HttpServerResponse> {
+        val path = request.path()
+        val isDocs = path.startsWith("/swagger-ui") ||
+            path.startsWith("/rapidoc") ||
+            path.startsWith("/openapi")
+
+        if (isDocs && !isAuthorized(request)) {
+            return CompletableFuture.completedFuture(
+                HttpServerResponse.of(401, HttpBody.plaintext("Unauthorized"))
+            )
+        }
+
+        return chain.process(context, request)
+    }
+
+    private fun isAuthorized(request: HttpServerRequest): Boolean {
+        val token = requiredToken ?: return true // no token configured: allow (development only)
+        val header = request.headers().getFirst("Authorization") ?: return false
+        return token == header.removePrefix("Bearer ")
+    }
+}

@@ -1,0 +1,66 @@
+plugins {
+    id("application")
+    kotlin("jvm") version ("1.9.25")
+    // KSP runs the Kora symbol processors at compile time — mandatory for Kotlin
+    id("com.google.devtools.ksp") version ("1.9.25-1.0.20")
+}
+
+val koraBom: Configuration by configurations.creating
+configurations {
+    ksp.get().extendsFrom(koraBom)
+    compileOnly.get().extendsFrom(koraBom)
+    implementation.get().extendsFrom(koraBom)
+    testImplementation.get().extendsFrom(koraBom)
+    kspTest.get().extendsFrom(koraBom)
+}
+
+dependencies {
+    koraBom(platform("ru.tinkoff.kora:kora-parent:${property("koraVersion")}"))
+    // Kora symbol processors generate the DI graph, listeners, JSON readers/writers
+    ksp("ru.tinkoff.kora:symbol-processors")
+    kspTest("ru.tinkoff.kora:symbol-processors")
+
+    // Kafka module for messaging
+    implementation("ru.tinkoff.kora:kafka")
+
+    // JSON for message serialization/deserialization
+    implementation("ru.tinkoff.kora:json-module")
+
+    // Configuration (HOCON format)
+    implementation("ru.tinkoff.kora:config-hocon")
+
+    // Logging
+    implementation("ru.tinkoff.kora:logging-logback")
+
+    // Telemetry (optional but recommended for production)
+    // implementation("ru.tinkoff.kora:micrometer-module")  // For metrics (Prometheus on the private port)
+    // implementation("ru.tinkoff.kora:opentelemetry-tracing-exporter-grpc")  // For OTLP tracing
+
+    // Tests
+    testImplementation("ru.tinkoff.kora:test-junit5")
+    testImplementation("org.testcontainers:kafka:1.19.3")
+    testImplementation("org.testcontainers:junit-jupiter:1.19.3")
+    testImplementation("org.awaitility:awaitility:4.2.1")
+    testImplementation("org.assertj:assertj-core:3.25.3")
+}
+
+kotlin {
+    jvmToolchain {
+        languageVersion.set(JavaLanguageVersion.of(21))
+    }
+}
+
+application {
+    mainClass.set("${packagePath}.ApplicationKt")
+}
+
+tasks.withType<JavaExec> {
+    environment(
+        "KAFKA_BOOTSTRAP_SERVERS",
+        System.getenv("KAFKA_BOOTSTRAP_SERVERS") ?: "localhost:9092"
+    )
+}
+
+tasks.test {
+    useJUnitPlatform()
+}

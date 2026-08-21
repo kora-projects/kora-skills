@@ -1,0 +1,27 @@
+# Logging configuration (HOCON)
+
+# Per-package / per-class log levels. Kora overrides logger levels from here.
+# "ROOT" is the root logger.
+logging {
+    levels {
+        "ROOT" = "WARN"
+        "ru.tinkoff.kora" = "INFO"
+
+        # Application (DEBUG for development, INFO for production)
+        "${package}" = "DEBUG"
+        "${package}.sensitive" = "WARN"  # reduce noise for verbose packages
+    }
+}
+
+# Module telemetry logging. Disabled by default for every module; enable per module.
+# Only `enabled` is supported (there is no per-module `level` key).
+db.telemetry.logging.enabled = true
+httpServer.telemetry.logging.enabled = true
+grpcServer.telemetry.logging.enabled = true
+scheduling.telemetry.logging.enabled = true
+
+# Clients are configured per named client (replace the name with your config path):
+# grpcClient.SomeService.telemetry.logging.enabled = true
+# SomePathToConfigHttpClient.telemetry.logging.enabled = true
+# SomePathToConfigKafkaConsumer.telemetry.logging.enabled = true
+# SomePathToConfigKafkaProducer.telemetry.logging.enabled = true

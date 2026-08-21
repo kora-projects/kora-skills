@@ -1,0 +1,90 @@
+{
+  "evals": [
+    {
+      "id": "kora-config-yaml-quickstart",
+      "skills": ["kora-config-yaml"],
+      "query": "Set up YAML-based configuration in my Kora service with an application.yaml holding app name and version, and bind it to a type-safe interface.",
+      "expected_behavior": [
+        "Adds the ru.tinkoff.kora:config-yaml dependency and the ru.tinkoff.kora:annotation-processors annotation processor",
+        "Adds YamlConfigModule to the @KoraApp interface",
+        "Creates src/main/resources/application.yaml with an app section",
+        "Defines a @ConfigSource(\"app\") interface with name() and version() methods imported from ru.tinkoff.kora.config.common.annotation",
+        "Does not use reflection-based property binding or field injection; uses constructor injection of the @ConfigSource component"
+      ],
+      "tags": ["config", "basic"]
+    },
+    {
+      "id": "kora-config-yaml-env-substitution",
+      "skills": ["kora-config-yaml"],
+      "query": "My YAML config must read DATABASE_URL and DATABASE_USER from environment variables, treat DATABASE_URL as required, and fall back to a default host when DB_HOST is unset.",
+      "expected_behavior": [
+        "Uses ${DATABASE_URL} for the required value that fails fast at startup when missing",
+        "Uses ${DB_HOST:localhost} default form for the value with a fallback",
+        "Explains that ${?VAR} marks an optional value and requires a @Nullable return type",
+        "Does not invent a config.environment profile mechanism"
+      ],
+      "tags": ["config", "substitution", "basic"]
+    },
+    {
+      "id": "kora-config-yaml-optional-default",
+      "skills": ["kora-config-yaml"],
+      "query": "How do I make one config field optional and give another field a default value of 3 in a Kora YAML @ConfigSource interface?",
+      "expected_behavior": [
+        "Marks the optional field with @Nullable (jakarta.annotation.Nullable or equivalent)",
+        "Implements the default value with a Java default method body returning 3, or a Kotlin method body",
+        "States that Kora has no @DefaultValue annotation",
+        "Does not invent a @DefaultValue annotation or use field injection"
+      ],
+      "tags": ["config", "defaults", "basic"]
+    },
+    {
+      "id": "kora-config-yaml-nested-extractor",
+      "skills": ["kora-config-yaml"],
+      "query": "I have a database section with a nested pool object (maxSize, connectionTimeout) in application.yaml. How do I bind the nested object in Kora YAML config?",
+      "expected_behavior": [
+        "Declares the nested type with @ConfigValueExtractor rather than a second @ConfigSource",
+        "Exposes the nested type as a method on the parent @ConfigSource interface",
+        "Binds connectionTimeout to java.time.Duration from a string like \"30s\"",
+        "Does not nest a relative-path @ConfigSource for the inner object"
+      ],
+      "tags": ["config", "nested", "advanced"]
+    },
+    {
+      "id": "kora-config-yaml-reuse-tagged",
+      "skills": ["kora-config-yaml"],
+      "query": "Two integration clients share the same endpoint/requestTimeout config shape under libs.lib1 and libs.lib2 in YAML. How do I bind both to one reusable type in Kora and inject the correct one?",
+      "expected_behavior": [
+        "Defines the shared shape once with @ConfigValueExtractor",
+        "Adds factory methods on the @KoraApp interface that call extractor.extract(config.get(\"libs.lib1\")) and config.get(\"libs.lib2\")",
+        "Distinguishes the two instances with @Tag and injects them by tag in the constructor",
+        "Injects ru.tinkoff.kora.config.common.Config and ru.tinkoff.kora.config.common.extractor.ConfigValueExtractor",
+        "Disambiguates with @Tag rather than a name-based qualifier, and uses constructor injection rather than field injection"
+      ],
+      "tags": ["config", "reuse", "advanced"]
+    },
+    {
+      "id": "kora-config-yaml-per-environment",
+      "skills": ["kora-config-yaml"],
+      "query": "How do I run my Kora YAML app with a production config file application-prod.yaml instead of the default application.yaml?",
+      "expected_behavior": [
+        "Creates a complete self-contained application-prod.yaml",
+        "Selects it with the config.resource system property, for example -Dconfig.resource=application-prod.yaml",
+        "Mentions config.file as the filesystem alternative to config.resource",
+        "Does not invent a config.environment or profile-activation mechanism"
+      ],
+      "tags": ["config", "environments", "advanced"]
+    },
+    {
+      "id": "kora-config-yaml-startup-failure",
+      "skills": ["kora-config-yaml"],
+      "query": "My Kora app fails at startup with an unresolved substitution error for a value in application.yaml. What is wrong and how do I fix it?",
+      "expected_behavior": [
+        "Identifies that a required ${VAR} substitution has no value at startup",
+        "Suggests providing the environment variable/system property, or switching to ${VAR:default} or ${?VAR}",
+        "Notes the annotation processor and YamlConfigModule must be present for binding to occur",
+        "Does not suggest a profile-activation or external property-source fix; stays within Kora substitution and config.resource/config.file"
+      ],
+      "tags": ["config", "troubleshooting", "advanced"]
+    }
+  ]
+}

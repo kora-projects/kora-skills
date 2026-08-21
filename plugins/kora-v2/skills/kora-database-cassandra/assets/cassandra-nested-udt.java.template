@@ -1,0 +1,26 @@
+package ${package};
+
+import ru.tinkoff.kora.database.cassandra.annotation.UDT;
+import ru.tinkoff.kora.database.common.annotation.Column;
+
+/**
+ * Nested UDT example - UDT containing another UDT.
+ *
+ * Example: Location contains Coordinates UDT.
+ *
+ * CQL:
+ * CREATE TYPE coordinates (
+ *     latitude DOUBLE,
+ *     longitude DOUBLE
+ * );
+ *
+ * CREATE TYPE location (
+ *     name TEXT,
+ *     coordinates FROZEN<coordinates>
+ * );
+ */
+@UDT
+public record ${parent_udt_name}(
+    @Column("name") String name,
+    @Column("coordinates") ${child_udt_name} coordinates
+) {}

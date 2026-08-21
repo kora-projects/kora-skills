@@ -1,0 +1,38 @@
+package ${packagePath}.publisher;
+
+import java.time.Instant;
+import ru.tinkoff.kora.json.common.annotation.Json;
+import ru.tinkoff.kora.kafka.common.annotation.KafkaPublisher;
+import ru.tinkoff.kora.kafka.common.annotation.KafkaPublisher.Topic;
+
+/**
+ * Example Kafka producer with JSON serialization.
+ *
+ * The @Json annotation automatically serializes a POJO into JSON.
+ */
+@KafkaPublisher("kafka.producer.jsonPublisher")
+public interface JsonMessagePublisher {
+    
+    /**
+     * DTO for JSON messages
+     */
+    @Json
+    record MyEvent(
+        String id,
+        String name,
+        Integer code,
+        Instant timestamp
+    ) {}
+    
+    /**
+     * Send a JSON event
+     */
+    @Topic("kafka.producer.events")
+    void sendEvent(@Json MyEvent event);
+
+    /**
+     * Send a JSON event with a key
+     */
+    @Topic("kafka.producer.events")
+    void sendEvent(String key, @Json MyEvent event);
+}

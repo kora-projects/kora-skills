@@ -1,0 +1,46 @@
+package ${package};
+
+import ru.tinkoff.kora.http.client.common.request.HttpClientRequest;
+
+import java.util.concurrent.CompletionStage;
+
+/**
+ * Token provider for Bearer authentication of an outgoing Kora HTTP client.
+ *
+ * <p>This mirrors Kora's built-in {@code HttpClientTokenProvider} (in
+ * {@code ru.tinkoff.kora.http.client.common.auth}). Define your own only if you
+ * are not depending on the built-in type; otherwise implement the framework
+ * interface directly so it can be wired into {@code BearerAuthHttpClientInterceptor}.</p>
+ *
+ * <p>Implementations should cache and refresh the token internally and return a
+ * {@code CompletionStage} so the fetch stays non-blocking.</p>
+ *
+ * <pre>{@code
+ * @Component
+ * public final class JwtTokenProvider implements HttpClientTokenProvider {
+ *     private final TokenCache cache;
+ *     private final AuthClient authClient;
+ *
+ *     public JwtTokenProvider(TokenCache cache, AuthClient authClient) {
+ *         this.cache = cache;
+ *         this.authClient = authClient;
+ *     }
+ *
+ *     @Override
+ *     public CompletionStage<String> getToken(HttpClientRequest request) {
+ *         return cache.getOrRefresh(() ->
+ *                 authClient.fetchToken().thenApply(r -> r.accessToken()));
+ *     }
+ * }
+ * }</pre>
+ */
+public interface HttpClientTokenProvider {
+
+    /**
+     * Returns the authorization token asynchronously.
+     *
+     * @param request the HTTP request being executed
+     * @return a CompletionStage with the token value
+     */
+    CompletionStage<String> getToken(HttpClientRequest request);
+}

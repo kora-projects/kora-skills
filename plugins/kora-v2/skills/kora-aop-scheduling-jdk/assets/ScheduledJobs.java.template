@@ -1,0 +1,92 @@
+// JDK scheduled jobs (scheduling-jdk).
+// @ScheduleAtFixedRate / @ScheduleWithFixedDelay / @ScheduleOnce.
+// For cron / custom triggers use the sibling skill kora-aop-scheduling-quartz.
+// Class must be non-final (Java) for @Log/@Retry aspect codegen.
+// Replace `com.example.app.jobs` with your package.
+
+package com.example.app.jobs;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import ru.tinkoff.kora.common.Component;
+import ru.tinkoff.kora.scheduling.jdk.annotation.ScheduleAtFixedRate;
+import ru.tinkoff.kora.scheduling.jdk.annotation.ScheduleOnce;
+import ru.tinkoff.kora.scheduling.jdk.annotation.ScheduleWithFixedDelay;
+
+import java.time.temporal.ChronoUnit;
+
+@Component
+public class ScheduledJobs {
+
+    private static final Logger log = LoggerFactory.getLogger(ScheduledJobs.class);
+
+    /**
+     * Fixed-rate: runs every {@code period} regardless of previous execution time.
+     * Overlap possible if execution exceeds period.
+     * Use for: heartbeat, metrics collection, health checks.
+     */
+    @ScheduleAtFixedRate(initialDelay = 30, period = 60, unit = ChronoUnit.SECONDS)
+    void heartbeat() {
+        // Lightweight task — keep execution time < period to avoid overlap
+        log.info("Heartbeat tick");
+    }
+
+    /**
+     * Fixed-delay: waits {@code delay} after previous execution completes.
+     * Never overlaps — safe for long-running tasks.
+     * Use for: batch processing, data sync, cleanup.
+     */
+    @ScheduleWithFixedDelay(config = "jobs.cleanup")             // config-driven
+    void cleanup() {
+        if (Thread.currentThread().isInterrupted()) return;       // graceful shutdown
+        log.info("Running cleanup");
+        // ... do batch cleanup ...
+    }
+
+    /**
+     * One-shot: runs once after {@code delay}.
+     * Use for: cache warming, late binding, startup tasks.
+     */
+    @ScheduleOnce(delay = 5, unit = ChronoUnit.MINUTES)
+    void warmup() {
+        log.info("Warming up caches");
+        // ... populate caches, fetch initial state ...
+    }
+}
+
+// ============== CONFIGURATION ==============
+
+// application.conf snippet (HOCON):
+//
+// scheduling {
+//   threads = 4                # JDK pool size (default: 2)
+//   shutdownWait = "30s"       # Grace period for in-flight jobs
+//   telemetry {
+//     logging.enabled = false
+//     metrics.enabled = true
+//     tracing.enabled = true
+//   }
+// }
+//
+// jobs.cleanup {
+//   initialDelay = "30s"
+//   delay        = "1m"
+// }
+
+// application.yml snippet (YAML):
+//
+// scheduling:
+//   threads: 4
+//   shutdownWait: "30s"
+//   telemetry:
+//     logging:
+//       enabled: false
+//     metrics:
+//       enabled: true
+//     tracing:
+//       enabled: true
+//
+// jobs:
+//   cleanup:
+//     initialDelay: "30s"
+//     delay: "1m"

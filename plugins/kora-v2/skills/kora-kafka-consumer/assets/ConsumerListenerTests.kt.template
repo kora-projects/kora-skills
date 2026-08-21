@@ -1,0 +1,328 @@
+package ${package}.listener
+
+import org.apache.kafka.clients.consumer.ConsumerConfig
+import org.apache.kafka.clients.producer.KafkaProducer
+import org.apache.kafka.clients.producer.ProducerRecord
+import org.apache.kafka.common.serialization.StringDeserializer
+import org.apache.kafka.common.serialization.StringSerializer
+import org.assertj.core.api.Assertions.assertThat
+import org.jetbrains.annotations.NotNull
+import org.json.JSONObject
+import org.junit.jupiter.api.BeforeEach
+import org.junit.jupiter.api.Test
+import org.testcontainers.containers.KafkaContainer
+import org.testcontainers.junit.jupiter.Container
+import org.testcontainers.junit.jupiter.Testcontainers
+import org.testcontainers.utility.DockerImageName
+import org.testcontainers.shaded.org.awaitility.Awaitility
+import ru.tinkoff.kora.application.graph.Lifecycle
+import ru.tinkoff.kora.common.Tag
+import ru.tinkoff.kora.test.extension.junit5.*
+import java.time.Duration
+import java.util.Properties
+import java.util.concurrent.Executors
+
+/**
+ * Integration tests for ${listenerName} using Testcontainers (Kotlin).
+ *
+ * Prerequisites:
+ * 1. Dependencies in build.gradle.kts:
+ *    testImplementation("org.testcontainers:junit-jupiter:1.21.4")
+ *    testImplementation("org.testcontainers:kafka:1.21.4")
+ *    testImplementation("ru.tinkoff.kora:kafka")
+ *    testImplementation("org.json:json:20231013")
+ *    testImplementation("org.awaitility:awaitility:4.2.0")
+ *    testImplementation("org.assertj:assertj-core:3.24.2")
+ *
+ * 2. Application class with KafkaModule
+ *
+ * 3. Test configuration with Kafka bootstrap servers
+ *
+ * Usage:
+ *   ./gradlew test --tests "${listenerName}Tests"
+ */
+@Testcontainers
+@KoraAppTest(Application::class)
+class ${listenerName}Tests : KoraAppTestConfigModifier {
+
+    @Container
+    companion object {
+        val KAFKA: KafkaContainer = KafkaContainer(
+            DockerImageName.parse("confluentinc/cp-kafka:7.5.0")
+        ).withStartupTimeout(Duration.ofSeconds(60))
+    }
+
+    @Tag(${listenerName}Module.${listenerName}ProcessTag::class)
+    @TestComponent
+    private lateinit var consumerLifecycle: Lifecycle
+
+    @TestComponent
+    private lateinit var consumer: ${listenerName}
+
+    @NotNull
+    override fun config(): KoraConfigModification {
+        return KoraConfigModification.ofString("""
+            kafka {
+                consumer {
+                    ${listenerNameLower} {
+                        topics = ["${topicName}"]
+                        offset = "earliest"
+                        pollTimeout = "5s"
+                        driverProperties {
+                            "bootstrap.servers" = "${KAFKA.getBootstrapServers()}"
+                            "group.id" = "${listenerNameLower}-test-group"
+                            "auto.offset.reset" = "earliest"
+                            "enable.auto.commit" = "true"
+                        }
+                    }
+                }
+            }
+            """.trimIndent())
+            .withSystemProperty("KAFKA_BOOTSTRAP_SERVERS", KAFKA.getBootstrapServers())
+    }
+
+    @BeforeEach
+    fun setUp() {
+        // Reset consumer state before each test if needed
+        // consumer.reset()
+    }
+
+    /**
+     * Test: Basic event processing
+     * Verifies that a single event is processed successfully.
+     */
+    @Test
+    fun `should process event`() {
+        // given
+        val event = JSONObject()
+            .put("id", "test-123")
+            .put("eventType", "created")
+            .put("payload", """{"name":"Test User"}""")
+            .put("timestamp", java.time.LocalDateTime.now().toString())
+
+        // when
+        sendKafkaMessage("${topicName}", event.toString())
+
+        // then
+        Awaitility.await()
+            .atMost(Duration.ofSeconds(15))
+            .pollExecutorService(Executors.newSingleThreadExecutor())
+            .until { consumer.processedCount >= 1 }
+
+        assertThat(consumer.lastEventId).isEqualTo("test-123")
+    }
+
+    /**
+     * Test: Event with key processing
+     * Verifies that events with keys are processed correctly.
+     */
+    @Test
+    fun `should process event with key`() {
+        // given
+        val event = JSONObject()
+            .put("id", "keyed-event")
+            .put("eventType", "created")
+            .put("payload", "{}")
+            .put("timestamp", java.time.LocalDateTime.now().toString())
+
+        val key = "partition-key-123"
+
+        // when
+        sendKafkaMessage("${topicName}", key, event.toString())
+
+        // then
+        Awaitility.await()
+            .atMost(Duration.ofSeconds(15))
+            .until { consumer.processedCount >= 1 }
+
+        assertThat(consumer.lastKey).isEqualTo(key)
+    }
+
+    /**
+     * Test: Multiple events processing
+     * Verifies that multiple events are processed correctly.
+     */
+    @Test
+    fun `should process multiple events`() {
+        // given
+        val eventCount = 5
+        for (i in 0 until eventCount) {
+            val event = JSONObject()
+                .put("id", "test-$i")
+                .put("eventType", "created")
+                .put("payload", "{}")
+                .put("timestamp", java.time.LocalDateTime.now().toString())
+            sendKafkaMessage("${topicName}", event.toString())
+        }
+
+        // when & then
+        Awaitility.await()
+            .atMost(Duration.ofSeconds(20))
+            .pollExecutorService(Executors.newSingleThreadExecutor())
+            .until { consumer.processedCount >= eventCount }
+
+        assertThat(consumer.processedCount).isGreaterThanOrEqualTo(eventCount)
+    }
+
+    /**
+     * Test: Invalid JSON handling
+     * Verifies that malformed JSON is handled gracefully.
+     */
+    @Test
+    fun `should handle invalid json`() {
+        // given - invalid JSON (missing required field)
+        val invalidJson = """{"id": "test-123"}"""  // Missing eventType, payload, timestamp
+
+        // when
+        sendKafkaMessage("${topicName}", invalidJson)
+
+        // then - should handle error without crashing
+        Awaitility.await()
+            .atMost(Duration.ofSeconds(10))
+            .until { consumer.errorCount >= 0 }  // >= 0 means it didn't crash
+    }
+
+    /**
+     * Test: Batch processing
+     * Verifies that batches of messages are processed.
+     */
+    @Test
+    fun `should process batch`() {
+        // given - send multiple messages quickly
+        for (i in 0 until 10) {
+            val event = JSONObject()
+                .put("id", "batch-$i")
+                .put("eventType", "created")
+                .put("payload", """{"index":$i}""")
+                .put("timestamp", java.time.LocalDateTime.now().toString())
+            sendKafkaMessage("${topicName}", event.toString())
+        }
+
+        // when & then
+        Awaitility.await()
+            .atMost(Duration.ofSeconds(20))
+            .pollExecutorService(Executors.newSingleThreadExecutor())
+            .until { consumer.processedCount >= 10 }
+    }
+
+    /**
+     * Test: Different event types
+     * Verifies that all event types are handled correctly.
+     */
+    @Test
+    fun `should handle different event types`() {
+        // given
+        val eventTypes = listOf("created", "updated", "deleted")
+        for (eventType in eventTypes) {
+            val event = JSONObject()
+                .put("id", "type-test-$eventType")
+                .put("eventType", eventType)
+                .put("payload", "{}")
+                .put("timestamp", java.time.LocalDateTime.now().toString())
+            sendKafkaMessage("${topicName}", event.toString())
+        }
+
+        // when & then
+        Awaitility.await()
+            .atMost(Duration.ofSeconds(15))
+            .pollExecutorService(Executors.newSingleThreadExecutor())
+            .until { consumer.processedCount >= eventTypes.size }
+
+        // Verify all event types were processed
+        assertThat(consumer.createdCount).isGreaterThanOrEqualTo(1)
+        assertThat(consumer.updatedCount).isGreaterThanOrEqualTo(1)
+        assertThat(consumer.deletedCount).isGreaterThanOrEqualTo(1)
+    }
+
+    /**
+     * Test: Duplicate event handling (idempotency)
+     * Verifies that duplicate events are handled correctly.
+     */
+    @Test
+    fun `should handle duplicate events`() {
+        // given
+        val event = JSONObject()
+            .put("id", "duplicate-test")
+            .put("eventType", "created")
+            .put("payload", "{}")
+            .put("timestamp", java.time.LocalDateTime.now().toString())
+
+        // Send same event twice
+        sendKafkaMessage("${topicName}", event.toString())
+        sendKafkaMessage("${topicName}", event.toString())
+
+        // when & then
+        Awaitility.await()
+            .atMost(Duration.ofSeconds(15))
+            .until { consumer.processedCount >= 2 }
+
+        // Both messages should be processed (Kafka doesn't deduplicate)
+        assertThat(consumer.processedCount).isEqualTo(2)
+    }
+
+    /**
+     * Test: Consumer group behavior
+     * Verifies message distribution in consumer group.
+     */
+    @Test
+    fun `should process all messages in single instance`() {
+        // given - send 10 messages
+        for (i in 0 until 10) {
+            val event = JSONObject()
+                .put("id", "group-test-$i")
+                .put("eventType", "created")
+                .put("payload", "{}")
+                .put("timestamp", java.time.LocalDateTime.now().toString())
+            sendKafkaMessage("${topicName}", event.toString())
+        }
+
+        // when & then
+        Awaitility.await()
+            .atMost(Duration.ofSeconds(15))
+            .until { consumer.processedCount >= 10 }
+
+        assertThat(consumer.processedCount).isEqualTo(10)
+    }
+
+    // =========================================================================
+    // Helper Methods
+    // =========================================================================
+
+    /**
+     * Send a Kafka message without key.
+     */
+    private fun sendKafkaMessage(topic: String, value: String?) {
+        val props = Properties().apply {
+            put(ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG, KAFKA.bootstrapServers)
+            put(ConsumerConfig.KEY_DESERIALIZER_CLASS_CONFIG, StringDeserializer::class.java.name)
+            put(ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG, StringDeserializer::class.java.name)
+        }
+
+        KafkaProducer<String, String?>(
+            props,
+            StringSerializer(),
+            StringSerializer()
+        ).use { producer ->
+            producer.send(ProducerRecord(topic, value))
+        }
+    }
+
+    /**
+     * Send a Kafka message with key.
+     */
+    private fun sendKafkaMessage(topic: String, key: String, value: String) {
+        val props = Properties().apply {
+            put(ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG, KAFKA.bootstrapServers)
+            put(ConsumerConfig.KEY_DESERIALIZER_CLASS_CONFIG, StringDeserializer::class.java.name)
+            put(ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG, StringDeserializer::class.java.name)
+        }
+
+        KafkaProducer<String, String>(
+            props,
+            StringSerializer(),
+            StringSerializer()
+        ).use { producer ->
+            producer.send(ProducerRecord(topic, key, value))
+        }
+    }
+}

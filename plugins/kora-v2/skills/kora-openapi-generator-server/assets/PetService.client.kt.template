@@ -1,0 +1,61 @@
+package com.example
+
+import com.example.api.PetApi
+import com.example.model.Pet
+import ru.tinkoff.kora.common.Component
+import ru.tinkoff.kora.common.annotation.Root
+
+/**
+ * Example usage of the generated HTTP client
+ *
+ * The client is injected via the constructor — Kora will automatically create the implementation
+ *
+ * Recommended:
+ * - Use the synchronous client (java-client) for most cases
+ * - OkHttp (`http-client-ok`) — recommended implementation for production
+ */
+@Root
+@Component
+class PetService(
+    private val petApi: PetApi
+) {
+
+    /**
+     * Synchronous API call (recommended)
+     * OkHttp executes the request in a blocking manner
+     */
+    fun getPet(petId: Long): Pet {
+        return petApi.getPetById(petId)
+    }
+
+    /**
+     * Create a pet
+     */
+    fun createPet(name: String, status: String): Pet {
+        val request = Pet(name, status)
+        return petApi.addPet(request)
+    }
+
+    /**
+     * Get all pets by status
+     */
+    fun getPetsByStatus(status: String): List<Pet> {
+        return petApi.findPetsByStatus(listOf(status))
+    }
+
+    /**
+     * Update a pet
+     */
+    fun updatePet(petId: Long, name: String): Pet {
+        val request = Pet(name, "available")
+        return petApi.updatePet(petId, request)
+    }
+
+    /**
+     * Delete a pet
+     * 204 No Content — returns void
+     */
+    fun deletePet(petId: Long) {
+        petApi.deletePet(petId)
+    }
+}

@@ -1,0 +1,16 @@
+# Kora tracing configuration. `endpoint` is the only required key.
+# OTLP/gRPC -> port 4317, OTLP/HTTP -> port 4318 (chosen by the connected module).
+tracing {
+  exporter {
+    endpoint = ${OTLP_ENDPOINT}   # e.g. http://localhost:4317
+    connectTimeout = "60s"
+    exportTimeout = "3s"
+    compression = "gzip"          # use "none" for Zipkin and Grafana Tempo
+  }
+  attributes {
+    "service.name" = ${SERVICE_NAME}
+    "service.namespace" = "kora"
+    "service.version" = ${?SERVICE_VERSION}
+    "deployment.environment" = ${?ENV}
+  }
+}

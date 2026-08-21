@@ -1,0 +1,82 @@
+{
+  "evals": [
+    {
+      "id": "kora-s3-declarative-client",
+      "skills": ["kora-s3"],
+      "query": "Create a Kora declarative S3 client DocumentsClient over the AWS SDK implementation with get, put, list-by-prefix and delete operations for a documents bucket.",
+      "expected_behavior": [
+        "Annotates an interface with @S3.Client(\"s3client.documents\") and lets Kora generate and register the implementation",
+        "Declares methods with @S3.Get, @S3.Put, @S3.List and @S3.Delete, using S3Object/S3ObjectList returns and S3Body for the put payload",
+        "Adds ru.tinkoff.kora.experimental:s3-client-aws plus a kora-client HTTP module and plugs AwsS3ClientModule into @KoraApp",
+        "Sets s3client.url/accessKey/secretKey/region and the required s3client.documents.bucket config key",
+        "Does not pin a version on the ru.tinkoff.kora artifacts and does not use the AWS SDK S3Client builder by hand for these operations"
+      ],
+      "tags": ["s3", "declarative", "basic"]
+    },
+    {
+      "id": "kora-s3-aws-vs-minio",
+      "skills": ["kora-s3"],
+      "query": "I'm targeting a self-hosted MinIO server, not AWS. Which Kora S3 implementation do I use and what changes versus the AWS one?",
+      "expected_behavior": [
+        "Recommends ru.tinkoff.kora.experimental:s3-client-minio with MinioS3ClientModule",
+        "Explains declarative @S3.Client interfaces are portable, so only the module on @KoraApp and a few config keys change",
+        "Notes MinIO typically needs addressStyle = \"PATH\" and that MinIO auto-creates an OkHttp transport",
+        "Keeps the common s3client.* config (url/accessKey/secretKey) and uses the minio-specific s3client.minio.* block for tuning",
+        "Does not mix both AwsS3ClientModule and MinioS3ClientModule into the same @KoraApp"
+      ],
+      "tags": ["s3", "decision", "minio", "basic"]
+    },
+    {
+      "id": "kora-s3-multipart-upload",
+      "skills": ["kora-s3"],
+      "query": "I need to stream a large file of unknown length up to S3 from a Kora service without buffering it all in memory.",
+      "expected_behavior": [
+        "Uses S3Body.ofInputStreamUnbound(is) or S3Body.ofPublisher(pub) with no size argument for the unknown-length payload",
+        "Explains that unbound bodies automatically engage S3 multipart upload with concurrent parts",
+        "Mentions the upload.partSize tuning (default 8MiB, S3 minimum 5MiB) under s3client.aws.upload",
+        "Passes the S3Body to an @S3.Put method or the imperative S3KoraClient",
+        "Does not read the whole stream into a byte[] with S3Body.ofBytes for a large unknown-length file"
+      ],
+      "tags": ["s3", "multipart", "streaming", "intermediate"]
+    },
+    {
+      "id": "kora-s3-key-templates",
+      "skills": ["kora-s3"],
+      "query": "On my Kora @S3.Client I want per-tenant object keys like docs/{tenantId}/{docId}.pdf for get, put and delete.",
+      "expected_behavior": [
+        "Uses templated keys such as @S3.Put(\"docs/{tenantId}/{docId}.pdf\") with {argName} placeholders",
+        "Ensures every method argument appears in the template with no extra unused args",
+        "Interpolates arguments via toString(), so UUID/String args substitute directly",
+        "Notes that multi-key operations taking List<String> cannot use a key template",
+        "Does not concatenate the bucket name into the key or hand-build the key inside the interface method"
+      ],
+      "tags": ["s3", "key-template", "intermediate"]
+    },
+    {
+      "id": "kora-s3-metadata-only-head",
+      "skills": ["kora-s3"],
+      "query": "I only need to check an object exists and read its size/content-type in Kora S3, not download the body. What's the efficient way?",
+      "expected_behavior": [
+        "Declares an @S3.Get method returning S3ObjectMeta so Kora issues a HEAD request with no body transfer",
+        "For listings, uses S3ObjectMetaList / an @S3.List method returning meta to skip body fetching",
+        "Explains S3ObjectMeta is faster because no object data is transferred",
+        "Notes deletes are best-effort so a meta get is the way to assert existence",
+        "Does not fetch a full S3Object body just to read metadata"
+      ],
+      "tags": ["s3", "metadata", "intermediate"]
+    },
+    {
+      "id": "kora-s3-imperative-presigned",
+      "skills": ["kora-s3"],
+      "query": "The declarative annotations don't cover what I need in Kora S3 - I want dynamic buckets and presigned URLs. What do I inject?",
+      "expected_behavior": [
+        "Injects the portable S3KoraClient or S3KoraAsyncClient by constructor for imperative operations",
+        "Explains the imperative client covers cases declarative @S3.* annotations don't (dynamic buckets, batch delete reporting, presigned URLs, ACL, versioning)",
+        "Mentions the native clients (S3Client/S3AsyncClient for AWS, MinioClient for MinIO) are also injectable for implementation-specific features",
+        "Keeps a single S3 module on @KoraApp and uses constructor injection",
+        "Does not instantiate the AWS or MinIO SDK client manually outside the Kora graph"
+      ],
+      "tags": ["s3", "imperative", "advanced"]
+    }
+  ]
+}

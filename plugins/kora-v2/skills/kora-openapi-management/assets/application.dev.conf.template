@@ -1,0 +1,32 @@
+# application-dev.conf
+# Development configuration - full access
+
+openapi {
+  management {
+    file = [
+      "openapi/api-v1.yaml",
+      "openapi/api-v2.yaml"
+    ]
+    enabled = true
+    endpoint = "/openapi"
+
+    swaggerui {
+      enabled = true
+      endpoint = "/swagger-ui"
+    }
+
+    rapidoc {
+      enabled = false
+      endpoint = "/rapidoc"
+    }
+  }
+}
+
+# HTTP server request/response logging for debugging
+httpServer {
+  telemetry {
+    logging {
+      enabled = true
+    }
+  }
+}

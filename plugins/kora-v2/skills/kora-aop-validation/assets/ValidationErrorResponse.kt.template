@@ -1,0 +1,26 @@
+// Error response DTO for validation errors. Use with ViolationExceptionHttpServerResponseMapper.
+// Replace `com.example.app.dto` with your package.
+
+package com.example.app.dto
+
+import ru.tinkoff.kora.json.common.annotation.Json
+
+@Json
+data class ValidationErrorResponse(
+    val code: String,
+    val message: String,
+    val errors: List<ValidationErrorDetails>
+) {
+    companion object {
+        @JvmStatic
+        fun of(errors: List<ValidationErrorDetails>): ValidationErrorResponse {
+            return ValidationErrorResponse("VALIDATION_ERROR", "Validation failed", errors)
+        }
+    }
+
+    @Json
+    data class ValidationErrorDetails(
+        val field: String,
+        val message: String
+    )
+}

@@ -1,0 +1,143 @@
+package ${package};
+
+import static org.junit.jupiter.api.Assertions.*;
+import static org.mockito.ArgumentMatchers.*;
+import static org.mockito.Mockito.*;
+
+import java.util.ArrayList;
+import java.util.List;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.TimeUnit;
+import org.jetbrains.annotations.NotNull;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+import org.mockito.Mock;
+import org.testcontainers.containers.KafkaContainer;
+import org.testcontainers.junit.jupiter.Container;
+import org.testcontainers.junit.jupiter.Testcontainers;
+import org.testcontainers.utility.DockerImageName;
+import ru.tinkoff.kora.test.extension.junit5.KoraAppTest;
+import ru.tinkoff.kora.test.extension.junit5.KoraAppTestConfigModifier;
+import ru.tinkoff.kora.test.extension.junit5.KoraConfigModification;
+import ru.tinkoff.kora.test.extension.junit5.TestComponent;
+
+/**
+ * Integration test template with Kafka TestContainer.
+ *
+ * Usage:
+ * 1. Replace ${producerName} and ${consumerName} with your classes
+ * 2. Replace ${messageName} with your message class
+ * 3. Replace ${topicName} with your Kafka topic
+ * 4. Add test methods for producer/consumer scenarios
+ *
+ * Requirements:
+ * - Docker must be running
+ * - testImplementation "org.testcontainers:kafka"
+ * - testImplementation "ru.tinkoff.kora:kafka"
+ */
+@Testcontainers
+@KoraAppTest(Application.class)
+class ${producerName}Test implements KoraAppTestConfigModifier {
+
+    @Container
+    static final KafkaContainer KAFKA = new KafkaContainer(
+        DockerImageName.parse("confluentinc/cp-kafka:7.5.0")
+    ).withStartupTimeout(java.time.Duration.ofSeconds(60));
+
+    @TestComponent
+    private ${producerName} ${producerVarName};
+
+    @TestComponent
+    private ${consumerName} ${consumerVarName};
+
+    @NotNull
+    @Override
+    public KoraConfigModification config() {
+        // Kora Kafka config is per-listener / per-publisher. The broker address goes into
+        // driverProperties using native Kafka client property names. There is no flat
+        // kafka.bootstrapServers key. Match these paths to your @KafkaListener strings.
+        return KoraConfigModification.ofString("""
+            kafka {
+                ${consumerConfigPath} {
+                    topics = ["${topicName}"]
+                    offset = "earliest"
+                    driverProperties {
+                        "bootstrap.servers" = ${KAFKA_BOOTSTRAP_SERVERS}
+                        "group.id" = "test-consumer-group"
+                    }
+                }
+                ${producerConfigPath} {
+                    driverProperties {
+                        "bootstrap.servers" = ${KAFKA_BOOTSTRAP_SERVERS}
+                    }
+                }
+            }
+            """)
+            .withSystemProperty("KAFKA_BOOTSTRAP_SERVERS", KAFKA.getBootstrapServers());
+    }
+
+    @BeforeEach
+    void setup() {
+        // Reset any state if needed
+    }
+
+    @Test
+    void shouldSendMessageAndConsume() throws Exception {
+        // given
+        var message = new ${messageName}("test-id", 100.0);
+        var receivedMessages = new ArrayList<${messageName}>();
+        var latch = new CountDownLatch(1);
+
+        // Setup consumer to capture messages
+        // This depends on your consumer implementation
+        // Example with spy or callback:
+        // doAnswer(invocation -> {
+        //     receivedMessages.add(invocation.getArgument(0));
+        //     latch.countDown();
+        //     return null;
+        // }).when(${consumerVarName}).consume(any(${messageName}.class));
+
+        // when
+        ${producerVarName}.send(message);
+
+        // then
+        // assertTrue(latch.await(5, TimeUnit.SECONDS), "Message not consumed within timeout");
+        // assertEquals(1, receivedMessages.size());
+        // assertEquals("test-id", receivedMessages.get(0).id());
+    }
+
+    @Test
+    void shouldSendMultipleMessages() throws Exception {
+        // given
+        var messages = List.of(
+            new ${messageName}("id-1", 10.0),
+            new ${messageName}("id-2", 20.0),
+            new ${messageName}("id-3", 30.0)
+        );
+
+        // when
+        messages.forEach(${producerVarName}::send);
+
+        // then
+        // Verify all messages were consumed
+        // Awaitility.await().atMost(Duration.ofSeconds(5))
+        //     .untilAsserted(() -> assertEquals(3, receivedMessages.size()));
+    }
+
+    @Test
+    void shouldHandleMessageProcessingError() throws Exception {
+        // given
+        var message = new ${messageName}("error-id", 0.0);
+
+        // Setup consumer to throw exception
+        // doThrow(new ProcessingException("Error"))
+        //     .when(${consumerVarName}).consume(any(${messageName}.class));
+
+        // when
+        ${producerVarName}.send(message);
+
+        // then
+        // Verify error handling (DLQ, retry, logging, etc.)
+        // verify(errorHandler).handle(any(), any());
+    }
+}

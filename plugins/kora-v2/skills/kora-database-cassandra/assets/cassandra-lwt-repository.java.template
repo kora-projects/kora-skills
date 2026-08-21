@@ -1,0 +1,62 @@
+package ${package};
+
+import jakarta.annotation.Nullable;
+import java.util.List;
+import ru.tinkoff.kora.database.common.annotation.Batch;
+import ru.tinkoff.kora.database.common.annotation.Query;
+import ru.tinkoff.kora.database.common.annotation.Repository;
+import ru.tinkoff.kora.database.cassandra.CassandraRepository;
+
+/**
+ * Cassandra repository with lightweight transactions (LWT).
+ * Uses IF NOT EXISTS and IF conditions for conditional operations.
+ *
+ * Note: LWT operations use serial consistency (SERIAL or LOCAL_SERIAL).
+ * Return boolean indicates if the condition was met (true = operation succeeded).
+ */
+@Repository
+public interface ${repository_name} extends CassandraRepository {
+
+    /**
+     * Insert entity only if it doesn't exist (lightweight transaction).
+     * @param entity entity to insert
+     * @return true if inserted, false if already exists
+     */
+    @Query("INSERT INTO ${table_name} (id, field1, field2) VALUES (:entity.id, :entity.field1, :entity.field2) IF NOT EXISTS")
+    boolean insertIfNotExists(${entity_name} entity);
+
+    /**
+     * Update entity with condition (lightweight transaction).
+     * @param id entity ID
+     * @param field1 new value for field1
+     * @param oldField1 expected current value
+     * @return true if updated, false if condition failed
+     */
+    @Query("UPDATE ${table_name} SET field1 = :field1 WHERE id = :id IF field1 = :oldField1")
+    boolean updateIfField1Matches(${id_type} id, String field1, String oldField1);
+
+    /**
+     * Delete entity with condition.
+     * @param id entity ID
+     * @param oldField1 expected current value
+     * @return true if deleted, false if condition failed
+     */
+    @Query("DELETE FROM ${table_name} WHERE id = :id IF field1 = :oldField1")
+    boolean deleteIfField1Matches(${id_type} id, String oldField1);
+
+    /**
+     * Standard insert without condition.
+     * @param entity entity to insert
+     */
+    @Query("INSERT INTO ${table_name} (id, field1, field2) VALUES (:entity.id, :entity.field1, :entity.field2)")
+    void insert(${entity_name} entity);
+
+    /**
+     * Find by ID.
+     * @param id entity ID
+     * @return entity or null
+     */
+    @Query("SELECT * FROM ${table_name} WHERE id = :id")
+    @Nullable
+    ${entity_name} findById(${id_type} id);
+}

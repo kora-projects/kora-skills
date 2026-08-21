@@ -1,0 +1,15 @@
+rootProject.name = '${projectName}'
+
+// Include submodules for multi-module projects
+// Uncomment and modify as needed for projects with 500+ classes
+
+// include ':common'
+// include ':domain-a'
+// include ':domain-b'
+// include ':app'
+
+// Example structure:
+// - common/     — shared types, utilities, common module interface
+// - domain-a/   — domain A module (entities, services, controllers)
+// - domain-b/   — domain B module (entities, services, controllers)
+// - app/        — application assembly (main Application interface)

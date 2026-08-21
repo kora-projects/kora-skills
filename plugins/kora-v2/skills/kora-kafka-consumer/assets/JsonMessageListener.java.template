@@ -1,0 +1,232 @@
+package ${packagePath}.listener;
+
+import jakarta.annotation.Nullable;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import ru.tinkoff.kora.common.Component;
+import ru.tinkoff.kora.json.common.annotation.Json;
+import ru.tinkoff.kora.kafka.common.annotation.KafkaListener;
+import ru.tinkoff.kora.kafka.common.exceptions.KafkaSkipRecordException;
+
+import java.time.LocalDateTime;
+
+/**
+ * Kafka consumer listener with JSON deserialization using @Json annotation.
+ *
+ * PROGRESSIVE DISCLOSURE:
+ * Level 1: Use processEvent() for simple JSON processing
+ * Level 2: Use processEventWithKey() when key is needed for partitioning
+ * Level 3: Use processEventWithErrorHandling() for production with DLQ support
+ *
+ * CONFIGURATION:
+ * - Path: kafka.consumer.${listenerNameLower}
+ * - Topics: ${topics}
+ * - Consumer group: Set "group.id" in driverProperties for subscribe mode
+ *
+ * ERROR HANDLING PATTERNS:
+ * - Deserialization errors: Use (@Nullable Event, @Nullable Exception) signature
+ * - Business errors: Throw KafkaSkipRecordException to skip, or rethrow to retry
+ * - DLQ pattern: Send failed events to dead letter queue for analysis
+ */
+@Component
+public final class ${listenerName} {
+
+    private static final Logger log = LoggerFactory.getLogger(${listenerName}.class);
+
+    // =========================================================================
+    // Event DTO (Kora @Json Record)
+    // =========================================================================
+
+    /**
+     * Event DTO for JSON deserialization.
+     *
+     * The @Json annotation tells Kora to use JsonMapper for (de)serialization.
+     * Field names MUST match JSON property names exactly.
+     *
+     * Supported types: String, primitives, collections, nested records, LocalDateTime.
+     */
+    @Json
+    public record ${eventClassName}(
+        String id,
+        String eventType,
+        String entityId,
+        String payload,
+        LocalDateTime timestamp
+    ) {}
+
+    // =========================================================================
+    // Level 1: Basic JSON Processing
+    // =========================================================================
+
+    /**
+     * Process JSON event with auto-commit.
+     *
+     * USE FOR: Simple JSON message processing.
+     * COMMIT: Automatic after each message.
+     * ERROR HANDLING: Exceptions trigger retry after backoffTimeout.
+     */
+    @KafkaListener("kafka.consumer.${listenerNameLower}")
+    void processEvent(@Json ${eventClassName} event) {
+        log.info("Received event: id={}, type={}, entityId={}, timestamp={}",
+            event.id(),
+            event.eventType(),
+            event.entityId(),
+            event.timestamp()
+        );
+
+        // TODO: Implement business logic based on event type
+        switch (event.eventType()) {
+            case "created" -> handleCreated(event);
+            case "updated" -> handleUpdated(event);
+            case "deleted" -> handleDeleted(event);
+            default -> log.warn("Unknown event type: {}", event.eventType());
+        }
+    }
+
+    // =========================================================================
+    // Level 2: Key-Value Processing
+    // =========================================================================
+
+    /**
+     * Process JSON event with message key.
+     *
+     * USE FOR: When key is needed for partitioning or correlation.
+     * KEY USAGE: Often matches entityId for partition affinity.
+     */
+    @KafkaListener("kafka.consumer.${listenerNameLower}")
+    void processEventWithKey(String key, @Json ${eventClassName} event) {
+        log.info("Received key={}, event: id={}, type={}, entityId={}",
+            key, event.id(), event.eventType(), event.entityId());
+
+        // Optional: Verify key matches entity ID (consistency check)
+        if (key != null && !key.equals(event.entityId())) {
+            log.warn("Key {} does not match event entityId {}", key, event.entityId());
+        }
+
+        // TODO: Implement business logic
+        processEvent(event);
+    }
+
+    // =========================================================================
+    // Level 3: Production-Ready Error Handling
+    // =========================================================================
+
+    /**
+     * Process JSON event with comprehensive error handling.
+     *
+     * USE FOR: Production consumers that must handle corrupt messages.
+     * SIGNATURE: Both parameters nullable - either event OR error is present.
+     *
+     * ERROR SCENARIOS:
+     * - Invalid JSON syntax -> error contains JsonProcessingException
+     * - Missing required field -> error contains MismatchException
+     * - Type mismatch -> error contains InputCoercionException
+     *
+     * ERROR HANDLING OPTIONS:
+     * 1. Log and skip - message committed, data lost (use for non-critical events)
+     * 2. Send to DLQ - preserve for analysis (recommended for critical events)
+     * 3. Rethrow - retry after backoffTimeout (use for transient failures)
+     */
+    @KafkaListener("kafka.consumer.${listenerNameLower}")
+    void processEventWithErrorHandling(@Nullable @Json ${eventClassName} event,
+                                        @Nullable Exception error) {
+        // Handle deserialization error
+        if (error != null) {
+            log.error("Failed to deserialize event: {}", error.getMessage(), error);
+
+            // Option 1: Log and skip (non-critical events)
+            // return;
+
+            // Option 2: Send to DLQ (recommended for critical events)
+            // dlqPublisher.send(new DlqMessage(
+            //     "events-dlq",
+            //     "deserialization_error",
+            //     error.getMessage(),
+            //     LocalDateTime.now()
+            // ));
+            // return;
+
+            // Option 3: Rethrow for retry (transient failures only)
+            // throw new RuntimeException("Deserialization failed", error);
+        }
+
+        // Handle null event without error (edge case)
+        if (event == null) {
+            log.warn("Received null event without error - possible empty record");
+            return;
+        }
+
+        // Normal processing - event is guaranteed non-null here
+        log.info("Processing event: id={}, type={}, entityId={}",
+            event.id(), event.eventType(), event.entityId());
+
+        try {
+            // TODO: Implement business logic
+            processEventInternal(event);
+        } catch (IllegalArgumentException e) {
+            // Invalid data - skip this message
+            log.warn("Invalid event data: id={}, error={}", event.id(), e.getMessage());
+            throw new KafkaSkipRecordException(e);
+        } catch (Exception e) {
+            // Transient error - retry after backoff
+            log.error("Failed to process event {}: {}", event.id(), e.getMessage(), e);
+            throw e; // Triggers backoffTimeout retry
+        }
+    }
+
+    /**
+     * Process JSON event with manual offset commit for exactly-once semantics.
+     *
+     * USE FOR: Critical events requiring synchronization with database transactions.
+     * COMMIT: Manual - offset committed only after DB transaction succeeds.
+     */
+    @KafkaListener("kafka.consumer.${listenerNameLower}")
+    void processEventWithManualCommit(@Json ${eventClassName} event,
+                                       org.apache.kafka.clients.consumer.Consumer<String, ${eventClassName}> consumer) {
+        log.info("Processing event with manual commit: id={}", event.id());
+
+        try {
+            // TODO: Implement business logic within transaction
+            // Example: Save to database
+            // eventRepository.save(event);
+
+            // Commit offset AFTER successful transaction
+            consumer.commitSync();
+            log.debug("Offset committed for event: {}", event.id());
+
+        } catch (Exception e) {
+            log.error("Failed to process event, offset not committed: id={}", event.id(), e);
+            // Don't commit - message will be retried
+            throw e;
+        }
+    }
+
+    // =========================================================================
+    // Event Type Handlers (TODO: Implement for your use case)
+    // =========================================================================
+
+    private void processEventInternal(${eventClassName} event) {
+        // Main processing dispatcher
+        switch (event.eventType()) {
+            case "created" -> handleCreated(event);
+            case "updated" -> handleUpdated(event);
+            case "deleted" -> handleDeleted(event);
+            default -> log.warn("Unknown event type: {}", event.eventType());
+        }
+    }
+
+    private void handleCreated(${eventClassName} event) {
+        log.info("Handling created event: id={}, entityId={}", event.id(), event.entityId());
+        // TODO: Implement creation logic (e.g., create entity in database)
+    }
+
+    private void handleUpdated(${eventClassName} event) {
+        log.info("Handling updated event: id={}, entityId={}", event.id(), event.entityId());
+        // TODO: Implement update logic (e.g., update entity in database)
+    }
+
+    private void handleDeleted(${eventClassName} event) {
+        log.info("Handling deleted event: id={}, entityId={}", event.id(), event.entityId());
+        // TODO: Implement deletion logic (e.g., soft delete or remove from database)
+    }
+}

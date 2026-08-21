@@ -1,0 +1,81 @@
+package ${package}
+
+import io.micrometer.core.instrument.Counter
+import io.micrometer.core.instrument.DistributionSummary
+import io.micrometer.core.instrument.MeterRegistry
+import io.micrometer.core.instrument.Timer
+import ru.tinkoff.kora.common.Component
+import java.time.Duration
+
+/**
+ * Payment processing metrics example.
+ *
+ * Demonstrates complete metrics pattern:
+ * - Timer for processing duration with SLO buckets
+ * - Counter for success/failure counts
+ * - DistributionSummary for payment amounts
+ * - Proper tag usage (bounded values)
+ */
+@Component
+class PaymentMetricsService(
+    private val registry: MeterRegistry
+) {
+
+    private val paymentsCounter: Counter
+    private val failuresCounter: Counter
+    private val paymentTimer: Timer
+    private val paymentAmount: DistributionSummary
+
+    init {
+        // Counters for event counting (success/failure)
+        paymentsCounter = registry.counter("payment.processed.total", "status", "success")
+        failuresCounter = registry.counter("payment.processed.total", "status", "failed")
+
+        // Timer for latency with custom buckets matching SLOs
+        paymentTimer = Timer.builder("payment.processing.duration")
+            .description("Time taken to process payment")
+            .serviceLevelObjectives(
+                Duration.ofMillis(50),    // Excellent
+                Duration.ofMillis(100),   // Good (p90 target)
+                Duration.ofMillis(500),   // Healthy (p95 target)
+                Duration.ofSeconds(1),    // Warning (p99 target)
+                Duration.ofSeconds(5)     // Degradation threshold
+            )
+            .register(registry)
+
+        // DistributionSummary for payment amount distribution
+        paymentAmount = DistributionSummary.builder("payment.amount")
+            .description("Payment amount distribution")
+            .tag("currency", "RUB")
+            .baseUnit("rubles")
+            .register(registry)
+    }
+
+    /**
+     * Records payment processing with full metrics.
+     */
+    fun process(payment: Payment): PaymentResult {
+        return paymentTimer.record {
+            try {
+                val result = executePayment(payment)
+
+                paymentsCounter.increment()
+                paymentAmount.record(payment.amount.toDouble())
+
+                result
+            } catch (e: PaymentException) {
+                failuresCounter.increment()
+                throw e
+            }
+        }
+    }
+
+    private fun executePayment(payment: Payment): PaymentResult {
+        // Business logic here
+        return PaymentResult(true, "Payment processed successfully")
+    }
+
+    data class Payment(val amount: Long, val currency: String = "RUB")
+    data class PaymentResult(val success: Boolean, val message: String)
+    class PaymentException(message: String) : RuntimeException(message)
+}

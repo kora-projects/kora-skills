@@ -1,0 +1,95 @@
+{
+  "evals": [
+    {
+      "id": "kora-kafka-producer-basic",
+      "skills": ["kora-kafka-producer"],
+      "query": "Create a Kora Kafka publisher interface that sends String messages to a 'user-events' topic.",
+      "expected_behavior": [
+        "Declares an interface annotated with @KafkaPublisher pointing to a kafka.producer.* config path",
+        "Adds a method annotated with @Topic (the nested @KafkaPublisher.Topic) pointing to a topic config section",
+        "Adds the ru.tinkoff.kora:kafka dependency and KafkaModule to the @KoraApp interface",
+        "Includes the annotation-processors (Java) or symbol-processors (Kotlin) processor",
+        "Configures kafka.producer with driverProperties bootstrap.servers and a topic section with topic = \"user-events\"",
+        "Does not use field injection or a non-Kora messaging-template abstraction; uses @KafkaPublisher with constructor injection"
+      ],
+      "tags": ["producer", "basic"]
+    },
+    {
+      "id": "kora-kafka-producer-json",
+      "skills": ["kora-kafka-producer"],
+      "query": "I need to publish a UserEvent record (userId, eventType, timestamp) to Kafka as JSON in my Kora service.",
+      "expected_behavior": [
+        "Annotates the DTO record with @Json from ru.tinkoff.kora.json.common.annotation",
+        "Annotates the value parameter with @Json so Kora injects a JSON serializer",
+        "Adds the ru.tinkoff.kora:json-module dependency",
+        "Does not set key.serializer / value.serializer manually in driverProperties for the @Json parameter",
+        "Does not wire a reflective ObjectMapper or external serialization config; relies on Kora's compile-time @Json serializer"
+      ],
+      "tags": ["producer", "serialization", "basic"]
+    },
+    {
+      "id": "kora-kafka-producer-signatures",
+      "skills": ["kora-kafka-producer"],
+      "query": "Add three send methods to my Kafka publisher: fire-and-forget, one that returns broker metadata synchronously, and one that is asynchronous.",
+      "expected_behavior": [
+        "Declares a void method for fire-and-forget that may throw KafkaPublishException",
+        "Declares a method returning RecordMetadata for the blocking case",
+        "Declares a method returning Future<RecordMetadata> or CompletionStage<RecordMetadata> for the async case",
+        "Each method is annotated with @Topic, or takes a ProducerRecord when @Topic is omitted",
+        "Does not introduce non-Kora async/reactive framework types; uses the return types Kora generates (RecordMetadata, Future, CompletionStage)"
+      ],
+      "tags": ["producer", "signatures", "advanced"]
+    },
+    {
+      "id": "kora-kafka-producer-transactional",
+      "skills": ["kora-kafka-producer"],
+      "query": "I want to send several Kafka records atomically so they all commit or all roll back.",
+      "expected_behavior": [
+        "Declares a base @KafkaPublisher interface and a second @KafkaPublisher interface extending TransactionalPublisher<P>",
+        "Imports TransactionalPublisher from ru.tinkoff.kora.kafka.common.producer",
+        "Sends inside inTx(...) so the transaction commits on success and aborts when the lambda throws",
+        "Configures the transactional publisher section with idPrefix, maxPoolSize, and maxWaitTime",
+        "Clarifies that a Kafka transaction is not atomic with a database write (suggests transactional outbox), and does not assume an external @Transactional bridges Kafka and the database"
+      ],
+      "tags": ["producer", "transactions", "advanced"]
+    },
+    {
+      "id": "kora-kafka-producer-error-handling",
+      "skills": ["kora-kafka-producer"],
+      "query": "How do I handle publish failures and serialization errors when sending to Kafka in Kora?",
+      "expected_behavior": [
+        "Catches ru.tinkoff.kora.kafka.common.exceptions.KafkaPublishException for synchronous sends and inspects getCause()",
+        "Catches org.apache.kafka.common.errors.SerializationException for serialization failures",
+        "For Future/CompletionStage signatures, handles failures via the returned handle (for example exceptionally)",
+        "Does not claim KafkaPublishException is thrown synchronously by async Future/CompletionStage methods",
+        "Does not rely on a non-Kora error-handling framework; handles failures with plain try/catch and Kora exception types"
+      ],
+      "tags": ["producer", "error-handling", "advanced"]
+    },
+    {
+      "id": "kora-kafka-producer-custom-serializer",
+      "skills": ["kora-kafka-producer"],
+      "query": "I need a custom Kafka serializer for my event type instead of the default JSON one.",
+      "expected_behavior": [
+        "Implements org.apache.kafka.common.serialization.Serializer<T> and registers it as a @Component",
+        "Binds the serializer under a @Tag and references the same @Tag on the publisher method parameter or ProducerRecord type",
+        "Resolves the serializer from the application graph at compile time rather than via reflection",
+        "Does not configure value.serializer as a class name string in driverProperties for the tagged parameter",
+        "Selects the serializer with @Tag rather than @Qualifier or external bean definitions"
+      ],
+      "tags": ["producer", "serialization", "advanced"]
+    },
+    {
+      "id": "kora-kafka-producer-headers-record",
+      "skills": ["kora-kafka-producer"],
+      "query": "I want to publish a Kafka record with a key, headers, and a callback in my Kora publisher.",
+      "expected_behavior": [
+        "Declares a @Topic method taking value plus optional key and org.apache.kafka.common.header.Headers",
+        "Declares a method taking a ProducerRecord<K, V> (with no @Topic, since the topic comes from the record)",
+        "Declares a method accepting an org.apache.kafka.clients.producer.Callback alongside the record or unpacked parameters",
+        "Does not use field injection and uses constructor injection for the publisher in the caller"
+      ],
+      "tags": ["producer", "signatures", "advanced"]
+    }
+  ]
+}

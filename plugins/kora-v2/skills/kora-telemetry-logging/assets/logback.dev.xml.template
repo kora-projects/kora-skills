@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<configuration>
+    <!-- Text Console Appender for Local Development -->
+    <appender name="TEXT_CONSOLE" class="ch.qos.logback.core.ConsoleAppender">
+        <encoder>
+            <charset>UTF-8</charset>
+            <pattern>%d{yyyy-MM-dd HH:mm:ss.SSS} %-5level [%thread] %logger{36} [traceId=%X{traceId}, requestId=%X{requestId}] - %msg%n</pattern>
+        </encoder>
+    </appender>
+
+    <!-- Async Wrapper. KoraAsyncAppender extends Logback AsyncAppenderBase:
+         use queueSize / discardingThreshold, not bufferSize / flushThreshold.
+         The %X{} pattern above reads SLF4J (org.slf4j.MDC) string keys. -->
+    <appender name="ASYNC_TEXT" class="ru.tinkoff.kora.logging.logback.KoraAsyncAppender">
+        <appender-ref ref="TEXT_CONSOLE"/>
+        <queueSize>4096</queueSize>
+        <discardingThreshold>0</discardingThreshold>
+    </appender>
+
+    <!-- Per-package levels are configured in the Kora config (logging.levels);
+         only the root level is set here. -->
+    <root level="DEBUG">
+        <appender-ref ref="ASYNC_TEXT"/>
+    </root>
+</configuration>

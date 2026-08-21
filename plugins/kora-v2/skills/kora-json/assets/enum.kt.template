@@ -1,0 +1,39 @@
+package ${package}
+
+import ru.tinkoff.kora.json.common.annotation.Json
+
+/**
+ * ${enum_name} with custom JSON serialization.
+ *
+ * <p>Serialized via toString() — override for a custom format.</p>
+ *
+ * @see toString
+ * @see fromString
+ */
+@Json
+enum class ${enum_name}(
+    private val value: String
+) {
+    ${enum_values};
+
+    /**
+     * Returns the JSON representation of the enum.
+     * By default returns the lowercase name.
+     */
+    override fun toString(): String = value
+
+    /**
+     * Deserializes an enum from a JSON string.
+     *
+     * @param value value from JSON
+     * @return the matching enum constant
+     * @throws IllegalArgumentException if the value is not found
+     */
+    companion object {
+        @JvmStatic
+        fun fromString(value: String): ${enum_name} {
+            return entries.find { it.value == value }
+                ?: throw IllegalArgumentException("Unknown ${enum_name}: $value")
+        }
+    }
+}

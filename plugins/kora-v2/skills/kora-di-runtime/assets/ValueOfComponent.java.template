@@ -1,0 +1,125 @@
+package ${packagePath};
+
+import ru.tinkoff.kora.application.graph.ValueOf;
+import ru.tinkoff.kora.common.Component;
+
+/**
+ * Component using ValueOf for lazy dependency injection.
+ *
+ * Usage:
+ * - Breaking circular dependencies
+ * - Lazy initialization (dependency accessed only when needed)
+ * - Preventing cascading refreshes when dependency changes
+ * - Config dependencies that may change at runtime
+ *
+ * ValueOf<T> provides:
+ * - T get() — Get current instance
+ * - void refresh() — Force refresh (if component is refreshable)
+ *
+ * Key benefit: Your component won't be refreshed when the ValueOf dependency changes.
+ */
+@Component
+public final class ${ComponentName} {
+
+    private final ValueOf<${DependencyType}> ${dependencyVarName};
+
+    public ${ComponentName}(ValueOf<${DependencyType}> ${dependencyVarName}) {
+        this.${dependencyVarName} = ${dependencyVarName};
+        // Component created, but dependency NOT yet accessed
+        System.out.println("${ComponentName} created (${DependencyType} not yet accessed)");
+    }
+
+    public void doSomething() {
+        // Access dependency when needed
+        ${DependencyType} dependency = ${dependencyVarName}.get();
+
+        // Use the dependency
+        dependency.doWork();
+
+        System.out.println("${ComponentName} completed work");
+    }
+
+    // ========================================================================
+    // EXAMPLE: Circular Dependency Resolution
+    // ========================================================================
+    //
+    // Problem: ServiceA depends on ServiceB, ServiceB depends on ServiceA
+    //
+    // Solution: Use ValueOf in one direction
+    //
+    // @Component
+    // public final class ServiceA {
+    //     private final ValueOf<ServiceB> serviceB;
+    //
+    //     public ServiceA(ValueOf<ServiceB> serviceB) {
+    //         this.serviceB = serviceB;
+    //     }
+    //
+    //     public void doSomething() {
+    //         serviceB.get().doOther();  // Lazy access
+    //     }
+    // }
+    //
+    // @Component
+    // public final class ServiceB {
+    //     private final ServiceA serviceA;  // Direct dependency
+    //
+    //     public ServiceB(ServiceA serviceA) {
+    //         this.serviceA = serviceA;
+    //     }
+    //
+    //     public void doOther() {
+    //         serviceA.doSomething();
+    //     }
+    // }
+
+    // ========================================================================
+    // EXAMPLE: Config That Changes at Runtime
+    // ========================================================================
+    //
+    // @Component
+    // public final class HttpClient {
+    //     private final ValueOf<AuthConfig> authConfig;
+    //
+    //     public HttpClient(ValueOf<AuthConfig> authConfig) {
+    //         this.authConfig = authConfig;
+    //     }
+    //
+    //     public Response get(String url) {
+    //         // Always use CURRENT config value
+    //         AuthConfig config = authConfig.get();
+    //
+    //         // Make request with current config
+    //         // HttpClient itself is NOT refreshed when config changes
+    //         return httpClient.execute(url, config.getToken());
+    //     }
+    // }
+    //
+    // Without ValueOf:
+    // - When config refreshes, HttpClient would also refresh (cascade)
+    //
+    // With ValueOf:
+    // - Config refreshes, but HttpClient survives
+    // - HttpClient uses new config value via get()
+
+    // ========================================================================
+    // EXAMPLE: HTTP Handler (Lazy Dependency)
+    // ========================================================================
+    //
+    // HTTP servers use ValueOf for request handlers:
+    //
+    // @Component
+    // public final class HttpServer {
+    //     private final ValueOf<UserHandler> userHandler;
+    //
+    //     public HttpServer(ValueOf<UserHandler> userHandler) {
+    //         this.userHandler = userHandler;
+    //     }
+    //
+    //     public void handleRequest(Request request) {
+    //         // Each request uses current handler instance
+    //         // If handler is refreshed, server picks up new version
+    //         userHandler.get().handle(request);
+    //     }
+    // }
+}

@@ -1,0 +1,115 @@
+package ${package}
+
+import org.junit.jupiter.api.Assertions.*
+import org.junit.jupiter.api.Test
+import org.testcontainers.containers.PostgreSQLContainer
+import org.testcontainers.junit.jupiter.Container
+import org.testcontainers.junit.jupiter.Testcontainers
+import org.testcontainers.utility.DockerImageName
+
+import ru.tinkoff.kora.test.extension.junit5.KoraAppTest
+import ru.tinkoff.kora.test.extension.junit5.KoraAppTestConfigModifier
+import ru.tinkoff.kora.test.extension.junit5.KoraConfigModification
+import ru.tinkoff.kora.test.extension.junit5.TestComponent
+
+/**
+ * Integration test with PostgreSQL + Flyway (Kotlin).
+ *
+ * Uses the TestApplication submodule pattern so a test-only repository
+ * (Test${entityName}Repository, e.g. findAll/deleteAll) is available for setup
+ * and assertions. @KoraAppTest must point at TestApplication, not Application.
+ */
+@Testcontainers
+@KoraAppTest(TestApplication::class)
+class ${repositoryName}Test : KoraAppTestConfigModifier {
+
+    companion object {
+        @Container
+        @JvmStatic
+        private val pg = PostgreSQLContainer(DockerImageName.parse("postgres:16"))
+            .withDatabaseName("testdb")
+            .withUsername("test")
+            .withPassword("test")
+    }
+
+    @TestComponent
+    private lateinit var ${repositoryVarName}: ${repositoryName}
+
+    @TestComponent
+    private lateinit var testRepository: Test${entityName}Repository
+
+    override fun config(): KoraConfigModification {
+        return KoraConfigModification.ofString(
+            """
+            db {
+              jdbcUrl = ${'$'}{POSTGRES_JDBC_URL}
+              username = ${'$'}{POSTGRES_USER}
+              password = ${'$'}{POSTGRES_PASS}
+              poolName = "kora-test"
+            }
+            flyway { locations = "db/migration" }
+            """.trimIndent()
+        )
+            .withSystemProperty("POSTGRES_JDBC_URL", pg.jdbcUrl)
+            .withSystemProperty("POSTGRES_USER", pg.username)
+            .withSystemProperty("POSTGRES_PASS", pg.password)
+    }
+
+    @Test
+    fun `should save and find`() {
+        // given
+        val entity = ${entityName}("test-data")
+
+        // when
+        ${repositoryVarName}.save(entity)
+        val found = ${repositoryVarName}.findById(entity.id())
+
+        // then
+        assertNotNull(found)
+        assertEquals(entity.data(), found?.data())
+    }
+
+    @Test
+    fun `should delete`() {
+        // given
+        val entity = ${entityName}("test-data")
+        ${repositoryVarName}.save(entity)
+
+        // when
+        ${repositoryVarName}.deleteById(entity.id())
+        val found = ${repositoryVarName}.findById(entity.id())
+
+        // then
+        assertNull(found)
+    }
+
+    @Test
+    fun `should update`() {
+        // given
+        val entity = ${entityName}("original-data")
+        ${repositoryVarName}.save(entity)
+
+        // when
+        val updated = ${entityName}(entity.id(), "updated-data")
+        ${repositoryVarName}.update(updated)
+
+        // then
+        val found = ${repositoryVarName}.findById(entity.id())
+        assertNotNull(found)
+        assertEquals("updated-data", found?.data())
+    }
+
+    @Test
+    fun `should find all`() {
+        // given
+        ${repositoryVarName}.save(${entityName}("data-1"))
+        ${repositoryVarName}.save(${entityName}("data-2"))
+        ${repositoryVarName}.save(${entityName}("data-3"))
+
+        // when
+        val all = testRepository.findAll()
+
+        // then
+        assertEquals(3, all.size)
+    }
+}

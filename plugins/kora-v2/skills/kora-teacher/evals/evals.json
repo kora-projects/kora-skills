@@ -1,0 +1,41 @@
+{
+  "evals": [
+    {
+      "id": "kora-teacher-first-session",
+      "skills": ["kora-teacher"],
+      "query": "I'm brand new to Kora and to compile-time DI frameworks. Teach me from scratch.",
+      "expected_behavior": [
+        "Assesses the learner's Java/Kotlin and framework background before diving in",
+        "Ensures .kora-agent/ docs and examples are present, cloning them if missing",
+        "Starts from the getting-started guide and its guide app rather than an arbitrary topic",
+        "Explains concepts strictly from official sources following the Guides -> Documentation -> Guide apps -> Example apps hierarchy",
+        "Does not invent explanations and does not teach Kora through Spring/Micronaut analogies"
+      ],
+      "tags": ["teacher", "onboarding", "basic"]
+    },
+    {
+      "id": "kora-teacher-explain-from-source",
+      "skills": ["kora-teacher"],
+      "query": "Explain how @KoraApp and Module interfaces build the application graph.",
+      "expected_behavior": [
+        "Grounds the explanation in the official documentation/guides under .kora-agent/kora-docs",
+        "Explains the compile-time DI model (generated graph, no reflection) accurately",
+        "Points the learner at the relevant guide app or example app to see it in context",
+        "If a detail is not in the sources, says so instead of inventing it, and does not use other-framework analogies"
+      ],
+      "tags": ["teacher", "concepts", "basic"]
+    },
+    {
+      "id": "kora-teacher-implement-example",
+      "skills": ["kora-teacher"],
+      "query": "Walk me through building a first HTTP server endpoint in Kora, explaining every line.",
+      "expected_behavior": [
+        "Follows the http-server guide and the corresponding guide app step by step",
+        "Explains each annotation (@Component, @HttpController, @HttpRoute) as it is introduced",
+        "Has the learner compile with ./gradlew clean classes to see the compile-time generation validate the code",
+        "Stays within documented Kora patterns and does not hand-wave behavior not shown in the sources"
+      ],
+      "tags": ["teacher", "walkthrough", "intermediate"]
+    }
+  ]
+}

@@ -1,0 +1,133 @@
+{
+  "evals": [
+    {
+      "id": "kora-project-dependencies-bom-java",
+      "skills": ["kora-project-dependencies"],
+      "query": "Set up the Kora BOM in build.gradle for a Java service with the annotation processor.",
+      "expected_behavior": [
+        "Declares a koraBom configuration and makes annotationProcessor, compileOnly, and implementation extendsFrom(koraBom)",
+        "Imports the BOM via koraBom platform(\"ru.tinkoff.kora:kora-parent:<version>\")",
+        "Adds annotationProcessor \"ru.tinkoff.kora:annotation-processors\"",
+        "References Kora modules without an explicit version",
+        "Does not use foreign-framework annotations, field injection, or a foreign-framework starter dependency"
+      ],
+      "tags": ["bom", "basic"]
+    },
+    {
+      "id": "kora-project-dependencies-ksp-kotlin",
+      "skills": ["kora-project-dependencies"],
+      "query": "Configure a Kotlin Kora project with KSP and the BOM. Kotlin is 1.9.25.",
+      "expected_behavior": [
+        "Applies the com.google.devtools.ksp plugin with a version matching Kotlin (1.9.25-1.0.20)",
+        "Adds ksp(\"ru.tinkoff.kora:symbol-processors\")",
+        "Makes the ksp configuration extendsFrom(koraBom)",
+        "Imports the BOM via koraBom(platform(\"ru.tinkoff.kora:kora-parent:<version>\"))",
+        "Does not add the Java annotationProcessor dependency for the Kotlin source set"
+      ],
+      "tags": ["ksp", "kotlin", "basic"]
+    },
+    {
+      "id": "kora-project-dependencies-rest-api",
+      "skills": ["kora-project-dependencies"],
+      "query": "Which Kora dependencies do I need for a REST API with an HTTP server, JSON, and metrics?",
+      "expected_behavior": [
+        "Adds ru.tinkoff.kora:http-server-undertow",
+        "Adds ru.tinkoff.kora:json-module",
+        "Adds ru.tinkoff.kora:micrometer-module for metrics and notes that the Prometheus scrape is served on the private HTTP port",
+        "Includes core modules config-hocon and logging-logback",
+        "Does not invent a non-existent artifact such as http-server-common, micrometer-prometheus, or probes"
+      ],
+      "tags": ["http", "telemetry", "basic"]
+    },
+    {
+      "id": "kora-project-dependencies-jdbc-postgres",
+      "skills": ["kora-project-dependencies"],
+      "query": "Add dependencies for a Kora JDBC service backed by PostgreSQL with Flyway migrations.",
+      "expected_behavior": [
+        "Adds ru.tinkoff.kora:database-jdbc",
+        "Adds ru.tinkoff.kora:database-flyway for SQL migrations",
+        "Adds the PostgreSQL driver org.postgresql:postgresql with an explicit version because it is not in the BOM",
+        "Notes that JDBC transactions are part of database-jdbc (no separate transaction artifact)",
+        "Does not reference invented artifacts such as jdbc-driver, transaction-jdbc, or migrate-kora"
+      ],
+      "tags": ["database", "advanced"]
+    },
+    {
+      "id": "kora-project-dependencies-kafka",
+      "skills": ["kora-project-dependencies"],
+      "query": "I need a Kora Kafka producer and consumer with JSON. Which module and what does the build look like?",
+      "expected_behavior": [
+        "Adds the single ru.tinkoff.kora:kafka artifact for both producer and consumer",
+        "Adds ru.tinkoff.kora:json-module for serialization",
+        "Mentions @KafkaPublisher for producing and @KafkaListener for consuming",
+        "Does not add separate kafka-producer or kafka-consumer artifacts (they do not exist)",
+        "Does not suggest a foreign-framework Kafka starter"
+      ],
+      "tags": ["kafka", "messaging", "basic"]
+    },
+    {
+      "id": "kora-project-dependencies-bom-conflict",
+      "skills": ["kora-project-dependencies"],
+      "query": "I have a Jackson version conflict. How do I let the Kora BOM manage Jackson instead of pinning it myself?",
+      "expected_behavior": [
+        "Explains that the kora-parent BOM pins Jackson and other transitive libraries",
+        "Recommends removing the explicit jackson-databind version declaration",
+        "Recommends depending on ru.tinkoff.kora:json-module and letting the BOM resolve Jackson",
+        "Mentions resolutionStrategy.force only as a last resort for a genuine conflict",
+        "Does not advise pinning a raw Jackson version on top of the BOM"
+      ],
+      "tags": ["bom", "troubleshooting", "advanced"]
+    },
+    {
+      "id": "kora-project-dependencies-resilience-naming",
+      "skills": ["kora-project-dependencies"],
+      "query": "Add the Kora resilience module so I can use @CircuitBreaker and @Retry.",
+      "expected_behavior": [
+        "Adds ru.tinkoff.kora:resilient-kora (the real artifact name)",
+        "Mentions the @Retry, @CircuitBreaker, @Timeout, and @Fallback annotations",
+        "Keeps the BOM responsible for the version (no version on the artifact)",
+        "Does not use the incorrect artifact name resilient",
+        "Does not pull in Resilience4j directly or use a foreign-framework retry library"
+      ],
+      "tags": ["aop", "resilience", "advanced"]
+    },
+    {
+      "id": "kora-project-dependencies-multimodule",
+      "skills": ["kora-project-dependencies"],
+      "query": "Set up a multi-module Gradle build so every submodule shares one Kora version.",
+      "expected_behavior": [
+        "Applies the BOM in a subprojects block (or convention) so each leaf module imports kora-parent",
+        "Wires annotationProcessor/ksp via extendsFrom(koraBom) in each module that generates code",
+        "Pins koraVersion once in gradle.properties",
+        "Mentions @KoraSubmodule to export components from a submodule into the @KoraApp",
+        "Does not version individual ru.tinkoff.kora:* artifacts per module"
+      ],
+      "tags": ["multi-module", "advanced"]
+    },
+    {
+      "id": "kora-project-dependencies-s3-experimental",
+      "skills": ["kora-project-dependencies"],
+      "query": "Which dependency gives me a Kora S3 client for AWS?",
+      "expected_behavior": [
+        "Uses the experimental group: ru.tinkoff.kora.experimental:s3-client-aws",
+        "Mentions the @S3.Client declarative client and the AwsS3ClientModule",
+        "Notes that S3 modules are in the experimental group, not ru.tinkoff.kora",
+        "Does not invent a ru.tinkoff.kora:s3-client or s3-client-ceph artifact"
+      ],
+      "tags": ["s3", "experimental", "advanced"]
+    },
+    {
+      "id": "kora-project-dependencies-generator",
+      "skills": ["kora-project-dependencies"],
+      "query": "Scaffold a new Kora Java service with an HTTP server and PostgreSQL using the project generator.",
+      "expected_behavior": [
+        "Runs scripts/generate_project.py with --lang java and --modules including http-server and jdbc-postgres",
+        "Produces a build.gradle importing the kora-parent BOM and the chosen modules",
+        "Generates an @KoraApp interface that extends the module interfaces and runs KoraApplication.run(ApplicationGraph::graph)",
+        "Generates a controller using @HttpController and @HttpRoute and a repository using @Repository extends JdbcRepository",
+        "Generated code does not contain foreign-framework package imports or field injection"
+      ],
+      "tags": ["generator", "scaffolding", "advanced"]
+    }
+  ]
+}

@@ -1,0 +1,126 @@
+{
+  "evals": [
+    {
+      "id": "kora-di-compile-component-constructor",
+      "skills": ["kora-di-compile"],
+      "query": "Create a UserService in my Kora app that depends on a UserRepository.",
+      "expected_behavior": [
+        "Annotates the class with @Component from ru.tinkoff.kora.common",
+        "Declares the class final with a single public constructor that takes UserRepository (constructor injection)",
+        "Stores the dependency in a private final field",
+        "Does not use field injection, @Autowired-style annotations, or runtime reflection; uses only Kora @Component constructor injection"
+      ],
+      "tags": ["component", "basic"]
+    },
+    {
+      "id": "kora-di-compile-app-bootstrap",
+      "skills": ["kora-di-compile"],
+      "query": "Set up the @KoraApp entry point for a new Kora service that uses HOCON config and Logback logging.",
+      "expected_behavior": [
+        "Declares an interface annotated with @KoraApp that extends HoconConfigModule and LogbackModule",
+        "Provides a static main that calls KoraApplication.run(ApplicationGraph::graph)",
+        "Imports KoraApplication from ru.tinkoff.kora.application.graph",
+        "Explains that ApplicationGraph is generated at compile time in the same package and only one @KoraApp is allowed",
+        "Does not introduce a runtime DI container or a self-instantiated application class; relies on the compile-time generated ApplicationGraph"
+      ],
+      "tags": ["kora-app", "bootstrap", "basic"]
+    },
+    {
+      "id": "kora-di-compile-module-factory",
+      "skills": ["kora-di-compile"],
+      "query": "I need to expose a HikariCP DataSource to my Kora container. How do I register it?",
+      "expected_behavior": [
+        "Creates a @Module interface with a default factory method returning DataSource",
+        "Notes that a @Module in the same source set as @KoraApp is auto-discovered and needs no extends",
+        "Explains the factory method must not return null",
+        "Does not use @Bean, @Configuration, or @Provides"
+      ],
+      "tags": ["module", "factory", "basic"]
+    },
+    {
+      "id": "kora-di-compile-tag-disambiguation",
+      "skills": ["kora-di-compile"],
+      "query": "I have two Cache implementations, RedisCache and CaffeineCache, both implementing Cache. How do I inject the Redis one specifically?",
+      "expected_behavior": [
+        "Defines simple tag classes (for example RedisTag) and annotates implementations with @Tag(RedisTag.class)",
+        "Injects with @Tag(RedisTag.class) Cache at the constructor parameter",
+        "Explains that the same tag class must appear at both registration and injection point",
+        "Does not use @Qualifier or string-based qualifiers"
+      ],
+      "tags": ["tag", "disambiguation", "advanced"]
+    },
+    {
+      "id": "kora-di-compile-all-collection",
+      "skills": ["kora-di-compile"],
+      "query": "I want a NotificationService that fans out to every registered Notifier implementation in the container.",
+      "expected_behavior": [
+        "Injects All<Notifier> from ru.tinkoff.kora.application.graph in the constructor",
+        "Explains that All<T> extends List<T> and collects every component of that type",
+        "Optionally mentions @Tag(Tag.Any.class) All<Notifier> to also include tagged components",
+        "Does not rely on classpath scanning or reflection to discover implementations"
+      ],
+      "tags": ["collection", "all", "advanced"]
+    },
+    {
+      "id": "kora-di-compile-default-component-override",
+      "skills": ["kora-di-compile"],
+      "query": "I'm writing a reusable Kora library module that provides a default ObjectMapper, but the application should be able to replace it.",
+      "expected_behavior": [
+        "Marks the library factory method with @DefaultComponent from ru.tinkoff.kora.common",
+        "Shows the application overriding it with a plain factory method of the same type (no @DefaultComponent)",
+        "Explains that a non-default factory takes precedence over a @DefaultComponent one",
+        "Does not use @Primary or profile-based bean selection"
+      ],
+      "tags": ["default-component", "override", "advanced"]
+    },
+    {
+      "id": "kora-di-compile-valueof-indirect",
+      "skills": ["kora-di-compile"],
+      "query": "How do I break a circular dependency between ServiceA and ServiceB in Kora without restructuring the code?",
+      "expected_behavior": [
+        "Wraps one side as ValueOf<ServiceB> in the constructor and accesses it via get() when needed",
+        "Explains that ValueOf is an indirect link so a refresh of the wrapped component does not cascade to the holder",
+        "Mentions that ValueOf exposes get() and refresh()",
+        "Does not use lazy proxies, setter injection, or reflection to break the cycle"
+      ],
+      "tags": ["valueof", "indirect-dependency", "advanced"]
+    },
+    {
+      "id": "kora-di-compile-lifecycle-wrapper",
+      "skills": ["kora-di-compile"],
+      "query": "A component created by a @Module factory needs init and cleanup hooks. How do I give a factory-built component a lifecycle in Kora?",
+      "expected_behavior": [
+        "Returns Wrapped<T> from the factory method and constructs new LifecycleWrapper<>(value, initCallback, releaseCallback)",
+        "Imports LifecycleWrapper and Wrapped from ru.tinkoff.kora.application.graph",
+        "Mentions that components owned by a class can instead implement the Lifecycle interface with init() and release()",
+        "Notes release runs in reverse order of initialization on shutdown",
+        "Does not use @PostConstruct or @PreDestroy"
+      ],
+      "tags": ["lifecycle", "module", "advanced"]
+    },
+    {
+      "id": "kora-di-compile-root-startup",
+      "skills": ["kora-di-compile"],
+      "query": "I have a CacheWarmer that must run at startup even though nothing depends on it. How do I force Kora to initialize it?",
+      "expected_behavior": [
+        "Annotates the component (or factory method) with @Root so it is always initialized at startup",
+        "Explains that components are only created when they are a @Root or a transitive dependency of one",
+        "Imports @Root from ru.tinkoff.kora.common.annotation",
+        "Does not use an ApplicationRunner or a runtime startup hook"
+      ],
+      "tags": ["root", "lifecycle", "basic"]
+    },
+    {
+      "id": "kora-di-compile-submodule-multimodule",
+      "skills": ["kora-di-compile"],
+      "query": "We are splitting our Kora service into separate Gradle modules. How do I expose the components of a domain Gradle module to the application module?",
+      "expected_behavior": [
+        "Marks the domain module's interface with @KoraSubmodule so Kora builds a module from its @Module and @Component types",
+        "Has the @KoraApp interface in the assembly module extends the submodule interface",
+        "Explains that each Gradle module needs the annotation-processors dependency to generate code",
+        "Does not assume modules from other Gradle projects are auto-discovered without extends"
+      ],
+      "tags": ["kora-submodule", "multi-module", "advanced"]
+    }
+  ]
+}

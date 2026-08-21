@@ -1,0 +1,102 @@
+{
+  "evals": [
+    {
+      "id": "kora-openapi-generator-client-basic-setup",
+      "skills": ["kora-openapi-generator-client"],
+      "query": "I have an OpenAPI 3 spec at src/main/resources/openapi/pet.yaml. Set up Gradle to generate a synchronous Kora HTTP client from it and show me how to inject and call the generated Api.",
+      "expected_behavior": [
+        "Adds the org.openapi.generator plugin pinned to version 7.14.0 and a buildscript classpath dependency on ru.tinkoff.kora:openapi-generator",
+        "Registers a GenerateTask with generatorName = \"kora\" and configOptions mode = \"java-client\"",
+        "Sets a unique outputDir and wires sourceSets.main plus compileJava.dependsOn the generate task",
+        "Includes annotationProcessor \"ru.tinkoff.kora:annotation-processors\", json-module, and an HTTP client transport (e.g. http-client-jdk with JdkHttpClientModule)",
+        "Injects the generated *Api into a @Component via constructor and pattern matches the sealed *ApiResponses response (e.g. .content() on the 200 variant)",
+        "Does not claim the generated method returns the bare model DTO directly"
+      ],
+      "tags": ["openapi-client", "basic"]
+    },
+    {
+      "id": "kora-openapi-generator-client-response-wrappers",
+      "skills": ["kora-openapi-generator-client"],
+      "query": "How do I handle 200 and 404 responses from a generated Kora OpenAPI client method getPetById?",
+      "expected_behavior": [
+        "Explains the method returns a sealed wrapper such as PetApiResponses.GetPetByIdApiResponse",
+        "Uses instanceof pattern matching or a switch over nested variants GetPetById200ApiResponse and GetPetById404ApiResponse",
+        "Reads the payload via .content() on the success variant",
+        "Does not wrap the call in a non-Kora ResponseEntity type or assume the bare model is returned directly"
+      ],
+      "tags": ["openapi-client", "responses", "basic"]
+    },
+    {
+      "id": "kora-openapi-generator-client-config-prefix",
+      "skills": ["kora-openapi-generator-client"],
+      "query": "My generated PetApi client is not reading its url and timeout from application.conf. The build sets clientConfigPrefix to httpClient.pet. What is wrong?",
+      "expected_behavior": [
+        "Explains that clientConfigPrefix is the config root and the generated Api class name is appended",
+        "States the correct HOCON section is httpClient.pet.PetApi, not httpClient.pet",
+        "Shows url, requestTimeout, and telemetry keys under that section with externalized url via ${ENV_VAR}",
+        "Mentions per-operation overrides nest under <operationId>Config"
+      ],
+      "tags": ["openapi-client", "config", "intermediate"]
+    },
+    {
+      "id": "kora-openapi-generator-client-apikey-auth",
+      "skills": ["kora-openapi-generator-client"],
+      "query": "My OpenAPI spec declares an apiKey securityScheme named apiKeyAuth. How do I make the generated Kora client send the API key?",
+      "expected_behavior": [
+        "Sets configOptions primaryAuth = \"apiKeyAuth\" and securityConfigPrefix in the GenerateTask",
+        "Resolves the credential from config at securityConfigPrefix + scheme name (e.g. openapiAuth.apiKeyAuth)",
+        "Alternatively offers a manual ApiKeyHttpClientInterceptor declared in a @Module using ApiKeyLocation and attached with @InterceptWith",
+        "Does not use server-side HttpServerPrincipalExtractor or ru.tinkoff.kora.common.Principal for an outbound client"
+      ],
+      "tags": ["openapi-client", "auth", "intermediate"]
+    },
+    {
+      "id": "kora-openapi-generator-client-multi-spec",
+      "skills": ["kora-openapi-generator-client"],
+      "query": "I need to generate two separate Kora clients from two different OpenAPI specs in the same module. How should I set up the Gradle tasks?",
+      "expected_behavior": [
+        "Registers two GenerateTask instances, each with generatorName = \"kora\"",
+        "Gives each task a unique outputDir and a distinct corePackage/apiPackage/modelPackage",
+        "Repeats sourceSets.main srcDirs and compileJava.dependsOn for each task",
+        "Warns that sharing an outputDir breaks Gradle incremental builds and caching"
+      ],
+      "tags": ["openapi-client", "gradle", "advanced"]
+    },
+    {
+      "id": "kora-openapi-generator-client-transport-choice",
+      "skills": ["kora-openapi-generator-client"],
+      "query": "Build fails with 'Required dependency PetApi not found' after generating my Kora OpenAPI client. What am I missing?",
+      "expected_behavior": [
+        "Identifies that an HTTP client transport module must be plugged into @KoraApp (JdkHttpClientModule, OkHttpClientModule, or AsyncHttpClientModule)",
+        "Notes the matching artifact (http-client-jdk / http-client-ok / http-client-async) and json-module must be on the classpath",
+        "Confirms annotationProcessor ru.tinkoff.kora:annotation-processors is present so code is generated",
+        "Does not suggest field injection or a runtime classpath component scan; Kora wires components at compile time"
+      ],
+      "tags": ["openapi-client", "troubleshooting", "intermediate"]
+    },
+    {
+      "id": "kora-openapi-generator-client-reactive-mode",
+      "skills": ["kora-openapi-generator-client"],
+      "query": "Generate a reactive Kora OpenAPI client that returns Mono/Flux. What mode and dependency do I need?",
+      "expected_behavior": [
+        "Sets configOptions mode = \"java-reactive-client\"",
+        "Adds io.projectreactor:reactor-core manually since the generator does not bring it in",
+        "Explains generated methods return Mono<T>/Flux<T> wrapping the sealed *ApiResponses",
+        "Lists kotlin-suspend-client as the coroutine alternative for Kotlin projects"
+      ],
+      "tags": ["openapi-client", "reactive", "advanced"]
+    },
+    {
+      "id": "kora-openapi-generator-client-mockserver-test",
+      "skills": ["kora-openapi-generator-client"],
+      "query": "Write an integration test for my generated Kora OpenAPI client that stubs the remote API and verifies the 200 response.",
+      "expected_behavior": [
+        "Annotates the test with @KoraAppTest(Application.class) and injects the generated *Api with @TestComponent",
+        "Stubs the remote API with a MockServer container (testcontainers-extensions-mockserver) and points the client url at it via KoraAppTestConfigModifier",
+        "Asserts on the sealed response variant (e.g. instanceof GetPetById200ApiResponse) and its .content()",
+        "Uses ru.tinkoff.kora:test-junit5 with @KoraAppTest and does not rely on a non-Kora full-context test runner"
+      ],
+      "tags": ["openapi-client", "testing", "advanced"]
+    }
+  ]
+}

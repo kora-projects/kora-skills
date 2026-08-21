@@ -1,0 +1,50 @@
+package ${packagePath}.publisher
+
+import java.util.concurrent.CompletionStage
+import java.util.concurrent.Future
+import org.apache.kafka.clients.producer.RecordMetadata
+import ru.tinkoff.kora.kafka.common.annotation.KafkaPublisher
+import ru.tinkoff.kora.kafka.common.annotation.KafkaPublisher.Topic
+
+/**
+ * Example Kafka producer with a typed interface.
+ *
+ * Available method signatures:
+ * - send: basic send without return value
+ * - sendWithMeta: send with RecordMetadata return
+ * - sendAsync: asynchronous send with Future
+ * - sendStage: asynchronous send with CompletionStage
+ */
+@KafkaPublisher("kafka.producer.myPublisher")
+interface MessagePublisher {
+    
+    /**
+     * Basic message send (no return value)
+     */
+    @Topic("kafka.producer.myTopic")
+    fun send(value: String)
+
+    /**
+     * Send a message with a key
+     */
+    @Topic("kafka.producer.myTopic")
+    fun send(key: String, value: String)
+
+    /**
+     * Send with metadata return (synchronous)
+     */
+    @Topic("kafka.producer.myTopic")
+    fun sendWithMeta(value: String): RecordMetadata
+
+    /**
+     * Asynchronous send with Future
+     */
+    @Topic("kafka.producer.myTopic")
+    fun sendAsync(value: String): Future<RecordMetadata>
+
+    /**
+     * Asynchronous send with CompletionStage
+     */
+    @Topic("kafka.producer.myTopic")
+    fun sendStage(value: String): CompletionStage<RecordMetadata>
+}

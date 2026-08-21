@@ -1,0 +1,29 @@
+// Custom constraint annotation template.
+// Replace `com.example.app.validation` with your package.
+
+package com.example.app.validation;
+
+import ru.tinkoff.kora.validation.common.annotation.ValidatedBy;
+
+import java.lang.annotation.ElementType;
+import java.lang.annotation.Retention;
+import java.lang.annotation.RetentionPolicy;
+import java.lang.annotation.Target;
+
+/**
+ * Custom constraint annotation for $typeName$ validation.
+ *
+ * Usage:
+ * @Valid
+ * public record MyDto(
+ *     @Valid$typeName$ $fieldName$ field
+ * ) {}
+ */
+@Retention(RetentionPolicy.CLASS)
+@Target({ElementType.FIELD, ElementType.PARAMETER, ElementType.METHOD})
+@ValidatedBy($typeName$ValidatorFactory.class)
+public @interface Valid$typeName$ {
+    // Note: Kora's ValidatorFactory.create() takes no arguments, so annotation
+    // attributes are NOT passed to the validator. Encode any configuration in the
+    // Validator implementation itself (or in separate annotations/factories).
+}

@@ -1,0 +1,72 @@
+// Simple retry pattern for transient failures.
+// Replace `com.example.app.service` with your package.
+
+package com.example.app.service;
+
+import ru.tinkoff.kora.common.Component;
+import ru.tinkoff.kora.resilient.retry.annotation.Retry;
+
+@Component
+public class UserService {                                              // NOT final
+
+    private final UserRepository repository;
+    private final ExternalApi externalApi;
+
+    public UserService(UserRepository repository, ExternalApi externalApi) {
+        this.repository = repository;
+        this.externalApi = externalApi;
+    }
+
+    @Retry("user.read")
+    public java.util.Optional<User> findById(String id) {
+        return repository.findById(id);
+    }
+
+    // With exponential backoff:
+    // delay = 100ms, delayStep = 200ms → waits: 100ms, 300ms, 500ms, 700ms
+    @Retry("user.external")
+    public java.util.Optional<User> fetchExternal(String id) {
+        return externalApi.fetchUser(id);
+    }
+}
+
+// Repository placeholder
+@Component
+class UserRepository {
+    public java.util.Optional<User> findById(String id) {
+        return java.util.Optional.empty();
+    }
+}
+
+class User {
+    private final String id;
+    public User(String id) { this.id = id; }
+    public String getId() { return id; }
+}
+
+interface ExternalApi {
+    java.util.Optional<User> fetchUser(String id);
+}
+
+@Component
+class ExternalApiClient implements ExternalApi {
+    public java.util.Optional<User> fetchUser(String id) {
+        return java.util.Optional.empty();
+    }
+}
+
+// Config (HOCON):
+//
+// resilient.retry {
+//   "user.read" {
+//     delay = "100ms"
+//     attempts = 3
+//     delayStep = "100ms"
+//   }
+//   "user.external" {
+//     delay = "100ms"
+//     attempts = 4
+//     delayStep = "200ms"
+//     failurePredicateName = "TransientErrorsOnly"
+//   }
+// }

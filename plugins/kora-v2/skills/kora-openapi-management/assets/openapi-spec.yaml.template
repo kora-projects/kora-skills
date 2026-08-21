@@ -1,0 +1,375 @@
+openapi: 3.0.3
+info:
+  title: My API
+  description: API for managing resources with discriminator support and complex types
+  version: 1.0.0
+  contact:
+    name: API Support
+    email: support@example.com
+  license:
+    name: MIT
+    url: https://opensource.org/licenses/MIT
+servers:
+  - url: http://localhost:8080/api/v1
+    description: Development server
+  - url: https://api.example.com/v1
+    description: Production server
+tags:
+  - name: items
+    description: Item management operations
+  - name: categories
+    description: Category operations
+paths:
+  /items:
+    get:
+      operationId: listItems
+      tags: [items]
+      summary: List all items
+      description: Returns a paginated list of items with filtering support
+      parameters:
+        - name: limit
+          in: query
+          description: Maximum number of items to return
+          required: false
+          schema:
+            type: integer
+            default: 20
+            minimum: 1
+            maximum: 100
+        - name: offset
+          in: query
+          description: Number of items to skip
+          required: false
+          schema:
+            type: integer
+            default: 0
+            minimum: 0
+        - name: categoryId
+          in: query
+          description: Filter by category ID
+          required: false
+          schema:
+            type: string
+            format: uuid
+        - name: status
+          in: query
+          description: Filter by status
+          required: false
+          schema:
+            type: string
+            enum: [active, archived, draft]
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  items:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Item'
+                  total:
+                    type: integer
+                    description: Total count matching filters
+                  limit:
+                    type: integer
+                  offset:
+                    type: integer
+        '400':
+          description: Invalid parameters
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '401':
+          description: Unauthorized
+        '500':
+          description: Internal server error
+    post:
+      operationId: createItem
+      tags: [items]
+      summary: Create a new item
+      requestBody:
+        description: Item to create
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ItemCreate'
+      responses:
+        '201':
+          description: Item created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Item'
+          headers:
+            Location:
+              description: URL of the created resource
+              schema:
+                type: string
+        '400':
+          description: Invalid input
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '409':
+          description: Conflict (duplicate)
+  /items/{id}:
+    get:
+      operationId: getItemById
+      tags: [items]
+      summary: Get item by ID
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: Unique item identifier
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Item'
+        '404':
+          description: Item not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+    put:
+      operationId: updateItem
+      tags: [items]
+      summary: Update item
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ItemUpdate'
+      responses:
+        '200':
+          description: Item updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Item'
+        '404':
+          description: Item not found
+    delete:
+      operationId: deleteItem
+      tags: [items]
+      summary: Delete item
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '204':
+          description: Item deleted
+        '404':
+          description: Item not found
+components:
+  schemas:
+    Item:
+      type: object
+      description: Complete item representation with discriminator support
+      allOf:
+        - $ref: '#/components/schemas/Resource'
+        - type: object
+          properties:
+            name:
+              type: string
+              minLength: 1
+              maxLength: 255
+            description:
+              type: string
+            status:
+              type: string
+              enum: [active, archived, draft]
+              default: draft
+            categoryId:
+              type: string
+              format: uuid
+            metadata:
+              type: object
+              additionalProperties:
+                type: string
+            createdAt:
+              type: string
+              format: date-time
+              readOnly: true
+            updatedAt:
+              type: string
+              format: date-time
+              readOnly: true
+      required: [id, name, status]
+
+    ItemCreate:
+      type: object
+      description: Input for creating an item
+      properties:
+        name:
+          type: string
+          minLength: 1
+          maxLength: 255
+        description:
+          type: string
+        categoryId:
+          type: string
+          format: uuid
+        metadata:
+          type: object
+          additionalProperties:
+            type: string
+      required: [name]
+
+    ItemUpdate:
+      type: object
+      description: Input for updating an item
+      properties:
+        name:
+          type: string
+          minLength: 1
+          maxLength: 255
+        description:
+          type: string
+        status:
+          type: string
+          enum: [active, archived, draft]
+        categoryId:
+          type: string
+          format: uuid
+        metadata:
+          type: object
+          additionalProperties:
+            type: string
+
+    Resource:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+          readOnly: true
+
+    Category:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        name:
+          type: string
+        parentId:
+          type: string
+          format: uuid
+          nullable: true
+        children:
+          type: array
+          items:
+            $ref: '#/components/schemas/Category'
+
+    # Discriminator pattern example
+    Task:
+      oneOf:
+        - $ref: '#/components/schemas/TaskUnconfirmed'
+        - $ref: '#/components/schemas/TaskConfirmed'
+      discriminator:
+        propertyName: migrationType
+        mapping:
+          unconfirmed: '#/components/schemas/TaskUnconfirmed'
+          confirmed: '#/components/schemas/TaskConfirmed'
+
+    TaskUnconfirmed:
+      type: object
+      properties:
+        migrationType:
+          type: string
+          enum: [unconfirmed]
+        taskId:
+          type: string
+        status:
+          type: string
+          enum: [pending, in_progress]
+      required: [migrationType, taskId, status]
+
+    TaskConfirmed:
+      type: object
+      properties:
+        migrationType:
+          type: string
+          enum: [confirmed]
+        taskId:
+          type: string
+        status:
+          type: string
+          enum: [completed, failed]
+        completedAt:
+          type: string
+          format: date-time
+      required: [migrationType, taskId, status]
+
+    Error:
+      type: object
+      properties:
+        code:
+          type: string
+          description: Error code
+        message:
+          type: string
+          description: Human-readable message
+        details:
+          type: object
+          description: Additional error details
+          additionalProperties:
+            type: string
+      required: [code, message]
+
+    PageRequest:
+      type: object
+      properties:
+        page:
+          type: integer
+          minimum: 0
+          default: 0
+        size:
+          type: integer
+          minimum: 1
+          maximum: 100
+          default: 20
+        sort:
+          type: array
+          items:
+            type: string
+
+    PageResponse:
+      type: object
+      properties:
+        content:
+          type: array
+        page:
+          type: integer
+        size:
+          type: integer
+        totalElements:
+          type: integer
+        totalPages:
+          type: integer

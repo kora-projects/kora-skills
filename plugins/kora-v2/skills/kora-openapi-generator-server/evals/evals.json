@@ -1,0 +1,106 @@
+{
+  "evals": [
+    {
+      "id": "kora-openapi-generator-server-quickstart",
+      "skills": ["kora-openapi-generator-server"],
+      "query": "Scaffold a contract-first Kora HTTP server from an OpenAPI spec with GET /users/{userId}. Wire the Gradle generation and implement the delegate so it returns the user or 404.",
+      "expected_behavior": [
+        "Applies the org.openapi.generator plugin version 7.14.0 and puts ru.tinkoff.kora:openapi-generator on the buildscript classpath",
+        "Registers a GenerateTask with generatorName = \"kora\", configOptions mode = java-server, and a unique outputDir wired into sourceSets and compileJava.dependsOn",
+        "Adds the Java annotation processor ru.tinkoff.kora:annotation-processors and the ru.tinkoff.kora:http-server-undertow module via the kora-parent BOM",
+        "Implements UsersApiDelegate annotated with @Component returning GetUser200ApiResponse or GetUser404ApiResponse",
+        "Does not return ResponseEntity, does not use field injection, and does not hand-write @HttpController/@HttpRoute for the generated API"
+      ],
+      "tags": ["openapi", "basic"]
+    },
+    {
+      "id": "kora-openapi-generator-server-validation",
+      "skills": ["kora-openapi-generator-server"],
+      "query": "Add server-side validation to a Kora OpenAPI POST /users endpoint: name 1-100 chars, email required. Map validation failures to HTTP 400.",
+      "expected_behavior": [
+        "Sets enableServerValidation = true (and enableServerValidationInterceptor = true) in configOptions",
+        "Adds the ru.tinkoff.kora:validation-module dependency and ValidationModule to the @KoraApp interface",
+        "Notes that generated DTOs carry Kora validation annotations from ru.tinkoff.kora.validation.common.annotation (e.g. @Size, @NotNull)",
+        "Provides a ViolationExceptionHttpServerResponseMapper to return 400",
+        "Does not use Jakarta Bean Validation or Hibernate Validator annotations"
+      ],
+      "tags": ["validation", "advanced"]
+    },
+    {
+      "id": "kora-openapi-generator-server-discriminator",
+      "skills": ["kora-openapi-generator-server"],
+      "query": "My OpenAPI schema uses oneOf + allOf with a discriminator but the generator collapses it into one type. How do I generate the polymorphic types correctly in Kora?",
+      "expected_behavior": [
+        "Sets openapiNormalizer = [DISABLE_ALL: \"true\"] to keep oneOf/allOf intact",
+        "Explains that since plugin 7.0.0 the SIMPLIFY_ONEOF_ANYOF rule is enabled by default and rewrites polymorphic schemas",
+        "Keeps a discriminator propertyName with an explicit mapping in the contract",
+        "Shows the delegate checking the discriminator value before handling each variant",
+        "Does not invent generator options and does not rely on reflection-based polymorphism"
+      ],
+      "tags": ["models", "advanced"]
+    },
+    {
+      "id": "kora-openapi-generator-server-auth",
+      "skills": ["kora-openapi-generator-server"],
+      "query": "My OpenAPI contract declares a bearerAuth securityScheme. How do I make the Kora-generated server authenticate requests?",
+      "expected_behavior": [
+        "Provides an HttpServerPrincipalExtractor tagged with @Tag(ApiSecurity.BearerAuth.class)",
+        "Imports the generated ApiSecurity class from the configured apiPackage, not from a Kora framework package",
+        "Returns a CompletableFuture of a type implementing ru.tinkoff.kora.common.Principal (PrincipalWithScopes when scopes are needed)",
+        "Notes the tag class name follows the scheme name (oAuth maps to ApiSecurity.OAuth, not OAuth2)",
+        "Does not add auth annotations to the delegate and does not introduce a non-Kora security framework"
+      ],
+      "tags": ["auth", "advanced"]
+    },
+    {
+      "id": "kora-openapi-generator-server-kotlin-suspend",
+      "skills": ["kora-openapi-generator-server"],
+      "query": "Generate a Kotlin Kora OpenAPI server using coroutines and implement the suspend delegate for a user lookup.",
+      "expected_behavior": [
+        "Sets configOptions mode = kotlin-suspend-server",
+        "Adds the KSP plugin and ksp(\"ru.tinkoff.kora:symbol-processors\") with the kora-parent BOM",
+        "Implements the delegate as a suspend function returning the sealed *ApiResponses type, annotated with @Component",
+        "Wires generation into the Kotlin source set and orders the KspTask after the GenerateTask",
+        "Does not use ksp(\"ru.tinkoff.kora:kora-ksp\") and does not block inside the suspend delegate"
+      ],
+      "tags": ["kotlin", "advanced"]
+    },
+    {
+      "id": "kora-openapi-generator-server-modes",
+      "skills": ["kora-openapi-generator-server"],
+      "query": "What server modes does the Kora OpenAPI generator support and how does the delegate return type change?",
+      "expected_behavior": [
+        "Lists java-server, java-async-server, java-reactive-server, kotlin-server, kotlin-suspend-server",
+        "Explains java-server returns the sealed *ApiResponses record, java-async-server returns CompletionStage, java-reactive-server returns Mono",
+        "Notes java-reactive-server requires adding io.projectreactor:reactor-core",
+        "States the delegate always returns the generated sealed response, never ResponseEntity"
+      ],
+      "tags": ["modes", "basic"]
+    },
+    {
+      "id": "kora-openapi-generator-server-management",
+      "skills": ["kora-openapi-generator-server"],
+      "query": "Expose the OpenAPI document and a Swagger UI from my Kora OpenAPI server.",
+      "expected_behavior": [
+        "Adds the ru.tinkoff.kora:openapi-management dependency and OpenApiManagementModule to the @KoraApp interface",
+        "Enables openapi.management with endpoint /openapi and swaggerui endpoint /swagger-ui in config",
+        "Keeps publicApiHttpPort for traffic separate from privateApiHttpPort for probes/metrics",
+        "Does not pull in a non-Kora OpenAPI documentation library"
+      ],
+      "tags": ["management", "basic"]
+    },
+    {
+      "id": "kora-openapi-generator-server-multi-spec",
+      "skills": ["kora-openapi-generator-server"],
+      "query": "I need two OpenAPI contracts generated into one Kora application. How do I configure both without conflicts?",
+      "expected_behavior": [
+        "Registers a separate GenerateTask per contract, each with a unique outputDir",
+        "Gives each task its own apiPackage/modelPackage and wires both into sourceSets",
+        "Adds compileJava.dependsOn (Java) or KspTask dependsOn (Kotlin) for each task",
+        "Implements one @Component delegate per generated *ApiDelegate",
+        "Does not reuse a single outputDir for both tasks and does not edit files under build/generated"
+      ],
+      "tags": ["build", "advanced"]
+    }
+  ]
+}

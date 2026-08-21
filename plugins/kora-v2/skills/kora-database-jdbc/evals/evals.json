@@ -1,0 +1,161 @@
+{
+  "evals": [
+    {
+      "id": "kora-database-jdbc-crud",
+      "skills": [
+        "kora-database-jdbc"
+      ],
+      "query": "Create a Kora JDBC repository for a User with an auto-generated Long id, email, name and createdAt columns. I need findById, findAll, insert and delete.",
+      "expected_behavior": [
+        "Defines a record annotated with @EntityJdbc (from ru.tinkoff.kora.database.jdbc), @Table, and @Column/@Id from ru.tinkoff.kora.database.common.annotation",
+        "Declares a @Repository interface that extends JdbcRepository",
+        "Uses SQL macros such as %{return#selects}, %{return#table}, %{entity#inserts} in @Query",
+        "Returns @Nullable User (preferred over Optional) for findById and List<User> for findAll",
+        "Adds the annotation processor (annotationProcessor \"ru.tinkoff.kora:annotation-processors\") and a JDBC driver dependency",
+        "Does not use JPA @Entity, reflection-based ORM annotations, or field injection"
+      ],
+      "tags": [
+        "repository",
+        "basic"
+      ]
+    },
+    {
+      "id": "kora-database-jdbc-generated-id",
+      "skills": [
+        "kora-database-jdbc"
+      ],
+      "query": "How do I insert a row and get back the database-generated identity id in a Kora JDBC repository?",
+      "expected_behavior": [
+        "Annotates the insert method with @Id and returns the id type (e.g. Long)",
+        "Excludes the id column from the INSERT using %{entity#inserts-= @id} or a RETURNING id clause",
+        "Notes that @Id-on-method also works with @Batch inserts returning List<Long>",
+        "Does not invent a non-existent %{entity#deletes} macro or a @GeneratedValue annotation"
+      ],
+      "tags": [
+        "identifiers",
+        "basic"
+      ]
+    },
+    {
+      "id": "kora-database-jdbc-transaction",
+      "skills": [
+        "kora-database-jdbc"
+      ],
+      "query": "Write a Kora service that inserts an order and reserves inventory atomically, sending a notification only after the transaction commits.",
+      "expected_behavior": [
+        "Runs the work inside JdbcConnectionFactory.inTx(), obtained via repository.getJdbcConnectionFactory() or injected JdbcConnectionFactory",
+        "Calls multiple repository methods inside the same inTx lambda so they share one transaction and roll back together on exception",
+        "Registers the notification with currentConnectionContext().addPostCommitAction(...)",
+        "Declares the service as a @Component with constructor injection",
+        "Does not use a @Transactional annotation or declarative transaction propagation"
+      ],
+      "tags": [
+        "transactions",
+        "advanced"
+      ]
+    },
+    {
+      "id": "kora-database-jdbc-batch",
+      "skills": [
+        "kora-database-jdbc"
+      ],
+      "query": "Add bulk insert and update methods to my Kora JDBC UserRepository.",
+      "expected_behavior": [
+        "Annotates the List<User> parameter with @Batch",
+        "Returns UpdateCount (or List of generated ids) rather than the entities, since batch queries cannot project arbitrary rows",
+        "Uses %{entity#inserts} / %{entity#updates} macros in @Query",
+        "Does not use PreparedStatement.addBatch by hand or an external JdbcTemplate helper"
+      ],
+      "tags": [
+        "repository",
+        "intermediate"
+      ]
+    },
+    {
+      "id": "kora-database-jdbc-enum-mapper",
+      "skills": [
+        "kora-database-jdbc"
+      ],
+      "query": "My Kora entity has a Status enum stored as an integer code column. How do I map it both ways?",
+      "expected_behavior": [
+        "Implements JdbcResultColumnMapper<Status> with apply(ResultSet rs, int index) to read the code",
+        "Implements JdbcParameterColumnMapper<Status> with set(PreparedStatement, int, value) to write the code",
+        "Selects both mappers by repeating @Mapping(...) on the @Column field (not @Tag, not an array literal)",
+        "Does not use a JPA AttributeConverter or an external converter framework"
+      ],
+      "tags": [
+        "mappers",
+        "intermediate"
+      ]
+    },
+    {
+      "id": "kora-database-jdbc-composite-key",
+      "skills": [
+        "kora-database-jdbc"
+      ],
+      "query": "I have an order_items table with a composite primary key (order_id, product_id). How do I model it in Kora JDBC?",
+      "expected_behavior": [
+        "Models the key as a nested record referenced with @Id @Embedded on the parent entity field",
+        "Uses %{id#where} in findById/deleteById queries to match all key columns",
+        "Keeps @EntityJdbc on the entity (and lets the embedded id flatten into columns)",
+        "Does not use JPA @IdClass or @EmbeddedId"
+      ],
+      "tags": [
+        "entity",
+        "advanced"
+      ]
+    },
+    {
+      "id": "kora-database-jdbc-jsonb",
+      "skills": [
+        "kora-database-jdbc"
+      ],
+      "query": "How do I persist a nested record into a PostgreSQL jsonb column with Kora JDBC?",
+      "expected_behavior": [
+        "Annotates the field with @Json and provides generic @Json JdbcParameterColumnMapper / JdbcResultColumnMapper via a small @Module that depends on JsonWriter/JsonReader",
+        "Casts the parameter to jsonb in SQL, e.g. VALUES (:entity.value::jsonb)",
+        "Wires the JSON module (JsonModule/JsonCommonModule) into the @KoraApp graph",
+        "Does not use Jackson ObjectMapper directly or an external JdbcTemplate RowMapper"
+      ],
+      "tags": [
+        "mappers",
+        "advanced"
+      ]
+    },
+    {
+      "id": "kora-database-jdbc-config",
+      "skills": [
+        "kora-database-jdbc"
+      ],
+      "query": "Configure the HikariCP connection pool for a Kora JDBC service with credentials from environment variables and a 20-connection pool.",
+      "expected_behavior": [
+        "Places jdbcUrl, username, password, poolName and maxPoolSize under the db section read by JdbcDatabaseConfig",
+        "Uses HOCON duration strings like connectionTimeout = \"10s\" rather than millisecond numbers",
+        "Substitutes credentials with environment variables (${POSTGRES_JDBC_URL}, ${POSTGRES_USER}, ${POSTGRES_PASS})",
+        "Wires JdbcDatabaseModule into @KoraApp and a config module (HoconConfigModule)",
+        "Does not configure a manual DataSource bean or external datasource property keys"
+      ],
+      "tags": [
+        "configuration",
+        "basic"
+      ]
+    },
+    {
+      "id": "kora-database-jdbc-testing",
+      "skills": [
+        "kora-database-jdbc"
+      ],
+      "query": "How should I write an integration test for a Kora JDBC repository against a real PostgreSQL?",
+      "expected_behavior": [
+        "Uses @KoraAppTest with test-junit5 and injects the repository with @TestComponent",
+        "Starts PostgreSQL via a Testcontainers extension and points the config at it (e.g. KoraConfigModification system properties)",
+        "Exercises the real generated repository implementation rather than instantiating it by hand",
+        "Does not use a full-application boot test annotation from another framework, a JPA slice test, or mock the repository"
+      ],
+      "tags": [
+        "testing",
+        "advanced"
+      ]
+    }
+  ]
+}

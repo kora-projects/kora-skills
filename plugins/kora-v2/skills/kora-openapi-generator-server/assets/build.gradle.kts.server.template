@@ -1,0 +1,148 @@
+import org.openapitools.generator.gradle.plugin.tasks.GenerateTask
+
+// The kora generator is provided by the openapi-generator artifact on the buildscript classpath.
+buildscript {
+    dependencies {
+        classpath("ru.tinkoff.kora:openapi-generator:$koraVersion")
+    }
+}
+
+plugins {
+    kotlin("jvm") version "1.9.24"
+    id("application")
+    id("org.openapi.generator") version "7.14.0"  // DO NOT CHANGE - code compatibility
+    id("com.google.devtools.ksp") version "1.9.24-1.0.20"
+}
+
+// Kora BOM configuration for version alignment
+configurations {
+    koraBom
+    ksp.extendsFrom(koraBom)
+    implementation.extendsFrom(koraBom)
+}
+
+dependencies {
+    // Kora BOM - all Kora dependencies will be on the same version
+    koraBom(platform("ru.tinkoff.kora:kora-parent:$koraVersion"))
+
+    // KSP symbol processors for compile-time DI (Kotlin Symbol Processing)
+    ksp("ru.tinkoff.kora:symbol-processors")
+
+    // =========================================
+    // Core Dependencies
+    // =========================================
+
+    // HTTP Server (Undertow-based) - required for OpenAPI server
+    implementation("ru.tinkoff.kora:http-server-undertow")
+
+    // JSON serialization/deserialization
+    implementation("ru.tinkoff.kora:json-module")
+
+    // Configuration (YAML format)
+    implementation("ru.tinkoff.kora:config-yaml")
+
+    // Logging (SLF4J + Logback)
+    implementation("ru.tinkoff.kora:logging-logback")
+
+    // Kotlin standard library
+    implementation(kotlin("stdlib"))
+
+    // =========================================
+    // Optional Dependencies
+    // =========================================
+
+    // Validation module - required for enableServerValidation: "true"
+    implementation("ru.tinkoff.kora:validation-module")
+
+    // OpenAPI Management - serves /swagger-ui and /openapi endpoints
+    implementation("ru.tinkoff.kora:openapi-management")
+
+    // Coroutines support (for kotlin-suspend-server mode)
+    // implementation("ru.tinkoff.kora:http-server-undertow-coroutines")
+}
+
+kotlin {
+    jvmToolchain(25)
+}
+
+// =========================================
+// OpenAPI Server Generation Task
+// =========================================
+val openApiGenerateHttpServer = tasks.register<org.openapitools.generator.gradle.plugin.tasks.GenerateTask>("openApiGenerateHttpServer") {
+    generatorName = "kora"
+    group = "openapi tools"
+
+    // Path to your OpenAPI specification file
+    inputSpec.set("$projectDir/src/main/resources/openapi/my-api.yaml")
+
+    // Output directory for generated code
+    // IMPORTANT: Use unique directory per API for incremental builds
+    outputDir.set("$buildDir/generated/my-api-server")
+
+    // Package configuration
+    val corePackage = "com.example.myapi"
+    apiPackage.set("$corePackage.api")        // Delegates, controllers
+    modelPackage.set("$corePackage.model")    // DTOs, schemas
+    invokerPackage.set("$corePackage.invoker") // Utility classes
+
+    // OpenAPI Normalizer - disable all to preserve discriminators
+    openapiNormalizer.set(
+        mapOf(
+            "DISABLE_ALL" to "true"  // Critical: prevents SIMPLIFY_ONEOF_ANYOF from breaking oneOf
+        )
+    )
+
+    // Generator options
+    configOptions.set(
+        mapOf(
+            // Server mode: kotlin-server (sync), kotlin-suspend-server (coroutines)
+            "mode" to "kotlin-server",
+
+            // Enable validation annotations from OpenAPI spec (@NotNull, @Size, etc.)
+            "enableServerValidation" to "true",
+
+            // Enable validation interceptor for automatic 400 response mapping
+            "enableServerValidationInterceptor" to "true",
+
+            // Path prefix for all controllers (optional)
+            // "prefixPath" to "/api/v1",
+
+            // Interceptors configuration (JSON format)
+            // "interceptors" to """{"*": [{"type": "com.example.LoggingInterceptor"}]}""",
+        )
+    )
+}
+
+// Register generated sources with main source set
+kotlin.sourceSets.main {
+    kotlin.srcDir(openApiGenerateHttpServer.get().outputDir)
+}
+
+// Ensure generation runs before compilation
+tasks.withType<org.jetbrains.kotlin.gradle.tasks.KspTask> {
+    dependsOn(openApiGenerateHttpServer)
+}
+
+// =========================================
+// Application Configuration
+// =========================================
+application {
+    applicationName = "my-app"
+    mainClass.set("com.example.ApplicationKt")
+    applicationDefaultJvmArgs = listOf("-Dfile.encoding=UTF-8")
+}
+
+tasks.withType<org.jetbrains.kotlin.gradle.tasks.KotlinCompile> {
+    kotlinOptions {
+        freeCompilerArgs = listOf("-Xjsr305=strict")
+        jvmTarget = "25"
+    }
+}
+
+// =========================================
+// Useful Tasks
+// =========================================
+// ./gradlew openApiGenerateHttpServer  - Generate server code
+// ./gradlew clean classes              - Clean and build
+// ./gradlew run                        - Run application
+// ./gradlew test                       - Run tests

@@ -1,0 +1,291 @@
+// Typed cache interface + service demonstrating all four cache annotation patterns.
+// Replace `com.example.app.cache` / `com.example.app.dto` with your packages.
+
+package com.example.app.cache;
+
+import com.example.app.dto.OrderDto;
+import ru.tinkoff.kora.cache.CacheKeyMapper;
+import ru.tinkoff.kora.cache.annotation.Cache;
+import ru.tinkoff.kora.cache.annotation.CacheInvalidate;
+import ru.tinkoff.kora.cache.annotation.CachePut;
+import ru.tinkoff.kora.cache.annotation.Cacheable;
+import ru.tinkoff.kora.cache.caffeine.CaffeineCache;
+import ru.tinkoff.kora.common.Component;
+import ru.tinkoff.kora.common.Mapping;
+import jakarta.annotation.Nonnull;
+import java.util.UUID;
+
+// =============================================================================
+// 1. TYPED CACHE INTERFACE — Kora generates implementation and registers as component
+// =============================================================================
+
+// Simple key type (UUID, String, Long, etc.)
+@Cache("orders.cache.config")
+public interface OrderCache extends CaffeineCache<UUID, OrderDto> {
+    // No additional methods needed — Kora generates get/put/invalidate/etc.
+}
+
+// Alternative: Composite key with inner record
+@Cache("orders.composite.cache.config")
+public interface OrderCompositeCache extends CaffeineCache<OrderCompositeCache.Key, OrderDto> {
+
+    record Key(UUID tenantId, UUID orderId) {}
+}
+
+// Alternative: Redis cache with JSON serialization
+// import ru.tinkoff.kora.json.common.annotation.Json;
+// @Cache("orders.redis.cache.config")
+// public interface OrderRedisCache extends RedisCache<UUID, @Json OrderDto> {}
+
+// =============================================================================
+// 2. CUSTOM KEY MAPPER — for domain object to cache key conversion
+// =============================================================================
+
+// Domain object that needs custom key extraction
+public record OrderContext(UUID tenantId, UUID orderId, String requestId, String userId) {}
+
+// Mapper: extract composite key from domain object
+public static final class OrderContextMapper implements CacheKeyMapper<OrderCompositeCache.Key, OrderContext> {
+
+    @Nonnull
+    @Override
+    public OrderCompositeCache.Key map(OrderContext ctx) {
+        return new OrderCompositeCache.Key(ctx.tenantId(), ctx.orderId());
+    }
+}
+
+// Simple mapper: extract single key from domain object
+public static final class OrderIdMapper implements CacheKeyMapper<UUID, OrderContext> {
+
+    @Nonnull
+    @Override
+    public UUID map(OrderContext ctx) {
+        return ctx.tenantId();  // or combine: mergeHash(ctx.tenantId(), ctx.orderId())
+    }
+}
+
+// =============================================================================
+// 3. SERVICE WITH ALL CACHE ANNOTATIONS
+// =============================================================================
+
+@Component
+public class OrdersService {                                     // non-final for AOP
+
+    private final OrderCache cache;
+    private final OrderCompositeCache compositeCache;
+    private final OrdersRepository repository;
+
+    public OrdersService(OrderCache cache, OrderCompositeCache compositeCache, OrdersRepository repository) {
+        this.cache = cache;
+        this.compositeCache = compositeCache;
+        this.repository = repository;
+    }
+
+    // -------------------------------------------------------------------------
+    // @Cacheable — Read-through cache: lookup first, call method on miss, cache result
+    // -------------------------------------------------------------------------
+
+    @Cacheable(OrderCache.class)
+    public OrderDto get(UUID id) {
+        // key = id (single argument)
+        return repository.find(id);
+    }
+
+    @Cacheable(OrderCompositeCache.class)
+    public OrderDto getByCompositeKey(UUID tenantId, UUID orderId) {
+        // key = new Key(tenantId, orderId) — argument order matches record
+        return repository.find(tenantId, orderId);
+    }
+
+    @Cacheable(OrderCompositeCache.class)
+    @Mapping(OrderContextMapper.class)
+    public OrderDto getByContext(OrderContext context) {
+        // key = mapper.map(context) = new Key(context.tenantId(), context.orderId())
+        return repository.find(context.tenantId(), context.orderId());
+    }
+
+    // With parameters attribute: subset and reordering
+    @Cacheable(value = OrderCompositeCache.class, parameters = { "orderId", "tenantId" })
+    public OrderDto getWithReordering(UUID tenantId, String unrelated, UUID orderId) {
+        // key = new Key(orderId, tenantId) — order from `parameters`, skips `unrelated`
+        return repository.find(tenantId, orderId);
+    }
+
+    // -------------------------------------------------------------------------
+    // @CachePut — Write-through cache: call method, then update cache
+    // -------------------------------------------------------------------------
+
+    @CachePut(value = OrderCache.class, parameters = { "id" })
+    public OrderDto update(UUID id, OrderDto dto) {
+        // key = id (first arg, explicitly specified)
+        return repository.save(id, dto);
+    }
+
+    @CachePut(value = OrderCompositeCache.class, parameters = { "tenantId", "orderId" })
+    public OrderDto updateComposite(UUID tenantId, UUID orderId, OrderDto dto) {
+        // key = new Key(tenantId, orderId)
+        return repository.save(tenantId, orderId, dto);
+    }
+
+    // -------------------------------------------------------------------------
+    // @CacheInvalidate — Evict key: call method, then remove from cache
+    // -------------------------------------------------------------------------
+
+    @CacheInvalidate(OrderCache.class)
+    public void delete(UUID id) {
+        // key = id, evicted after method returns
+        repository.delete(id);
+    }
+
+    @CacheInvalidate(OrderCompositeCache.class)
+    public void deleteComposite(UUID tenantId, UUID orderId) {
+        // key = new Key(tenantId, orderId), evicted after method returns
+        repository.delete(tenantId, orderId);
+    }
+
+    // -------------------------------------------------------------------------
+    // @CacheInvalidate(invalidateAll = true) — Clear entire cache
+    // -------------------------------------------------------------------------
+
+    @CacheInvalidate(value = OrderCache.class, invalidateAll = true)
+    public void clearAll() {
+        // administrative operation — clears entire cache
+        // use sparingly: expensive operation, causes cache stampede
+    }
+}
+
+// =============================================================================
+// 4. MULTI-LEVEL CACHE SERVICE — Caffeine L1 + Redis L2
+// =============================================================================
+
+/*
+@KoraApp
+public interface Application extends CaffeineCacheModule, RedisCacheModule {
+
+    @Cache("orders.caffeine.config")
+    interface OrderCaffeineCache extends CaffeineCache<UUID, OrderDto> {}
+
+    @Cache("orders.redis.config")
+    interface OrderRedisCache extends RedisCache<UUID, @Json OrderDto> {}
+}
+
+@Component
+public class OrdersMultiLevelService {
+
+    @Cacheable(OrderCaffeineCache.class)  // L1: checked first
+    @Cacheable(OrderRedisCache.class)     // L2: checked on L1 miss
+    public OrderDto get(UUID id) {
+        // Order: Caffeine → Redis → repository
+        return repository.find(id);
+    }
+
+    @CachePut(OrderCaffeineCache.class)
+    @CachePut(OrderRedisCache.class)
+    public OrderDto update(UUID id, OrderDto dto) {
+        // Updates both L1 and L2
+        return repository.save(id, dto);
+    }
+
+    @CacheInvalidate(OrderCaffeineCache.class)
+    @CacheInvalidate(OrderRedisCache.class)
+    public void delete(UUID id) {
+        // Evicts from both L1 and L2
+        repository.delete(id);
+    }
+}
+*/
+
+// =============================================================================
+// 5. IMPERATIVE CACHE USAGE — manual control without aspects
+// =============================================================================
+
+/*
+@Component
+public class OrdersImperativeService {
+
+    private final OrderCache cache;
+    private final OrdersRepository repository;
+
+    public OrdersImperativeService(OrderCache cache, OrdersRepository repository) {
+        this.cache = cache;
+        this.repository = repository;
+    }
+
+    public OrderDto getOrCreate(UUID id) {
+        var cached = cache.get(id);
+        if (cached != null) {
+            return cached;
+        }
+
+        var loaded = repository.find(id);
+        if (loaded != null) {
+            cache.put(id, loaded);
+        }
+        return loaded;
+    }
+
+    public void updateManually(UUID id, OrderDto dto) {
+        repository.save(id, dto);
+        cache.put(id, dto);  // explicit cache update
+    }
+
+    public void deleteManually(UUID id) {
+        repository.delete(id);
+        cache.invalidate(id);  // explicit eviction
+    }
+
+    public void clearAllManually() {
+        cache.invalidateAll();  // clear entire cache
+    }
+}
+*/
+
+// =============================================================================
+// 6. LOADABLECACHE PATTERN — get-or-load without aspects
+// =============================================================================
+
+/*
+@KoraApp
+public interface Application extends CaffeineCacheModule {
+
+    @Cache("orders.cache.config")
+    interface OrderCache extends CaffeineCache<UUID, OrderDto> {}
+
+    @Root
+    default LoadableCache<UUID, OrderDto> orderLoadableCache(
+        OrderCache cache,
+        OrdersRepository repository
+    ) {
+        return cache.asLoadable(repository::find);
+    }
+}
+
+@Component
+public class OrdersLoadableService {
+
+    private final LoadableCache<UUID, OrderDto> cache;
+
+    public OrdersLoadableService(LoadableCache<UUID, OrderDto> cache) {
+        this.cache = cache;
+    }
+
+    public OrderDto get(UUID id) {
+        // loads via repository::find on cache miss
+        return cache.get(id);
+    }
+}
+*/
+
+// =============================================================================
+// 7. PLACEHOLDER REPOSITORY — replace with your actual @Repository
+// =============================================================================
+
+@Component
+class OrdersRepository {
+    public OrderDto find(UUID id) { return null; }
+    public OrderDto find(UUID tenantId, UUID orderId) { return null; }
+    public OrderDto save(UUID id, OrderDto dto) { return dto; }
+    public OrderDto save(UUID tenantId, UUID orderId, OrderDto dto) { return dto; }
+    public void delete(UUID id) { }
+    public void delete(UUID tenantId, UUID orderId) { }
+}

@@ -1,0 +1,35 @@
+package ${package};
+
+import io.grpc.*;
+import ${proto_package}.${service_name}Grpc;
+import ru.tinkoff.kora.common.Component;
+import ru.tinkoff.kora.common.Tag;
+
+/**
+ * Client interceptor for ${service_name} gRPC service.
+ * Use for logging, metrics, authentication, or other cross-cutting concerns.
+ */
+@Tag(${service_name}Grpc.class)
+@Component
+public class ${service_name}ClientInterceptor implements ClientInterceptor {
+
+    @Override
+    public <ReqT, RespT> ClientCall<ReqT, RespT> interceptCall(
+        MethodDescriptor<ReqT, RespT> method,
+        CallOptions callOptions,
+        Channel next
+    ) {
+        // Add custom logic here (logging, metrics, tracing, etc.).
+        // To add metadata headers, wrap the call and put headers in start():
+        //
+        // return new ForwardingClientCall.SimpleForwardingClientCall<>(next.newCall(method, callOptions)) {
+        //     @Override
+        //     public void start(Listener<RespT> responseListener, Metadata headers) {
+        //         headers.put(Metadata.Key.of("authorization", Metadata.ASCII_STRING_MARSHALLER), "Bearer " + token);
+        //         super.start(responseListener, headers);
+        //     }
+        // };
+
+        return next.newCall(method, callOptions);
+    }
+}

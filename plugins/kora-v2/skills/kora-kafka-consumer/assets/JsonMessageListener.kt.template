@@ -1,0 +1,130 @@
+package ${packagePath}.listener
+
+import jakarta.annotation.Nullable
+import org.slf4j.LoggerFactory
+import ru.tinkoff.kora.common.Component
+import ru.tinkoff.kora.json.common.annotation.Json
+import ru.tinkoff.kora.kafka.common.annotation.KafkaListener
+import java.time.LocalDateTime
+
+/**
+ * Kafka consumer listener with JSON deserialization.
+ *
+ * The @Json annotation automatically deserializes JSON messages into data classes.
+ *
+ * Configuration path: kafka.consumer.${listenerNameLower}
+ * Topics: ${topics}
+ */
+@Component
+class ${listenerName} {
+
+    private val log = LoggerFactory.getLogger(${listenerName}::class.java)
+
+    /**
+     * Event data class for JSON deserialization.
+     *
+     * Fields:
+     * - id: unique event identifier
+     * - eventType: type of the event (created, updated, deleted, etc.)
+     * - payload: event-specific data
+     * - timestamp: when the event occurred
+     */
+    @Json
+    data class ${eventClassName}(
+        val id: String,
+        val eventType: String,
+        val payload: String,
+        val timestamp: LocalDateTime
+    )
+
+    /**
+     * Process JSON event (value only).
+     * Auto-commits after each message.
+     *
+     * @param event Deserialized JSON event
+     */
+    @KafkaListener("kafka.consumer.${listenerNameLower}")
+    fun processEvent(event: ${eventClassName}) {
+        log.info(
+            "Received event: id={}, type={}, timestamp={}",
+            event.id,
+            event.eventType,
+            event.timestamp
+        )
+
+        // TODO: Implement business logic based on event type
+        when (event.eventType) {
+            "created" -> handleCreated(event)
+            "updated" -> handleUpdated(event)
+            "deleted" -> handleDeleted(event)
+            else -> log.warn("Unknown event type: {}", event.eventType)
+        }
+    }
+
+    /**
+     * Process JSON event with key.
+     * The key can be used for partitioning or correlation.
+     *
+     * @param key Message key (usually the entity ID)
+     * @param event Deserialized JSON event
+     */
+    @KafkaListener("kafka.consumer.${listenerNameLower}")
+    fun processEventWithKey(key: String, event: ${eventClassName}) {
+        log.info("Received key={}, event: id={}, type={}", key, event.id, event.eventType)
+
+        // Verify key matches event ID (optional consistency check)
+        if (key != event.id) {
+            log.warn("Key {} does not match event ID {}", key, event.id)
+        }
+
+        // TODO: Implement business logic
+        processEvent(event)
+    }
+
+    /**
+     * Process JSON event with error handling.
+     * Handles deserialization errors gracefully.
+     *
+     * @param event Deserialized JSON event (null if deserialization failed)
+     * @param error Deserialization error (null if successful)
+     */
+    @KafkaListener("kafka.consumer.${listenerNameLower}")
+    fun processEventWithErrorHandling(@Nullable event: ${eventClassName}?, @Nullable error: Exception?) {
+        if (error != null) {
+            log.error("Failed to deserialize event", error)
+            // TODO: Handle error (send to DLQ, log for investigation, etc.)
+            return
+        }
+
+        if (event == null) {
+            log.warn("Received null event without error")
+            return
+        }
+
+        log.info("Processing event: id={}, type={}", event.id, event.eventType)
+
+        // TODO: Implement business logic
+        try {
+            processEvent(event)
+        } catch (e: Exception) {
+            log.error("Failed to process event {}", event.id, e)
+            throw e  // Will trigger retry/backoff
+        }
+    }
+
+    // TODO: Implement event type handlers
+    private fun handleCreated(event: ${eventClassName}) {
+        log.info("Handling created event: {}", event.id)
+        // TODO: Implement creation logic
+    }
+
+    private fun handleUpdated(event: ${eventClassName}) {
+        log.info("Handling updated event: {}", event.id)
+        // TODO: Implement update logic
+    }
+
+    private fun handleDeleted(event: ${eventClassName}) {
+        log.info("Handling deleted event: {}", event.id)
+        // TODO: Implement deletion logic
+    }
+}

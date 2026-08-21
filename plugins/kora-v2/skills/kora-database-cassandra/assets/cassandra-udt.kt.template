@@ -1,0 +1,20 @@
+package ${package};
+
+import ru.tinkoff.kora.database.cassandra.annotation.UDT;
+import ru.tinkoff.kora.database.common.annotation.Column;
+
+/**
+ * User-Defined Type (UDT) for Cassandra - Kotlin.
+ * UDTs allow modeling nested data structures like Address, Name, etc.
+ *
+ * Usage:
+ * 1. Define UDT data class with @UDT annotation
+ * 2. Use in entity as field type
+ * 3. Cassandra table should have matching UDT definition
+ */
+@UDT
+data class ${udt_name}(
+    @field:Column("street") val street: String,
+    @field:Column("city") val city: String,
+    @field:Column("zipCode") val zipCode: String
+)

@@ -1,0 +1,50 @@
+{
+  "evals": [
+    {
+      "id": "kora-journal-record-kora-mistake",
+      "skills": ["kora-journal"],
+      "query": "I just realized I used @Autowired in a Kora service instead of constructor injection and had to fix it. Record this.",
+      "expected_behavior": [
+        "Runs kora_journal.py add with a title and --context, --problem, --solution, --files arguments",
+        "Frames the entry as Kora incorrect usage (Spring @Autowired instead of Kora constructor injection)",
+        "Stores the entry as a separate Markdown file under ~/.kora-journal/<project>/<module>/<YYYY-MM-DD>_slug.md",
+        "Does not hand-write the journal file when the CLI is available and does not invent extra add subcommand flags"
+      ],
+      "tags": ["journal", "add", "basic"]
+    },
+    {
+      "id": "kora-journal-scope-reject",
+      "skills": ["kora-journal"],
+      "query": "Add a journal entry: our checkout total was computing tax before the discount, I fixed the business rule order.",
+      "expected_behavior": [
+        "Recognizes this is application business logic, not Kora Framework incorrect usage, and is out of scope for the journal",
+        "Declines to add the entry and explains the journal records only Kora misuse (wrong annotation, hallucinated API, misapplied pattern)",
+        "Does not run kora_journal.py add for this domain/business change"
+      ],
+      "tags": ["journal", "scope", "basic"]
+    },
+    {
+      "id": "kora-journal-search-before-solving",
+      "skills": ["kora-journal"],
+      "query": "Before I implement an HTTP client interceptor for auth in Kora, check the journal for prior issues.",
+      "expected_behavior": [
+        "Runs kora_journal.py search with the relevant keywords (e.g. \"http interceptor auth\") and a --limit",
+        "Optionally uses --by-tags for a tag-only search or --status to filter",
+        "Reads the matched entry file and applies the recorded solution",
+        "Does not skip the search or invent a query subcommand that the CLI does not provide"
+      ],
+      "tags": ["journal", "search", "basic"]
+    },
+    {
+      "id": "kora-journal-integrate-after-apply",
+      "skills": ["kora-journal"],
+      "query": "I applied the fix from a pending journal entry into the skill docs. Mark it done.",
+      "expected_behavior": [
+        "Runs kora_journal.py integrate <entry-file> to mark the entry integrated",
+        "Explains pending -> integrated status transition after the fix is folded into the skills",
+        "Does not delete the entry or edit its status field by hand when the CLI subcommand exists"
+      ],
+      "tags": ["journal", "integrate", "intermediate"]
+    }
+  ]
+}

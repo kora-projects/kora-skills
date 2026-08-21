@@ -1,0 +1,108 @@
+{
+  "evals": [
+    {
+      "id": "kora-http-client-auth-basic",
+      "skills": ["kora-http-client-auth"],
+      "query": "My Kora service calls an external API over HTTP that needs HTTP Basic auth with a username and password. How do I add it to my @HttpClient?",
+      "expected_behavior": [
+        "Registers the built-in BasicAuthHttpClientInterceptor from a @Module factory using the two-argument (username, password) constructor",
+        "Binds username and password through a @ConfigSource interface, externalizing the password with ${ENV_VAR} substitution",
+        "Attaches the interceptor with @InterceptWith(BasicAuthHttpClientInterceptor.class) on the @HttpClient interface or a method",
+        "Sets the target URL via httpClient.<client>.url in config, not a baseUrl annotation attribute",
+        "Uses constructor injection only (no field injection), no @Value-style placeholder annotation, and no non-existent interceptors = {...} attribute on @HttpClient"
+      ],
+      "tags": ["basic-auth", "basic"]
+    },
+    {
+      "id": "kora-http-client-auth-apikey-header",
+      "skills": ["kora-http-client-auth"],
+      "query": "The third-party API I integrate with requires an API key in the X-API-KEY header. Set this up for my Kora HTTP client.",
+      "expected_behavior": [
+        "Uses the built-in ApiKeyHttpClientInterceptor with ApiKeyLocation.HEADER, the header name X-API-KEY, and the secret",
+        "Provides the key through a @ConfigSource interface referencing an environment variable",
+        "Attaches the interceptor with @InterceptWith",
+        "Mentions http-client-common (and a transport like http-client-ok) and notes there is no http-client-auth artifact",
+        "Does not use field injection or a @Value-style annotation for the key"
+      ],
+      "tags": ["api-key", "basic"]
+    },
+    {
+      "id": "kora-http-client-auth-bearer-static",
+      "skills": ["kora-http-client-auth"],
+      "query": "I have a static bearer token in an env var that I need to send on every request from my Kora HTTP client.",
+      "expected_behavior": [
+        "Registers BearerAuthHttpClientInterceptor from a @Module, supplying an HttpClientTokenProvider (or the static-token constructor)",
+        "Implements HttpClientTokenProvider returning CompletionStage<String> when a provider is used",
+        "Reads the token from a @ConfigSource interface bound to ${API_TOKEN}",
+        "Attaches it with @InterceptWith(BearerAuthHttpClientInterceptor.class)",
+        "Does not invent an interceptors attribute on @HttpClient or use foreign-framework constructs"
+      ],
+      "tags": ["bearer", "basic"]
+    },
+    {
+      "id": "kora-http-client-auth-jwt-refresh",
+      "skills": ["kora-http-client-auth"],
+      "query": "I need to authenticate outgoing requests with a JWT fetched from an auth server, cache it, and refresh it 60 seconds before it expires.",
+      "expected_behavior": [
+        "Implements HttpClientTokenProvider with getToken returning CompletionStage<String> for non-blocking fetch",
+        "Caches the token in a thread-safe component and refreshes ahead of expiry using a margin (e.g. 60s)",
+        "Fetches the token through a separate declarative @HttpClient against the token endpoint",
+        "Wires the provider into BearerAuthHttpClientInterceptor via a @Module",
+        "Does not block with .join() inside the provider as the primary approach, and does not use field injection"
+      ],
+      "tags": ["bearer", "jwt", "advanced"]
+    },
+    {
+      "id": "kora-http-client-auth-oauth2-cc",
+      "skills": ["kora-http-client-auth"],
+      "query": "Implement OAuth2 client-credentials flow for service-to-service auth in Kora: POST client_id/client_secret to the token endpoint, then send Bearer tokens to the resource server.",
+      "expected_behavior": [
+        "Explains Kora has no built-in OAuth2 flow and assembles it from HttpClientTokenProvider, a token cache, and a declarative auth @HttpClient",
+        "Uses BasicAuthHttpClientInterceptor on the auth client to send client_id/client_secret and posts grant_type=client_credentials",
+        "Parses access_token and expires_in (e.g. via @Json field names) and caches with the real lifetime",
+        "Registers BearerAuthHttpClientInterceptor for the resource-server client and attaches it with @InterceptWith",
+        "Externalizes the client secret with ${OAUTH2_CLIENT_SECRET}; does not use a @Value-style annotation or field injection"
+      ],
+      "tags": ["oauth2", "advanced"]
+    },
+    {
+      "id": "kora-http-client-auth-custom-interceptor",
+      "skills": ["kora-http-client-auth"],
+      "query": "The external API wants the key in a non-standard header named X-Custom-Token. Write a custom interceptor for my Kora HTTP client.",
+      "expected_behavior": [
+        "Implements HttpClientInterceptor with processRequest(Context ctx, InterceptChain chain, HttpClientRequest request) returning CompletionStage<HttpClientResponse>",
+        "Builds the authorized request with request.toBuilder().header(name, value).build() and calls chain.process(ctx, request)",
+        "Annotates the interceptor with @Component and injects config via a @ConfigSource interface in the constructor",
+        "Attaches it with @InterceptWith",
+        "Does not mutate the original request in place and does not use a @Value-style annotation"
+      ],
+      "tags": ["custom-interceptor", "advanced"]
+    },
+    {
+      "id": "kora-http-client-auth-race",
+      "skills": ["kora-http-client-auth"],
+      "query": "Under load my token provider fires many simultaneous token refreshes. How do I make refresh thread-safe in Kora?",
+      "expected_behavior": [
+        "Uses a synchronized block (or lock) with a double-check after acquiring it so only one refresh runs",
+        "Marks the cached token and expiry fields volatile for cross-thread visibility",
+        "Keeps getToken returning CompletionStage<String> and refreshes ahead of expiry with a margin",
+        "Recommends a single shared token cache component injected into the provider",
+        "Does not introduce foreign-framework constructs or field injection"
+      ],
+      "tags": ["concurrency", "advanced"]
+    },
+    {
+      "id": "kora-http-client-auth-401-debug",
+      "skills": ["kora-http-client-auth"],
+      "query": "I added implementation \"ru.tinkoff.kora:http-client-auth\" and set interceptors = {MyAuth.class} on @HttpClient but the build fails and I still get 401. What is wrong?",
+      "expected_behavior": [
+        "Explains that ru.tinkoff.kora:http-client-auth does not exist; depend on http-client-common plus a transport such as http-client-ok",
+        "Explains @HttpClient has no interceptors attribute and the interceptor must be attached with @InterceptWith",
+        "Confirms the auth interceptor must be a registered component (@Component or a @Module factory)",
+        "Suggests verifying the URL is configured via httpClient.<client>.url and the credential header is actually set",
+        "Does not recommend foreign-framework annotations or a @Value-style placeholder"
+      ],
+      "tags": ["troubleshooting", "advanced"]
+    }
+  ]
+}

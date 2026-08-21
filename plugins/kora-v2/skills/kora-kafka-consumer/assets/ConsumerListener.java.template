@@ -1,0 +1,309 @@
+package ${packagePath}.listener;
+
+import jakarta.annotation.Nullable;
+import org.apache.kafka.clients.consumer.Consumer;
+import org.apache.kafka.clients.consumer.ConsumerRecord;
+import org.apache.kafka.clients.consumer.ConsumerRecords;
+import org.apache.kafka.common.header.Headers;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import ru.tinkoff.kora.common.Component;
+import ru.tinkoff.kora.kafka.common.annotation.KafkaListener;
+import ru.tinkoff.kora.kafka.common.exceptions.KafkaSkipRecordException;
+
+/**
+ * Kafka consumer listener with various method signatures.
+ *
+ * PROGRESSIVE DISCLOSURE:
+ * Level 1: Use processValue() for simple message processing
+ * Level 2: Use processJsonEvent() for typed JSON events with error handling
+ * Level 3: Use processWithManualCommit() for exactly-once semantics
+ * Level 4: Use processBatchWithIntermediateCommit() for high-throughput batch processing
+ *
+ * CHOOSE BY NEED:
+ * | Signature                                    | Commit          | Use Case                              |
+ * |----------------------------------------------|-----------------|---------------------------------------|
+ * | processValue(String)                         | Auto, per msg   | Simple message processing             |
+ * | processKeyValue(String, String)              | Auto, per msg   | When message key matters              |
+ * | processWithHeaders(..., Headers)             | Auto, per msg   | Distributed tracing, correlation      |
+ * | processRecord(ConsumerRecord)                | Auto, per msg   | Access to partition, offset, etc.     |
+ * | processRecords(ConsumerRecords)              | Auto, per batch | High-throughput batch processing      |
+ * | processWithErrorHandling(..., Exception)     | Auto, per msg   | Handle deserialization errors         |
+ * | processWithManualCommit(..., Consumer)       | Manual          | Exactly-once, sync with DB            |
+ * | processWithSkip()                            | Auto, skip      | Skip invalid messages                 |
+ *
+ * Configuration path: kafka.consumer.${listenerName}
+ * Topics: ${topics}
+ * Consumer group: Configure in application.conf with "group.id"
+ */
+@Component
+public final class ${listenerName} {
+
+    private static final Logger log = LoggerFactory.getLogger(${listenerName}.class);
+
+    // =========================================================================
+    // Level 1: Basic Processing
+    // =========================================================================
+
+    /**
+     * Simple value processing with auto-commit after each message.
+     *
+     * USE FOR: Basic message processing without special requirements.
+     * COMMIT: Automatic after each message.
+     * RETRY: On exception, message will be retried after backoffTimeout.
+     */
+    @KafkaListener("kafka.consumer.${listenerName}")
+    void processValue(String value) {
+        log.info("Received value: {}", value);
+        // TODO: Implement business logic
+    }
+
+    /**
+     * Key-value pair processing with auto-commit.
+     *
+     * USE FOR: When message key is important (e.g., user ID for partitioning).
+     * COMMIT: Automatic after each message.
+     */
+    @KafkaListener("kafka.consumer.${listenerName}")
+    void processKeyValue(String key, String value) {
+        log.info("Received key={}, value={}", key, value);
+        // TODO: Implement business logic based on key and value
+    }
+
+    // =========================================================================
+    // Level 2: Metadata Access & JSON Deserialization
+    // =========================================================================
+
+    /**
+     * Processing with access to Kafka headers.
+     *
+     * USE FOR: Distributed tracing, correlation IDs, context propagation.
+     * HEADERS: Common headers include "correlation-id", "traceparent", "X-Request-ID".
+     */
+    @KafkaListener("kafka.consumer.${listenerName}")
+    void processWithHeaders(String key, String value, Headers headers) {
+        String correlationId = null;
+        String traceId = null;
+
+        if (headers != null) {
+            var corrHeader = headers.lastHeader("correlation-id");
+            var traceHeader = headers.lastHeader("traceparent");
+
+            if (corrHeader != null) {
+                correlationId = corrHeader.value().toString();
+            }
+            if (traceHeader != null) {
+                traceId = traceHeader.value().toString();
+            }
+        }
+
+        log.info("Received key={}, value={}, correlationId={}, traceId={}",
+            key, value, correlationId, traceId);
+        // TODO: Implement business logic with context propagation
+    }
+
+    /**
+     * Processing with full ConsumerRecord access.
+     *
+     * USE FOR: When metadata is needed (partition-aware processing, offset tracking).
+     * METADATA: topic, partition, offset, timestamp, headers, key, value.
+     */
+    @KafkaListener("kafka.consumer.${listenerName}")
+    void processRecord(ConsumerRecord<String, String> record) {
+        log.info("Received topic={}, partition={}, offset={}, key={}, value={}",
+            record.topic(),
+            record.partition(),
+            record.offset(),
+            record.key(),
+            record.value()
+        );
+        // TODO: Implement business logic with metadata awareness
+    }
+
+    // =========================================================================
+    // Level 3: Error Handling & Offset Management
+    // =========================================================================
+
+    /**
+     * Processing with deserialization error handling.
+     *
+     * USE FOR: Production-ready consumers that must handle corrupt messages.
+     * PATTERN: Both parameters are nullable - either event OR error is present.
+     * COMMIT: Automatic after each message (even on error).
+     *
+     * ERROR HANDLING OPTIONS:
+     * 1. Log and skip - message is committed, data is lost
+     * 2. Send to DLQ - preserves message for later analysis
+     * 3. Rethrow - triggers backoffTimeout and retry
+     */
+    @KafkaListener("kafka.consumer.${listenerName}")
+    void processWithErrorHandling(@Nullable String value, @Nullable Exception error) {
+        if (error != null) {
+            log.error("Deserialization error: {}", error.getMessage(), error);
+
+            // Option 1: Log and skip (message is committed, data lost)
+            // return;
+
+            // Option 2: Send to DLQ (preserves message for analysis)
+            // dlqPublisher.send("dlq-topic", value, error.getMessage());
+            // return;
+
+            // Option 3: Rethrow to trigger backoff/retry
+            // throw new RuntimeException("Deserialization failed", error);
+        }
+
+        if (value == null) {
+            log.warn("Received null value without error");
+            return;
+        }
+
+        log.info("Received value: {}", value);
+        // TODO: Implement business logic
+    }
+
+    /**
+     * Processing with manual offset commit for exactly-once semantics.
+     *
+     * USE FOR: Transaction processing, synchronization with database writes.
+     * COMMIT: Manual - you control when offset is committed.
+     * GUARANTEE: Message will be reprocessed if commit fails.
+     *
+     * IMPORTANT:
+     * - Always commit AFTER business logic completes successfully
+     * - Commit in catch block if partial progress should be saved
+     * - Don't commit on error to trigger reprocessing
+     */
+    @KafkaListener("kafka.consumer.${listenerName}")
+    void processWithManualCommit(ConsumerRecord<String, String> record,
+                                  Consumer<String, String> consumer) {
+        try {
+            log.info("Processing record: offset={}, value={}",
+                record.offset(), record.value());
+
+            // TODO: Implement business logic (e.g., save to database)
+            processBusinessLogic(record.value());
+
+            // Manual commit AFTER successful processing
+            consumer.commitSync();
+            log.debug("Offset committed successfully for offset={}", record.offset());
+
+        } catch (Exception e) {
+            log.error("Processing failed, offset will not be committed: offset={}",
+                record.offset(), e);
+
+            // Don't commit - message will be retried after backoffTimeout
+            // Consider: Send to DLQ after max retries (track in Redis/DB)
+            throw e; // Triggers backoffTimeout retry
+        }
+    }
+
+    /**
+     * Processing with skip logic for invalid messages.
+     *
+     * USE FOR: Messages with invalid data that should never be processed.
+     * BEHAVIOR: KafkaSkipRecordException skips current message and continues.
+     * METRICS: Skipped messages are tracked in Kafka consumer metrics.
+     */
+    @KafkaListener("kafka.consumer.${listenerName}")
+    void processWithSkip(String value) {
+        // Validation: skip null/blank values
+        if (value == null || value.isBlank()) {
+            throw new KafkaSkipRecordException(
+                new IllegalArgumentException("Null or blank value received")
+            );
+        }
+
+        // Validation: skip invalid format
+        if (!isValid(value)) {
+            throw new KafkaSkipRecordException(
+                new IllegalArgumentException("Invalid value format: " + value)
+            );
+        }
+
+        log.info("Received valid value: {}", value);
+        // TODO: Implement business logic
+    }
+
+    // =========================================================================
+    // Level 4: Batch Processing
+    // =========================================================================
+
+    /**
+     * Batch processing with ConsumerRecords.
+     *
+     * USE FOR: High-throughput scenarios, batch inserts, aggregation.
+     * COMMIT: Automatic after entire batch is processed.
+     * THROUGHPUT: Higher than per-message processing (fewer commits).
+     *
+     * CONFIGURATION TIPS:
+     * - Set max.poll.records=500 (or higher) in driverProperties
+     * - Set fetch.min.bytes for batch size optimization
+     * - Use threads=N for parallel processing within batch
+     */
+    @KafkaListener("kafka.consumer.${listenerName}")
+    void processRecords(ConsumerRecords<String, String> records) {
+        log.info("Received batch of {} records", records.count());
+
+        for (ConsumerRecord<String, String> record : records) {
+            log.debug("Processing offset={}: {}", record.offset(), record.value());
+            // TODO: Process each record in the batch
+        }
+
+        // commitSync() is called automatically after the entire batch
+    }
+
+    /**
+     * Batch processing with manual commit and intermediate commits.
+     *
+     * USE FOR: Large batches where partial progress should be saved.
+     * COMMIT: Manual every N messages for fault tolerance.
+     * BENEFIT: If failure occurs, only uncommitted messages are retried.
+     */
+    @KafkaListener("kafka.consumer.${listenerName}")
+    void processBatchWithIntermediateCommit(ConsumerRecords<String, String> records,
+                                             Consumer<String, String> consumer) {
+        int processed = 0;
+        int commitBatchSize = 50;  // Commit every N messages
+
+        for (ConsumerRecord<String, String> record : records) {
+            try {
+                processBusinessLogic(record.value());
+                processed++;
+
+                // Intermediate commit every N messages
+                if (processed % commitBatchSize == 0) {
+                    consumer.commitSync();
+                    log.info("Committed after {} messages (offset={})",
+                        processed, record.offset());
+                }
+
+            } catch (Exception e) {
+                log.error("Failed at offset={}", record.offset(), e);
+
+                // Commit successful messages before rethrowing
+                if (processed > 0) {
+                    consumer.commitSync();
+                }
+                throw e; // Trigger backoff for failed message
+            }
+        }
+
+        // Final commit for remaining messages
+        consumer.commitSync();
+        log.info("Batch complete: {} records processed", processed);
+    }
+
+    // =========================================================================
+    // Business Logic Helpers (TODO: Implement for your use case)
+    // =========================================================================
+
+    private void processBusinessLogic(String value) {
+        // TODO: Your business logic here
+        // Example: save to database, call external service, etc.
+    }
+
+    private boolean isValid(String value) {
+        // TODO: Your validation logic here
+        return value != null && !value.isBlank();
+    }
+}

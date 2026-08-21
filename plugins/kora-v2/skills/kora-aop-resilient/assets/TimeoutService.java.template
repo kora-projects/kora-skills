@@ -1,0 +1,69 @@
+// Timeout pattern for bounding operation latency.
+// Replace `com.example.app.service` with your package.
+
+package com.example.app.service;
+
+import ru.tinkoff.kora.common.Component;
+import ru.tinkoff.kora.resilient.retry.annotation.Retry;
+import ru.tinkoff.kora.resilient.timeout.annotation.Timeout;
+
+@Component
+public class ReportService {                                            // NOT final
+
+    private final ReportEngine engine;
+
+    public ReportService(ReportEngine engine) {
+        this.engine = engine;
+    }
+
+    @Timeout("report.generate")
+    public Report generate(ReportRequest request) {
+        return engine.generate(request);
+    }
+
+    // Per-attempt timeout with retry:
+    // @Retry outside @Timeout means timeout applies to each retry attempt
+    @Retry("report.generate")
+    @Timeout("report.generate.perAttempt")
+    public Report generateWithRetry(ReportRequest request) {
+        return engine.generate(request);
+    }
+}
+
+// Report DTO
+class Report {
+    private final String content;
+    public Report(String content) { this.content = content; }
+    public String getContent() { return content; }
+}
+
+// ReportRequest DTO
+class ReportRequest {
+    private final String id;
+    public ReportRequest(String id) { this.id = id; }
+    public String getId() { return id; }
+}
+
+// ReportEngine placeholder
+@Component
+class ReportEngine {
+    public Report generate(ReportRequest request) {
+        return new Report("Report content");
+    }
+}
+
+// Config (HOCON):
+//
+// resilient.timeout {
+//   default { duration = "1s" }
+//   "report.generate" { duration = "30s" }
+//   "report.generate.perAttempt" { duration = "5s" }
+// }
+//
+// With retry:
+//
+// resilient.retry."report.generate" {
+//   delay = "500ms"
+//   attempts = 3
+//   delayStep = "500ms"
+// }

@@ -1,0 +1,84 @@
+// Quartz scheduled jobs (scheduling-quartz).
+// @ScheduleWithCron / @ScheduleWithTrigger / @DisallowConcurrentExecution / @PersistJobDataAfterExecution.
+// For plain fixed-rate/fixed-delay/once timers use the sibling skill kora-aop-scheduling-jdk.
+// Kora generates a separate Job wrapper at compile time, so the class may stay final
+// (the canonical examples use `public final class`). Only method-wrapping aspects
+// (@Log, @Retry) require a non-final class.
+// Replace `com.example.app.jobs` with your package.
+
+package com.example.app.jobs;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import ru.tinkoff.kora.common.Component;
+import ru.tinkoff.kora.scheduling.quartz.ScheduleWithCron;
+import ru.tinkoff.kora.scheduling.quartz.DisallowConcurrentExecution;
+
+@Component
+public final class ScheduledJobs {
+
+    private static final Logger log = LoggerFactory.getLogger(ScheduledJobs.class);
+
+    /**
+     * Cron: runs at times specified by a Quartz cron expression.
+     * Requires QuartzModule on the @KoraApp interface.
+     * Use for: daily reports, hourly checks, complex schedules.
+     */
+    @DisallowConcurrentExecution                                  // prevent overlap
+    @ScheduleWithCron("0 0 3 * * ?")                              // daily at 03:00
+    void nightlyReport() {
+        if (Thread.currentThread().isInterrupted()) return;       // graceful shutdown
+        log.info("Generating nightly report");
+        // ... generate report ...
+    }
+
+    /**
+     * Cron with config: cron expression read from configuration.
+     * Config has priority over the annotation value.
+     */
+    @ScheduleWithCron(config = "jobs.hourly")
+    void hourlyCheck() {
+        log.info("Running hourly check");
+        // ... perform check ...
+    }
+}
+
+// ============== CONFIGURATION ==============
+
+// application.conf snippet (HOCON):
+//
+// quartz {
+//   "org.quartz.scheduler.instanceName" = "MyScheduler"
+//   "org.quartz.threadPool.threadCount"  = "10"
+// }
+//
+// scheduling {
+//   waitForJobComplete = true    # block shutdown until the running job finishes
+//   telemetry {
+//     logging.enabled = false
+//     metrics.enabled = true
+//     tracing.enabled = true
+//   }
+// }
+//
+// jobs.hourly.cron = "0 0 * * * ?"
+
+// application.yml snippet (YAML):
+//
+// quartz:
+//   org.quartz.scheduler.instanceName: "MyScheduler"
+//   org.quartz.threadPool.threadCount: "10"
+//
+// scheduling:
+//   waitForJobComplete: true
+//   telemetry:
+//     logging:
+//       enabled: false
+//     metrics:
+//       enabled: true
+//     tracing:
+//       enabled: true
+//
+// jobs:
+//   hourly:
+//     cron: "0 0 * * * ?"

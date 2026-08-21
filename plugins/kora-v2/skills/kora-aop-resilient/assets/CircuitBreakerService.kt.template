@@ -1,0 +1,60 @@
+// Circuit breaker pattern for cascading failure protection.
+// Replace `com.example.app.service` with your package.
+// Class must be `open` for aspects to work.
+
+package com.example.app.service
+
+import ru.tinkoff.kora.common.Component
+import ru.tinkoff.kora.resilient.circuitbreaker.annotation.CircuitBreaker
+
+@Component
+open class OrderClient(                                                 // open, not final
+    private val httpClient: HttpClient
+) {
+
+    @CircuitBreaker("order.service")
+    open fun getOrder(orderId: String): Order {
+        return httpClient.get("/orders/$orderId")
+    }
+}
+
+// Order data class
+data class Order(val id: String, val customerId: String)
+
+// HttpClient placeholder
+@Component
+open class HttpClient {
+    open fun get(path: String): Order = Order("123", "456")
+}
+
+// Config (HOCON):
+//
+// resilient.circuitbreaker {
+//   default {
+//     slidingWindowSize = 100
+//     minimumRequiredCalls = 10
+//     failureRateThreshold = 50
+//     waitDurationInOpenState = "30s"
+//     permittedCallsInHalfOpenState = 5
+//   }
+//   "order.service" {
+//     slidingWindowSize = 50
+//     minimumRequiredCalls = 5
+//     failureRateThreshold = 30
+//     waitDurationInOpenState = "60s"
+//     failurePredicateName = "IgnoreBusinessErrors"
+//   }
+// }
+//
+// Custom predicate example:
+//
+// @Component
+// class IgnoreBusinessErrors : CircuitBreakerPredicate {
+//     override fun name(): String = "IgnoreBusinessErrors"
+//     override fun test(t: Throwable): Boolean {
+//         if (t is HttpClientResponseException) {
+//             return t.code() >= 500  // Server errors only
+//         }
+//         return true
+//     }
+// }

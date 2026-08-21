@@ -1,0 +1,17 @@
+# Kora Application Configuration (YAML format)
+# Kora Config: .kora-agent/kora-docs/mkdocs/docs/en/documentation/config.md
+
+# Application settings
+app:
+  name: ${APP_NAME}
+  version: ${APP_VERSION}
+  environment: ${APP_ENV}
+
+# Environment variables examples:
+# - Required: ${ENV_VAR_NAME}
+# - Optional: ${?ENV_VAR_NAME}
+# - With default: ${ENV_VAR_NAME:-default_value}
+
+# Logging configuration
+logging:
+  level: ${LOG_LEVEL:-INFO}

@@ -1,0 +1,20 @@
+-- =============================================================================
+-- Liquibase changeset (formatted SQL) — follow-up change: orders table
+-- Reference this file from the master changelog with:
+--   --include file:db/changelog/changes/002-orders-table.sql
+-- =============================================================================
+
+--liquibase formatted sql
+
+--changeset developer:2 labels:orders
+CREATE TABLE orders (
+    id         BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+    user_id    BIGINT NOT NULL REFERENCES users(id),
+    total      DECIMAL(10,2) NOT NULL,
+    status     VARCHAR(50) DEFAULT 'PENDING',
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+CREATE INDEX idx_orders_user_id ON orders(user_id);
+CREATE INDEX idx_orders_status ON orders(status);
+CREATE INDEX idx_orders_created_at ON orders(created_at DESC);
+--rollback DROP TABLE orders;

@@ -1,0 +1,71 @@
+// Kora REST API Service - build.gradle template
+// HTTP server with JSON and Micrometer metrics.
+// Metrics and readiness/liveness probes are served on the private HTTP port.
+
+plugins {
+    id "java"
+    id "application"
+    id "jacoco"
+}
+
+java {
+    toolchain {
+        languageVersion = JavaLanguageVersion.of(21)
+        vendor = JvmVendorSpec.ADOPTIUM
+    }
+}
+
+configurations {
+    koraBom
+    annotationProcessor.extendsFrom(koraBom)
+    compileOnly.extendsFrom(koraBom)
+    implementation.extendsFrom(koraBom)
+    api.extendsFrom(koraBom)
+    testImplementation.extendsFrom(koraBom)
+    testAnnotationProcessor.extendsFrom(koraBom)
+}
+
+dependencies {
+    // Kora BOM - owns every Kora module version
+    koraBom platform("ru.tinkoff.kora:kora-parent:$koraVersion")
+
+    // Annotation processors - required for compile-time code generation
+    annotationProcessor "ru.tinkoff.kora:annotation-processors"
+    testAnnotationProcessor "ru.tinkoff.kora:annotation-processors"
+
+    // Core modules
+    implementation "ru.tinkoff.kora:logging-logback"
+    implementation "ru.tinkoff.kora:config-hocon"
+    implementation "ru.tinkoff.kora:json-module"
+
+    // HTTP server (Undertow)
+    implementation "ru.tinkoff.kora:http-server-undertow"
+
+    // Telemetry - Micrometer metrics on the private HTTP port
+    implementation "ru.tinkoff.kora:micrometer-module"
+
+    // Testing
+    testImplementation "ru.tinkoff.kora:test-junit5"
+    testImplementation "org.skyscreamer:jsonassert:1.5.1"
+}
+
+application {
+    applicationName = "application"
+    mainClass = "com.example.app.Application"
+    applicationDefaultJvmArgs = ["-Dfile.encoding=UTF-8"]
+}
+
+compileJava {
+    options.encoding = "UTF-8"
+    options.incremental = true
+    options.fork = false
+}
+
+test {
+    useJUnitPlatform()
+    testLogging {
+        showStandardStreams = true
+        events("passed", "skipped", "failed")
+        exceptionFormat = "full"
+    }
+}

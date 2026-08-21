@@ -1,0 +1,92 @@
+package com.example.api
+
+import com.example.api.PetApiResponses.*
+import com.example.model.Pet
+import com.example.model.Message
+import ru.tinkoff.kora.common.Component
+
+/**
+ * Example delegate implementation for Pet API (Kotlin)
+ *
+ * Key points:
+ * - Annotated with @Component for DI discovery
+ * - Implements generated PetApiDelegate interface
+ * - Returns the generated sealed *ApiResponses records (Kora has no ResponseEntity)
+ * - Each HTTP status is a separate ApiResponse record
+ * - Delegate handles business logic, controller handles HTTP
+ *
+ * Generated from: openapi-spec.yaml.template
+ */
+@Component
+class PetApiDelegateImpl(
+    private val petService: PetService
+) : PetApiDelegate {
+
+    /**
+     * GET /pets/{petId}
+     *
+     * Response codes:
+     * - 200: Pet found
+     * - 400: Invalid petId format
+     * - 404: Pet not found
+     */
+    override fun getPetById(petId: Long): GetPetByIdApiResponse {
+        if (petId < 0) {
+            return GetPetByIdApiResponse.GetPetById400ApiResponse()
+        }
+
+        val pet = petService.findById(petId)
+            ?: return GetPetByIdApiResponse.GetPetById404ApiResponse()
+
+        return GetPetByIdApiResponse.GetPetById200ApiResponse(pet)
+    }
+
+    /**
+     * POST /pets
+     *
+     * Response codes:
+     * - 200: Pet created successfully
+     * - 400: Invalid request body (validation failed)
+     *
+     * Note: Validation happens automatically before this method is called
+     * when enableServerValidation: "true" is set.
+     */
+    override fun addPet(body: Pet): AddPetApiResponse {
+        val created = petService.create(body)
+        return AddPetApiResponse.AddPet200ApiResponse(
+            Message("Pet created successfully")
+        )
+    }
+
+    /**
+     * PUT /pets/{petId}
+     *
+     * Response codes:
+     * - 200: Pet updated successfully
+     * - 404: Pet not found
+     */
+    override fun updatePet(petId: Long, body: Pet): UpdatePetApiResponse {
+        if (!petService.exists(petId)) {
+            return UpdatePetApiResponse.UpdatePet404ApiResponse()
+        }
+
+        val updated = petService.update(petId, body)
+        return UpdatePetApiResponse.UpdatePet200ApiResponse(updated)
+    }
+
+    /**
+     * DELETE /pets/{petId}
+     *
+     * Response codes:
+     * - 204: Pet deleted successfully (no content)
+     * - 404: Pet not found
+     */
+    override fun deletePet(petId: Long): DeletePetApiResponse {
+        if (!petService.exists(petId)) {
+            return DeletePetApiResponse.DeletePet404ApiResponse()
+        }
+
+        petService.delete(petId)
+        return DeletePetApiResponse.DeletePet204ApiResponse()
+    }
+}

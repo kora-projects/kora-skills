@@ -1,0 +1,24 @@
+openapi {
+  management {
+    # OpenAPI spec files (relative to src/main/resources/)
+    file = ["openapi/api.yaml"]
+
+    # Enable the raw-spec endpoints (default: false, so set it explicitly)
+    enabled = true
+
+    # Base path for raw spec access (default: /openapi)
+    endpoint = "/openapi"
+
+    # Swagger UI configuration (recommended)
+    swaggerui {
+      enabled = true
+      endpoint = "/swagger-ui"
+    }
+
+    # RapiDoc configuration (not recommended for complex specs)
+    rapidoc {
+      enabled = false
+      endpoint = "/rapidoc"
+    }
+  }
+}

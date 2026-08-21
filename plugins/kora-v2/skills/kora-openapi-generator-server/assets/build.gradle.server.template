@@ -1,0 +1,137 @@
+import org.openapitools.generator.gradle.plugin.tasks.GenerateTask
+
+// The kora generator is provided by the openapi-generator artifact on the buildscript classpath.
+buildscript {
+    dependencies {
+        classpath("ru.tinkoff.kora:openapi-generator:$koraVersion")
+    }
+}
+
+plugins {
+    id "java"
+    id "application"
+    id "org.openapi.generator" version "7.14.0"  // DO NOT CHANGE - code compatibility
+}
+
+// Kora BOM configuration for version alignment
+configurations {
+    koraBom
+    annotationProcessor.extendsFrom(koraBom)
+    compileOnly.extendsFrom(koraBom)
+    implementation.extendsFrom(koraBom)
+}
+
+dependencies {
+    // Kora BOM - all Kora dependencies will be on the same version
+    koraBom platform("ru.tinkoff.kora:kora-parent:$koraVersion")
+
+    // Annotation processor for compile-time DI
+    annotationProcessor "ru.tinkoff.kora:annotation-processors"
+
+    // =========================================
+    // Core Dependencies
+    // =========================================
+
+    // HTTP Server (Undertow-based) - required for OpenAPI server
+    implementation "ru.tinkoff.kora:http-server-undertow"
+
+    // JSON serialization/deserialization
+    implementation "ru.tinkoff.kora:json-module"
+
+    // Configuration (HOCON format)
+    implementation "ru.tinkoff.kora:config-hocon"
+
+    // Logging (SLF4J + Logback)
+    implementation "ru.tinkoff.kora:logging-logback"
+
+    // =========================================
+    // Optional Dependencies
+    // =========================================
+
+    // Validation module - required for enableServerValidation: "true"
+    implementation "ru.tinkoff.kora:validation-module"
+
+    // OpenAPI Management - serves /swagger-ui and /openapi endpoints
+    implementation "ru.tinkoff.kora:openapi-management"
+}
+
+java {
+    sourceCompatibility = JavaVersion.VERSION_25
+    targetCompatibility = JavaVersion.VERSION_25
+}
+
+// =========================================
+// OpenAPI Server Generation Task
+// =========================================
+def openApiGenerateHttpServer = tasks.register("openApiGenerateHttpServer", GenerateTask) {
+    generatorName = "kora"
+    group = "openapi tools"
+
+    // Path to your OpenAPI specification file
+    inputSpec = "$projectDir/src/main/resources/openapi/my-api.yaml"
+
+    // Output directory for generated code
+    // IMPORTANT: Use unique directory per API for incremental builds
+    outputDir = "$buildDir/generated/my-api-server"
+
+    // Package configuration
+    def corePackage = "com.example.myapi"
+    apiPackage = "${corePackage}.api"        // Delegates, controllers
+    modelPackage = "${corePackage}.model"    // DTOs, schemas
+    invokerPackage = "${corePackage}.invoker" // Utility classes
+
+    // OpenAPI Normalizer - disable all to preserve discriminators
+    openapiNormalizer = [
+        DISABLE_ALL: "true"  // Critical: prevents SIMPLIFY_ONEOF_ANYOF from breaking oneOf
+    ]
+
+    // Generator options
+    configOptions = [
+        // Server mode: java-server (sync), java-async-server, java-reactive-server, kotlin-server, kotlin-suspend-server
+        mode: "java-server",
+
+        // Enable validation annotations from OpenAPI spec (@NotNull, @Size, etc.)
+        enableServerValidation: "true",
+
+        // Enable validation interceptor for automatic 400 response mapping
+        enableServerValidationInterceptor: "true",
+
+        // Path prefix for all controllers (optional)
+        // prefixPath: "/api/v1",
+
+        // Interceptors configuration (JSON format)
+        // interceptors: '{"*": [{"type": "com.example.LoggingInterceptor"}]}',
+
+        // Additional annotations on delegate methods
+        // additionalContractAnnotations: "@com.example.MyAnnotation",
+    ]
+}
+
+// Register generated sources with main source set
+sourceSets.main { java.srcDirs += openApiGenerateHttpServer.get().outputDir }
+
+// Ensure generation runs before compilation
+compileJava.dependsOn openApiGenerateHttpServer
+
+// =========================================
+// Application Configuration
+// =========================================
+application {
+    applicationName = "my-app"
+    mainClass = "com.example.Application"
+    applicationDefaultJvmArgs = ["-Dfile.encoding=UTF-8"]
+}
+
+compileJava {
+    options.encoding("UTF-8")
+    options.incremental(true)
+    options.fork = false
+}
+
+// =========================================
+// Useful Tasks
+// =========================================
+// ./gradlew openApiGenerateHttpServer  - Generate server code
+// ./gradlew clean classes              - Clean and build
+// ./gradlew run                        - Run application
+// ./gradlew test                       - Run tests

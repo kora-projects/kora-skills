@@ -1,0 +1,31 @@
+-- =============================================================================
+-- Liquibase master changelog (formatted SQL)
+-- Kora Framework
+-- File: src/main/resources/db/changelog/db.changelog-master.sql
+--
+-- Wire it in application.conf:
+--   liquibase {
+--     changelog = "db/changelog/db.changelog-master.sql"
+--   }
+--
+-- The first line below is mandatory for formatted-SQL changelogs.
+-- Each change is declared with --changeset <author>:<id> and may carry a
+-- --rollback directive (one per statement).
+-- =============================================================================
+
+--liquibase formatted sql
+
+--changeset developer:1
+CREATE TABLE users (
+    id         BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+    email      VARCHAR(255) NOT NULL UNIQUE,
+    first_name VARCHAR(100),
+    last_name  VARCHAR(100),
+    created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+CREATE INDEX idx_users_email ON users(email);
+CREATE INDEX idx_users_created_at ON users(created_at DESC);
+--rollback DROP INDEX idx_users_created_at;
+--rollback DROP INDEX idx_users_email;
+--rollback DROP TABLE users;

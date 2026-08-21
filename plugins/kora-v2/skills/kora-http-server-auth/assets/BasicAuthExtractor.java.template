@@ -1,0 +1,50 @@
+package ${package};
+
+import java.nio.charset.StandardCharsets;
+import java.util.Base64;
+import java.util.List;
+import java.util.concurrent.CompletableFuture;
+import ru.tinkoff.kora.common.Module;
+import ru.tinkoff.kora.common.Principal;
+import ru.tinkoff.kora.common.Tag;
+import ru.tinkoff.kora.http.server.common.auth.HttpServerPrincipalExtractor;
+
+/**
+ * HTTP Basic authentication wired to an OpenAPI security scheme.
+ *
+ * <p>The generated controller invokes this extractor before the delegate, passing the
+ * credential after the {@code Basic } prefix (base64 of {@code username:password}) as
+ * {@code value}. Throw {@link SecurityException} to reject; map it to 401/403 in an error
+ * {@code HttpServerInterceptor}.</p>
+ *
+ * <p>Replace {@code ApiSecurity} with the class generated from your OpenAPI contract.
+ * Always serve Basic auth over HTTPS: credentials are only base64-encoded, not
+ * encrypted.</p>
+ */
+@Module
+public interface BasicAuthExtractor {
+
+    /** Basic-auth principal. Must implement {@link Principal}. */
+    record BasicAuthPrincipal(String userId, List<String> roles) implements Principal {}
+
+    /** Validates credentials against your user store (DB, LDAP, ...). */
+    interface CredentialService {
+        boolean validate(String username, String password);
+        List<String> roles(String username);
+    }
+
+    @Tag(ApiSecurity.BasicAuth.class)
+    default HttpServerPrincipalExtractor<Principal> basicHttpServerPrincipalExtractor(CredentialService creds) {
+        return (request, value) -> {
+            if (value == null) {
+                throw new SecurityException("Missing credentials");
+            }
+            var decoded = new String(Base64.getDecoder().decode(value), StandardCharsets.UTF_8);
+            var parts = decoded.split(":", 2);
+            if (parts.length != 2 || !creds.validate(parts[0], parts[1])) {
+                throw new SecurityException("Invalid credentials");
+            }
+            return CompletableFuture.completedFuture(new BasicAuthPrincipal(parts[0], creds.roles(parts[0])));
+        };
+    }
+}

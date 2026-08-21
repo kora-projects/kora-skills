@@ -1,0 +1,119 @@
+{
+  "evals": [
+    {
+      "id": "kora-telemetry-logging-setup",
+      "skills": ["kora-telemetry-logging"],
+      "query": "Set up Logback logging in my Kora service. What dependency and application module do I need?",
+      "expected_behavior": [
+        "Adds implementation \"ru.tinkoff.kora:logging-logback\" with the version managed by the kora-parent BOM (no inline version)",
+        "Includes the mandatory annotation processor (annotationProcessor \"ru.tinkoff.kora:annotation-processors\", or ksp \"ru.tinkoff.kora:symbol-processors\" for Kotlin)",
+        "Declares @KoraApp interface Application extends LogbackModule",
+        "Bootstraps via KoraApplication.run(ApplicationGraph::graph)",
+        "Does not use foreign-framework annotations, a foreign application-bootstrap annotation, or field injection"
+      ],
+      "tags": ["setup", "basic"]
+    },
+    {
+      "id": "kora-telemetry-logging-levels-config",
+      "skills": ["kora-telemetry-logging"],
+      "query": "How do I set per-package log levels for my Kora app without editing logback.xml for each one?",
+      "expected_behavior": [
+        "Uses the logging.levels block in the Kora config (HOCON or YAML)",
+        "Shows keys like \"ROOT\", \"ru.tinkoff.kora\", and the application package mapped to levels",
+        "Explains that logback.xml only needs the root level and appenders; per-package levels come from config",
+        "Does not invent a foreign application.properties logging.level.* scheme"
+      ],
+      "tags": ["config", "basic"]
+    },
+    {
+      "id": "kora-telemetry-logging-async-appender",
+      "skills": ["kora-telemetry-logging"],
+      "query": "Wrap my console appender in a non-blocking async appender in logback.xml for a Kora service.",
+      "expected_behavior": [
+        "Uses ru.tinkoff.kora.logging.logback.KoraAsyncAppender, not Logback's stock AsyncAppender",
+        "Explains it extends AsyncAppenderBase and uses queueSize / discardingThreshold (not bufferSize / flushThreshold)",
+        "Notes KoraAsyncAppender propagates Kora structured MDC to the async record",
+        "References the inner appender via <appender-ref>",
+        "Does not invent a bufferSize or flushThreshold element"
+      ],
+      "tags": ["async", "advanced"]
+    },
+    {
+      "id": "kora-telemetry-logging-json-output",
+      "skills": ["kora-telemetry-logging"],
+      "query": "Emit JSON logs from my Kora service for our ELK stack.",
+      "expected_behavior": [
+        "Adds the third-party net.logstash.logback:logstash-logback-encoder dependency",
+        "Configures a ConsoleAppender with the LogstashEncoder, wrapped by KoraAsyncAppender",
+        "Notes that Kora's logging-logback ships ConsoleTextRecordEncoder for text output, so JSON requires the Logstash encoder",
+        "Optionally shows customFields and MDC key inclusion",
+        "Does not claim Kora has a built-in JSON encoder class"
+      ],
+      "tags": ["json", "advanced"]
+    },
+    {
+      "id": "kora-telemetry-logging-structured-argument",
+      "skills": ["kora-telemetry-logging"],
+      "query": "Attach a structured user object to a log line in my Kora service so it shows up as JSON fields.",
+      "expected_behavior": [
+        "Uses ru.tinkoff.kora.logging.common.arg.StructuredArgument with arg(...) or marker(...)",
+        "Prefers the typed overloads (String/Integer/Long/Boolean/Map<String,String>) or a writer lambda over the Jackson JsonGenerator",
+        "Distinguishes parameter (interpolated in the message) from marker (metadata only)",
+        "Uses parameterized logging (log.info(\"... {}\", arg)), never string concatenation",
+        "Does not call a non-existent two-argument gen.writeString(name, value)"
+      ],
+      "tags": ["structured", "advanced"]
+    },
+    {
+      "id": "kora-telemetry-logging-mdc-context",
+      "skills": ["kora-telemetry-logging"],
+      "query": "Add a traceId to every log line within a request scope in my Kora service.",
+      "expected_behavior": [
+        "Uses ru.tinkoff.kora.logging.common.MDC.put / remove for structured, async-safe context",
+        "Explains KoraAsyncAppender propagates Kora MDC, and that org.slf4j.MDC (with putCloseable) is the string-only alternative",
+        "Warns not to import both MDC classes in the same file",
+        "Removes/clears keys after use",
+        "Does not rely on a foreign RequestContextHolder or thread-local filter idiom"
+      ],
+      "tags": ["mdc", "advanced"]
+    },
+    {
+      "id": "kora-telemetry-logging-http-interceptor",
+      "skills": ["kora-telemetry-logging"],
+      "query": "Populate MDC from incoming HTTP request headers for all controllers in my Kora service.",
+      "expected_behavior": [
+        "Implements ru.tinkoff.kora.http.server.common.HttpServerInterceptor",
+        "Uses the real signature CompletionStage<HttpServerResponse> intercept(Context, HttpServerRequest, InterceptChain) and returns chain.process(context, request)",
+        "Reads a header via request.headers().getFirst(name)",
+        "Applies to all controllers with @Tag(HttpServerModule.class) and registers it as a @Component",
+        "Does not use a fabricated HttpServerCall, call.proceed, or request.header(...).orElse(...)"
+      ],
+      "tags": ["http", "interceptor", "advanced"]
+    },
+    {
+      "id": "kora-telemetry-logging-aspect-log-mdc",
+      "skills": ["kora-telemetry-logging"],
+      "query": "Log method arguments and result automatically on a service method, and add an MDC key, without writing log statements.",
+      "expected_behavior": [
+        "Uses the @Log aspect (or @Log.in / @Log.out) from ru.tinkoff.kora.logging.common.annotation",
+        "Uses @Mdc to add MDC keys from parameters or generated ${...} values, and @Log.off to exclude secrets",
+        "Notes the aspects come from logging-common and require the Kora annotation processor",
+        "Notes the class must be non-final (Java) or open (Kotlin) for aspects to apply",
+        "Does not use foreign-framework AOP, @Around advice, or AspectJ"
+      ],
+      "tags": ["aspect", "advanced"]
+    },
+    {
+      "id": "kora-telemetry-logging-enable-module-telemetry",
+      "skills": ["kora-telemetry-logging"],
+      "query": "My Kora HTTP server and database produce no telemetry log lines. How do I turn them on?",
+      "expected_behavior": [
+        "Explains module telemetry logging is disabled by default and is enabled per module",
+        "Sets httpServer.telemetry.logging.enabled = true and db.telemetry.logging.enabled = true",
+        "Notes clients are configured per named client (e.g. grpcClient.SomeService.telemetry.logging.enabled)",
+        "Does not invent a per-module telemetry.logging.level key"
+      ],
+      "tags": ["config", "telemetry", "basic"]
+    }
+  ]
+}

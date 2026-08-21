@@ -1,0 +1,88 @@
+{
+  "evals": [
+    {
+      "id": "kora-aop-scheduling-jdk-fixed-rate",
+      "skills": ["kora-aop-scheduling-jdk"],
+      "query": "In my Kora service, add a job that logs a heartbeat every 30 seconds with an initial delay of 10 seconds, using the built-in JVM scheduler.",
+      "expected_behavior": [
+        "Annotates a method with @ScheduleAtFixedRate(initialDelay = 10, period = 30, unit = ChronoUnit.SECONDS) from ru.tinkoff.kora.scheduling.jdk.annotation",
+        "Marks the enclosing class with @Component and keeps it non-final (Java) or open (Kotlin) so the aspect can be generated",
+        "Adds the scheduling-jdk artifact and extends SchedulingJdkModule on the @KoraApp interface",
+        "Does not use a non-Kora @Scheduled annotation, field injection, or an external scheduler library"
+      ],
+      "tags": ["scheduling", "basic"]
+    },
+    {
+      "id": "kora-aop-scheduling-jdk-fixed-delay-config",
+      "skills": ["kora-aop-scheduling-jdk"],
+      "query": "I need a data sync task that waits 2 minutes after each run finishes before running again, and I want the timing in config rather than hardcoded.",
+      "expected_behavior": [
+        "Uses @ScheduleWithFixedDelay so executions never overlap (gap measured after completion)",
+        "Sets the config attribute (e.g. @ScheduleWithFixedDelay(config = \"scheduling.jobs.sync\")) and defines initialDelay and delay under that HOCON path",
+        "Notes that config values override the annotation attributes",
+        "Does not reach for Quartz cron for a simple fixed-delay requirement"
+      ],
+      "tags": ["scheduling", "config"]
+    },
+    {
+      "id": "kora-aop-scheduling-jdk-once-warmup",
+      "skills": ["kora-aop-scheduling-jdk"],
+      "query": "Run a cache warm-up exactly once, 5 minutes after the Kora application starts.",
+      "expected_behavior": [
+        "Uses @ScheduleOnce(delay = 5, unit = ChronoUnit.MINUTES) for a single delayed execution",
+        "Places the method on an @Component bean that is non-final / open",
+        "Confirms SchedulingJdkModule is plugged into the @KoraApp interface",
+        "Does not introduce a separate thread or Timer for a one-shot task"
+      ],
+      "tags": ["scheduling", "basic"]
+    },
+    {
+      "id": "kora-aop-scheduling-jdk-graceful-shutdown",
+      "skills": ["kora-aop-scheduling-jdk"],
+      "query": "My batch import job runs every few minutes and processes a long list, but it doesn't stop cleanly when the service is shutting down. How do I fix that in Kora?",
+      "expected_behavior": [
+        "Checks Thread.currentThread().isInterrupted() inside the processing loop and returns to exit early",
+        "Explains scheduling.shutdownWait as the grace period for in-flight jobs on graceful shutdown",
+        "Prefers @ScheduleWithFixedDelay (or interrupt checks) to avoid overlapping executions for long jobs",
+        "Relies on Kora graceful shutdown plus interrupt checks, not on foreign lifecycle callbacks or @PreDestroy semantics"
+      ],
+      "tags": ["scheduling", "shutdown", "advanced"]
+    },
+    {
+      "id": "kora-aop-scheduling-jdk-overlap-choice",
+      "skills": ["kora-aop-scheduling-jdk"],
+      "query": "A periodic task sometimes takes longer than its interval and I'm seeing two copies run at once. Which Kora scheduling annotation should I use?",
+      "expected_behavior": [
+        "Identifies @ScheduleAtFixedRate as allowing overlap when execution exceeds the period",
+        "Recommends switching to @ScheduleWithFixedDelay, which never overlaps because it waits after completion",
+        "Mentions the threads setting under the scheduling config controls the ScheduledExecutorService pool size",
+        "Does not suggest manual synchronized blocks or a foreign TaskScheduler abstraction"
+      ],
+      "tags": ["scheduling", "concurrency", "advanced"]
+    },
+    {
+      "id": "kora-aop-scheduling-jdk-vs-quartz",
+      "skills": ["kora-aop-scheduling-jdk"],
+      "query": "I want jobs that run on a cron schedule like '0 0 3 * * ?' and survive restarts. Can I do that with the JDK scheduler in Kora?",
+      "expected_behavior": [
+        "Explains that scheduling-jdk has no cron or persistence and only supports fixed-rate, fixed-delay, and once",
+        "Directs to the scheduling-quartz module / QuartzModule and @ScheduleWithCron for cron and persistent or clustered jobs",
+        "Keeps using @ScheduleAtFixedRate / @ScheduleWithFixedDelay only for fixed-interval needs",
+        "Does not invent a cron attribute on the JDK annotations"
+      ],
+      "tags": ["scheduling", "decision", "advanced"]
+    },
+    {
+      "id": "kora-aop-scheduling-jdk-dependencies",
+      "skills": ["kora-aop-scheduling-jdk"],
+      "query": "What Gradle dependencies and processors do I need to make @ScheduleAtFixedRate work in a Java Kora project?",
+      "expected_behavior": [
+        "Adds the kora-parent BOM (koraBom platform) and the ru.tinkoff.kora:scheduling-jdk artifact without an explicit version",
+        "Includes annotationProcessor \"ru.tinkoff.kora:annotation-processors\" (or ksp \"ru.tinkoff.kora:symbol-processors\" for Kotlin)",
+        "Extends SchedulingJdkModule on the @KoraApp application interface",
+        "Does not pin individual ru.tinkoff.kora artifact versions or omit the annotation processor"
+      ],
+      "tags": ["scheduling", "setup", "basic"]
+    }
+  ]
+}

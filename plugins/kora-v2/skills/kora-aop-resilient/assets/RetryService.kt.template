@@ -1,0 +1,61 @@
+// Simple retry pattern for transient failures.
+// Replace `com.example.app.service` with your package.
+// Class must be `open` for aspects to work.
+
+package com.example.app.service
+
+import ru.tinkoff.kora.common.Component
+import ru.tinkoff.kora.resilient.retry.annotation.Retry
+import java.util.Optional
+
+@Component
+open class UserService(                                                   // open, not final
+    private val repository: UserRepository,
+    private val externalApi: ExternalApi
+) {
+
+    @Retry("user.read")
+    open fun findById(id: String): Optional<User> {
+        return repository.findById(id)
+    }
+
+    // With exponential backoff:
+    // delay = 100ms, delayStep = 200ms → waits: 100ms, 300ms, 500ms, 700ms
+    @Retry("user.external")
+    open fun fetchExternal(id: String): Optional<User> {
+        return externalApi.fetchUser(id)
+    }
+}
+
+// Repository placeholder
+@Component
+open class UserRepository {
+    open fun findById(id: String): Optional<User> = Optional.empty()
+}
+
+data class User(val id: String, val name: String)
+
+interface ExternalApi {
+    fun fetchUser(id: String): Optional<User>
+}
+
+@Component
+open class ExternalApiClient : ExternalApi {
+    override fun fetchUser(id: String): Optional<User> = Optional.empty()
+}
+
+// Config (HOCON):
+//
+// resilient.retry {
+//   "user.read" {
+//     delay = "100ms"
+//     attempts = 3
+//     delayStep = "100ms"
+//   }
+//   "user.external" {
+//     delay = "100ms"
+//     attempts = 4
+//     delayStep = "200ms"
+//     failurePredicateName = "TransientErrorsOnly"
+//   }
+// }

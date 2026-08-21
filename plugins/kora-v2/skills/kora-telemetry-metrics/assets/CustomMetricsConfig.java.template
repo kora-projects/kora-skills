@@ -1,0 +1,33 @@
+package ${package};
+
+import ru.tinkoff.kora.common.Module;
+import ru.tinkoff.kora.micrometer.module.PrometheusMeterRegistryInitializer;
+
+/**
+ * Metrics customization module.
+ *
+ * A PrometheusMeterRegistryInitializer is a
+ * Function&lt;PrometheusMeterRegistry, PrometheusMeterRegistry&gt;: it mutates the
+ * registry configuration and MUST return the registry. It is applied exactly
+ * once when the application graph is initialized.
+ *
+ * Declare it as a `default` method of a `@Module` — Kora picks it up as a
+ * component automatically; no extra annotation is required.
+ */
+@Module
+public interface CustomMetricsConfig {
+
+    /**
+     * Adds common tags attached to every metric.
+     * Keep these tags bounded — they multiply onto all time series.
+     */
+    default PrometheusMeterRegistryInitializer commonTagsInit() {
+        return registry -> {
+            registry.config().commonTags(
+                    "service", "my-service",
+                    "environment", "production",
+                    "version", "1.0.0");
+            return registry;
+        };
+    }
+}

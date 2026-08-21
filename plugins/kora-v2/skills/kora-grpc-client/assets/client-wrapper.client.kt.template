@@ -1,0 +1,25 @@
+package ${package}
+
+import ${proto_package}.${service_name}Grpc
+import ${proto_package}.${request_class}
+import ${proto_package}.${response_class}
+import ru.tinkoff.kora.common.Component
+
+/**
+ * gRPC client wrapper for ${service_name}.
+ * Injects the generated stub directly by type (no @Tag) and provides type-safe methods.
+ */
+@Component
+class ${service_name}Client(
+    private val stub: ${service_name}Grpc.${stub_type}
+) {
+
+    /**
+     * Call ${method_name} RPC.
+     * @param request the request message
+     * @return the response message
+     */
+    fun ${method_name}(request: ${request_class}): ${response_class} {
+        return stub.${method_name}(request)
+    }
+}

@@ -1,0 +1,115 @@
+package ${package};
+
+import io.micrometer.core.instrument.Counter;
+import io.micrometer.core.instrument.Timer;
+import io.micrometer.core.instrument.MeterRegistry;
+import ru.tinkoff.kora.common.Component;
+
+import java.time.Duration;
+import java.util.Locale;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.Callable;
+
+/**
+ * High-throughput metrics service with cached metric instances.
+ *
+ * Use this pattern when:
+ * - Operations have >1000 calls/second
+ * - Metrics have multiple tag combinations (bounded cardinality)
+ * - You need to avoid Micrometer internal ConcurrentHashMap contention
+ *
+ * Key patterns:
+ * - Immutable record class as Map key
+ * - computeIfAbsent for atomic create-or-get
+ * - Separate maps for Timer and Counter types
+ * - Bounded tag values only
+ */
+@Component
+public final class CachedMetricsService {
+
+    /**
+     * Immutable record for Map key.
+     * Tag values MUST be bounded (finite set).
+     */
+    record MetricKey(String operation, String status) {}
+
+    private final ConcurrentHashMap<MetricKey, Timer> timers = new ConcurrentHashMap<>();
+    private final ConcurrentHashMap<MetricKey, Counter> counters = new ConcurrentHashMap<>();
+    private final MeterRegistry registry;
+
+    public CachedMetricsService(MeterRegistry registry) {
+        this.registry = registry;
+    }
+
+    /**
+     * Records operation duration with cached Timer.
+     */
+    public <T> T recordOperation(String operation, Callable<T> action) {
+        try {
+            return recordOperation(operation, true, action);
+        } catch (Exception e) {
+            recordOperation(operation, false, () -> { throw e; });
+            throw new RuntimeException("Operation failed", e);
+        }
+    }
+
+    /**
+     * Records operation with explicit success/failure status.
+     */
+    public <T> T recordOperation(String operation, boolean success, Callable<T> action) {
+        var key = new MetricKey(operation, success ? "success" : "failed");
+
+        var timer = timers.computeIfAbsent(key, k ->
+            Timer.builder("custom.operation.duration")
+                .description("Duration of custom operations")
+                .tag("operation", k.operation())
+                .tag("status", k.status())
+                .serviceLevelObjectives(
+                    Duration.ofMillis(50),
+                    Duration.ofMillis(100),
+                    Duration.ofMillis(250),
+                    Duration.ofMillis(500),
+                    Duration.ofSeconds(1)
+                )
+                .register(registry)
+        );
+
+        try {
+            return timer.recordCallable(action);
+        } catch (Exception e) {
+            throw new RuntimeException("Failed to record operation", e);
+        }
+    }
+
+    /**
+     * Records operation duration in nanoseconds.
+     */
+    public void recordOperationDuration(String operation, long durationNanos, boolean success) {
+        var key = new MetricKey(operation, success ? "success" : "failed");
+
+        var timer = timers.computeIfAbsent(key, k ->
+            Timer.builder("custom.operation.duration")
+                .tag("operation", k.operation())
+                .tag("status", k.status())
+                .register(registry)
+        );
+
+        timer.record(durationNanos, java.util.concurrent.TimeUnit.NANOSECONDS);
+    }
+
+    /**
+     * Increments counter with cached Counter instance.
+     */
+    public void incrementCounter(String operation, String type) {
+        var key = new MetricKey(operation, type);
+
+        var counter = counters.computeIfAbsent(key, k ->
+            Counter.builder("custom.operation.count")
+                .tag("operation", k.operation())
+                .tag("type", k.type())
+                .register(registry)
+        );
+
+        counter.increment();
+    }
+}

@@ -1,0 +1,68 @@
+package ${packagePath};
+
+import ru.tinkoff.kora.application.graph.Lifecycle;
+import ru.tinkoff.kora.common.Component;
+import ru.tinkoff.kora.common.annotation.Root;
+
+/**
+ * Self-starting component with lifecycle management.
+ *
+ * Usage:
+ * - HTTP/GRPC servers that must start listening
+ * - Kafka consumers that must begin polling
+ * - Cache warmers that pre-load data
+ * - Health check registrars
+ * - Background schedulers
+ *
+ * IMPORTANT: Without @Root, this component would never be instantiated
+ * unless another component depends on it.
+ */
+@Root
+@Component
+public final class ${ComponentName} implements Lifecycle {
+
+    // TODO: Add dependencies as needed
+    // private final SomeService service;
+
+    public ${ComponentName}(/* SomeService service */) {
+        // this.service = service;
+        System.out.println("${ComponentName} created");
+    }
+
+    /**
+     * Called after component creation, before application starts serving requests.
+     * Use for:
+     * - Initializing resources (connections, pools)
+     * - Starting background tasks (schedulers, consumers)
+     * - Warming caches
+     * - Health check registration
+     */
+    @Override
+    public void init() throws Exception {
+        System.out.println("${ComponentName} initializing...");
+        // TODO: Add initialization logic
+        // - Start server/consumer/scheduler
+        // - Warm up caches
+        // - Register health checks
+        System.out.println("${ComponentName} initialized");
+    }
+
+    /**
+     * Called during application shutdown (SIGTERM).
+     * Use for:
+     * - Stopping background tasks gracefully
+     * - Closing connections/pools
+     * - Releasing resources
+     *
+     * Note: Release order is reverse of creation order.
+     */
+    @Override
+    public void release() throws Exception {
+        System.out.println("${ComponentName} releasing...");
+        // TODO: Add cleanup logic
+        // - Stop server/consumer/scheduler
+        // - Close connections
+        // - Flush/release resources
+        System.out.println("${ComponentName} released");
+    }
+}

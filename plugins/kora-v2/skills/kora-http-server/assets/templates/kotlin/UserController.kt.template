@@ -1,0 +1,79 @@
+package com.example.controller
+
+import java.time.Instant
+import ru.tinkoff.kora.common.Component
+import ru.tinkoff.kora.http.common.HttpMethod
+import ru.tinkoff.kora.http.common.HttpResponseEntity
+import ru.tinkoff.kora.http.common.annotation.HttpRoute
+import ru.tinkoff.kora.http.common.annotation.Path
+import ru.tinkoff.kora.http.common.annotation.Query
+import ru.tinkoff.kora.http.common.body.HttpBody
+import ru.tinkoff.kora.http.common.header.HttpHeaders
+import ru.tinkoff.kora.http.server.common.HttpServerResponse
+import ru.tinkoff.kora.http.server.common.HttpServerResponseException
+import ru.tinkoff.kora.http.server.common.annotation.HttpController
+import ru.tinkoff.kora.json.common.annotation.Json
+
+/**
+ * CRUD controller template (Kotlin).
+ *
+ * Demonstrates:
+ * - @HttpController (no base path; the prefix lives on each @HttpRoute path)
+ * - @HttpRoute with HttpMethod + path
+ * - @Path / @Query parameter binding (nullable type for optional)
+ * - @Json for request and response bodies
+ * - HttpResponseEntity / HttpServerResponse for status and headers
+ * - HttpServerResponseException for error short-circuit
+ */
+@Component
+@HttpController
+class UserController(private val userService: UserService) {
+
+    @HttpRoute(method = HttpMethod.GET, path = "/users/{userId}")
+    @Json
+    fun getUser(@Path userId: String): UserResponse =
+        userService.findById(userId)
+            ?: throw HttpServerResponseException.of(404, "User not found: $userId")
+
+    @HttpRoute(method = HttpMethod.GET, path = "/users")
+    @Json
+    fun listUsers(@Query("page") page: Int?, @Query("size") size: Int?): List<UserResponse> =
+        userService.findAll(page ?: 0, size ?: 10)
+
+    @HttpRoute(method = HttpMethod.POST, path = "/users")
+    @Json
+    fun createUser(@Json request: UserRequest): HttpResponseEntity<UserResponse> {
+        val created = userService.create(request)
+        return HttpResponseEntity.of(201, HttpHeaders.of("Location", "/users/${created.id}"), created)
+    }
+
+    @HttpRoute(method = HttpMethod.PUT, path = "/users/{userId}")
+    @Json
+    fun updateUser(@Path userId: String, @Json request: UserRequest): HttpResponseEntity<UserResponse> =
+        HttpResponseEntity.of(
+            200,
+            HttpHeaders.of("X-Updated-At", Instant.now().toString()),
+            userService.update(userId, request)
+                ?: throw HttpServerResponseException.of(404, "User not found: $userId")
+        )
+
+    @HttpRoute(method = HttpMethod.DELETE, path = "/users/{userId}")
+    fun deleteUser(@Path userId: String): HttpServerResponse {
+        userService.delete(userId)
+        return HttpServerResponse.of(204, HttpBody.empty())
+    }
+
+    @Json
+    data class UserRequest(val email: String, val name: String)
+
+    @Json
+    data class UserResponse(val id: String, val email: String, val name: String)
+
+    interface UserService {
+        fun findById(id: String): UserResponse?
+        fun findAll(page: Int, size: Int): List<UserResponse>
+        fun create(request: UserRequest): UserResponse
+        fun update(id: String, request: UserRequest): UserResponse?
+        fun delete(id: String)
+    }
+}

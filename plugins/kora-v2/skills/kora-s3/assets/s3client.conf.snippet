@@ -1,0 +1,47 @@
+# Drop into application.conf. Externalize URL and credentials via env vars.
+# Use the AWS or MinIO block depending on which module you plugged into @KoraApp.
+
+s3client {
+
+  # ===== Common (both AWS and MinIO read these) =====
+  url       = ${S3_URL}                                # e.g. https://s3.amazonaws.com or http://minio.local:9000
+  accessKey = ${S3_ACCESS_KEY}
+  secretKey = ${S3_SECRET_KEY}
+  region    = ${?S3_REGION:aws-global}                 # required for AWS, optional for MinIO
+
+  telemetry {
+    logging.enabled = ${?S3_LOGGING:false}
+    metrics.enabled = true
+    tracing.enabled = true
+  }
+
+  # ===== AWS-specific (uncomment when AwsS3ClientModule is plugged in) =====
+  aws {
+    addressStyle              = ${?S3_ADDRESS_STYLE:PATH}      # PATH (default) or VIRTUAL_HOSTED
+    requestTimeout            = "45s"
+    checksumValidationEnabled = false
+    chunkedEncodingEnabled    = true
+    upload {
+      bufferSize = "32MiB"
+      partSize   = "8MiB"                                       # min 5MiB per S3 spec
+    }
+  }
+
+  # ===== MinIO-specific (uncomment when MinioS3ClientModule is plugged in) =====
+  # minio {
+  #   addressStyle   = "PATH"
+  #   requestTimeout = "45s"
+  #   upload {
+  #     partSize = "8MiB"
+  #   }
+  # }
+
+  # ===== Per declarative-client (matches @S3.Client("s3client.documents")) =====
+  documents {
+    bucket = ${?DOCUMENTS_BUCKET:documents}
+  }
+
+  thumbnails {
+    bucket = ${?THUMBNAILS_BUCKET:thumbnails}
+  }
+}

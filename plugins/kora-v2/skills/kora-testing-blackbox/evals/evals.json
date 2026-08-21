@@ -1,0 +1,106 @@
+{
+  "evals": [
+    {
+      "id": "kora-testing-blackbox-appcontainer-basic",
+      "skills": ["kora-testing-blackbox"],
+      "query": "Write a black-box end-to-end test for my Kora service that runs the packaged Docker image and checks POST /users returns 201 and GET /users/999999 returns 404.",
+      "expected_behavior": [
+        "Defines an AppContainer extending GenericContainer<AppContainer> built from the application Dockerfile via ImageFromDockerfile",
+        "Exposes ports 8080 and 8085 and gates startup with Wait.forHttp(\"/system/readiness\").forPort(8085).forStatusCode(200)",
+        "Annotates the test class with @Testcontainers and the container fields with @Container",
+        "Drives the application through java.net.http.HttpClient against the public port URI and asserts status codes 201 and 404",
+        "Does not use @KoraAppTest, @TestComponent, field injection, or in-process graph injection for the black-box test"
+      ],
+      "tags": ["blackbox", "basic"]
+    },
+    {
+      "id": "kora-testing-blackbox-postgres-network",
+      "skills": ["kora-testing-blackbox"],
+      "query": "My Kora app needs a real PostgreSQL for its black-box test. How do I start Postgres with Testcontainers and point the app at it?",
+      "expected_behavior": [
+        "Declares a PostgreSQLContainer on Network.SHARED with withNetworkAliases(\"postgres\")",
+        "Uses AppContainer.dependsOn(POSTGRES) so the database starts first",
+        "Injects connection settings with withEnv such as POSTGRES_JDBC_URL = jdbc:postgresql://postgres:5432/<db>, POSTGRES_USER, POSTGRES_PASS",
+        "Notes that the env var names must match the application's ${VAR} substitution keys in its @ConfigSource config",
+        "Does not create a fresh Network.newNetwork() per test and does not use field injection"
+      ],
+      "tags": ["database", "basic"]
+    },
+    {
+      "id": "kora-testing-blackbox-gradle-dockerfile",
+      "skills": ["kora-testing-blackbox"],
+      "query": "Set up the Gradle build and Dockerfile so my black-box module can package and test the Kora application.",
+      "expected_behavior": [
+        "Pins Kora artifacts through the ru.tinkoff.kora:kora-parent BOM and includes the annotation processor (annotationProcessor \"ru.tinkoff.kora:annotation-processors\", or ksp \"ru.tinkoff.kora:symbol-processors\" for Kotlin)",
+        "Adds testImplementation for ru.tinkoff.kora:test-junit5 and org.testcontainers:junit-jupiter / testcontainers / postgresql",
+        "Configures test { dependsOn \":app:distTar\" } so the distribution archive is built before tests",
+        "Writes a Dockerfile based on eclipse-temurin JRE that unpacks build/distributions/application.tar and EXPOSEs 8080 and 8085",
+        "Does not version individual ru.tinkoff.kora:* dependencies and does not introduce a non-Kora application packaging plugin"
+      ],
+      "tags": ["build", "docker", "basic"]
+    },
+    {
+      "id": "kora-testing-blackbox-restassured",
+      "skills": ["kora-testing-blackbox"],
+      "query": "I prefer RestAssured for HTTP assertions. Show a black-box test for a Product API CRUD flow.",
+      "expected_behavior": [
+        "Adds the io.rest-assured:rest-assured test dependency and sets RestAssured.baseURI from AppContainer.getURI()",
+        "Uses the given().when().then() DSL with statusCode() and body() matchers for create/read/update/delete",
+        "Reuses the AppContainer (GenericContainer subclass) waiting on /system/readiness on port 8085",
+        "Asserts realistic CRUD status codes (201 create, 200 read, 204 delete, 404 missing)",
+        "Does not use an in-process mock web layer or @KoraAppTest in place of the running container"
+      ],
+      "tags": ["restassured", "advanced"]
+    },
+    {
+      "id": "kora-testing-blackbox-kafka-async",
+      "skills": ["kora-testing-blackbox"],
+      "query": "My Kora service consumes a Kafka topic and updates an order status. Write a black-box test that publishes an event and verifies processing via HTTP.",
+      "expected_behavior": [
+        "Starts a KafkaContainer on Network.SHARED with a network alias and injects withEnv(\"KAFKA_BOOTSTRAP_SERVERS\", \"kafka:9092\") into the AppContainer",
+        "Publishes a record with a plain org.apache.kafka.clients.producer.KafkaProducer using getBootstrapServers() for the host-mapped port",
+        "Uses Awaitility await().atMost(...).untilAsserted(...) to poll the HTTP API until the order status is PROCESSED",
+        "Verifies the side effect only through the public HTTP endpoint, not by reaching into the consumer",
+        "Does not modify the Kora graph or add test components into the running application"
+      ],
+      "tags": ["kafka", "async", "advanced"]
+    },
+    {
+      "id": "kora-testing-blackbox-error-scenarios",
+      "skills": ["kora-testing-blackbox"],
+      "query": "Add black-box tests for error handling: invalid request body, missing resource, and duplicate email.",
+      "expected_behavior": [
+        "Asserts 400 for an invalid/empty JSON body (exercising @Json deserialization and @Valid validation through the real boundary)",
+        "Asserts 404 for a GET on a non-existent id",
+        "Asserts 409 for creating a resource with a duplicate unique value",
+        "Sends requests through HttpClient or RestAssured against the running AppContainer",
+        "Does not assert by calling controller or service methods directly and only checks responses at the HTTP boundary"
+      ],
+      "tags": ["errors", "advanced"]
+    },
+    {
+      "id": "kora-testing-blackbox-ci-app-image",
+      "skills": ["kora-testing-blackbox"],
+      "query": "In CI I build and push the Docker image separately. How do I make the black-box test use a pre-built image instead of building the Dockerfile each run?",
+      "expected_behavior": [
+        "Branches the AppContainer construction on System.getenv(\"APP_IMAGE\"): when set, builds from DockerImageName.parse(appImage); otherwise from ImageFromDockerfile with the application Dockerfile",
+        "Keeps the same exposed ports and Wait.forHttp(\"/system/readiness\") readiness gating regardless of image source",
+        "Describes the CI flow: build image, push to registry, export APP_IMAGE, run ./gradlew test",
+        "Does not hardcode container ports (uses getMappedPort) and does not depend on a local JDK at test time when APP_IMAGE is set"
+      ],
+      "tags": ["ci", "docker", "advanced"]
+    },
+    {
+      "id": "kora-testing-blackbox-vs-component",
+      "skills": ["kora-testing-blackbox"],
+      "query": "Should I write a black-box test or a component test to verify my UserService business logic in isolation?",
+      "expected_behavior": [
+        "Recommends a component test with @KoraAppTest and @TestComponent (the kora-testing-junit skill) for isolated business logic, not a black-box test",
+        "Explains black-box tests run the packaged Docker image through HTTP and are best for end-to-end contract validation",
+        "Notes that black-box does not mock collaborators while @KoraAppTest supports @TestComponent mocks with Mockito/MockK and KoraConfigModification",
+        "Does not suggest mixing @KoraAppTest with GenericContainer in one test, and uses @TestComponent (not field injection) for mocks"
+      ],
+      "tags": ["decision", "basic"]
+    }
+  ]
+}

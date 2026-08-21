@@ -1,0 +1,187 @@
+package ${package}
+
+import org.flywaydb.core.Flyway
+import org.json.JSONObject
+import org.junit.jupiter.api.AfterAll
+import org.junit.jupiter.api.BeforeAll
+import org.junit.jupiter.api.Test
+import org.testcontainers.containers.GenericContainer
+import org.testcontainers.containers.Network
+import org.testcontainers.containers.PostgreSQLContainer
+import org.testcontainers.containers.wait.strategy.Wait
+import org.testcontainers.images.builder.ImageFromDockerfile
+import org.testcontainers.junit.jupiter.Container
+import org.testcontainers.junit.jupiter.Testcontainers
+import org.testcontainers.utility.DockerImageName
+import java.net.http.HttpClient
+import java.net.http.HttpRequest
+import java.net.http.HttpResponse
+import java.nio.file.Paths
+import java.sql.DriverManager
+import java.time.Duration
+
+/**
+ * Black-box test template for ${testName}.
+ *
+ * Uses standard Testcontainers for PostgreSQL and Docker container.
+ */
+@Testcontainers
+class ${testName} {
+
+    companion object {
+        // Shared network for containers
+        val network = Network.newNetwork()
+
+        // PostgreSQL container with Flyway migrations
+        @JvmField
+        @Container
+        val postgres = PostgreSQLContainer("postgres:15-alpine")
+            .withNetwork(network)
+            .withNetworkAliases("db")
+            .withDatabaseName("testdb")
+            .withUsername("test")
+            .withPassword("test")
+            .withInitScript("db/migration/V1__init.sql")
+
+        // Application container using GenericContainer directly
+        val container = createAppContainer()
+            .withNetwork(network)
+
+        // Helper method to create application container
+        private fun createAppContainer(): GenericContainer<*> {
+            val appImage = System.getenv("APP_IMAGE")
+            val c = if (appImage != null && appImage.isNotBlank()) {
+                GenericContainer(DockerImageName.parse(appImage))
+            } else {
+                GenericContainer(ImageFromDockerfile("myapp:test")
+                    .withDockerfile(Paths.get("Dockerfile").toAbsolutePath()))
+            }
+
+            return c.withExposedPorts(8080, 8085)
+                .withStartupTimeout(Duration.ofSeconds(120))
+                .waitingFor(Wait.forHttp("/system/readiness").forPort(8085).forStatusCode(200))
+        }
+
+        private fun getURI(container: GenericContainer<*>): java.net.URI {
+            return java.net.URI.create("http://" + container.host + ":" + container.getMappedPort(8080))
+        }
+
+        @JvmStatic
+        @BeforeAll
+        fun beforeAll() {
+            // Migrate database
+            Flyway.configure()
+                .dataSource(
+                    postgres.jdbcUrl,
+                    postgres.username,
+                    postgres.password
+                )
+                .locations("db/migration")
+                .load()
+                .migrate()
+
+            // Configure and start application container
+            container.withEnv(
+                mapOf(
+                    "DB_URL" to postgres.jdbcUrl,
+                    "DB_USER" to postgres.username,
+                    "DB_PASS" to postgres.password
+                )
+            )
+            container.start()
+        }
+
+        @JvmStatic
+        @AfterAll
+        fun afterAll() {
+            container.stop()
+        }
+    }
+
+    private val httpClient = HttpClient.newHttpClient()
+
+    @Test
+    fun `should create resource`() {
+        // given
+        val requestBody = JSONObject().put("name", "test-resource")
+
+        // when
+        val request = HttpRequest.newBuilder()
+            .POST(HttpRequest.BodyPublishers.ofString(requestBody.toString()))
+            .uri(getURI(container).resolve("/api/resources"))
+            .header("Content-Type", "application/json")
+            .timeout(Duration.ofSeconds(5))
+            .build()
+
+        val response = httpClient.send(request, HttpResponse.BodyHandlers.ofString())
+
+        // then
+        org.junit.jupiter.api.Assertions.assertEquals(200, response.statusCode())
+        val responseBody = JSONObject(response.body())
+        org.junit.jupiter.api.Assertions.assertTrue(responseBody.has("id"))
+        org.junit.jupiter.api.Assertions.assertEquals("test-resource", responseBody.getString("name"))
+    }
+
+    @Test
+    fun `should get resource`() {
+        // given - create resource first
+        val createRequest = HttpRequest.newBuilder()
+            .POST(HttpRequest.BodyPublishers.ofString("""{"name":"test"}"""))
+            .uri(getURI(container).resolve("/api/resources"))
+            .header("Content-Type", "application/json")
+            .timeout(Duration.ofSeconds(5))
+            .build()
+        val createResponse = httpClient.send(createRequest, HttpResponse.BodyHandlers.ofString())
+        val resourceId = JSONObject(createResponse.body()).getString("id")
+
+        // when
+        val getRequest = HttpRequest.newBuilder()
+            .GET()
+            .uri(getURI(container).resolve("/api/resources/$resourceId"))
+            .timeout(Duration.ofSeconds(5))
+            .build()
+
+        val getResponse = httpClient.send(getRequest, HttpResponse.BodyHandlers.ofString())
+
+        // then
+        org.junit.jupiter.api.Assertions.assertEquals(200, getResponse.statusCode())
+    }
+
+    @Test
+    fun `should delete resource`() {
+        // given - create resource first
+        val createRequest = HttpRequest.newBuilder()
+            .POST(HttpRequest.BodyPublishers.ofString("""{"name":"test"}"""))
+            .uri(getURI(container).resolve("/api/resources"))
+            .header("Content-Type", "application/json")
+            .timeout(Duration.ofSeconds(5))
+            .build()
+        val createResponse = httpClient.send(createRequest, HttpResponse.BodyHandlers.ofString())
+        val resourceId = JSONObject(createResponse.body()).getString("id")
+
+        // when
+        val deleteRequest = HttpRequest.newBuilder()
+            .DELETE()
+            .uri(getURI(container).resolve("/api/resources/$resourceId"))
+            .timeout(Duration.ofSeconds(5))
+            .build()
+
+        val deleteResponse = httpClient.send(deleteRequest, HttpResponse.BodyHandlers.ofString())
+
+        // then
+        org.junit.jupiter.api.Assertions.assertEquals(200, deleteResponse.statusCode())
+
+        // Verify database state using JDBC
+        DriverManager.getConnection(
+            postgres.jdbcUrl,
+            postgres.username,
+            postgres.password
+        ).use { conn ->
+            conn.createStatement().use { stmt ->
+                val rs = stmt.executeQuery("SELECT COUNT(*) FROM resources")
+                rs.next()
+                org.junit.jupiter.api.Assertions.assertEquals(0, rs.getInt(1))
+            }
+        }
+    }
+}

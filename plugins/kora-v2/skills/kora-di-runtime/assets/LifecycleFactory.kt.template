@@ -1,0 +1,120 @@
+package ${packagePath}
+
+import ru.tinkoff.kora.application.graph.LifecycleWrapper
+import ru.tinkoff.kora.application.graph.Wrapped
+import ru.tinkoff.kora.common.Module
+
+/**
+ * Factory module with lifecycle-wrapped components.
+ *
+ * Usage:
+ * - When factory method needs to provide lifecycle for component
+ * - When component doesn't implement Lifecycle directly
+ * - For third-party components that need init/cleanup
+ *
+ * LifecycleWrapper provides:
+ * - init hook: called after component creation
+ * - release hook: called during shutdown
+ */
+@Module
+interface ${ModuleName} {
+
+    /**
+     * Factory method with lifecycle wrapper.
+     *
+     * @return Wrapped component with init/release hooks
+     */
+    fun ${methodName}(config: ${ConfigType}): Wrapped<${ComponentType}> {
+        // Create the component
+        val component = ${ComponentType}(config)
+
+        // Wrap with lifecycle
+        return LifecycleWrapper(
+            component,
+            // Init hook: called after creation
+            init = { c ->
+                // TODO: Add initialization logic
+                // - Warm up caches
+                // - Test connections
+                // - Register callbacks
+                println("${ComponentType} initialized")
+            },
+            // Release hook: called during shutdown
+            release = { c ->
+                // TODO: Add cleanup logic
+                // - Flush caches
+                // - Close connections
+                // - Release resources
+                println("${ComponentType} released")
+            }
+        )
+    }
+
+    // ========================================================================
+    // EXAMPLES
+    // ========================================================================
+
+    /**
+     * Cache with lifecycle
+     */
+    // fun cache(config: Config): Wrapped<Cache> {
+    //     val cacheConfig = config.getConfig("cache")
+    //     val cache = CaffeineCache(cacheConfig)
+    //
+    //     return LifecycleWrapper(
+    //         cache,
+    //         init = { it.warmup() },           // Init: warm up cache
+    //         release = { it.invalidateAll() }  // Release: flush all entries
+    //     )
+    // }
+
+    /**
+     * DataSource with connection test
+     */
+    // fun dataSource(config: DatabaseConfig): Wrapped<DataSource> {
+    //     val ds = DriverManagerDataSource(
+    //         config.url,
+    //         config.username,
+    //         config.password
+    //     )
+    //
+    //     return LifecycleWrapper(
+    //         ds,
+    //         init = { dataSource ->
+    //             // Init: test connection
+    //             dataSource.use { conn ->
+    //                 println("Database connection OK")
+    //             }
+    //         },
+    //         release = { dataSource ->
+    //             // Release: close connections
+    //             if (dataSource is AutoCloseable) {
+    //                 dataSource.close()
+    //             }
+    //         }
+    //     )
+    // }
+
+    /**
+     * Scheduled executor with graceful shutdown
+     */
+    // fun scheduler(): Wrapped<ScheduledExecutorService> {
+    //     return LifecycleWrapper(
+    //         Executors.newSingleThreadScheduledExecutor(),
+    //         init = { scheduler ->
+    //             // Init: schedule periodic task
+    //             scheduler.scheduleAtFixedRate(
+    //                 this::cleanupTask,
+    //                 0, 1, java.util.concurrent.TimeUnit.HOURS
+    //             )
+    //         },
+    //         release = { scheduler ->
+    //             // Release: graceful shutdown
+    //             scheduler.shutdown()
+    //             if (!scheduler.awaitTermination(30, java.util.concurrent.TimeUnit.SECONDS)) {
+    //                 scheduler.shutdownNow()
+    //             }
+    //         }
+    //     )
+    // }
+}

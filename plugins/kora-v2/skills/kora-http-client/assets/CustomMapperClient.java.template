@@ -1,0 +1,125 @@
+package com.example.client;
+
+import ru.tinkoff.kora.common.Context;
+import ru.tinkoff.kora.common.Mapping;
+import ru.tinkoff.kora.http.client.common.HttpClientDecoderException;
+import ru.tinkoff.kora.http.client.common.annotation.HttpClient;
+import ru.tinkoff.kora.http.client.common.annotation.ResponseCodeMapper;
+import ru.tinkoff.kora.http.client.common.request.HttpClientRequestMapper;
+import ru.tinkoff.kora.http.client.common.response.HttpClientResponse;
+import ru.tinkoff.kora.http.client.common.response.HttpClientResponseMapper;
+import ru.tinkoff.kora.http.common.HttpMethod;
+import ru.tinkoff.kora.http.common.annotation.HttpRoute;
+import ru.tinkoff.kora.http.common.annotation.Path;
+import ru.tinkoff.kora.http.common.body.HttpBody;
+import ru.tinkoff.kora.http.common.body.HttpBodyOutput;
+import ru.tinkoff.kora.json.common.JsonReader;
+import ru.tinkoff.kora.json.common.annotation.Json;
+
+import java.io.IOException;
+
+/**
+ * Client with custom request/response mappers.
+ * Use when the standard JSON mapping does not fit:
+ * - custom request body format (plain text, XML, binary)
+ * - status-aware response decoding (different types per HTTP status code)
+ * - bespoke serialization/deserialization
+ */
+@HttpClient(configPath = "httpClient.customMapper")
+public interface CustomMapperClient {
+
+    // ====================================
+    // Custom request body mapper
+    // ====================================
+
+    /** Sends plain text instead of JSON. Useful for legacy or non-JSON APIs. */
+    @HttpRoute(method = HttpMethod.POST, path = "/text")
+    String sendPlainText(@Mapping(PlainTextMapper.class) PlainTextBody body);
+
+    /** DTO for the plain-text request. */
+    record PlainTextBody(String content) {}
+
+    /** Converts PlainTextBody into a plain-text HTTP body. */
+    final class PlainTextMapper implements HttpClientRequestMapper<PlainTextBody> {
+        @Override
+        public HttpBodyOutput apply(Context ctx, PlainTextBody value) {
+            return HttpBody.plaintext(value.content());
+        }
+    }
+
+    // ====================================
+    // Status-aware response mapping
+    // ====================================
+
+    /**
+     * Sealed result: 200 -> ItemSuccess, anything else -> ItemError
+     * (the error mapper reads the status code from response.code()).
+     */
+    sealed interface ItemResult permits ItemSuccess, ItemError {
+        @Json record ItemSuccess(String id, String name) implements ItemResult {}
+        @Json record ItemError(int code, String message) implements ItemResult {}
+    }
+
+    @ResponseCodeMapper(code = 200, mapper = ItemSuccessMapper.class)
+    @ResponseCodeMapper(code = ResponseCodeMapper.DEFAULT, mapper = ItemErrorMapper.class)
+    @HttpRoute(method = HttpMethod.GET, path = "/items/{id}")
+    ItemResult getItemResult(@Path String id);
+
+    /** Mapper for the success response (200 OK). */
+    final class ItemSuccessMapper implements HttpClientResponseMapper<ItemResult> {
+        private final JsonReader<ItemResult.ItemSuccess> jsonReader;
+
+        public ItemSuccessMapper(JsonReader<ItemResult.ItemSuccess> jsonReader) {
+            this.jsonReader = jsonReader;
+        }
+
+        @Override
+        public ItemResult apply(HttpClientResponse response) throws IOException, HttpClientDecoderException {
+            try (var is = response.body().asInputStream()) {
+                return jsonReader.read(is.readAllBytes());
+            }
+        }
+    }
+
+    /** Mapper for the error response (non-200): message from body, code from HTTP status. */
+    final class ItemErrorMapper implements HttpClientResponseMapper<ItemResult> {
+        private final JsonReader<ErrorPayload> jsonReader;
+
+        public ItemErrorMapper(JsonReader<ErrorPayload> jsonReader) {
+            this.jsonReader = jsonReader;
+        }
+
+        @Override
+        public ItemResult apply(HttpClientResponse response) throws IOException, HttpClientDecoderException {
+            try (var is = response.body().asInputStream()) {
+                ErrorPayload payload = jsonReader.read(is.readAllBytes());
+                return new ItemResult.ItemError(response.code(), payload.message());
+            }
+        }
+
+        @Json
+        record ErrorPayload(String message) {}
+    }
+
+    // ====================================
+    // Usage example
+    // ====================================
+    //
+    // @Component
+    // public final class ItemService {
+    //     private final CustomMapperClient client;
+    //
+    //     public ItemService(CustomMapperClient client) {
+    //         this.client = client;
+    //     }
+    //
+    //     public ItemResult.ItemSuccess getItem(String id) {
+    //         return switch (client.getItemResult(id)) {
+    //             case ItemResult.ItemSuccess success -> success;
+    //             case ItemResult.ItemError error ->
+    //                 throw new IllegalStateException("status " + error.code() + ": " + error.message());
+    //         };
+    //     }
+    // }
+    // ====================================
+}

@@ -1,0 +1,255 @@
+# Response Handling Templates
+
+## Sealed Interface Pattern (Java 17+)
+
+All generated response interfaces use Java sealed types:
+
+```java
+// Generated - DO NOT EDIT
+public interface UserApiResponses {
+
+    sealed interface GetUserApiResponse {
+        record GetUser200ApiResponse(UserResponseTO content) implements GetUserApiResponse {}
+        record GetUser404ApiResponse(ErrorResponseTO content) implements GetUserApiResponse {}
+        record GetUser500ApiResponse(ErrorResponseTO content) implements GetUserApiResponse {}
+    }
+
+    sealed interface CreateUserApiResponse {
+        record CreateUser201ApiResponse(UserResponseTO content) implements CreateUserApiResponse {}
+        record CreateUser400ApiResponse(ErrorResponseTO content) implements CreateUserApiResponse {}
+        record CreateUser409ApiResponse(ErrorResponseTO content) implements CreateUserApiResponse {}
+    }
+}
+```
+
+## Response Selection Guide
+
+| HTTP Status | Scenario | Response Class |
+|-------------|----------|----------------|
+| 200 | Successful GET/PUT/PATCH | `*200ApiResponse(content)` |
+| 201 | Successful POST (create) | `*201ApiResponse(content)` |
+| 204 | Successful DELETE | `*204ApiResponse()` |
+| 400 | Invalid input, business rules | `*400ApiResponse(error)` |
+| 404 | Resource not found | `*404ApiResponse(error)` |
+| 409 | Conflict (duplicate, version) | `*409ApiResponse(error)` |
+| 422 | Semantic validation error | `*422ApiResponse(error)` |
+| 500 | Unexpected server error | `*500ApiResponse(error)` |
+
+## Common Response Patterns
+
+### Simple Lookup (200/404)
+
+```java
+@Override
+public UserApiResponses.GetUserApiResponse getUser(String userId) {
+    return userService.findById(userId)
+        .<UserApiResponses.GetUserApiResponse>map(user ->
+            new UserApiResponses.GetUserApiResponse.GetUser200ApiResponse(
+                mapper.toResponse(user)
+            )
+        )
+        .orElseGet(() ->
+            new UserApiResponses.GetUserApiResponse.GetUser404ApiResponse(
+                new ErrorResponseTO("User not found: " + userId)
+            )
+        );
+}
+```
+
+### Create with Validation (201/400/409)
+
+```java
+@Override
+public UserApiResponses.CreateUserApiResponse createUser(CreateUserRequest request) {
+    // Check for duplicates
+    if (userService.emailExists(request.email())) {
+        return new CreateUser409ApiResponse(
+            new ErrorResponseTO("Email already exists: " + request.email())
+        );
+    }
+
+    // Business rule validation
+    if (request.age() != null && request.age() < 18) {
+        return new CreateUser400ApiResponse(
+            new ErrorResponseTO("User must be at least 18 years old")
+        );
+    }
+
+    // Create user
+    var user = userService.create(mapper.toEntity(request));
+    return new CreateUser201ApiResponse(mapper.toResponse(user));
+}
+```
+
+### Delete (204/404)
+
+```java
+@Override
+public UserApiResponses.DeleteUserApiResponse deleteUser(String userId) {
+    if (!userService.exists(userId)) {
+        return new DeleteUser404ApiResponse(
+            new ErrorResponseTO("User not found: " + userId)
+        );
+    }
+
+    userService.delete(userId);
+    return new DeleteUser204ApiResponse();  // No content
+}
+```
+
+### Batch Operation (200 with errors)
+
+```java
+@Override
+public UserApiResponses.BatchCreateApiResponse batchCreate(BatchCreateRequest request) {
+    List<UserResponseTO> created = new ArrayList<>();
+    List<ErrorDetailTO> errors = new ArrayList<>();
+
+    for (CreateUserRequest item : request.items()) {
+        try {
+            var user = userService.create(mapper.toEntity(item));
+            created.add(mapper.toResponse(user));
+        } catch (EmailAlreadyExistsException e) {
+            errors.add(new ErrorDetailTO(item.email(), e.getMessage()));
+        }
+    }
+
+    return new BatchCreate200ApiResponse(
+        new BatchCreateResponseTO(created, errors)
+    );
+}
+```
+
+### With Custom Headers
+
+```yaml
+# OpenAPI spec
+responses:
+  "200":
+    description: User found
+    headers:
+      X-Total-Count:
+        schema:
+          type: integer
+    content:
+      application/json:
+        schema:
+          $ref: '#/components/schemas/UserListResponse'
+```
+
+```java
+@Override
+public UserApiResponses.ListUsersApiResponse listUsers(int offset, int limit) {
+    var page = userService.findAll(offset, limit);
+
+    return new ListUsers200ApiResponse(
+        mapper.toResponse(page),
+        String.valueOf(page.total())  // Header value
+    );
+}
+```
+
+## Kotlin Pattern Matching
+
+Kotlin's `when` expression for elegant handling:
+
+```kotlin
+override fun getUser(userId: String): UserApiResponses.GetUserApiResponse {
+    return userService.findById(userId)
+        .map { user ->
+            UserApiResponses.GetUserApiResponse.GetUser200ApiResponse(
+                mapper.toResponse(user)
+            )
+        }
+        .orElseGet {
+            UserApiResponses.GetUserApiResponse.GetUser404ApiResponse(
+                ErrorResponseTO("User not found: $userId")
+            )
+        }
+}
+
+override fun deleteUser(userId: String): UserApiResponses.DeleteUserApiResponse {
+    return when {
+        !userService.exists(userId) ->
+            UserApiResponses.DeleteUserApiResponse.DeleteUser404ApiResponse(
+                ErrorResponseTO("Not found: $userId")
+            )
+        else -> {
+            userService.delete(userId)
+            UserApiResponses.DeleteUserApiResponse.DeleteUser204ApiResponse()
+        }
+    }
+}
+```
+
+## Response with Error Details
+
+```java
+public record ErrorResponseTO(
+    String code,
+    String message,
+    List<ErrorDetailTO> details
+) {}
+
+public record ErrorDetailTO(
+    String field,
+    String message,
+    Object rejectedValue
+) {}
+
+// Usage in delegate
+@Override
+public CreateUserApiResponse createUser(CreateUserRequest request) {
+    List<ErrorDetailTO> details = new ArrayList<>();
+
+    if (!isValidEmail(request.email())) {
+        details.add(new ErrorDetailTO("email", "Invalid email format", request.email()));
+    }
+
+    if (request.password().length() < 8) {
+        details.add(new ErrorDetailTO("password", "Must be at least 8 characters", null));
+    }
+
+    if (!details.isEmpty()) {
+        return new CreateUser400ApiResponse(
+            new ErrorResponseTO("VALIDATION_ERROR", "Invalid input", details)
+        );
+    }
+
+    // ... proceed with creation
+}
+```
+
+## Exception-to-Response Mapping
+
+Prefer modelling errors as declared status codes in the contract so they become
+generated `*ApiResponse` records. For cross-cutting failures, register an
+`HttpServerInterceptor` that catches the exception and builds the response with
+`HttpServerResponse.of(...)`. The interceptor signature is
+`intercept(Context, HttpServerRequest, InterceptChain)` and you continue the
+chain with `chain.process(context, request)`.
+
+```java
+import java.util.concurrent.CompletionStage;
+import ru.tinkoff.kora.common.Component;
+import ru.tinkoff.kora.common.Context;
+import ru.tinkoff.kora.http.common.body.HttpBody;
+import ru.tinkoff.kora.http.server.common.HttpServerInterceptor;
+import ru.tinkoff.kora.http.server.common.HttpServerRequest;
+import ru.tinkoff.kora.http.server.common.HttpServerResponse;
+
+@Component
+public final class GlobalExceptionInterceptor implements HttpServerInterceptor {
+
+    @Override
+    public CompletionStage<HttpServerResponse> intercept(
+            Context context, HttpServerRequest request, InterceptChain chain) throws Exception {
+        return chain.process(context, request).exceptionally(error ->
+            HttpServerResponse.of(500, HttpBody.plaintext("An unexpected error occurred")));
+    }
+}
+```
+
+To map one specific exception type to a response body for a handler return value,
+use `HttpServerResponseMapper<T>` whose method is
+`apply(Context, HttpServerRequest, T)` and returns `HttpServerResponse.of(...)`.

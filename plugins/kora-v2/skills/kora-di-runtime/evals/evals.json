@@ -1,0 +1,158 @@
+{
+  "evals": [
+    {
+      "id": "kora-di-runtime-root-autostart",
+      "skills": [
+        "kora-di-runtime"
+      ],
+      "query": "I have a Kora component that starts a background server, but nothing depends on it and it never runs at startup. How do I make Kora always instantiate it?",
+      "expected_behavior": [
+        "Explains that Kora only instantiates components that are dependencies of others, so the worker must be marked @Root from ru.tinkoff.kora.common.annotation.Root",
+        "Annotates the @Component class (or a @KoraApp/@Module factory method) with @Root",
+        "Suggests implementing Lifecycle so init() starts the server and release() stops it",
+        "Does not use field injection or external-framework lifecycle annotations such as @PostConstruct"
+      ],
+      "tags": [
+        "root",
+        "basic"
+      ]
+    },
+    {
+      "id": "kora-di-runtime-lifecycle-initrelease",
+      "skills": [
+        "kora-di-runtime"
+      ],
+      "query": "Create a Kora component that opens a connection pool on startup and closes it cleanly on shutdown.",
+      "expected_behavior": [
+        "Implements ru.tinkoff.kora.application.graph.Lifecycle with init() and release() (both throws Exception)",
+        "Acquires resources in init() and releases them in release()",
+        "Notes that release runs on SIGTERM graceful shutdown in reverse order of init",
+        "Does not rely on external-framework lifecycle callbacks; uses the Kora Lifecycle interface only"
+      ],
+      "tags": [
+        "lifecycle",
+        "basic"
+      ]
+    },
+    {
+      "id": "kora-di-runtime-tag-disambiguation",
+      "skills": [
+        "kora-di-runtime"
+      ],
+      "query": "I have two implementations of a Cache interface in my Kora container and the build fails with an ambiguous dependency. How do I pick which one each consumer gets?",
+      "expected_behavior": [
+        "Introduces marker tag classes and annotates each implementation with @Tag(SomeTag.class) from ru.tinkoff.kora.common.Tag",
+        "Requests the desired implementation at the injection point with a matching @Tag on the constructor parameter",
+        "Explains the tag is a class (not a string) for refactor-safe navigation",
+        "Does not use external-framework qualifier or primary annotations; relies on @Tag marker classes"
+      ],
+      "tags": [
+        "tag",
+        "basic"
+      ]
+    },
+    {
+      "id": "kora-di-runtime-all-collection",
+      "skills": [
+        "kora-di-runtime"
+      ],
+      "query": "I want a Kora service that receives every Notifier implementation registered in the container and broadcasts to all of them.",
+      "expected_behavior": [
+        "Injects All<Notifier> from ru.tinkoff.kora.application.graph.All in the constructor",
+        "Notes that All<T> extends List<T> and can be assigned to a List field",
+        "Mentions that plain All<T> collects untagged components, while @Tag(Tag.Any.class) All<T> collects every implementation including tagged ones",
+        "Does not use classpath component scanning or reflective context lookups"
+      ],
+      "tags": [
+        "collection",
+        "basic"
+      ]
+    },
+    {
+      "id": "kora-di-runtime-tag-any-collect-all",
+      "skills": [
+        "kora-di-runtime"
+      ],
+      "query": "My Kora CacheManager only sees the untagged caches. I need it to invalidate ALL caches, including the ones registered under tags.",
+      "expected_behavior": [
+        "Uses @Tag(Tag.Any.class) on the injected collection to gather both tagged and untagged components",
+        "Injects @Tag(Tag.Any.class) All<Cache> or @Tag(Tag.Any.class) List<Cache>",
+        "Explains that a tag-less All<T> deliberately excludes tagged components, which is why some caches were missing",
+        "Does not use qualifier wildcards or reflective container lookup"
+      ],
+      "tags": [
+        "collection",
+        "tag",
+        "advanced"
+      ]
+    },
+    {
+      "id": "kora-di-runtime-nullable-optional",
+      "skills": [
+        "kora-di-runtime"
+      ],
+      "query": "In my Kora service an AnalyticsTracker dependency may or may not be present in the container. The graph build fails when it is absent. How do I make it optional?",
+      "expected_behavior": [
+        "Marks the constructor parameter with a @Nullable annotation (jakarta/javax/org.jetbrains) so the graph does not fail when the component is missing",
+        "Adds a null check before using the optional dependency",
+        "Notes that without @Nullable the compile-time graph requires the component",
+        "Does not use required=false autowiring or Optional<T> injection; uses a @Nullable parameter"
+      ],
+      "tags": [
+        "optional",
+        "advanced"
+      ]
+    },
+    {
+      "id": "kora-di-runtime-valueof-no-cascade",
+      "skills": [
+        "kora-di-runtime"
+      ],
+      "query": "My Kora ApiClient gets recreated every time its AuthConfig refreshes, which is expensive. I want the client to read the latest config without being rebuilt.",
+      "expected_behavior": [
+        "Injects ValueOf<AuthConfig> from ru.tinkoff.kora.application.graph.ValueOf instead of AuthConfig directly",
+        "Calls config.get() inside the request path to read the current instance",
+        "Explains that ValueOf decouples lifecycles so the consumer is not refreshed when the wrapped component changes, and can also break circular dependencies",
+        "Does not use @Lazy, ObjectProvider, or a refresh-scope annotation from another framework"
+      ],
+      "tags": [
+        "valueof",
+        "advanced"
+      ]
+    },
+    {
+      "id": "kora-di-runtime-graph-interceptor",
+      "skills": [
+        "kora-di-runtime"
+      ],
+      "query": "I want to wrap my Kora JdbcDatabase component with cache-warming logic during container startup, before anything else uses it.",
+      "expected_behavior": [
+        "Implements GraphInterceptor<JdbcDatabase> from ru.tinkoff.kora.application.graph.GraphInterceptor as a @Component",
+        "Performs the work in init(value) and returns the (possibly wrapped) instance that other components will receive",
+        "Notes the contract mirrors Lifecycle except init/release return the component instance",
+        "Does not use a bean post-processor or runtime AOP proxy from another framework"
+      ],
+      "tags": [
+        "interceptor",
+        "advanced"
+      ]
+    },
+    {
+      "id": "kora-di-runtime-lifecycle-wrapper-factory",
+      "skills": [
+        "kora-di-runtime"
+      ],
+      "query": "I provide a third-party DataSource from a @Module factory method, but it needs init/release hooks and the class cannot implement Lifecycle. How do I give it a lifecycle in Kora?",
+      "expected_behavior": [
+        "Returns Wrapped<DataSource> from the factory method using new LifecycleWrapper<>(instance, initFn, releaseFn)",
+        "Imports ru.tinkoff.kora.application.graph.LifecycleWrapper and ru.tinkoff.kora.application.graph.Wrapped",
+        "Explains LifecycleWrapper is the factory-method equivalent of implementing Lifecycle on the class",
+        "Does not rely on external-framework init/destroy method factory attributes"
+      ],
+      "tags": [
+        "lifecycle",
+        "advanced"
+      ]
+    }
+  ]
+}

@@ -1,0 +1,35 @@
+package ${package}
+
+import ru.tinkoff.kora.common.KoraApp
+import ru.tinkoff.kora.common.Tag
+import ru.tinkoff.kora.common.annotation.Root
+import ru.tinkoff.kora.database.common.annotation.Query
+import ru.tinkoff.kora.database.common.annotation.Repository
+import ru.tinkoff.kora.database.jdbc.JdbcRepository
+
+// TestApplication extends the production @KoraApp and adds test-only components
+// (e.g. cleanup/inspection repositories) that the production graph does not declare.
+// Point @KoraAppTest(TestApplication::class) at this interface.
+//
+// Build requirements (build.gradle.kts):
+//   ksp { arg("kora.app.submodule.enabled", "true") }
+//   dependencies { kspTest("ru.tinkoff.kora:symbol-processors") }
+//   tasks.test { exclude("**/\$*") }
+@KoraApp
+interface TestApplication : Application {
+
+    @Repository
+    interface Test${entityName}Repository : JdbcRepository {
+
+        @Query("SELECT %{return#selects} FROM %{return#table}")
+        fun findAll(): List<${entityDao}>
+
+        @Query("DELETE FROM ${tableName}")
+        fun deleteAll()
+    }
+
+    // A @Root anchor so the test-only repository is not pruned from the Graph.
+    @Tag(TestApplication::class)
+    @Root
+    fun testRoot(ignored: Test${entityName}Repository): String = "test-root"
+}

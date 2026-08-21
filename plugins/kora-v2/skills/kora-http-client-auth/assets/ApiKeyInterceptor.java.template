@@ -1,0 +1,41 @@
+package ${package};
+
+import ru.tinkoff.kora.common.Component;
+import ru.tinkoff.kora.common.Context;
+import ru.tinkoff.kora.http.client.common.interceptor.HttpClientInterceptor;
+import ru.tinkoff.kora.http.client.common.request.HttpClientRequest;
+import ru.tinkoff.kora.http.client.common.response.HttpClientResponse;
+
+import java.util.concurrent.CompletionStage;
+
+/**
+ * Custom API-key interceptor for an outgoing Kora HTTP client.
+ *
+ * <p>Prefer the built-in {@code ApiKeyHttpClientInterceptor(ApiKeyLocation, name,
+ * secret)} (in {@code http-client-common}), which supports HEADER, QUERY and COOKIE
+ * placement. Use this hand-written variant only for behavior it does not cover.</p>
+ *
+ * <p>Bind the key through a {@code @ConfigSource} interface (no {@code @Value} in
+ * Kora) and attach with {@code @InterceptWith(ApiKeyClientInterceptor.class)}.</p>
+ */
+@Component
+public final class ApiKeyClientInterceptor implements HttpClientInterceptor {
+
+    private final ApiKeyConfig config;
+
+    public ApiKeyClientInterceptor(ApiKeyConfig config) {
+        this.config = config;
+    }
+
+    @Override
+    public CompletionStage<HttpClientResponse> processRequest(
+            Context ctx, InterceptChain chain, HttpClientRequest request) throws Exception {
+        var builder = request.toBuilder();
+        if (config.useQueryParam()) {
+            builder.queryParam(config.paramName(), config.key());
+        } else {
+            builder.header(config.headerName(), config.key());
+        }
+        return chain.process(ctx, builder.build());
+    }
+}

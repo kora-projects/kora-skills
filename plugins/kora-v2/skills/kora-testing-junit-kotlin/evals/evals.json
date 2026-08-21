@@ -1,0 +1,100 @@
+{
+  "evals": [
+    {
+      "id": "kora-testing-junit-kotlin-component-basic",
+      "skills": ["kora-testing-junit-kotlin"],
+      "query": "Write a Kora Kotlin component test for UserService using the application graph. The test should get a real UserService and assert that createUser returns a user.",
+      "expected_behavior": [
+        "Annotates the test class with @KoraAppTest(Application::class)",
+        "Injects UserService with @TestComponent on a lateinit var",
+        "Adds testImplementation(\"ru.tinkoff.kora:test-junit5\") and ksp(\"ru.tinkoff.kora:symbol-processors\")",
+        "Does not construct UserService manually with its constructor or use reflection-based field injection instead of @TestComponent"
+      ],
+      "tags": ["component", "basic"]
+    },
+    {
+      "id": "kora-testing-junit-kotlin-mockk",
+      "skills": ["kora-testing-junit-kotlin"],
+      "query": "Test OrderService which depends on UserRepository. Mock the repository with MockK and verify the interaction.",
+      "expected_behavior": [
+        "Combines @MockK with @TestComponent on a lateinit var to register the mock in the graph",
+        "Stubs behavior with every { ... } returns ... and checks calls with verify { ... }",
+        "Does not add a = mockk() initializer next to the @MockK field",
+        "Does not attach MockKExtension via @ExtendWith alongside @KoraAppTest"
+      ],
+      "tags": ["mocking", "basic"]
+    },
+    {
+      "id": "kora-testing-junit-kotlin-coroutines",
+      "skills": ["kora-testing-junit-kotlin"],
+      "query": "Test a suspend function createUser on UserService whose UserRepository.save is also a suspend function. Use MockK for the mock.",
+      "expected_behavior": [
+        "Wraps the test body in runTest { } from kotlinx-coroutines-test",
+        "Uses coEvery to stub the suspend repository call and coVerify to verify it",
+        "Keeps @MockK + @TestComponent for the repository mock",
+        "Does not use plain every/verify for suspend functions or blockingGet/Thread.sleep workarounds"
+      ],
+      "tags": ["coroutines", "advanced"]
+    },
+    {
+      "id": "kora-testing-junit-kotlin-config-modifier",
+      "skills": ["kora-testing-junit-kotlin"],
+      "query": "My Kora Kotlin test needs to point the db config at a local PostgreSQL by substituting POSTGRES_JDBC_URL, POSTGRES_USER and POSTGRES_PASS. How do I override config in the test?",
+      "expected_behavior": [
+        "Implements KoraAppTestConfigModifier on the test class and overrides config()",
+        "Returns KoraConfigModification.ofSystemProperty(...).withSystemProperty(...) to substitute the placeholders",
+        "Notes the modifier must be on the class body, not supplied via the constructor",
+        "Does not hardcode credentials into application.conf or bypass KoraConfigModification with a custom property source"
+      ],
+      "tags": ["config", "advanced"]
+    },
+    {
+      "id": "kora-testing-junit-kotlin-graph-modifier",
+      "skills": ["kora-testing-junit-kotlin"],
+      "query": "In a Kora Kotlin test I need to add a Supplier<Int> that is not declared in the @KoraApp, and also replace an existing Supplier<Int> deriving from the original. How?",
+      "expected_behavior": [
+        "Implements KoraAppTestGraphModifier and overrides graph()",
+        "Uses KoraGraphModification.create().addComponent(TypeRef.of(Supplier::class.java, Int::class.java), ...)",
+        "Uses replaceComponent(TypeRef.of(...)) { graph -> graph.getFirst(...) } to wrap the existing component",
+        "Does not register components through a factory method in the @KoraApp instead of the test graph modifier"
+      ],
+      "tags": ["graph", "advanced"]
+    },
+    {
+      "id": "kora-testing-junit-kotlin-testcontainers",
+      "skills": ["kora-testing-junit-kotlin"],
+      "query": "Write a Kora Kotlin integration test for UserRepository against a real PostgreSQL via Testcontainers with Flyway migrations.",
+      "expected_behavior": [
+        "Annotates with @Testcontainers and declares a @Container @JvmStatic PostgreSQLContainer in a companion object",
+        "Implements KoraAppTestConfigModifier and feeds POSTGRES.jdbcUrl/username/password via KoraConfigModification.ofString plus withSystemProperty",
+        "Injects the repository or service with @TestComponent and points @KoraAppTest at the application graph",
+        "Does not mock the database or replace the real JDBC connection with an in-memory stub"
+      ],
+      "tags": ["integration", "advanced"]
+    },
+    {
+      "id": "kora-testing-junit-kotlin-test-application",
+      "skills": ["kora-testing-junit-kotlin"],
+      "query": "I need a test-only repository with deleteAll() and findAll() to clean up between tests in my Kora Kotlin service. Set up the TestApplication pattern.",
+      "expected_behavior": [
+        "Declares @KoraApp interface TestApplication : Application with a nested @Repository : JdbcRepository carrying @Query methods",
+        "Marks the test-only component reachable from a @Root so it is not pruned from the graph",
+        "Enables ksp { arg(\"kora.app.submodule.enabled\", \"true\") }, adds kspTest(\"ru.tinkoff.kora:symbol-processors\") and tasks.test { exclude(\"**/$*\") }",
+        "Points @KoraAppTest at TestApplication::class rather than the production Application"
+      ],
+      "tags": ["test-application", "advanced"]
+    },
+    {
+      "id": "kora-testing-junit-kotlin-mockito-alternative",
+      "skills": ["kora-testing-junit-kotlin"],
+      "query": "Our team uses Mockito, not MockK, in a mixed Java/Kotlin codebase. How do I mock a Kora component in a Kotlin test with Mockito?",
+      "expected_behavior": [
+        "Combines @Mock with @TestComponent on a lateinit var and adds org.mockito.kotlin:mockito-kotlin",
+        "Stubs with whenever(...).thenReturn(...) and verifies with verify(...)",
+        "Does not attach MockitoExtension via @ExtendWith together with @KoraAppTest",
+        "Does not initialize the @Mock field with = mock()"
+      ],
+      "tags": ["mocking", "advanced"]
+    }
+  ]
+}

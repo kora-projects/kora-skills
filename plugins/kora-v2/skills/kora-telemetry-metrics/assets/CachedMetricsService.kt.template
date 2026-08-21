@@ -1,0 +1,106 @@
+package ${package}
+
+import io.micrometer.core.instrument.Counter
+import io.micrometer.core.instrument.MeterRegistry
+import io.micrometer.core.instrument.Timer
+import ru.tinkoff.kora.common.Component
+import java.time.Duration
+import java.util.concurrent.Callable
+import java.util.concurrent.ConcurrentHashMap
+import java.util.concurrent.TimeUnit
+
+/**
+ * High-throughput metrics service with cached metric instances.
+ *
+ * Use this pattern when:
+ * - Operations have >1000 calls/second
+ * - Metrics have multiple tag combinations (bounded cardinality)
+ * - You need to avoid Micrometer internal ConcurrentHashMap contention
+ *
+ * Key patterns:
+ * - Data class as Map key
+ * - computeIfAbsent for atomic create-or-get
+ * - Separate maps for Timer and Counter types
+ * - Bounded tag values only
+ */
+@Component
+class CachedMetricsService(
+    private val registry: MeterRegistry
+) {
+
+    /**
+     * Immutable data class for Map key.
+     * Tag values MUST be bounded (finite set).
+     */
+    data class MetricKey(val operation: String, val status: String)
+
+    private val timers = ConcurrentHashMap<MetricKey, Timer>()
+    private val counters = ConcurrentHashMap<MetricKey, Counter>()
+
+    /**
+     * Records operation duration with cached Timer.
+     */
+    fun <T> recordOperation(operation: String, action: Callable<T>): T {
+        return try {
+            recordOperation(operation, true, action)
+        } catch (e: Exception) {
+            recordOperation(operation, false, action.also { throw RuntimeException("Operation failed", e) })
+        }
+    }
+
+    /**
+     * Records operation with explicit success/failure status.
+     */
+    fun <T> recordOperation(operation: String, success: Boolean, action: Callable<T>): T {
+        val key = MetricKey(operation, if (success) "success" else "failed")
+
+        val timer = timers.computeIfAbsent(key) { k ->
+            Timer.builder("custom.operation.duration")
+                .description("Duration of custom operations")
+                .tag("operation", k.operation)
+                .tag("status", k.status)
+                .serviceLevelObjectives(
+                    Duration.ofMillis(50),
+                    Duration.ofMillis(100),
+                    Duration.ofMillis(250),
+                    Duration.ofMillis(500),
+                    Duration.ofSeconds(1)
+                )
+                .register(registry)
+        }
+
+        return timer.recordCallable(action)
+    }
+
+    /**
+     * Records operation duration in nanoseconds.
+     */
+    fun recordOperationDuration(operation: String, durationNanos: Long, success: Boolean) {
+        val key = MetricKey(operation, if (success) "success" else "failed")
+
+        val timer = timers.computeIfAbsent(key) { k ->
+            Timer.builder("custom.operation.duration")
+                .tag("operation", k.operation)
+                .tag("status", k.status)
+                .register(registry)
+        }
+
+        timer.record(durationNanos, TimeUnit.NANOSECONDS)
+    }
+
+    /**
+     * Increments counter with cached Counter instance.
+     */
+    fun incrementCounter(operation: String, type: String) {
+        val key = MetricKey(operation, type)
+
+        val counter = counters.computeIfAbsent(key) { k ->
+            Counter.builder("custom.operation.count")
+                .tag("operation", k.operation)
+                .tag("type", k.type)
+                .register(registry)
+        }
+
+        counter.increment()
+    }
+}

@@ -1,0 +1,66 @@
+plugins {
+    id "java"
+    id "application"
+    id "org.openapi.generator" version "7.14.0"
+}
+
+configurations {
+    koraBom
+    annotationProcessor.extendsFrom(koraBom)
+    compileOnly.extendsFrom(koraBom)
+    implementation.extendsFrom(koraBom)
+}
+
+dependencies {
+    koraBom platform("ru.tinkoff.kora:kora-parent:$koraVersion")
+    annotationProcessor "ru.tinkoff.kora:annotation-processors"
+
+    // HTTP Client dependency (OkHttp - recommended)
+    implementation "ru.tinkoff.kora:http-client-ok"
+
+    // JSON dependency
+    implementation "ru.tinkoff.kora:json-module"
+
+    // Logging
+    implementation "ru.tinkoff.kora:logging-logback"
+    implementation "ru.tinkoff.kora:config-hocon"
+}
+
+java {
+    sourceCompatibility = JavaVersion.VERSION_25
+    targetCompatibility = JavaVersion.VERSION_25
+}
+
+// OpenAPI Client Generation Task
+def openApiGenerateHttpClient = tasks.register("openApiGenerateHttpClient", GenerateTask) {
+    generatorName = "kora"
+    group = "openapi tools"
+    inputSpec = "$projectDir/src/main/resources/openapi/my-api.yaml"
+    outputDir = "$buildDir/generated/my-api-client"  // Unique directory per API
+    def corePackage = "com.example.myapi"
+    apiPackage = "${corePackage}.api"
+    modelPackage = "${corePackage}.model"
+    invokerPackage = "${corePackage}.invoker"
+    openapiNormalizer = [
+        DISABLE_ALL: "true"
+    ]
+    configOptions = [
+        mode: "java-client",
+        clientConfigPrefix: "httpClient.myApi"
+    ]
+}
+
+sourceSets.main { java.srcDirs += openApiGenerateHttpClient.get().outputDir }
+compileJava.dependsOn openApiGenerateHttpClient
+
+application {
+    applicationName = "my-app"
+    mainClass = "com.example.Application"
+    applicationDefaultJvmArgs = ["-Dfile.encoding=UTF-8"]
+}
+
+compileJava {
+    options.encoding("UTF-8")
+    options.incremental(true)
+    options.fork = false
+}

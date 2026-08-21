@@ -1,0 +1,116 @@
+{
+  "evals": [
+    {
+      "id": "kora-database-cassandra-basic-repository",
+      "skills": ["kora-database-cassandra"],
+      "query": "Set up a Kora Cassandra repository for a User entity (UUID id, name, email, createdAt) with findById, findAll, insert and deleteById.",
+      "expected_behavior": [
+        "Adds the ru.tinkoff.kora:database-cassandra dependency and the kora-parent BOM, with the Java annotation-processors annotation processor (or ksp symbol-processors for Kotlin)",
+        "Adds CassandraDatabaseModule to the @KoraApp interface",
+        "Declares an interface annotated with @Repository that extends CassandraRepository",
+        "Annotates the DAO record with @EntityCassandra and uses @Column on each component",
+        "Writes CQL in @Query with named parameters like :id and returns @Nullable for the single-row lookup",
+        "Does not use JPA/Data-repository annotations, field injection, or invent an @Id requirement (Cassandra @Id is optional)"
+      ],
+      "tags": ["repository", "basic"]
+    },
+    {
+      "id": "kora-database-cassandra-connection-config",
+      "skills": ["kora-database-cassandra"],
+      "query": "Configure the Cassandra connection in HOCON: contact points, datacenter, keyspace, credentials from environment variables, and a 5 second request timeout.",
+      "expected_behavior": [
+        "Places contactPoints, dc, and sessionKeyspace under cassandra.basic",
+        "Places timeout under cassandra.basic.request",
+        "Puts login and password under cassandra.auth and substitutes environment variables with ${CASSANDRA_USER} style references",
+        "Does not invent keys such as healthCheck, retryPolicy, loadBalancing.policy, or basic.connection"
+      ],
+      "tags": ["config", "basic"]
+    },
+    {
+      "id": "kora-database-cassandra-udt-mapping",
+      "skills": ["kora-database-cassandra"],
+      "query": "Model a Cassandra entity with a nested Address user-defined type (street, city, zipCode) plus a list of addresses.",
+      "expected_behavior": [
+        "Annotates the nested type record with @UDT",
+        "Annotates the owning DAO record with @EntityCassandra",
+        "Maps the collection as List<AddressUDT> and notes that CQL needs FROZEN for UDT collections",
+        "Does not use JPA @Embeddable / @Embedded for the Cassandra UDT"
+      ],
+      "tags": ["udt", "intermediate"]
+    },
+    {
+      "id": "kora-database-cassandra-batch-write",
+      "skills": ["kora-database-cassandra"],
+      "query": "Add a method that inserts many users in one batch.",
+      "expected_behavior": [
+        "Marks the list parameter with @Batch (ru.tinkoff.kora.database.common.annotation.Batch)",
+        "Uses a single-row INSERT @Query bound to the entity fields, e.g. :entity.id",
+        "Returns void or another supported batch return type rather than a per-row result",
+        "Does not hand-build a BatchStatement or use an external ORM template"
+      ],
+      "tags": ["batch", "intermediate"]
+    },
+    {
+      "id": "kora-database-cassandra-async-signatures",
+      "skills": ["kora-database-cassandra"],
+      "query": "I want non-blocking Cassandra access. Show CompletionStage and Project Reactor repository methods.",
+      "expected_behavior": [
+        "Provides methods returning CompletableFuture<T> or CompletionStage<T>",
+        "Provides Mono<T> and Flux<T> methods and notes io.projectreactor:reactor-core is required for them",
+        "Keeps @Query CQL identical to the synchronous version, only changing the return type",
+        "Does not block a future with .get() inside the repository"
+      ],
+      "tags": ["async", "intermediate"]
+    },
+    {
+      "id": "kora-database-cassandra-profile-consistency",
+      "skills": ["kora-database-cassandra"],
+      "query": "I need an analytics query to run with ONE consistency and a 30s timeout while the rest of the repository stays on QUORUM.",
+      "expected_behavior": [
+        "Defines a profile under cassandra.profiles overriding basic.request.consistency and basic.request.timeout",
+        "Sets the default basic.request.consistency for the rest of the queries",
+        "Annotates the specific @Query method with @CassandraProfile(\"analytics\")",
+        "Notes that @CassandraProfile is @Target(METHOD) and cannot be placed on the repository interface",
+        "Does not use a JDBC-style @Transactional annotation or invent readConsistency/writeConsistency keys"
+      ],
+      "tags": ["consistency", "advanced"]
+    },
+    {
+      "id": "kora-database-cassandra-custom-mapper",
+      "skills": ["kora-database-cassandra"],
+      "query": "Map a CQL int column to a Java enum on both read and write in a Cassandra repository.",
+      "expected_behavior": [
+        "Implements CassandraRowColumnMapper for the read side (apply(GettableByName, int))",
+        "Implements CassandraParameterColumnMapper for the write side (apply(SettableByName, int, value))",
+        "Wires both mappers with @Mapping on the record component or query parameter",
+        "Does not rely on runtime reflection-based mapping"
+      ],
+      "tags": ["mapping", "advanced"]
+    },
+    {
+      "id": "kora-database-cassandra-lwt",
+      "skills": ["kora-database-cassandra"],
+      "query": "Add a conditional insert that only writes when the row does not already exist (lightweight transaction).",
+      "expected_behavior": [
+        "Writes CQL with IF NOT EXISTS in the @Query",
+        "Returns boolean to read the [applied] flag, or maps the conflicting row via @Nullable",
+        "Mentions that LWT uses serial consistency configured via basic.request.serialConsistency",
+        "Does not claim Cassandra supports JDBC-style multi-statement transactions"
+      ],
+      "tags": ["lwt", "advanced"]
+    },
+    {
+      "id": "kora-database-cassandra-kotlin-coroutines",
+      "skills": ["kora-database-cassandra"],
+      "query": "Write a Kotlin Cassandra repository using coroutines and Flow.",
+      "expected_behavior": [
+        "Declares an interface annotated with @Repository that extends CassandraRepository",
+        "Uses suspend functions and a fun returning Flow<T> for streaming",
+        "Notes that the build uses ksp \"ru.tinkoff.kora:symbol-processors\" and requires kotlinx-coroutines-core",
+        "Uses @field:Column on data class properties",
+        "Does not use foreign-framework persistence annotations or field injection"
+      ],
+      "tags": ["kotlin", "advanced"]
+    }
+  ]
+}

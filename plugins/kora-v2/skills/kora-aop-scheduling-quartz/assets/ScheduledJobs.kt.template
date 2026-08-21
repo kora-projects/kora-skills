@@ -1,0 +1,63 @@
+// Kotlin Quartz scheduled jobs (scheduling-quartz).
+// @ScheduleWithCron / @ScheduleWithTrigger / @DisallowConcurrentExecution / @PersistJobDataAfterExecution.
+// For plain fixed-rate/fixed-delay/once timers use the sibling skill kora-aop-scheduling-jdk.
+// Kora generates a separate Job wrapper at compile time, so the class need not be `open`
+// (the canonical Kotlin examples use a plain `class`). Only method-wrapping aspects
+// (@Log, @Retry) require `open`; it is left in here so the same class also works with them.
+// Replace `com.example.app.jobs` with your package.
+
+package com.example.app.jobs
+
+import org.slf4j.LoggerFactory
+import ru.tinkoff.kora.common.Component
+import ru.tinkoff.kora.scheduling.quartz.ScheduleWithCron
+import ru.tinkoff.kora.scheduling.quartz.DisallowConcurrentExecution
+
+@Component
+open class ScheduledJobs {
+
+    private val log = LoggerFactory.getLogger(ScheduledJobs::class.java)
+
+    /**
+     * Cron: runs at times specified by a Quartz cron expression.
+     * Requires QuartzModule on the @KoraApp interface.
+     * Use for: daily reports, hourly checks, complex schedules.
+     */
+    @DisallowConcurrentExecution                                  // prevent overlap
+    @ScheduleWithCron("0 0 3 * * ?")                              // daily at 03:00
+    open fun nightlyReport() {
+        if (Thread.currentThread().isInterrupted) return          // graceful shutdown
+        log.info("Generating nightly report")
+        // ... generate report ...
+    }
+
+    /**
+     * Cron with config: cron expression read from configuration.
+     * Config has priority over the annotation value.
+     */
+    @ScheduleWithCron(config = "jobs.hourly")
+    open fun hourlyCheck() {
+        log.info("Running hourly check")
+        // ... perform check ...
+    }
+}
+
+// ============== CONFIGURATION ==============
+
+// application.conf snippet (HOCON):
+//
+// quartz {
+//   "org.quartz.scheduler.instanceName" = "MyScheduler"
+//   "org.quartz.threadPool.threadCount"  = "10"
+// }
+//
+// scheduling {
+//   waitForJobComplete = true    # block shutdown until the running job finishes
+//   telemetry {
+//     logging.enabled = false
+//     metrics.enabled = true
+//     tracing.enabled = true
+//   }
+// }
+//
+// jobs.hourly.cron = "0 0 * * * ?"

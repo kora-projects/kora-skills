@@ -1,0 +1,24 @@
+package ${package}
+
+import io.grpc.*
+import ru.tinkoff.kora.common.Component
+
+/**
+ * Server interceptor for gRPC services.
+ * Use for logging, metrics, authentication, or exception handling.
+ */
+@Component
+class GrpcLoggingInterceptor : ServerInterceptor {
+
+    override fun <ReqT, RespT> interceptCall(
+        serverCall: ServerCall<ReqT, RespT>,
+        metadata: Metadata,
+        serverCallHandler: ServerCallHandler<ReqT, RespT>
+    ): ServerCall.Listener<ReqT> {
+        // Add custom logic here (logging, auth validation, metrics, etc.)
+        // Example: log method name
+        // println("gRPC call: " + serverCall.methodDescriptor.fullMethodName)
+
+        return serverCallHandler.startCall(serverCall, metadata)
+    }
+}

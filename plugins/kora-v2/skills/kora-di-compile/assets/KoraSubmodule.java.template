@@ -1,0 +1,39 @@
+package ${packagePath};
+
+import ru.tinkoff.kora.common.KoraSubmodule;
+import ru.tinkoff.kora.config.hocon.HoconConfigModule;
+import ru.tinkoff.kora.logging.logback.LogbackModule;
+
+/**
+ * Example KoraSubmodule interface for multi-module Gradle projects.
+ *
+ * @KoraSubmodule is used to split a Kora application into separate Gradle modules.
+ * Each submodule has its own build.gradle and can be developed/tested independently.
+ *
+ * When to split:
+ * - 500+ classes
+ * - Clear domain boundaries (pet-api, vet-api)
+ * - Multiple teams working on different domains
+ * - Compilation time exceeds 2 minutes
+ *
+ * Usage in Application:
+ * ```java
+ * @KoraApp
+ * public interface Application extends CommonModule, PetModule {
+ *     static void main(String[] args) {
+ *         KoraApplication.run(ApplicationGraph::graph);
+ *     }
+ * }
+ * ```
+ *
+ * See: references/kora-submodule-reference.md
+ * See: references/module-auto-discovery-reference.md
+ */
+@KoraSubmodule
+public interface ${Module}Module extends
+    HoconConfigModule,  // External module - config support
+    LogbackModule       // External module - logging support
+{
+    // Add domain-specific factory methods here if needed
+    // All components from this module are available to parent Application
+}

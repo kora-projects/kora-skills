@@ -1,0 +1,59 @@
+plugins {
+    id "java"
+    id "application"
+}
+
+configurations {
+    koraBom
+    annotationProcessor.extendsFrom(koraBom)
+    implementation.extendsFrom(koraBom)
+}
+
+dependencies {
+    koraBom platform("ru.tinkoff.kora:kora-parent:${koraVersion}")
+    annotationProcessor "ru.tinkoff.kora:annotation-processors"
+
+    // Kafka module for messaging
+    implementation "ru.tinkoff.kora:kafka"
+
+    // JSON for message serialization/deserialization
+    implementation "ru.tinkoff.kora:json-module"
+
+    // Configuration (HOCON format)
+    implementation "ru.tinkoff.kora:config-hocon"
+
+    // Logging
+    implementation "ru.tinkoff.kora:logging-logback"
+
+    // Telemetry (optional but recommended for production)
+    // implementation "ru.tinkoff.kora:micrometer-module"  // For metrics (Prometheus on the private port)
+    // implementation "ru.tinkoff.kora:opentelemetry-tracing-exporter-grpc"  // For OTLP tracing
+
+    // Tests
+    testImplementation "ru.tinkoff.kora:test-junit5"
+    testImplementation "org.testcontainers:kafka:1.19.3"
+    testImplementation "org.testcontainers:junit-jupiter:1.19.3"
+    testRuntimeOnly "org.apache.kafka:kafka-clients:3.7.0"
+    testImplementation "org.json:json:20240303"
+    testImplementation "org.awaitility:awaitility:4.2.1"
+    testImplementation "org.assertj:assertj-core:3.25.3"
+}
+
+java {
+    sourceCompatibility = JavaVersion.VERSION_21
+    targetCompatibility = JavaVersion.VERSION_21
+}
+
+application {
+    mainClass = "${packagePath}.Application"
+}
+
+tasks.named('test') {
+    useJUnitPlatform()
+}
+
+run {
+    environment([
+        KAFKA_BOOTSTRAP_SERVERS: System.getenv('KAFKA_BOOTSTRAP_SERVERS') ?: 'localhost:9092'
+    ])
+}

@@ -1,0 +1,26 @@
+package `${package}`
+
+import ru.tinkoff.kora.database.cassandra.annotation.EntityCassandra
+import ru.tinkoff.kora.database.common.annotation.Column
+import ru.tinkoff.kora.database.common.annotation.Id
+import ru.tinkoff.kora.database.common.annotation.Table
+
+/**
+ * Entity with single-field ID for Cassandra.
+ * For UUID IDs, use UUID type.
+ * For String IDs, change to String type.
+ *
+ * Key annotations:
+ * - @EntityCassandra: Generates Cassandra row/result-set mappers at compile time
+ * - @Table: Maps to Cassandra table
+ * - @Id: Optional in Cassandra; only matters for SQL macros
+ * - @field:Column: Maps property to column name (use-site target required in Kotlin)
+ */
+@EntityCassandra
+@Table("`${table_name}`")
+data class ${entity_name}(
+    @field:Column("id") @field:Id val id: `${id_type}`,
+    @field:Column("field1") val field1: String,
+    @field:Column("field2") val field2: String,
+    @field:Column("field3") val field3: String? = null
+)

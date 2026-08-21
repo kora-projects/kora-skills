@@ -1,0 +1,92 @@
+{
+  "evals": [
+    {
+      "id": "kora-openapi-management-basic-swagger-ui",
+      "skills": ["kora-openapi-management"],
+      "query": "I have a Kora HTTP server. Expose my OpenAPI spec at /api/openapi and an interactive Swagger UI at /api/docs.",
+      "expected_behavior": [
+        "Adds the ru.tinkoff.kora:openapi-management dependency and keeps ru.tinkoff.kora:http-server-undertow",
+        "Adds OpenApiManagementModule to the @KoraApp interface's extends list",
+        "Places the spec under src/main/resources/openapi/ and lists it in openapi.management.file",
+        "Sets openapi.management.enabled = true, endpoint = \"/api/openapi\", swaggerui.enabled = true and swaggerui.endpoint = \"/api/docs\"",
+        "Notes that openapi.management toggles default to false so each must be set explicitly",
+        "Does not pull in an external documentation library or use field injection; uses constructor injection and OpenApiManagementModule only"
+      ],
+      "tags": ["swagger-ui", "basic"]
+    },
+    {
+      "id": "kora-openapi-management-defaults",
+      "skills": ["kora-openapi-management"],
+      "query": "I added openapi-management and OpenApiManagementModule but /swagger-ui returns 404. What's wrong?",
+      "expected_behavior": [
+        "Explains that openapi.management.enabled and swaggerui.enabled both default to false",
+        "Instructs to set openapi.management.enabled = true and swaggerui.enabled = true",
+        "Confirms swaggerui.endpoint defaults to /swagger-ui and the spec must be listed in openapi.management.file",
+        "Does not claim the toggles default to true"
+      ],
+      "tags": ["troubleshooting", "config", "basic"]
+    },
+    {
+      "id": "kora-openapi-management-multi-version",
+      "skills": ["kora-openapi-management"],
+      "query": "Publish both api-v1.yaml and api-v2.yaml so Swagger UI lets me switch between the two versions.",
+      "expected_behavior": [
+        "Lists both files in openapi.management.file = [\"openapi/api-v1.yaml\", \"openapi/api-v2.yaml\"]",
+        "Explains that with multiple files each spec is served at endpoint/{name} (filename without directory or extension), e.g. /openapi/api-v1",
+        "Enables swaggerui so the UI provides a spec selector",
+        "Does not suggest one GenerateTask call per viewer or any external (non-Kora) documentation tooling"
+      ],
+      "tags": ["versioning", "multi-spec", "advanced"]
+    },
+    {
+      "id": "kora-openapi-management-prod-disable",
+      "skills": ["kora-openapi-management"],
+      "query": "Keep the raw OpenAPI document reachable for tooling but hide the interactive Swagger UI in production.",
+      "expected_behavior": [
+        "Keeps openapi.management.enabled = true so the raw spec stays served",
+        "Sets openapi.management.swaggerui.enabled = false in a production profile/override config",
+        "Optionally drives the toggle via an environment variable substitution like ${SWAGGER_UI_ENABLED:false}",
+        "Does not rely on a profile annotation; toggles documentation purely through HOCON config under openapi.management"
+      ],
+      "tags": ["production", "config", "advanced"]
+    },
+    {
+      "id": "kora-openapi-management-secure-docs",
+      "skills": ["kora-openapi-management"],
+      "query": "I want to keep Swagger UI enabled in production but require an Authorization header to reach the docs endpoints in my Kora app.",
+      "expected_behavior": [
+        "Implements an HttpServerInterceptor whose intercept(Context, HttpServerRequest, InterceptChain) checks request.path() for the docs prefixes",
+        "Registers it as a @Component annotated with @Tag(HttpServerModule.class) so it runs globally without manual wiring",
+        "Returns HttpServerResponse.of(401, HttpBody.plaintext(...)) for unauthorized requests and calls chain.process(context, request) otherwise",
+        "Reads the Authorization header via request.headers().getFirst(\"Authorization\")",
+        "Does not misuse HttpServerRequestHandler as an interceptor and does not invent a servlet-style filter; uses the Kora HttpServerInterceptor contract"
+      ],
+      "tags": ["security", "interceptor", "advanced"]
+    },
+    {
+      "id": "kora-openapi-management-rapidoc-vs-swagger",
+      "skills": ["kora-openapi-management"],
+      "query": "My OpenAPI spec uses oneOf with a discriminator for polymorphic types. Which built-in viewer should I enable, Swagger UI or RapiDoc?",
+      "expected_behavior": [
+        "Recommends Swagger UI (swaggerui.enabled = true) for full discriminator and oneOf/anyOf support",
+        "Notes RapiDoc has limited support for discriminators and complex polymorphic schemas",
+        "Configures the choice under openapi.management (rapidoc.enabled left false)",
+        "Does not recommend an external (non-Kora) documentation viewer"
+      ],
+      "tags": ["rapidoc", "decision", "advanced"]
+    },
+    {
+      "id": "kora-openapi-management-contract-first",
+      "skills": ["kora-openapi-management"],
+      "query": "I generate my Kora server from user-http-server.yaml with the kora generator. How do I also publish that exact spec and Swagger UI?",
+      "expected_behavior": [
+        "Adds openapi-management alongside the existing org.openapi.generator codegen and OpenApiManagementModule on the graph",
+        "Points openapi.management.file at the same src/main/resources/openapi/user-http-server.yaml the GenerateTask uses as inputSpec",
+        "Explains the spec stays on the classpath so no copy task is needed and docs cannot drift from generated code",
+        "Enables openapi.management.enabled and swaggerui.enabled, exposing /openapi and /swagger-ui",
+        "Does not hand-write a controller to serve the spec; relies on OpenApiManagementModule"
+      ],
+      "tags": ["codegen", "contract-first", "advanced"]
+    }
+  ]
+}

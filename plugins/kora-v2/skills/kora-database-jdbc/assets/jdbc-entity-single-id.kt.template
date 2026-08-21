@@ -1,0 +1,46 @@
+package ${package}
+
+import jakarta.annotation.Nullable
+import ru.tinkoff.kora.database.common.annotation.Column
+import ru.tinkoff.kora.database.jdbc.EntityJdbc
+import ru.tinkoff.kora.database.common.annotation.Id
+import ru.tinkoff.kora.database.common.annotation.Table
+import java.time.LocalDateTime
+
+/**
+ * Entity with single-field ID for JDBC repository (Kotlin).
+ *
+ * Key annotations:
+ * - @EntityJdbc: Enables optimized JDBC result converters (always use for JDBC entities)
+ * - @Table: Maps data class to database table
+ * - @Id: Marks primary key field (required for macros and generated ID retrieval)
+ * - @Column: Explicit column mapping (always use for all fields)
+ * - @Nullable: For nullable fields (use jakarta.annotation.Nullable)
+ *
+ * ID type options:
+ * - Long: For auto-generated sequence IDs (PostgreSQL: GENERATED ALWAYS AS IDENTITY)
+ * - UUID: For client-generated random IDs
+ * - String: For custom string identifiers
+ *
+ * Best practices:
+ * - Always use @EntityJdbc for JDBC entities
+ * - Annotate data class properties with @field: so the annotation lands on the field
+ * - Always use @Column for all fields (explicit mapping)
+ * - Use a secondary constructor for insert (exclude ID for auto-generated)
+ * - The id is nullable so it can be left null before the database assigns it
+ */
+@EntityJdbc
+@Table("${table_name}")
+data class ${entity_name}(
+    @field:Id @field:Column("id") val id: ${id_type}?,
+    @field:Column("email") val email: String,
+    @field:Column("name") val name: String,
+    @field:Column("created_at") val createdAt: LocalDateTime,
+    @field:Column("data") val data: String? = null
+) {
+    /**
+     * Secondary constructor for insert (without ID for auto-generated IDs).
+     */
+    constructor(email: String, name: String, createdAt: LocalDateTime) :
+        this(null, email, name, createdAt, null)
+}

@@ -1,0 +1,22 @@
+// Error response DTO for validation errors. Use with ViolationExceptionHttpServerResponseMapper.
+// Replace `com.example.app.dto` with your package.
+
+package com.example.app.dto;
+
+import ru.tinkoff.kora.json.common.annotation.Json;
+
+import java.util.List;
+
+@Json
+public record ValidationErrorResponse(
+    String code,
+    String message,
+    List<ValidationErrorDetails> errors
+) {
+    public static ValidationErrorResponse of(List<ValidationErrorDetails> errors) {
+        return new ValidationErrorResponse("VALIDATION_ERROR", "Validation failed", errors);
+    }
+
+    @Json
+    public record ValidationErrorDetails(String field, String message) {}
+}

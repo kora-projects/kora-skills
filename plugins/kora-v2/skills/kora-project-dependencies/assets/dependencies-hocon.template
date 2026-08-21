@@ -1,0 +1,24 @@
+// HOCON Configuration dependencies
+// HOCON (Human-Optimized Config Format) is the recommended config format for Kora
+
+dependencies {
+    // HOCON configuration module
+    implementation "ru.tinkoff.kora:config-hocon"
+
+    // Logging (required for config change notifications)
+    implementation "ru.tinkoff.kora:logging-logback"
+}
+
+// Usage in @KoraApp interface:
+// @KoraApp
+// public interface Application extends HoconConfigModule { ... }
+//
+// Configuration file: src/main/resources/application.conf
+//
+// HOCON supports:
+// - Required substitution:  port = ${DATABASE_PORT}
+// - Optional substitution:  password = ${?DATABASE_PASSWORD}   (omitted if unset)
+// - Default value:          port = 8080
+//                           port = ${?PORT}                    (overrides the default if set)
+// - Comments: # this is a comment
+// - Nested objects and arrays

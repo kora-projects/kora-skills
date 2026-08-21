@@ -1,0 +1,56 @@
+package ${packagePath}.publisher;
+
+import ru.tinkoff.kora.kafka.common.annotation.KafkaPublisher;
+import ru.tinkoff.kora.kafka.common.annotation.KafkaPublisher.Topic;
+import ru.tinkoff.kora.kafka.common.producer.TransactionalPublisher;
+
+/**
+ * Transactional publisher.
+ *
+ * Extends TransactionalPublisher<P> where P is the base publisher (declared here
+ * as a nested @KafkaPublisher interface so both fit in one file). All messages
+ * sent within inTx() commit atomically, or all abort if the lambda throws.
+ */
+@KafkaPublisher("kafka.producer.myTransactionalPublisher")
+public interface MyTransactionalPublisher extends TransactionalPublisher<MyTransactionalPublisher.TopicPublisher> {
+
+    /**
+     * Base publisher used inside the transaction.
+     */
+    @KafkaPublisher("kafka.producer.myPublisher")
+    interface TopicPublisher {
+
+        @Topic("kafka.producer.myTopic")
+        void send(String key, String value);
+    }
+}
+
+/**
+ * Example usage of the transactional publisher.
+ */
+// @Component
+// public final class MyService {
+//     private final MyTransactionalPublisher transactionalPublisher;
+//
+//     public MyService(MyTransactionalPublisher transactionalPublisher) {
+//         this.transactionalPublisher = transactionalPublisher;
+//     }
+//
+//     // Lambda style: commit on success, abort if an exception propagates.
+//     public void sendInTransaction() {
+//         transactionalPublisher.inTx(producer -> {
+//             producer.send("key1", "value1");
+//             producer.send("key2", "value2");
+//         });
+//     }
+//
+//     // Manual style: commit on close(), or abort() explicitly.
+//     public void sendManual(boolean somethingBad) {
+//         try (var transaction = transactionalPublisher.begin()) {
+//             transaction.publisher().send("key", "value");
+//             if (somethingBad) {
+//                 transaction.abort();  // rollback; close() will not commit
+//             }
+//         }
+//     }
+// }

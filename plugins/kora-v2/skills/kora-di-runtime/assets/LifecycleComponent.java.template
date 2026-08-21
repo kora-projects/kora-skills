@@ -1,0 +1,197 @@
+package ${packagePath};
+
+import ru.tinkoff.kora.application.graph.Lifecycle;
+import ru.tinkoff.kora.common.Component;
+
+/**
+ * Component with lifecycle management (init/release hooks).
+ *
+ * Usage:
+ * - Components that need initialization after creation
+ * - Components that need cleanup on shutdown
+ * - Resource managers (pools, connections, schedulers)
+ * - Background task runners
+ *
+ * Lifecycle contract:
+ * - init() called after component creation, before use
+ * - release() called during shutdown (SIGTERM)
+ * - Release order is reverse of creation order
+ */
+@Component
+public final class ${ComponentName} implements Lifecycle {
+
+    // TODO: Add fields for managed resources
+    // private final SomeResource resource;
+    // private final ScheduledExecutorService scheduler;
+
+    public ${ComponentName}(/* Dependencies */) {
+        // TODO: Create resources (but don't start them yet)
+        // this.resource = new SomeResource();
+        System.out.println("${ComponentName} created");
+    }
+
+    /**
+     * Called after component creation, before application starts.
+     *
+     * Use for:
+     * - Testing connections
+     * - Starting background tasks
+     * - Warming caches
+     * - Registering callbacks
+     *
+     * @throws Exception if initialization fails (component will fail to start)
+     */
+    @Override
+    public void init() throws Exception {
+        System.out.println("${ComponentName} initializing...");
+
+        // TODO: Add initialization logic
+        // Example: Test database connection
+        // try (Connection conn = dataSource.getConnection()) {
+        //     System.out.println("Database connection OK");
+        // }
+
+        // Example: Schedule periodic task
+        // scheduler.scheduleAtFixedRate(
+        //     this::cleanupTask,
+        //     0, 1, TimeUnit.HOURS
+        // );
+
+        // Example: Warm up cache
+        // cache.warmup();
+
+        System.out.println("${ComponentName} initialized");
+    }
+
+    /**
+     * Called during application shutdown (SIGTERM).
+     *
+     * Use for:
+     * - Stopping background tasks gracefully
+     * - Closing connections/pools
+     * - Flushing buffers
+     * - Releasing external resources
+     *
+     * Note: Exceptions are logged but don't prevent shutdown.
+     */
+    @Override
+    public void release() throws Exception {
+        System.out.println("${ComponentName} releasing...");
+
+        // TODO: Add cleanup logic
+        // Example: Stop scheduler gracefully
+        // scheduler.shutdown();
+        // if (!scheduler.awaitTermination(30, TimeUnit.SECONDS)) {
+        //     scheduler.shutdownNow();
+        // }
+
+        // Example: Close connections
+        // if (dataSource instanceof AutoCloseable) {
+        //     ((AutoCloseable) dataSource).close();
+        // }
+
+        // Example: Flush/release resources
+        // resource.flush();
+        // resource.close();
+
+        System.out.println("${ComponentName} released");
+    }
+
+    // ========================================================================
+    // EXAMPLE: Database Connection Pool
+    // ========================================================================
+    //
+    // @Component
+    // public final class DatabasePool implements Lifecycle {
+    //     private final DataSource dataSource;
+    //     private final ScheduledExecutorService scheduler;
+    //
+    //     public DatabasePool(DatabaseConfig config) {
+    //         this.dataSource = createDataSource(config);
+    //         this.scheduler = Executors.newSingleThreadScheduledExecutor();
+    //     }
+    //
+    //     @Override
+    //     public void init() throws Exception {
+    //         // Test connection
+    //         try (Connection conn = dataSource.getConnection()) {
+    //             System.out.println("Database connection OK");
+    //         }
+    //
+    //         // Schedule periodic cleanup
+    //         scheduler.scheduleAtFixedRate(
+    //             this::cleanup,
+    //             5, 5, TimeUnit.MINUTES
+    //         );
+    //     }
+    //
+    //     @Override
+    //     public void release() throws Exception {
+    //         // Stop scheduler
+    //         scheduler.shutdown();
+    //         if (!scheduler.awaitTermination(30, TimeUnit.SECONDS)) {
+    //             scheduler.shutdownNow();
+    //         }
+    //
+    //         // Close pool
+    //         if (dataSource instanceof AutoCloseable) {
+    //             ((AutoCloseable) dataSource).close();
+    //         }
+    //     }
+    //
+    //     private void cleanup() {
+    //         // Periodic cleanup logic
+    //     }
+    // }
+
+    // ========================================================================
+    // EXAMPLE: Kafka Consumer
+    // ========================================================================
+    //
+    // @Root
+    // @Component
+    // public final class KafkaConsumerImpl implements Lifecycle {
+    //     private final KafkaConsumer<String, String> consumer;
+    //     private final ExecutorService executor;
+    //     private volatile boolean running = false;
+    //
+    //     public KafkaConsumerImpl(KafkaConfig config) {
+    //         this.consumer = new KafkaConsumer<>(config.props());
+    //         this.executor = Executors.newSingleThreadExecutor();
+    //     }
+    //
+    //     @Override
+    //     public void init() {
+    //         running = true;
+    //         executor.submit(this::consumeLoop);
+    //         System.out.println("Kafka consumer started");
+    //     }
+    //
+    //     @Override
+    //     public void release() {
+    //         running = false;
+    //         consumer.wakeup();
+    //         executor.shutdown();
+    //         try {
+    //             if (!executor.awaitTermination(30, TimeUnit.SECONDS)) {
+    //                 executor.shutdownNow();
+    //             }
+    //         } catch (InterruptedException e) {
+    //             executor.shutdownNow();
+    //             Thread.currentThread().interrupt();
+    //         }
+    //         System.out.println("Kafka consumer stopped");
+    //     }
+    //
+    //     private void consumeLoop() {
+    //         while (running) {
+    //             var records = consumer.poll(Duration.ofMillis(100));
+    //             records.forEach(this::process);
+    //         }
+    //     }
+    //
+    //     private void process(ConsumerRecord<String, String> record) {
+    //         // Process message
+    //     }
+    // }
+}

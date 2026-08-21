@@ -1,0 +1,110 @@
+package ${packagePath}
+
+import ru.tinkoff.kora.application.graph.ValueOf
+import ru.tinkoff.kora.common.Component
+
+/**
+ * Component using ValueOf for lazy dependency injection.
+ *
+ * Usage:
+ * - Breaking circular dependencies
+ * - Lazy initialization (dependency accessed only when needed)
+ * - Preventing cascading refreshes when dependency changes
+ * - Config dependencies that may change at runtime
+ *
+ * ValueOf<T> provides:
+ * - fun get(): T — Get current instance
+ * - fun refresh() — Force refresh (if component is refreshable)
+ *
+ * Key benefit: Your component won't be refreshed when the ValueOf dependency changes.
+ */
+@Component
+class ${ComponentName}(
+    private val ${dependencyVarName}: ValueOf<${DependencyType}>
+) {
+
+    init {
+        // Component created, but dependency NOT yet accessed
+        println("${ComponentName} created (${DependencyType} not yet accessed)")
+    }
+
+    fun doSomething() {
+        // Access dependency when needed
+        val dependency = ${dependencyVarName}.get()
+
+        // Use the dependency
+        dependency.doWork()
+
+        println("${ComponentName} completed work")
+    }
+
+    // ========================================================================
+    // EXAMPLE: Circular Dependency Resolution
+    // ========================================================================
+    //
+    // Problem: ServiceA depends on ServiceB, ServiceB depends on ServiceA
+    //
+    // Solution: Use ValueOf in one direction
+    //
+    // @Component
+    // class ServiceA(
+    //     private val serviceB: ValueOf<ServiceB>
+    // ) {
+    //     fun doSomething() {
+    //         serviceB.get().doOther()  // Lazy access
+    //     }
+    // }
+    //
+    // @Component
+    // class ServiceB(
+    //     private val serviceA: ServiceA  // Direct dependency
+    // ) {
+    //     fun doOther() {
+    //         serviceA.doSomething()
+    //     }
+    // }
+
+    // ========================================================================
+    // EXAMPLE: Config That Changes at Runtime
+    // ========================================================================
+    //
+    // @Component
+    // class HttpClient(
+    //     private val authConfig: ValueOf<AuthConfig>
+    // ) {
+    //
+    //     fun get(url: String): Response {
+    //         // Always use CURRENT config value
+    //         val config = authConfig.get()
+    //
+    //         // Make request with current config
+    //         // HttpClient itself is NOT refreshed when config changes
+    //         return httpClient.execute(url, config.token)
+    //     }
+    // }
+    //
+    // Without ValueOf:
+    // - When config refreshes, HttpClient would also refresh (cascade)
+    //
+    // With ValueOf:
+    // - Config refreshes, but HttpClient survives
+    // - HttpClient uses new config value via get()
+
+    // ========================================================================
+    // EXAMPLE: HTTP Handler (Lazy Dependency)
+    // ========================================================================
+    //
+    // HTTP servers use ValueOf for request handlers:
+    //
+    // @Component
+    // class HttpServer(
+    //     private val userHandler: ValueOf<UserHandler>
+    // ) {
+    //
+    //     fun handleRequest(request: Request) {
+    //         // Each request uses current handler instance
+    //         // If handler is refreshed, server picks up new version
+    //         userHandler.get().handle(request)
+    //     }
+    // }
+}

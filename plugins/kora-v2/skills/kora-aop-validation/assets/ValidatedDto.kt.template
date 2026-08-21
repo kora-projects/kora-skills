@@ -1,0 +1,31 @@
+// Kotlin data class with built-in validators. Generates a Validator<CreateOrder> component.
+// Replace `com.example.app.dto` with your package.
+// A data class is fine for CLASS validation. A class only needs `open` when it hosts a
+// @Validate METHOD (the aspect subclasses it). Use the @field: prefix on constraints.
+
+package com.example.app.dto
+
+import ru.tinkoff.kora.validation.common.annotation.NotBlank
+import ru.tinkoff.kora.validation.common.annotation.NotEmpty
+import ru.tinkoff.kora.validation.common.annotation.Pattern
+import ru.tinkoff.kora.validation.common.annotation.Range
+import ru.tinkoff.kora.validation.common.annotation.Size
+import ru.tinkoff.kora.validation.common.annotation.Valid
+
+@Valid
+data class CreateOrder(
+    @field:NotBlank @field:Size(min = 1, max = 64) val sku: String,
+    @field:Range(from = 1.0, to = 1000.0) val quantity: Int,
+    @field:Pattern("^[A-Z]{3}$") val currency: String,        // value is the unnamed attribute
+    @field:NotEmpty val tags: List<@NotBlank String>,
+    @field:Valid val billing: Address,                        // nested @Valid -> Validator<Address>
+    val note: String?                                         // nullable type opts out of the null check
+) {
+
+    @Valid
+    data class Address(
+        @field:NotBlank val line1: String,
+        val line2: String?,
+        @field:Pattern("^[A-Z]{2}$") val country: String
+    )
+}

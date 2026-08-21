@@ -1,0 +1,148 @@
+{
+  "evals": [
+    {
+      "id": "kora-aop-caching-cacheable-single-key",
+      "skills": [
+        "kora-aop-caching"
+      ],
+      "query": "In my Kora service I want to cache OrderDto lookups by their UUID id using a local in-memory cache. How do I set this up?",
+      "expected_behavior": [
+        "Adds the ru.tinkoff.kora:cache-caffeine dependency and the mandatory annotation-processors (Java) or symbol-processors (Kotlin)",
+        "Connects CaffeineCacheModule on the @KoraApp interface",
+        "Declares a typed @Cache(\"...\") interface extending CaffeineCache<UUID, OrderDto>",
+        "Annotates the read method with @Cacheable(OrderCache.class) so the single UUID argument becomes the cache key",
+        "Provides a HOCON config block with maximumSize and/or expireAfterWrite at the configured @Cache path",
+        "Does not use field injection or external-framework caching annotations (@EnableCaching); uses only Kora's @Cacheable"
+      ],
+      "tags": [
+        "caffeine",
+        "basic"
+      ]
+    },
+    {
+      "id": "kora-aop-caching-composite-key",
+      "skills": [
+        "kora-aop-caching"
+      ],
+      "query": "I need to cache by a combination of tenantId and orderId in a Kora Caffeine cache. How do I model the composite key?",
+      "expected_behavior": [
+        "Declares an inner record (Java) or data class (Kotlin) Key(tenantId, orderId) inside the @Cache interface",
+        "Extends CaffeineCache<OrderCache.Key, OrderDto> with the Key type",
+        "Notes that method argument order must match the record component order, or uses the parameters attribute to reorder",
+        "Keeps @Cacheable(OrderCache.class) on the method",
+        "Does not invent a non-existent condition or unless attribute on the cache annotations"
+      ],
+      "tags": [
+        "key",
+        "intermediate"
+      ]
+    },
+    {
+      "id": "kora-aop-caching-key-mapper",
+      "skills": [
+        "kora-aop-caching"
+      ],
+      "query": "My cached method takes an OrderContext object (tenantId, orderId, requestId) but the cache key is just tenantId+orderId. How do I derive the key in Kora?",
+      "expected_behavior": [
+        "Implements CacheKeyMapper from ru.tinkoff.kora.cache to map OrderContext to the cache Key type",
+        "Applies the mapper with @Mapping(OrderContextMapper.class) alongside @Cacheable",
+        "Uses CacheKeyMapper.CacheKeyMapper2 (a nested interface) when mapping from two separate method arguments rather than a single object",
+        "Does not use SpEL-style key expressions; derives the key only via CacheKeyMapper/@Mapping"
+      ],
+      "tags": [
+        "key-mapper",
+        "advanced"
+      ]
+    },
+    {
+      "id": "kora-aop-caching-put-invalidate",
+      "skills": [
+        "kora-aop-caching"
+      ],
+      "query": "After updating and deleting an order I want to keep the Kora cache consistent. Which annotations do I use and how do I pick the key?",
+      "expected_behavior": [
+        "Uses @CachePut on the update method so the method always runs and the returned value is written to the cache",
+        "Uses @CacheInvalidate on the delete method to evict the key after the method returns",
+        "Uses the parameters attribute (e.g. parameters = {\"id\"}) to select which arguments form the key when the value object is also a parameter",
+        "Mentions @CacheInvalidate(value = ..., invalidateAll = true) for clearing the whole cache",
+        "Does not use @CacheEvict (a different framework); uses Kora's @CacheInvalidate and @CachePut"
+      ],
+      "tags": [
+        "write-through",
+        "intermediate"
+      ]
+    },
+    {
+      "id": "kora-aop-caching-redis-setup",
+      "skills": [
+        "kora-aop-caching"
+      ],
+      "query": "Set up a distributed Kora cache for OrderDto backed by Redis so several pods share cache state.",
+      "expected_behavior": [
+        "Adds ru.tinkoff.kora:cache-redis and connects RedisCacheModule",
+        "Declares @Cache interface extending RedisCache<UUID, @Json OrderDto> with @Json (ru.tinkoff.kora.json.common.annotation.Json) on the value type for serialization",
+        "Configures the shared lettuce { uri = ... } driver section, externalizing the URI/credentials with env substitution",
+        "Sets the required keyPrefix on the per-cache config and explains the graph build fails without it",
+        "Does not use RedisTemplate or a raw Jedis/Lettuce client by hand; uses the typed RedisCache contract"
+      ],
+      "tags": [
+        "redis",
+        "intermediate"
+      ]
+    },
+    {
+      "id": "kora-aop-caching-multi-level",
+      "skills": [
+        "kora-aop-caching"
+      ],
+      "query": "I want a two-level cache in Kora: a fast local Caffeine L1 in front of a shared Redis L2. How do I wire that?",
+      "expected_behavior": [
+        "Connects both CaffeineCacheModule and RedisCacheModule on the @KoraApp interface",
+        "Declares two separate @Cache interfaces with distinct config paths: CaffeineCache for L1 and RedisCache<..., @Json ...> for L2",
+        "Stacks @Cacheable annotations on the method with the Caffeine (L1) annotation first and the Redis (L2) annotation second, since aspects apply top to bottom",
+        "Gives L1 a shorter TTL than L2 and notes the Redis cache still needs keyPrefix",
+        "Does not rely on a @Caching meta-annotation or field injection; uses constructor injection and stacked Kora annotations"
+      ],
+      "tags": [
+        "multi-level",
+        "advanced"
+      ]
+    },
+    {
+      "id": "kora-aop-caching-imperative-loadable",
+      "skills": [
+        "kora-aop-caching"
+      ],
+      "query": "I need manual get-or-load behavior on a Kora cache without using the @Cacheable aspect, for example to warm the cache after generating an id. What are my options?",
+      "expected_behavior": [
+        "Injects the typed cache component and calls the imperative Cache API: get(key), put(key, value), computeIfAbsent(key, loader), invalidate(key)",
+        "Notes get() returns null on a miss and the value must be put explicitly",
+        "Offers LoadableCache via cache.asLoadable(loader) as a get-or-load wrapper exposed as a @Root component",
+        "Does not claim @Cacheable can read a key produced inside the method body",
+        "Does not use a CacheManager abstraction or @Cacheable for this manual flow; uses the injected Cache directly"
+      ],
+      "tags": [
+        "imperative",
+        "advanced"
+      ]
+    },
+    {
+      "id": "kora-aop-caching-aspect-not-firing",
+      "skills": [
+        "kora-aop-caching"
+      ],
+      "query": "I added @Cacheable to a method in my Kora service but the cache is never hit and the method always runs. What is wrong?",
+      "expected_behavior": [
+        "Explains Kora cache annotations are applied via compile-time AOP through a generated subclass proxy, so the target must be non-final in Java or open in Kotlin",
+        "Checks that the annotation-processors (Java) / symbol-processors (KSP, Kotlin) dependency is present so the aspect is generated",
+        "Notes self-invocation bypass: calls from within the same component skip the proxy, so call through an injected component",
+        "Suggests inspecting the generated $Service__AopProxy to confirm the cache lookup was woven in",
+        "Does not suggest enabling runtime proxies/AspectJ or @EnableCaching; the fix is compile-time AOP plus a non-final/open target"
+      ],
+      "tags": [
+        "troubleshooting",
+        "advanced"
+      ]
+    }
+  ]
+}

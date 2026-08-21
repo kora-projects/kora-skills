@@ -1,0 +1,145 @@
+package ${package}.publisher
+
+import org.apache.kafka.clients.consumer.ConsumerConfig
+import org.apache.kafka.clients.consumer.KafkaConsumer
+import org.apache.kafka.common.serialization.StringDeserializer
+import org.jetbrains.annotations.NotNull
+import org.json.JSONObject
+import org.junit.jupiter.api.Assertions.*
+import org.junit.jupiter.api.Test
+import org.testcontainers.containers.KafkaContainer
+import org.testcontainers.junit.jupiter.Container
+import org.testcontainers.junit.jupiter.Testcontainers
+import org.testcontainers.utility.DockerImageName
+import ru.tinkoff.kora.test.extension.junit5.*
+import java.time.Duration
+import java.util.Properties
+
+/**
+ * Tests for the ${publisherName} producer (Kotlin).
+ *
+ * Usage:
+ * 1. Make sure the dependencies are added in build.gradle.kts:
+ *    testImplementation("org.testcontainers:testcontainers:1.19.3")
+ *    testImplementation("org.testcontainers:kafka:1.19.3")
+ *    testImplementation("org.testcontainers:junit-jupiter:1.19.3")
+ *    testRuntimeOnly("org.apache.kafka:kafka-clients:3.5.1")
+ *    testImplementation("org.json:json:20231013")
+ *
+ * 2. Run tests: ./gradlew test
+ */
+@Testcontainers
+@KoraAppTest(Application::class)
+class ${publisherName}Tests : KoraAppTestConfigModifier {
+
+    companion object {
+        @Container
+        @JvmStatic
+        val KAFKA = KafkaContainer(
+            DockerImageName.parse("confluentinc/cp-kafka:7.5.0")
+        ).withStartupTimeout(Duration.ofSeconds(60))
+    }
+
+    @TestComponent
+    private lateinit var publisher: ${publisherName}
+
+    @NotNull
+    override fun config(): KoraConfigModification {
+        return KoraConfigModification.ofSystemProperty(
+            "KAFKA_BOOTSTRAP",
+            KAFKA.bootstrapServers
+        )
+    }
+
+    @Test
+    fun `should send message`() {
+        // given
+        val message = "test-message-${System.currentTimeMillis()}"
+        val consumerProps = createConsumerProps()
+
+        // when
+        publisher.send(message)
+
+        // then
+        KafkaConsumer<String, String>(consumerProps).use { consumer ->
+            consumer.subscribe(listOf("${topicName}"))
+            val records = consumer.poll(Duration.ofSeconds(5))
+            assertTrue(records.isNotEmpty())
+            assertEquals(message, records.iterator().next().value())
+        }
+    }
+
+    @Test
+    fun `should send message with key`() {
+        // given
+        val key = "test-key-123"
+        val value = "test-value-456"
+        val consumerProps = createConsumerProps()
+
+        // when
+        publisher.send(key, value)
+
+        // then
+        KafkaConsumer<String, String>(consumerProps).use { consumer ->
+            consumer.subscribe(listOf("${topicName}"))
+            val records = consumer.poll(Duration.ofSeconds(5))
+            assertTrue(records.isNotEmpty())
+            val record = records.iterator().next()
+            assertEquals(key, record.key())
+            assertEquals(value, record.value())
+        }
+    }
+
+    @Test
+    fun `should send json message`() {
+        // given
+        val event = JSONObject()
+            .put("orderId", "order-123")
+            .put("customerId", "cust-456")
+            .put("amount", 99.99)
+        val consumerProps = createConsumerProps()
+
+        // when
+        publisher.sendEvent(event.toString())
+
+        // then
+        KafkaConsumer<String, String>(consumerProps).use { consumer ->
+            consumer.subscribe(listOf("${topicName}"))
+            val records = consumer.poll(Duration.ofSeconds(5))
+            assertTrue(records.isNotEmpty())
+            val json = JSONObject(records.iterator().next().value())
+            assertEquals("order-123", json.getString("orderId"))
+            assertEquals("cust-456", json.getString("customerId"))
+            assertEquals(99.99, json.getDouble("amount"), 0.01)
+        }
+    }
+
+    @Test
+    fun `should send multiple messages`() {
+        // given
+        val consumerProps = createConsumerProps()
+
+        // when
+        for (i in 0 until 5) {
+            publisher.send("message-$i")
+        }
+
+        // then
+        KafkaConsumer<String, String>(consumerProps).use { consumer ->
+            consumer.subscribe(listOf("${topicName}"))
+            val records = consumer.poll(Duration.ofSeconds(5))
+            assertTrue(records.isNotEmpty())
+            assertTrue(records.count() >= 5)
+        }
+    }
+
+    private fun createConsumerProps(): Properties {
+        return Properties().apply {
+            put(ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG, KAFKA.bootstrapServers)
+            put(ConsumerConfig.GROUP_ID_CONFIG, "${publisherName.lower()}-test-group")
+            put(ConsumerConfig.KEY_DESERIALIZER_CLASS_CONFIG, StringDeserializer::class.java.name)
+            put(ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG, StringDeserializer::class.java.name)
+            put(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, "earliest")
+        }
+    }
+}

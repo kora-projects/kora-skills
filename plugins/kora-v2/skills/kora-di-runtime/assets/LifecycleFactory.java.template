@@ -1,0 +1,120 @@
+package ${packagePath};
+
+import ru.tinkoff.kora.application.graph.LifecycleWrapper;
+import ru.tinkoff.kora.application.graph.Wrapped;
+import ru.tinkoff.kora.common.Module;
+
+/**
+ * Factory module with lifecycle-wrapped components.
+ *
+ * Usage:
+ * - When factory method needs to provide lifecycle for component
+ * - When component doesn't implement Lifecycle directly
+ * - For third-party components that need init/cleanup
+ *
+ * LifecycleWrapper provides:
+ * - init hook: called after component creation
+ * - release hook: called during shutdown
+ */
+@Module
+public interface ${ModuleName} {
+
+    /**
+     * Factory method with lifecycle wrapper.
+     *
+     * @return Wrapped component with init/release hooks
+     */
+    default Wrapped<${ComponentType}> ${methodName}(${ConfigType} config) {
+        // Create the component
+        var component = new ${ComponentType}(config);
+
+        // Wrap with lifecycle
+        return new LifecycleWrapper<>(
+            component,
+            // Init hook: called after creation
+            c -> {
+                // TODO: Add initialization logic
+                // - Warm up caches
+                // - Test connections
+                // - Register callbacks
+                System.out.println("${ComponentType} initialized");
+            },
+            // Release hook: called during shutdown
+            c -> {
+                // TODO: Add cleanup logic
+                // - Flush caches
+                // - Close connections
+                // - Release resources
+                System.out.println("${ComponentType} released");
+            }
+        );
+    }
+
+    // ========================================================================
+    // EXAMPLES
+    // ========================================================================
+
+    /**
+     * Cache with lifecycle
+     */
+    // default Wrapped<Cache> cache(Config config) {
+    //     var cacheConfig = config.getConfig("cache");
+    //     var cache = new CaffeineCache(cacheConfig);
+    //
+    //     return new LifecycleWrapper<>(
+    //         cache,
+    //         c -> c.warmup(),           // Init: warm up cache
+    //         c -> c.invalidateAll()     // Release: flush all entries
+    //     );
+    // }
+
+    /**
+     * DataSource with connection test
+     */
+    // default Wrapped<DataSource> dataSource(DatabaseConfig config) {
+    //     var ds = new DriverManagerDataSource(
+    //         config.url(),
+    //         config.username(),
+    //         config.password()
+    //     );
+    //
+    //     return new LifecycleWrapper<>(
+    //         ds,
+    //         dataSource -> {
+    //             // Init: test connection
+    //             try (Connection conn = dataSource.getConnection()) {
+    //                 System.out.println("Database connection OK");
+    //             }
+    //         },
+    //         dataSource -> {
+    //             // Release: close connections
+    //             if (dataSource instanceof AutoCloseable) {
+    //                 ((AutoCloseable) dataSource).close();
+    //             }
+    //         }
+    //     );
+    // }
+
+    /**
+     * Scheduled executor with graceful shutdown
+     */
+    // default Wrapped<ScheduledExecutorService> scheduler() {
+    //     return new LifecycleWrapper<>(
+    //         Executors.newSingleThreadScheduledExecutor(),
+    //         scheduler -> {
+    //             // Init: schedule periodic task
+    //             scheduler.scheduleAtFixedRate(
+    //                 this::cleanupTask,
+    //                 0, 1, TimeUnit.HOURS
+    //             );
+    //         },
+    //         scheduler -> {
+    //             // Release: graceful shutdown
+    //             scheduler.shutdown();
+    //             if (!scheduler.awaitTermination(30, TimeUnit.SECONDS)) {
+    //                 scheduler.shutdownNow();
+    //             }
+    //         }
+    //     );
+    // }
+}
