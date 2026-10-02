@@ -68,7 +68,10 @@ filters:
 - **`isSameType`, not `isAssignable`.** `GraphInterceptor<Cache>` intercepts components whose
   *declared* type is exactly `Cache`. It does not intercept a `@Component RedisCache implements Cache`
   registered under its own class. Interceptors of an interface catch module methods declared to
-  return that interface; interceptors of a class catch that class.
+  return that interface; interceptors of a class catch that class. The Kotlin symbol processor uses the
+  same exact-type match (it no longer also matches a generated `__AopProxy` subclass of the
+  intercepted class) — an aspect-annotated `@Component` is still intercepted, because its node is
+  declared with the original type.
 - **Tag matching, with the interceptor as the "required" side.** An untagged interceptor intercepts
   only untagged components; `@Tag(X.class)` on the interceptor limits it to components tagged `X`;
   `@Tag(Tag.Any.class)` on the interceptor intercepts every tag. The Kotlin symbol processor

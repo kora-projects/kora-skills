@@ -1,19 +1,13 @@
 package ${package};
 
-import io.koraframework.application.graph.All;
 import io.koraframework.common.annotation.Module;
-import io.koraframework.micrometer.module.MetricsConfig;
-import io.koraframework.micrometer.module.MetricsTagsProvider;
 import io.koraframework.micrometer.module.PrometheusMeterRegistryInitializer;
-import io.micrometer.core.instrument.Tag;
 import io.micrometer.core.instrument.config.MeterFilter;
-
-import java.util.LinkedHashMap;
 
 /**
  * Metrics customization module (Kora 2.0).
  *
- * For common tags alone you need no initializer: use metrics.tags in application.conf or a
+ * For common tags you need no initializer: use metrics.tags in application.conf or a
  * MetricsTagsProvider component (see AppMetricsTagsProvider.java.template). Declare your own
  * PrometheusMeterRegistryInitializer only for other registry.config() settings -- meter
  * filters, deny rules, naming conventions.
@@ -23,9 +17,9 @@ import java.util.LinkedHashMap;
  * PrometheusMeterRegistryWrapper.init(), BEFORE the JVM binders are bound and before
  * kora.up is registered.
  *
- * Declaring one removes MetricsModule's @DefaultComponent common-tags initializer from that
- * All&lt;&gt;, so metrics.tags and every MetricsTagsProvider would be silently ignored. This
- * initializer therefore re-applies the same merge: providers first, config last (config wins).
+ * MetricsModule's common-tags initializer is not a @DefaultComponent (since 2.0.0.RC2), so it
+ * stays in that All&lt;&gt; next to this one: metrics.tags and MetricsTagsProvider keep applying.
+ * Do not re-merge them here.
  *
  * PrometheusMeterRegistryInitializer extends
  * Function&lt;PrometheusMeterRegistry, PrometheusMeterRegistry&gt;, so it MUST return the
@@ -34,19 +28,9 @@ import java.util.LinkedHashMap;
 @Module
 public interface CustomMetricsConfig {
 
-    default PrometheusMeterRegistryInitializer meterFiltersInit(MetricsConfig config, All<MetricsTagsProvider> tagsProviders) {
-        var merged = new LinkedHashMap<String, String>();
-        for (var provider : tagsProviders) {
-            merged.putAll(provider.tags());
-        }
-        merged.putAll(config.tags());
-        var commonTags = merged.entrySet().stream()
-                .map(e -> Tag.of(e.getKey(), e.getValue()))
-                .toList();
+    default PrometheusMeterRegistryInitializer meterFiltersInit() {
         return registry -> {
-            registry.config()
-                    .meterFilter(MeterFilter.commonTags(commonTags))
-                    .meterFilter(MeterFilter.denyNameStartsWith("jvm.buffer"));
+            registry.config().meterFilter(MeterFilter.denyNameStartsWith("jvm.buffer"));
             return registry;
         };
     }

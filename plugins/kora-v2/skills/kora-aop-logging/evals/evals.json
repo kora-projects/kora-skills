@@ -273,12 +273,12 @@
       "skills": [
         "kora-aop-logging"
       ],
-      "query": "I did the same @Mask setup in Java on Kora 2.0 and the build now fails resolving io.koraframework.logging.common.masking.MaskingRules<User>. What's missing?",
+      "query": "I did the same @Mask setup in Java on Kora 2.0.0.RC1 and the build now fails resolving io.koraframework.logging.common.masking.MaskingRules<User>. What's missing, and what changes on RC2?",
       "expected_behavior": [
-        "Identifies that logging-annotation-processor registers only its KoraAspectFactory service and has no META-INF/services/javax.annotation.processing.Processor entry, so javac never runs the processor that would generate $User_MaskingRulesModule",
-        "Notes this is Java-only: the KSP artifact does register MaskingRulesSymbolProcessorProvider",
-        "Declares the MaskingRules<User> component by hand in a @Module, using the public MaskingRules.builder(User.class).mask(path, strategy).build() API",
-        "Explains that field-level @Mask then documents intent only, so the hand-written rules must be kept in step",
+        "Identifies that in RC1 logging-annotation-processor had no META-INF/services/javax.annotation.processing.Processor entry, so javac never ran the processor that generates $User_MaskingRulesModule",
+        "Says 2.0.0.RC2 (#921) registers LoggingAnnotationProcessor (isolating since #970), so Java generates $User_MaskingRulesModule like KSP does and the fix is upgrading, keeping annotationProcessor \"io.koraframework:annotation-processors\"",
+        "Offers a hand-written MaskingRules<User> @Module (MaskingRules.builder(User.class).mask(path, strategy).build()) only as the RC1 stop-gap, to be deleted after the upgrade",
+        "Warns that a leftover hand-written MaskingRules<User> overrides the generated @DefaultComponent and ignores later @Mask edits",
         "Keeps @Mask (+ @Json) on the logged parameter so the aspect still selects MaskedStructuredArgumentMapper",
         "Does not suggest adding declarative-logging-annotation-processor or forcing -processor on javac"
       ],

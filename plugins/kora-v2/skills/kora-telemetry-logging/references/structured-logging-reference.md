@@ -171,10 +171,9 @@ public record Payment(String id,
 - `@Mask` **on the type** is what the rules generator reacts to: only a class or record (not an
   interface, not an abstract class) gets a `@Module` interface named `$<Type>_MaskingRulesModule`
   with a `@DefaultComponent` factory returning `MaskingRules<Type>`. Outer classes are prefixed: a
-  nested `Outer.Payment` yields `$Outer_Payment_MaskingRulesModule`. KSP (Kotlin) generates it;
-  **the Java annotation processor is not registered with javac**, so a Java service declares the
-  `MaskingRules<Type>` component by hand — see
-  [logging-masking.md](../../kora-aop-logging/references/logging-masking.md#java-declare-the-rules-yourself).
+  nested `Outer.Payment` yields `$Outer_Payment_MaskingRulesModule`. Both KSP (Kotlin) and the Java
+  annotation processor generate it (Java since `2.0.0.RC2`, #921) — see
+  [logging-masking.md](../../kora-aop-logging/references/logging-masking.md#java-and-kotlin-both-generate-the-rules).
   An interface or abstract class annotated `@Mask` is rejected (`"Only classes and records can be
   annotated with @Mask"` / `"Abstract classes can't be annotated with @Mask"`).
 - Built-in strategies, all `@DefaultComponent`s of `LoggingModule`:

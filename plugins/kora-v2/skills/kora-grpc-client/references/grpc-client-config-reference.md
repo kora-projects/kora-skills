@@ -224,9 +224,12 @@ Beyond the flags, each signal also needs its provider component in the graph —
 `meterRegistry != null && metrics().enabled()`. With neither and logging off it returns a no-op
 telemetry, so there is no cost when everything is disabled.
 
-**Metric.** One Micrometer `Timer` named `rpc.client.duration`, tagged `rpc.system=grpc`,
-`rpc.service`, `rpc.method`, `rpc.grpc.status_code`, `server.address`, `server.port`, `error.type`,
-plus your `telemetry.metrics.tags`. `slo` becomes the timer's service-level objectives.
+**Metric.** One Micrometer `Timer` named `rpc.client.call.duration`, tagged `rpc.system.name=grpc`,
+`rpc.service`, `rpc.method`, `rpc.response.status_code` (the `Status.Code` **name**, e.g. `OK`,
+`UNAVAILABLE`), `server.address`, `server.port`, `error.type`, plus your `telemetry.metrics.tags`.
+2.0.0.RC1 called it `rpc.client.duration` with `rpc.system` and a numeric `rpc.grpc.status_code`
+(renamed in RC2, #972). The span (named after the full method name) carries the same `rpc.*` /
+`server.*` attributes; `server.port` falls back to `80` when the URL has no port. `slo` becomes the timer's service-level objectives.
 
 **Loggers.** Two, named after the **full** proto service name:
 
@@ -522,7 +525,7 @@ configurations.configureEach {
 | TLS handshake failure against a plaintext server | `url` uses `grpc://` — use `http://` |
 | `IllegalArgumentException: Unsupported gRPC client URL scheme` | non-`http`/`https` scheme **and** no explicit port |
 | `DEADLINE_EXCEEDED` on every call | `timeout` too small; it becomes the call's default deadline |
-| No `rpc.client.duration` metric | `telemetry.metrics.enabled` defaults to `false`; a `MeterRegistry` must also be in the graph |
+| No `rpc.client.call.duration` metric | `telemetry.metrics.enabled` defaults to `false`; a `MeterRegistry` must also be in the graph |
 | Nothing logged although `telemetry.logging.enabled = true` | the `<protoService>.request` / `.response` loggers are below `INFO` |
 | `round_robin` behaves like `pick_first` | the target resolves to a single address |
 | `AbstractMethodError … buildClientTransportServers` | gRPC version mismatch — see [version alignment](#10-version-alignment) |

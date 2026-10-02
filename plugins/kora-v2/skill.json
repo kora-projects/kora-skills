@@ -1,6 +1,6 @@
 {
   "name": "kora-v2",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "Kora Framework development skill for building production-grade Java/Kotlin services — with compile-time DI, HTTP, Database, Kafka, gRPC, SOAP, OpenAPI, Telemetry, AOP. Zero reflection, zero proxies, synchronous contracts on virtual threads, AI agent friendly. For Kora version 2.x",
   "author": "Anton Kurako",
   "license": "Apache-2.0",
@@ -48,7 +48,7 @@
     "group": "io.koraframework",
     "bom": "io.koraframework:kora-bom",
     "release": "2.0.0.RC2",
-    "sourceCommit": "ab9eef8e9b13c329ba5fe9abfc16c65b6e5b4025",
+    "sourceCommit": "78351e1cf9bfb71fa59b1821a8f85fcad48afecb",
     "snapshot": "2.0.0-SNAPSHOT",
     "snapshotRepository": "https://central.sonatype.com/repository/maven-snapshots"
   },

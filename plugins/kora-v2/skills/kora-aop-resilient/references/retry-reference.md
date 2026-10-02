@@ -169,7 +169,7 @@ resilient.retry.external.retryBudget {
 
 When the budget denies a retry the attempt is rejected: the original exception propagates instead of
 `RetryExhaustedException`, and the `resilient.retry.exhausted` counter is tagged
-`reason=EXHAUSTED_BUDGET` rather than `EXHAUSTED_ATTEMPTS`.
+`resilient.reason=EXHAUSTED_BUDGET` rather than `EXHAUSTED_ATTEMPTS`.
 
 Omitting the `retryBudget` block (or `retryBudget.enabled = false`) leaves the budget off entirely.
 The budget belongs to the spec: every method sharing the spec shares one budget.
@@ -322,12 +322,12 @@ Use it in logs while debugging; do not parse it.
 
 ## Telemetry
 
-Off by default. Counters, tagged `name` = the config path given to `@RetrySpec`:
+Off by default. Counters, tagged `resilient.name` = the config path given to `@RetrySpec`:
 
 | Metric | Meaning | Extra tags |
 |---|---|---|
 | `resilient.retry.attempts` | one increment per retry performed | — |
-| `resilient.retry.exhausted` | retry loop gave up | `reason` = `EXHAUSTED_ATTEMPTS` / `EXHAUSTED_BUDGET` |
+| `resilient.retry.exhausted` | retry loop gave up | `resilient.reason` = `EXHAUSTED_ATTEMPTS` / `EXHAUSTED_BUDGET` |
 
 Enable under `resilient.telemetry.retry`, or per spec under `<specPath>.telemetry`.
 

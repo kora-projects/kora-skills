@@ -361,6 +361,27 @@
         "type-mapping",
         "kotlin"
       ]
+    },
+    {
+      "id": "kora-openapi-generator-server-openidconnect-scopes",
+      "skills": [
+        "kora-openapi-generator-server"
+      ],
+      "query": "Our server contract protects endpoints with an `openIdConnect` scheme and lists required scopes per operation (e.g. `- oidc: [pets:write]`). What does the Kora server generator expect from me and who returns 403?",
+      "expected_behavior": [
+        "States the generator reads the raw Authorization header for an openIdConnect scheme, like oauth2",
+        "Declares the extractor as HttpServerPrincipalExtractor<String, PrincipalWithScopes> tagged with the scheme marker class from ApiSecurity",
+        "Explains the generated interceptor answers 401 when no principal is extracted and 403 when the principal's scopes() lack a required scope"
+      ],
+      "anti_behavior": [
+        "Claims openIdConnect is unsupported on the server or that scopes are ignored for it",
+        "Suggests editing generated ApiSecurity code to enforce scopes"
+      ],
+      "tags": [
+        "openapi-server",
+        "security",
+        "openid-connect"
+      ]
     }
   ]
 }

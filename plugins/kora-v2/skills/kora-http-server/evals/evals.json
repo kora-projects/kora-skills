@@ -466,6 +466,27 @@
         "config",
         "system-server"
       ]
+    },
+    {
+      "id": "kora-http-server-metric-tags-and-port-log",
+      "skills": [
+        "kora-http-server"
+      ],
+      "query": "Kora 2.0 HTTP server: how do I confirm which port the public server actually bound, and which tags does the request-duration metric carry so I can build a per-route error-rate panel?",
+      "expected_behavior": [
+        "Points to the startup log line 'HTTP Server <name> (Undertow) started on port <N> in ...' (also a structured port marker)",
+        "Names the timer http.server.request.duration with tags including http.route, http.request.method, http.response.status_code and error.type (plus server.name, server.port, url.scheme, server.address)",
+        "Reminds that httpServer.telemetry.metrics.enabled defaults to false"
+      ],
+      "anti_behavior": [
+        "Claims the server metric tags the route as url.template",
+        "Invents a separate config key to log the bound port"
+      ],
+      "tags": [
+        "telemetry",
+        "metrics",
+        "config"
+      ]
     }
   ]
 }

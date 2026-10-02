@@ -247,7 +247,7 @@ implementation. See [metrics-config-reference.md](metrics-config-reference.md#co
 | 404 on port 8080 | Scraping the public server | Scrape `httpServer.system.port` |
 | `privateApiHttpMetricsPath` ignored | Removed 1.x key, silently unrecognised | `httpServer.system.metricsPath` |
 | Agent cannot reach the endpoint | System port not published/reachable | Expose `httpServer.system.port` to the scraper's network |
-| Missing common tags | `metrics.tags` / `MetricsTagsProvider` not set, or an app-level `PrometheusMeterRegistryInitializer` displaced the built-in common-tags initializer | See [common tags](metrics-config-reference.md#common-tags) |
+| Missing common tags | `metrics.tags` / `MetricsTagsProvider` not set, a `MeterFilter` of your own removes the key, or (RC1 only, fixed by #935) an app-level `PrometheusMeterRegistryInitializer` displaced the common-tags initializer | See [common tags](metrics-config-reference.md#common-tags) |
 | Duplicate/clashing Prometheus classes | A hand-added `micrometer-registry-prometheus` at a different version | Remove it; the BOM pins `1.17.1` transitively |
 
 ---

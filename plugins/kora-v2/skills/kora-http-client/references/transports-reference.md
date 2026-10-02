@@ -112,8 +112,9 @@ These are **transport-level** and shared by every declarative client. Per-call b
 `requestTimeout`, set inside a client's own block (or per method) — see
 [declarative-client-reference](declarative-client-reference.md#client-configuration).
 
-The JDK transport applies `connectTimeout` only; it has no read-timeout knob, so bound JDK-based
-calls with `requestTimeout` on the client.
+The JDK transport has no socket-read timeout: it applies `readTimeout` as the per-request timeout
+(`HttpRequest.timeout`) of every call that sets no `requestTimeout`; a client or method
+`requestTimeout` replaces it. A zero or negative `readTimeout` means no timeout.
 
 ---
 
@@ -309,8 +310,11 @@ Metrics additionally need a `MeterRegistry` in the graph (`micrometer-module`) a
 `HttpClientTelemetryFactory`, so without them the corresponding telemetry is silently absent even
 with `enabled = true`.
 
-The client timer is registered as **`http.client.request.duration`**, tagged with the HTTP method,
-status code, server address, URL scheme and target, plus `error.type` on failures. See
+The client timer is registered as **`http.client.request.duration`**, tagged `http.request.method`,
+`http.response.status_code`, `server.address`, `url.scheme`, `server.port` (the URI port, else `80`
+for `http` / `443` for `https`), **`url.template`** (the route template — not `http.route`, which is a
+server-side attribute), `error.type` (empty on success) and `system.config`, `system.name.simple`,
+`system.name.canonical`. The client span carries `url.template` too. See
 [`kora-telemetry-metrics`](../../kora-telemetry-metrics/SKILL.md).
 
 ---
@@ -320,7 +324,9 @@ status code, server address, URL scheme and target, plus `error.type` on failure
 Client request/response logging masks header values listed in `telemetry.logging.maskHeaders`
 (default `["authorization", "set-cookie", "cookie"]`) and query values listed in `maskQueries`
 (default empty). Both are logged only when the client's `.request` / `.response` logger is at
-`DEBUG`; bodies are logged only at `TRACE`.
+`DEBUG`; bodies are logged only at `TRACE`. A failed call without a response (connection error,
+timeout) is logged at `WARN` as `HttpClient error received` on the **`.response`** logger, so that
+logger's level controls it.
 
 | What | Config picks | Graph component decides how | Default |
 |---|---|---|---|

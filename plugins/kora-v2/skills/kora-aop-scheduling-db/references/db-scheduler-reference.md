@@ -75,8 +75,8 @@ unset one becomes abstract, i.e. a required key. There is no `name()` — the na
 The factory carries no `@Conditional`, even when the target class has one. If that condition fails,
 the job is still registered and every run fails in `ValueOf.get()` with `IllegalStateException: Graph
 node value was not initialized because condition failed: <reason>` (rethrown, so db-scheduler
-reschedules it). Fixed by kora-projects/kora PR #962 (on master once merged); without it, keep
-scheduled methods on unconditional components.
+reschedules it). Fixed in `2.0.0.RC2` (kora-projects/kora PR #962) — only `2.0.0.RC1` is affected; on
+RC1 keep scheduled methods on unconditional components.
 
 ---
 
@@ -278,8 +278,8 @@ A custom `SchedulingTelemetryFactory` implements
 tracing does not apply (no `Tracer` component, or `tracing.enabled = false`),
 `DefaultSchedulingTelemetryFactory` returns the shared `NoopSchedulingTelemetry.INSTANCE`, whose
 `jobClass()` is `Void` and `jobMethod()` is `noop`. `KoraDbJob.toString()` reads it, so the
-duplicate-name and invalid-config-cron errors name the job `'java.lang.Void#noop'`. Fixed by
-kora-projects/kora PR #961 (on master once merged); without it, enable
+duplicate-name and invalid-config-cron errors name the job `'java.lang.Void#noop'`. Fixed in
+`2.0.0.RC2` (kora-projects/kora PR #961) — only `2.0.0.RC1` is affected; on RC1 enable
 `scheduling.telemetry.logging.enabled` (or per job `<config-path>.telemetry.logging.enabled`), or find
 the job by the task name in the message.
 

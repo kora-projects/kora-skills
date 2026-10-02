@@ -378,7 +378,7 @@ See [references/grpc-reflection-reference.md](references/grpc-reflection-referen
 
 ### Telemetry
 
-One metric — `rpc.server.duration` (a Micrometer `Timer`). Spans are named `<service>/<method>`,
+One metric — `rpc.server.call.duration` (a Micrometer `Timer`, tags `rpc.system.name`, `rpc.service`, `rpc.method`, `rpc.response.status_code` = the status code name, `error.type`; RC1 called it `rpc.server.duration`). Spans are named `<service>/<method>`,
 kind `SERVER`, with the W3C traceparent read from the call metadata. Request/response logs go to
 `io.koraframework.grpc.server.GrpcServer.request` / `.response`: metadata at `DEBUG` with the
 `telemetry.logging.maskHeaders` keys (default `authorization`, `cookie`, `set-cookie`) masked by the
@@ -402,7 +402,7 @@ Keys and tag lists: [references/grpc-config-reference.md](references/grpc-config
 | Handler compiles, RPC answers `UNIMPLEMENTED` | Missing `@Component`, not extending `*Grpc.*ImplBase`, or a `@Tag(...)` on the component — the collection is untagged |
 | Interceptor never runs | Same cause: a `@Tag(...)` on the `ServerInterceptor` component takes it out of `All<ValueOf<ServerInterceptor>>` |
 | `Component` import won't resolve | It is `io.koraframework.common.annotation.Component` |
-| No `rpc_server_duration` metric | `grpcServer.telemetry.metrics.enabled` defaults to **`false`** in 2.0 — set it, and add `micrometer-module` |
+| No `rpc_server_call_duration` metric | `grpcServer.telemetry.metrics.enabled` defaults to **`false`** in 2.0 — set it, and add `micrometer-module` |
 | No request logs | `grpcServer.telemetry.logging.enabled` defaults to **`false`** |
 | `authorization` shows up in clear after adding a key to `maskHeaders` | The list **replaces** the default `authorization`, `cookie`, `set-cookie` — restate them |
 | Personal data in `TRACE` logs | Bodies are logged via `DefaultGrpcServerBodyConverter` without masking — provide a subclass as a component, or keep `TRACE` off |

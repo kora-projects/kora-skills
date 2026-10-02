@@ -306,8 +306,8 @@
       "query": "Kora 2.0: RedisCache is @Component @Conditional(tag = RedisEnabled.class). CacheFacade takes `@Nullable RedisCache redis` and falls back to Caffeine when it is null. With redis disabled the app does not start: IllegalStateException: Graph node value was not initialized because condition failed: cache.redis.enabled = false. Isn't @Nullable supposed to give me null?",
       "expected_behavior": [
         "Explains that both processors generate a nullable single dependency as g.get(node), and GraphImpl throws 'Graph node value was not initialized because condition failed: <reason>' for a condition-failed node, so @Nullable does not turn a failed condition into null",
-        "States it is fixed by kora-projects/kora PR #960 (on master once merged): the dependency is then generated as Graph.getNullable(node) and receives null",
-        "Gives a workaround for builds without the fix: inject All<RedisCache>, which skips condition-failed members, and take the first element if present; or make the consumer @Conditional on the same tag",
+        "States it is fixed in 2.0.0.RC2 (kora-projects/kora PR #960): the dependency is generated as Graph.getNullable(node) and receives null, so the first fix is upgrading to RC2",
+        "Gives a workaround for staying on RC1: inject All<RedisCache>, which skips condition-failed members, and take the first element if present; or make the consumer @Conditional on the same tag",
         "Applies the same reasoning to Kotlin RedisCache? parameters"
       ],
       "anti_behavior": [
@@ -315,6 +315,20 @@
         "Recommends ValueOf<RedisCache> as the fix — its get() throws the same exception for a condition-failed node"
       ],
       "tags": ["conditional", "nullable", "regression"]
+    },
+    {
+      "id": "kora-di-runtime-interceptor-exact-type-ksp",
+      "skills": ["kora-di-runtime"],
+      "query": "Kotlin Kora 2.0: I declared `class AuditInterceptor : GraphInterceptor<PaymentClient>` as a @Component. PaymentClient is an interface implemented by `@Component class HttpPaymentClient : PaymentClient`. afterInit is never called. Why?",
+      "expected_behavior": [
+        "Explains that an interceptor applies only to components whose declared type is exactly its intercepted type, in KSP exactly as in the Java processor — HttpPaymentClient is registered under its own class, so GraphInterceptor<PaymentClient> does not match it",
+        "Fixes it by intercepting the declared type (GraphInterceptor<HttpPaymentClient>) or by providing the component from a module method declared to return PaymentClient",
+        "Notes that tag matching is a separate filter: an untagged interceptor sees only untagged components, @Tag(Tag.Any::class) sees every tag"
+      ],
+      "anti_behavior": [
+        "Claims the interceptor matches subtypes or implementations of the intercepted type"
+      ],
+      "tags": ["interceptor", "kotlin"]
     }
   ]
 }

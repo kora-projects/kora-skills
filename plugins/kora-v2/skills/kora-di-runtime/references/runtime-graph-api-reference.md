@@ -197,7 +197,7 @@ shape.
 | `Lifecycle init failed with checked exception for node <type> at index <n>` | `init()` threw a checked exception |
 | `Graph interceptor failed with checked exception for node <t> and interceptor <i>` | `afterInit`/`beforeRelease` threw a checked exception |
 | `Graph dependency belongs to another application graph` | a `Node` from a different `ApplicationGraphDraw` was passed in |
-| `Graph node belongs to another application graph: node index <n>, type <t>` | a graph was asked for a node of another draw. On a draw built by `copy()`/`subgraph()` — every `@KoraAppTest` — this is a node **condition**: both methods rebind factory node references but keep the original condition, which reads the original condition node. Fixed by kora-projects/kora PR #963 (on master once merged) |
+| `Graph node belongs to another application graph: node index <n>, type <t>` | a graph was asked for a node of another draw. On a draw built by `copy()`/`subgraph()` — every `@KoraAppTest` — this is a node **condition**: both methods rebind factory node references but keep the original condition, which reads the original condition node. Fixed in `2.0.0.RC2` (kora-projects/kora PR #963) — only `2.0.0.RC1` is affected |
 
 Turn on `DEBUG`/`TRACE` for the `@KoraApp` root class to get per-node creation logging.
 `kora.graph.slowNodeInitThresholdMillis` (default `100`) controls the threshold above which a node's

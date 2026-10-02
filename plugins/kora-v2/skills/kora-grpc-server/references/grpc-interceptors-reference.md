@@ -368,7 +368,7 @@ call is being *set up*, which is rarely where handler bugs live.
 
 | Do not write | Because |
 |---|---|
-| A metrics interceptor | `TelemetryInterceptor` already records `rpc.server.duration` with `rpc.service` / `rpc.method` / `rpc.grpc.status_code` tags — set `grpcServer.telemetry.metrics.enabled = true` |
+| A metrics interceptor | `TelemetryInterceptor` already records `rpc.server.call.duration` with `rpc.service` / `rpc.method` / `rpc.response.status_code` / `error.type` tags — set `grpcServer.telemetry.metrics.enabled = true` |
 | A request/response logging interceptor | the module already logs to `…GrpcServer.request` / `.response` — set `grpcServer.telemetry.logging.enabled = true`, and `TRACE` on those loggers adds bodies |
 | A tracing/trace-id interceptor | the module extracts and injects W3C trace context and opens a `SERVER` span per call |
 | An MDC-population interceptor | `VirtualThreadExecutorTransportFilter` binds `MDC.VALUE` as a `ScopedValue` around each call |

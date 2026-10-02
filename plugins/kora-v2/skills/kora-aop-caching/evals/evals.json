@@ -187,7 +187,7 @@
         "Explains that Kora 2.0 cache telemetry defaults are logging.enabled = false and metrics.enabled = false, while tracing.enabled = true",
         "Adds telemetry.metrics.enabled = true inside that cache's own config section (per cache, not globally)",
         "For a Caffeine cache notes that the metrics come from Micrometer's CaffeineCacheMetrics binder registered by CaffeineFactory over a recordStats() cache (cache.gets, cache.puts, cache.evictions, cache.eviction.weight, cache.size), and only when a MeterRegistry is present",
-        "For a Redis cache names the Kora series cache.operation.duration and cache.ratio with their system.config / operation / origin tags",
+        "For a Redis cache names the Kora series cache.operation.duration and cache.requests (hit/miss in cache.result) with their system.config / cache.operation / cache.origin tags",
         "Does not claim metrics are on by default or invent a recordStats config key",
         "Does not suggest a MeterFilter or disabling Caffeine metrics to avoid a duplicate cache.gets meter registration"
       ],

@@ -184,6 +184,21 @@
         "Does not claim the declarative client is MinIO-only, does not require switching to the AWS SDK for these operations, and does not suggest pre-encoding keys by hand"
       ],
       "tags": ["s3", "compatibility", "regression"]
+    },
+    {
+      "id": "kora-s3-metrics-names",
+      "skills": ["kora-s3"],
+      "query": "We run both the declarative @S3.Client (s3-client-kora) and the AWS SDK wrapper (s3-client-aws) in one Kora 2.0 service. What metric do they emit, and how do I chart them separately in Prometheus?",
+      "expected_behavior": [
+        "Names the timer rpc.client.call.duration for both modules, with rpc.system.name=s3",
+        "Explains both modules share the metric and rpc.system.name value, so series are separated by system.config / system.name.simple / system.name.canonical",
+        "Notes telemetry.metrics.enabled defaults to false and must be turned on per client"
+      ],
+      "anti_behavior": [
+        "Uses rpc.client.duration or the rpc.system tag",
+        "Claims the AWS wrapper is tagged rpc.system=s3-aws"
+      ],
+      "tags": ["s3", "telemetry", "metrics"]
     }
   ]
 }

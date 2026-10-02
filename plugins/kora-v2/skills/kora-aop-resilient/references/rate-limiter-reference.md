@@ -167,7 +167,8 @@ public final class BulkSender {
 
 ## Telemetry
 
-Off by default. One counter, tagged `name` = the config path given to `@RateLimiterSpec`:
+Off by default. One counter, tagged `resilient.name` = the config path given to `@RateLimiterSpec` and
+`resilient.status` = `acquired` / `rejected`:
 
 | Metric | Meaning |
 |---|---|

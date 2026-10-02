@@ -17,7 +17,7 @@ metadata:
 | **BOM** | `io.koraframework:kora-bom` (`koraVersion=2.0.0.RC2`, plain `mavenCentral()`) |
 | **Processor** | `annotationProcessor "io.koraframework:annotation-processors"` (Java) · `ksp("io.koraframework:symbol-processors")` (Kotlin) — both aggregates already contain the S3 processor |
 | **Prerequisite** | A Kora HTTP client module — `http-client-ok`, `http-client-jdk` or `http-client-apache`. Required by **both** artifacts. |
-| **AWS SDK** | `software.amazon.awssdk:s3` `2.55.7`, pulled transitively by `s3-client-aws` |
+| **AWS SDK** | `software.amazon.awssdk:s3` `2.55.10`, pulled transitively by `s3-client-aws` |
 
 S3 is the most heavily redesigned area in Kora 2.0. Nearly every 1.x shape is gone: there is no
 `s3-client-minio` artifact, no `S3KoraClient`, no `S3Body`, no `S3Object`, no batch delete on the
@@ -426,13 +426,14 @@ Full key lists in [references/s3-client-kora.md](references/s3-client-kora.md) a
 ```hocon
 s3client.uploads.telemetry {
   logging.enabled = true      # DEBUG on the @S3.Client interface's own logger
-  metrics.enabled = true      # rpc.client.duration, rpc.system=s3
+  metrics.enabled = true      # rpc.client.call.duration, rpc.system.name=s3
 }
 ```
 
-Both modules emit the timer **`rpc.client.duration`**, distinguished by the `rpc.system` tag:
-`s3` for the declarative client, `s3-aws` for the SDK wrapper. Other tags: `rpc.method`,
-`aws.s3.bucket`, `error.type`, `system.config`, `system.name.simple`, `system.name.canonical`.
+Both modules emit the timer **`rpc.client.call.duration`** with `rpc.system.name=s3` — the same
+value for the declarative client and the SDK wrapper. Other tags: `rpc.method`, `aws.s3.bucket`,
+`error.type`, `system.config`, `system.name.simple`, `system.name.canonical`; tell clients apart by
+`system.config` / `system.name.*`.
 
 ### S3-compatible servers
 
@@ -584,7 +585,7 @@ LocalStack, MinIO, Ceph) — virtual-hosted style needs wildcard DNS they usuall
 | `S3AsyncClient`, `@Tag(MultipartUpload.class)` async client | **removed** with the reactive model — contracts are synchronous on virtual threads |
 | `s3client.aws.checksumValidationEnabled` | `checksumCalculationRequest` / `checksumValidationResponse` |
 | `s3client.aws.upload { bufferSize, partSize }` | no `upload` section on the SDK wrapper; the declarative client has `upload { partSize, chunkSize, singlePartUploadLimit }` |
-| Metrics `s3.client.duration` / `s3.kora.client.duration` | `rpc.client.duration`, tag `rpc.system` = `s3` or `s3-aws` |
+| Metrics `s3.client.duration` / `s3.kora.client.duration` | `rpc.client.call.duration`, tag `rpc.system.name=s3` |
 
 `Context` is gone from the whole framework — remove any `Context` parameter or `Context.current()`
 call from S3 code paths.

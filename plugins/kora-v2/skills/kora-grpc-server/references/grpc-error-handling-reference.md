@@ -104,8 +104,10 @@ description — always map deliberately.
 
 `TelemetryInterceptor` wraps every call, so errors are recorded whether you throw or call `onError`:
 
-- the span gets `StatusCode.ERROR` and the `rpc.grpc.status_code` attribute;
-- `rpc.server.duration` is timed with `rpc.grpc.status_code` set to the numeric code;
+- the span gets `StatusCode.ERROR`, the `rpc.response.status_code` attribute (the code name, e.g.
+  `NOT_FOUND`) and, when an exception ended the call, `error.type`;
+- `rpc.server.call.duration` is timed with `rpc.response.status_code` set to the code name and
+  `error.type` set to the exception class (`""` otherwise);
 - the response logger emits at **`WARN`** with `status`, `exceptionType` and the throwable attached,
   instead of the `INFO` used for a successful call.
 

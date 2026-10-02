@@ -312,8 +312,14 @@ Meters emitted when `metrics.enabled = true`:
 
 | Meter | Type | Key tags |
 |---|---|---|
-| `messaging.client.operation.duration` | timer | `messaging.system`, `messaging.client.id`, `messaging.operation.type`, `messaging.destination.name`, `messaging.destination.partition.id`, `error.type` |
+| `messaging.client.operation.duration` | timer | `messaging.system`, `messaging.client.id`, `messaging.operation.name` (`send`), `messaging.operation.type`, `messaging.destination.name`, `messaging.destination.partition.id`, `error.type` |
 | `messaging.client.sent.messages` | counter | same |
+
+Spans (when `tracing.enabled`): one `SpanKind.PRODUCER` span per record named `send <topic>`
+(OpenTelemetry `<operation> <destination>`; RC1 used `<topic> send`), with `messaging.system`,
+`messaging.operation.name` = `send`, `messaging.operation.type` = `send`, `messaging.destination.name`,
+the three `system.*` attributes and `tracing.attributes`. A transactional publisher adds an INTERNAL
+`producer transaction` span whose `messaging.operation.name` is set to `commit` or `rollback`.
 
 Record logging. `logRecordStart` writes at DEBUG (`topic`, `publisherConfig`) or, when the logger is
 at TRACE, adds `headers` — rendered as `name: value` lines, with every header in

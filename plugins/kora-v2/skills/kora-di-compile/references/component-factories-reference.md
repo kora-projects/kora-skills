@@ -199,7 +199,12 @@ Mechanics worth knowing:
 - `Tag.Factory` outside a factory module is rejected:
 
   ```
-  @Tag.Factory can only be used inside factory modules.
+  @Tag.Factory can only be used inside factory modules:
+    module: com.example.StorageModule
+
+  Declared at:
+    com.example.StorageModule#storage(
+      StorageConfig)
 
   Fix:
     - Move this provider to a factory module (@FactoryModule).
@@ -367,7 +372,9 @@ The error prints the whole cycle and the `Fix:` list suggests `ValueOf<T>` or `P
 The same error is reported when the cycle runs through an `All<T>` parameter — for example a
 `GraphCondition` that injects `All<Foo>` while one `Foo` is `@Conditional` on that very condition.
 The processor can substitute a generated proxy for a single component but never for a collection,
-so there the only fix is to remove the back-edge.
+so there the only fix is to remove the back-edge. The error's first `Fix:` line suggests
+`All<ValueOf<T>>` or `All<PromiseOf<T>>` instead of `All<T>` — that is a cycle through a collection
+claim too and fails with the same `Circular dependency found:`.
 
 ### `@FactoryModule` on a normal provider
 
@@ -383,7 +390,7 @@ default StorageConfig storageConfig(Config config) { … }
 ### `Tag.Factory` outside a factory module
 
 ```java
-// BAD — "@Tag.Factory can only be used inside factory modules."
+// BAD — "@Tag.Factory can only be used inside factory modules:"
 @Module
 public interface MyModule {
     @Tag(Tag.Factory.class)

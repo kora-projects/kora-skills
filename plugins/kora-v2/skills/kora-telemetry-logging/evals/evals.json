@@ -85,8 +85,8 @@
       "skills": ["kora-telemetry-logging"],
       "query": "Tune KoraAsyncAppender so it never drops log events under load. I currently have <discardingThreshold>0</discardingThreshold>.",
       "expected_behavior": [
-        "States that KoraAsyncAppender extends ch.qos.logback.core.AsyncAppenderBase directly, whose isDiscardable() always returns false, so no event is ever discarded by threshold and discardingThreshold is a no-op here",
-        "Explains that the level-based discarding described in the Logback manual belongs to the subclass ch.qos.logback.classic.AsyncAppender, which KoraAsyncAppender does not extend",
+        "States that since 2.0.0.RC2 (#958) KoraAsyncAppender overrides isDiscardable() to return true for TRACE, DEBUG and INFO, so once fewer than discardingThreshold slots remain (default queueSize / 5) those events are dropped while WARN and ERROR still queue",
+        "Keeps <discardingThreshold>0</discardingThreshold> (or kora.logging.config.discarding-threshold=0) because 0 disables level-based dropping, and does not call the setting a no-op",
         "Points at the settings that do matter: queueSize (Kora default 512) and neverBlock (Kora default true, so a full queue DROPS events), plus maxFlushTime (1000 ms) on shutdown",
         "To never drop events, sets <neverBlock>false</neverBlock> (blocking the logging thread when full) and sizes queueSize for the burst; may mention the kora.logging.config.never-block / queue-size system properties or KORA_LOGGING_CONFIG_* environment variables, which a logback.xml value overrides",
         "Does not fabricate settings beyond queueSize, neverBlock, maxFlushTime, discardingThreshold and their kora.logging.config.* properties"
@@ -225,6 +225,18 @@
         "Claims the converter throws NoSuchElementException and drops the line outside a scope"
       ],
       "tags": ["mdc", "logback", "regression"]
+    },
+    {
+      "id": "kora-telemetry-logging-marker-converter-empty",
+      "skills": ["kora-telemetry-logging"],
+      "query": "I registered KoraLoggingMarkerConverter as %koraMarker in my Kora 2.0 logback pattern. What does it print for log lines without a StructuredArgument marker, and does it ship in the native-image metadata?",
+      "expected_behavior": [
+        "Says it renders the first StructuredArgument marker as fieldName=<json> and an empty string when the event has no markers or no structured one (2.0.0.RC2, #934; RC1 threw a NullPointerException)",
+        "Notes the converter is not auto-registered: a Logback conversionRule must declare it before the pattern uses it",
+        "Says logging-logback's own reflect-config.json registers KoraLoggingMarkerConverter, KoraMdcConverter and both text encoder factories (ConsoleTextEncoderFactory, ColorConsoleTextEncoderFactory)",
+        "Does not suggest guarding the pattern with %replace or a custom converter to avoid the NPE"
+      ],
+      "tags": ["pattern", "native"]
     }
   ]
 }

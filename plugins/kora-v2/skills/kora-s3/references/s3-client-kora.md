@@ -458,7 +458,7 @@ RuntimeException
 
 | Signal | Detail |
 |---|---|
-| Metrics | Micrometer `Timer` **`rpc.client.duration`**, tags `rpc.system=s3`, `rpc.method`, `aws.s3.bucket`, `error.type`, `system.config`, `system.name.simple`, `system.name.canonical` |
+| Metrics | Micrometer `Timer` **`rpc.client.call.duration`**, tags `rpc.system.name=s3`, `rpc.method`, `aws.s3.bucket`, `error.type`, `system.config`, `system.name.simple`, `system.name.canonical` |
 | Tracing | OpenTelemetry span per operation, same attributes |
 | Logging | SLF4J logger named after the `@S3.Client` **interface's canonical name**. `DEBUG` for "S3Client request started" / "S3Client response received", `WARN` on failure with `exceptionType` |
 

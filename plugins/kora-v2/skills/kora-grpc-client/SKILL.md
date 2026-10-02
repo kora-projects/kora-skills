@@ -376,7 +376,7 @@ generated code.
 | `ConfigValueException … 'ROOT.grpcClient.<X>.url'` | Section name must be the **proto** service simple name; `option java_outer_classname` and the `*Grpc` suffix are irrelevant |
 | TLS handshake failure against a plaintext server | `url` uses `grpc://` (ported from 1.x). Use `http://` |
 | `IllegalArgumentException: Unsupported gRPC client URL scheme` | Non-`http`/`https` scheme **and** no explicit port |
-| No `rpc.client.duration` metric, no request logs | `telemetry.metrics.enabled` / `telemetry.logging.enabled` default to `false` |
+| No `rpc.client.call.duration` metric, no request logs | `telemetry.metrics.enabled` / `telemetry.logging.enabled` default to `false` |
 | `AbstractMethodError … buildClientTransportServers` | gRPC version mismatch — see [version alignment](#version-alignment) |
 | `UNAVAILABLE` | wrong host/port in `url`, or the server is down |
 | `UNAUTHENTICATED` | add a tagged `ClientInterceptor` that puts credentials into `Metadata` |

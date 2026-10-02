@@ -47,7 +47,7 @@ s3client.uploads {
   telemetry {
     logging.enabled = false               # DEFAULT IS false — turn on explicitly.
                                           # Logger name = the @S3.Client interface's canonical name.
-    metrics.enabled = false               # DEFAULT IS false. Emits rpc.client.duration, rpc.system=s3
+    metrics.enabled = false               # DEFAULT IS false. Emits rpc.client.call.duration, rpc.system.name=s3
     tracing.enabled = true                # default (needs a Tracer component in the graph)
   }
 }
@@ -80,7 +80,7 @@ s3client.aws {
   telemetry {
     logging.enabled = false               # DEFAULT IS false.
                                           # Logger name = software.amazon.awssdk.services.s3.S3Client
-    metrics.enabled = false               # DEFAULT IS false. rpc.client.duration, rpc.system=s3-aws
+    metrics.enabled = false               # DEFAULT IS false. rpc.client.call.duration, rpc.system.name=s3
     tracing.enabled = true                # default
   }
 }

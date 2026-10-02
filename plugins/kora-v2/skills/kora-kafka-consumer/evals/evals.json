@@ -427,6 +427,18 @@
         "telemetry",
         "masking"
       ]
+    },
+    {
+      "id": "kora-kafka-consumer-span-names",
+      "skills": ["kora-kafka-consumer"],
+      "query": "In Jaeger I search for spans named kafka.poll and 'orders process record' from my Kora 2.0 @KafkaListener and find nothing since the upgrade to 2.0.0.RC2. What are the span names now?",
+      "expected_behavior": [
+        "Says RC2 (#972) renamed them to the OpenTelemetry messaging convention: the poll span is 'poll' and the per-record span is 'process <topic>' (here 'process orders')",
+        "Mentions messaging.operation.name = poll / process and messaging.operation.type = receive / process on those spans",
+        "Keeps the rest right: the poll span is a trace root (setNoParent) and the record span continues the producer's W3C context with a link to the poll span",
+        "Notes that messaging.process.duration and messaging.process.batch.duration now also carry messaging.operation.name = process"
+      ],
+      "tags": ["telemetry", "tracing", "regression"]
     }
   ]
 }

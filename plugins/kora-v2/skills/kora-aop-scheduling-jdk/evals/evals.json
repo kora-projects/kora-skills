@@ -243,11 +243,11 @@
     {
       "id": "kora-aop-scheduling-jdk-noop-telemetry-void",
       "skills": ["kora-aop-scheduling-jdk"],
-      "query": "Every scheduled job in my Kora 2 (master) service logs `JDK Job 'java.lang.Void#noop' started in 0.1ms` under the logger java.lang.Void. No tracing, default scheduling telemetry. Why don't I see my class names?",
+      "query": "Every scheduled job in my Kora 2.0.0.RC1 service logs `JDK Job 'java.lang.Void#noop' started in 0.1ms` under the logger java.lang.Void. No tracing, default scheduling telemetry. Why don't I see my class names?",
       "expected_behavior": [
         "Explains that with job logging and metrics off (the 2.0 defaults) and no tracing (no Tracer component), DefaultSchedulingTelemetryFactory returns the shared NoopSchedulingTelemetry.INSTANCE whose jobClass() is Void and jobMethod() is noop, and KoraJdkJob takes its logger and lifecycle messages from that telemetry",
-        "States it is fixed by kora-projects/kora PR #961 (on master once merged)",
-        "Gives the workaround for builds without the fix: scheduling.telemetry.logging.enabled = true (or per job <config-path>.telemetry.logging.enabled = true), noting each run then also logs 'Scheduled Job execution completed' at INFO"
+        "States it is fixed in 2.0.0.RC2 (kora-projects/kora PR #961) and only 2.0.0.RC1 is affected",
+        "Recommends upgrading to RC2, and gives the RC1 workaround: scheduling.telemetry.logging.enabled = true (or per job <config-path>.telemetry.logging.enabled = true), noting each run then also logs 'Scheduled Job execution completed' at INFO"
       ],
       "anti_behavior": [
         "Blames the user's logback configuration or the job class",
@@ -262,8 +262,8 @@
       "expected_behavior": [
         "Explains the generated $ReportJobs_SchedulingModule job factory is @Root and carries no @Conditional, so the job is created and scheduled even when the condition fails, and each run's ValueOf<ReportJobs>.get() throws",
         "Notes that with job logging off (the default) these failures are invisible",
-        "States it is fixed by kora-projects/kora PR #962 (on master once merged), which puts the class's condition on the job factory",
-        "Gives the workaround: keep the scheduled method on an unconditional component and reach the conditional one through All<T>, returning when it is empty"
+        "States it is fixed in 2.0.0.RC2 (kora-projects/kora PR #962), which puts the class's condition on the job factory, and only 2.0.0.RC1 is affected",
+        "Gives the RC1 workaround: keep the scheduled method on an unconditional component and reach the conditional one through All<T>, returning when it is empty"
       ],
       "anti_behavior": [
         "Recommends a @Nullable ReportJobs dependency as the workaround - it throws the same exception (PR #960)",

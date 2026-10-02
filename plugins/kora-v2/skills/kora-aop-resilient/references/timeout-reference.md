@@ -197,7 +197,7 @@ public final class ReportJob {
 
 ## Telemetry
 
-Off by default. One counter, tagged `name` = the config path given to `@TimeoutSpec`:
+Off by default. One counter, tagged `resilient.name` = the config path given to `@TimeoutSpec`:
 
 | Metric | Meaning |
 |---|---|

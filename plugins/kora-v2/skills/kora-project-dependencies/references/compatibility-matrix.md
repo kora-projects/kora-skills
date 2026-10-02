@@ -211,7 +211,7 @@ These arrive transitively with the modules that need them. Listed so you can rec
 | Netty | `4.2.18.Final` | Redis, Cassandra, gRPC |
 | HikariCP | `7.1.0` | `database-jdbc` |
 | PostgreSQL JDBC driver | `42.7.13` | `database-jdbc-postgres` (`api`) |
-| Flyway | `13.8.1` (`flyway-core` only) | `database-flyway` |
+| Flyway | `13.9.0` (`flyway-core` only) | `database-flyway` |
 | Liquibase | `5.0.4` | `database-liquibase` |
 | Cassandra driver | `4.19.3`, module `org.apache.cassandra:java-driver-core` | `database-cassandra` |
 | Kafka clients | `4.3.1` | `kafka` |
@@ -222,15 +222,15 @@ These arrive transitively with the modules that need them. Listed so you can rec
 | Micrometer | `1.17.1` | `micrometer-module` |
 | Prometheus metrics | `1.9.0` | `micrometer-module` |
 | OpenTelemetry | `1.66.0` | tracing exporters |
-| Logback / SLF4J | `1.6.4` / `2.0.20` | `logging-logback` |
+| Logback / SLF4J | `1.6.5` / `2.0.20` | `logging-logback` |
 | Caffeine | `3.3.0` | `cache-caffeine` |
 | Lettuce | `7.8.0.RELEASE` | `redis-lettuce`, `cache-redis-lettuce`, `resilient-kora-distributed-redis-lettuce` |
 | Quartz | `2.5.2` | `scheduling-quartz` |
 | db-scheduler | `16.12.0` (`com.github.kagkarlsson:db-scheduler`) | `scheduling-db-scheduler` |
 | CXF (SOAP) | `4.2.3` | `soap-client` |
-| AWS SDK S3 | `2.55.7` | `s3-client-aws` |
+| AWS SDK S3 | `2.55.10` | `s3-client-aws` |
 | Camunda 7 | `7.24.0` | `camunda-engine-bpmn` |
-| Zeebe / Camunda 8 | `8.9.22`, client `io.camunda:camunda-client-java` | `camunda-zeebe-worker` |
+| Zeebe / Camunda 8 | `8.10.0`, client `io.camunda:camunda-client-java` | `camunda-zeebe-worker` |
 | MapStruct (Java only) | `1.6.3` in Kora's catalog | — **you add it**; see note below |
 | Konvert (Kotlin only) | `4.5.1` in Kora's catalog | — **you add it**; the Kotlin `crud` example pins the same `4.5.1` |
 | JSpecify | `1.0.1` | every module (`api`) |
@@ -280,7 +280,7 @@ Not in the BOM. The app pins them, and a mismatch usually fails at **runtime**, 
 
 ```groovy
 implementation "io.koraframework:database-flyway"
-implementation "org.flywaydb:flyway-database-postgresql:13.8.1"
+implementation "org.flywaydb:flyway-database-postgresql:13.9.0"
 ```
 
 The artifact names are not uniform: PostgreSQL is `org.flywaydb:flyway-database-postgresql`, MySQL is

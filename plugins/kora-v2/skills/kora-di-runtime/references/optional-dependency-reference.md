@@ -236,7 +236,7 @@ promise.
 | `type annotation @Nullable is not expected here` | JSpecify `@Nullable` in a non-type-use position |
 | `cannot find symbol: method refresh()` on `ValueOf` | 1.x memory — refresh lives on `RefreshableGraph` |
 | NPE on an optional dependency | `@Nullable` added, fallback path not written |
-| `Graph node value was not initialized because condition failed` on a `@Nullable` dependency | the target is `@Conditional` and its condition failed; the nullable claim is generated as `g.get(node)`, which throws instead of yielding `null`. Fixed by kora-projects/kora PR #960 (on master once merged); until then inject `All<T>` — see [`conditional-graph-evaluation-reference.md`](conditional-graph-evaluation-reference.md#7-runtime-pitfalls) |
+| `Graph node value was not initialized because condition failed` on a `@Nullable` dependency | the target is `@Conditional` and its condition failed; the nullable claim is generated as `g.get(node)`, which throws instead of yielding `null`. Fixed in `2.0.0.RC2` (kora-projects/kora PR #960) — only `2.0.0.RC1` is affected; on RC1 inject `All<T>` — see [`conditional-graph-evaluation-reference.md`](conditional-graph-evaluation-reference.md#7-runtime-pitfalls) |
 | consumer still rebuilt on refresh | dependency declared directly, not as `ValueOf<T>` |
 | `@field:Nullable` rejected by Kotlin | invalid target; use `T?` |
 | `Optional<T>` parameter is always `Optional.empty()` | no component of type `T` (with that tag) in the graph — the processor wraps a nullable claim of `T`, so check the tag and that `T` is registered |

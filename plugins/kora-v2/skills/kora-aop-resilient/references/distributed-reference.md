@@ -192,7 +192,7 @@ factory for **every** retry. The one-argument constructor uses key prefix `kora:
 - Every write refreshes the TTL; a budget idle for longer than the TTL expires and restarts at
   `tokensInitial`.
 - `availableTokens()` and a denied retry behave as for the local budget: the original exception
-  propagates and `resilient.retry.exhausted` is tagged `reason=EXHAUSTED_BUDGET`.
+  propagates and `resilient.retry.exhausted` is tagged `resilient.reason=EXHAUSTED_BUDGET`.
 
 ---
 
@@ -215,7 +215,7 @@ The Lettuce clients open their connection in `init()` and accept only `RedisClie
 
 ## Telemetry
 
-Same as the local limiter: counter `resilient.ratelimiter.acquire`, tag `name` = the config path of
+Same as the local limiter: counter `resilient.ratelimiter.acquire`, tag `resilient.name` = the config path of
 the spec, enabled under `resilient.telemetry.rateLimiter` or `<specPath>.telemetry`. Off by default.
 The distributed retry budget reports through the retry's own metrics.
 

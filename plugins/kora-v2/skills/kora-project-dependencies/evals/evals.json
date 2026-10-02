@@ -673,7 +673,7 @@
       "query": "Kora 2.0 service on MySQL with database-flyway fails with FlywayException: Unsupported Database: MySQL. Which dependency is missing?",
       "expected_behavior": [
         "Explains database-flyway ships flyway-core only, so the dialect artifact is the app's job",
-        "Adds org.flywaydb:flyway-mysql at the resolved flyway-core version (13.8.1 in Kora's catalog)",
+        "Adds org.flywaydb:flyway-mysql at the resolved flyway-core version (13.9.0 in Kora's catalog)",
         "Suggests ./gradlew dependencyInsight --dependency flyway-core to confirm the version"
       ],
       "anti_behavior": [

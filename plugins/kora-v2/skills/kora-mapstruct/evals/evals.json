@@ -281,6 +281,21 @@
         "Suggests hand-writing PetMapperImpl"
       ],
       "tags": ["konvert", "kotlin", "troubleshooting"]
+    },
+    {
+      "id": "kora-mapstruct-tagged-mapper",
+      "skills": ["kora-mapstruct"],
+      "query": "Java, Kora 2.0.0.RC2: I have two MapStruct mappers producing CarDto, InternalCarMapper and PublicCarMapper. How do I keep both in the graph and inject the right one?",
+      "expected_behavior": [
+        "Puts @Tag(Internal.class) (from io.koraframework.common.annotation) on the @Mapper interface and requests it with @Tag(Internal.class) at the injection point",
+        "States the Kora MapStruct extension honours the mapper's @Tag and registers the generated Impl under that tag; an untagged mapper answers only untagged claims and a @Tag(Tag.Any.class) claim accepts any",
+        "Notes tagged mappers resolve correctly from 2.0.0.RC2 on (kora-projects/kora PR #938); on 2.0.0.RC1 a tagged @Mapper was not matched"
+      ],
+      "anti_behavior": [
+        "Suggests @Named or a MapStruct componentModel to disambiguate in the Kora graph",
+        "Adds @Component to the mapper interface"
+      ],
+      "tags": ["mapstruct", "java", "tag"]
     }
   ]
 }

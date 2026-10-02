@@ -266,7 +266,7 @@
       "expected_behavior": [
         "Identifies the cycle: the condition depends on every Plugin, and each Plugin depends on the condition through @Conditional",
         "Explains that the processor breaks ordinary cycles with a generated promised proxy for a single component, but never for an All<T>, TypeRef<T> or Graph claim, so a cycle through All<T> is always reported as a circular dependency",
-        "Fixes it by removing the back-edge, e.g. making the condition depend on config instead of on the plugins it gates, or moving the shared state into a separate component"
+        "Fixes it by removing the back-edge, e.g. making the condition depend on config instead of on the plugins it gates, or moving the shared state into a separate component, and warns that the error's own Fix line 'Use All<ValueOf<T>> or All<PromiseOf<T>> instead of All<T>' does not break this cycle — those are collection claims too and fail with the same error"
       ],
       "anti_behavior": [
         "Calls the error a Kora internal error or a processor bug",
@@ -280,13 +280,56 @@
       "query": "Kora 2.0: I want a component that exists only when a feature flag is on, and a consumer that works with or without it. Is @Conditional on the component plus @Nullable on the consumer's parameter the right design?",
       "expected_behavior": [
         "Confirms @Conditional(tag = X.class) on the component with a GraphCondition published under @Tag(X.class) is the gating mechanism",
-        "Warns that on builds without kora-projects/kora PR #960 a @Nullable (Kotlin T?) or Java Optional<T> dependency on a condition-failed component throws 'Graph node value was not initialized because condition failed' at startup instead of receiving null",
-        "Offers All<T> on the consumer (condition-failed members are skipped) or a consumer that is @Conditional on the same tag as the workaround, and @Nullable once the fix is in"
+        "States that since 2.0.0.RC2 (kora-projects/kora PR #960) a @Nullable (Kotlin T?) or Java Optional<T> dependency on a condition-failed component receives null, so the design works as is; on 2.0.0.RC1 the same dependency throws 'Graph node value was not initialized because condition failed' at startup",
+        "Names the RC1-only workaround: All<T> on the consumer (condition-failed members are skipped) or a consumer that is @Conditional on the same tag"
       ],
       "anti_behavior": [
-        "Claims @Nullable already yields null for a condition-failed component on current master without qualification"
+        "Tells a 2.0.0.RC2 user that @Nullable on a @Conditional dependency still throws and steers them to All<T> as the only option"
       ],
       "tags": ["conditional", "nullable", "design"]
+    },
+    {
+      "id": "kora-di-compile-cycle-final-class-no-proxy",
+      "skills": ["kora-di-compile"],
+      "query": "Kora 2.0 Java: OrderService(PaymentService) and PaymentService(OrderService) are both `public final class` @Components. Compilation fails with 'Circular dependency found:' and a Note saying Kora can break a cycle with a proxy only for interface or non-final class dependency. What are my options?",
+      "expected_behavior": [
+        "Explains that the processor breaks a cycle itself by generating a promised proxy when the dependency closing it is an interface (or a non-final class), and reports the error only when it cannot, here because the requested type is a final class",
+        "Reads the error sections: the Dependency cycle list ending in [CYCLE], Required at with the parameter that closes the cycle, Note with the reason, and Fix",
+        "Recommends depending on an interface implemented by one of the services so the processor can proxy it, or ValueOf<T>/PromiseOf<T> on one side, or extracting the shared state into a separate component",
+        "Does not recommend simply removing final from a class whose only constructor takes arguments — the generated subclass proxy then fails to compile"
+      ],
+      "anti_behavior": [
+        "Says Kora never resolves cycles and a cycle is always a compile error",
+        "Suggests setter or field injection"
+      ],
+      "tags": ["cycle", "errors", "proxy"]
+    },
+    {
+      "id": "kora-di-compile-aop-proxy-return-type",
+      "skills": ["kora-di-compile"],
+      "query": "Kora 2.0: to make sure I get the aspect-wrapped instance I wrote a module method `default $UserService__AopProxy userService(...)` and the build now fails with 'Component provider returns a generated AOP proxy type:'. How should this be declared?",
+      "expected_behavior": [
+        "Explains that the AOP proxy is a generated implementation detail and the processors (Java and KSP) reject a provider whose return type is the __AopProxy class",
+        "Declares the component (provider return type and every injection point) with the original type UserService; an aspect-annotated @Component UserService is already registered through its proxy by the processor"
+      ],
+      "anti_behavior": [
+        "Suggests referencing the generated $UserService__AopProxy class anywhere in hand-written code"
+      ],
+      "tags": ["aop", "errors"]
+    },
+    {
+      "id": "kora-di-compile-ksp-log-level",
+      "skills": ["kora-di-compile"],
+      "query": "Kotlin Kora 2.0 project: how do I see what the KSP processor did while resolving my @KoraApp graph? In Java I used -AkoraLogLevel=DEBUG.",
+      "expected_behavior": [
+        "Sets the same option through KSP: ksp { arg(\"koraLogLevel\", \"DEBUG\") } in build.gradle.kts",
+        "States that the symbol processors log to the build console like the Java annotation processor, INFO by default",
+        "States that KSP writes no build/kora/log file, unlike the Java processor"
+      ],
+      "anti_behavior": [
+        "Claims koraLogLevel works only for the Java annotation processor"
+      ],
+      "tags": ["ksp", "debugging", "kotlin"]
     }
   ]
 }

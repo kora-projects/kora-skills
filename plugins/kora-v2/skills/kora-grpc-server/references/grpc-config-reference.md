@@ -64,7 +64,7 @@ apply verbatim, and the logging section adds one key, `maskHeaders`:
 | `telemetry.tracing.attributes` | `Map<String,String>` | `{}` | added to every span |
 
 **Logging and metrics are off by default in Kora 2.0.** Any example that claims to demonstrate
-request logs or `rpc_server_duration` must enable them explicitly — this is the single most common
+request logs or `rpc_server_call_duration` must enable them explicitly — this is the single most common
 "it worked in 1.x" surprise on this module, because 1.x defaulted metrics to `true`.
 
 Enablement is also gated on the corresponding component being in the graph:
@@ -80,7 +80,7 @@ interceptor costs nothing.
 
 | Name | Micrometer type | Prometheus |
 |---|---|---|
-| `rpc.server.duration` | `Timer` (with the configured SLO boundaries) | `rpc_server_duration_seconds*` |
+| `rpc.server.call.duration` | `Timer` (with the configured SLO boundaries) | `rpc_server_call_duration_seconds*` |
 
 Tags on every sample:
 
@@ -88,21 +88,25 @@ Tags on every sample:
 |---|---|
 | `server.name` | `kora-grpc` |
 | `server.port` | the configured port |
-| `rpc.system` | `grpc` |
+| `rpc.system.name` | `grpc` |
 | `rpc.service` | the proto service name |
 | `rpc.method` | the RPC method name |
-| `rpc.grpc.status_code` | the numeric `io.grpc.Status.Code` |
+| `rpc.response.status_code` | the `io.grpc.Status.Code` **name** (`OK`, `NOT_FOUND`, `UNAVAILABLE`, …) |
+| `error.type` | `""` on success, otherwise the canonical class name of the exception that ended the call |
 | …plus every entry of `telemetry.metrics.tags` | |
 
 > There is **no** `rpc.server.requests_per_rpc` and **no** `rpc.server.responses_per_rpc` in Kora
-> 2.0. `rpc.server.duration` is the only meter this module registers.
+> 2.0. `rpc.server.call.duration` is the only meter this module registers. 2.0.0.RC1 named it
+> `rpc.server.duration` with tags `rpc.system` / numeric `rpc.grpc.status_code`; RC2 (#972) renamed
+> them — update RC1 dashboards.
 
 ### Tracing
 
 One `SERVER` span per call, named `<service>/<method>`. The parent context is extracted from the
 call metadata with the W3C trace-context propagator, and the outgoing headers are injected on
-response. Attributes: `server.port`, `server.name`, `rpc.system`, `rpc.service`, `rpc.method`,
-`network.peer.address`, `rpc.grpc.status_code` on close, plus every entry of
+response. Attributes: `server.port`, `server.name`, `rpc.system.name`, `rpc.service`, `rpc.method`,
+`network.peer.address`, `rpc.response.status_code` (code name) on close, `error.type` when an exception
+ended the call, plus every entry of
 `telemetry.tracing.attributes`. A `rpc.message` span event is recorded per message.
 
 ### Logging
@@ -264,7 +268,7 @@ before relying on it.
 
 | Symptom | Cause | Fix |
 |---|---|---|
-| No `rpc_server_duration` metric | `telemetry.metrics.enabled` defaults to `false` | set it, and add `io.koraframework:micrometer-module` |
+| No `rpc_server_call_duration` metric | `telemetry.metrics.enabled` defaults to `false` | set it, and add `io.koraframework:micrometer-module` |
 | No request/response logs | `telemetry.logging.enabled` defaults to `false` | set it |
 | Metrics enabled but still nothing | no `MeterRegistry` in the graph | add `micrometer-module` |
 | Server on 8090 when you configured something else | the key is under `grpcServer`, not a foreign `server.port` | fix the section name |

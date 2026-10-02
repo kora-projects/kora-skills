@@ -441,12 +441,12 @@ next start (the zone is part of the trigger comparison).
 The generated job factory takes the component directly and carries no condition. When the
 component's `@Conditional` fails, the job node still asks for it and **graph initialisation
 fails** with `IllegalStateException: Graph node value was not initialized because condition
-failed: <reason>`. Fixed by kora-projects/kora PR #962 (on master once merged): the generated job
-component then carries the `@Conditional` of its class and drops out with it.
+failed: <reason>`. Fixed in `2.0.0.RC2` (kora-projects/kora PR #962): the generated job component
+carries the `@Conditional` of its class and drops out with it. Only `2.0.0.RC1` is affected.
 
-Without the fix, keep the scheduled method on an unconditional component. If it has to reach the
+On RC1, keep the scheduled method on an unconditional component. If it has to reach the
 conditional one, inject `All<T>` (condition-failed members are skipped) and return when it is
-empty; a `@Nullable T` dependency hits a separate bug, kora-projects/kora PR #960.
+empty; on RC1 a `@Nullable T` dependency hits a separate bug, kora-projects/kora PR #960.
 
 ---
 

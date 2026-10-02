@@ -127,9 +127,9 @@
       "query": "Attach common tags (service, environment, version) to every metric in my Kora 2.0 app.",
       "expected_behavior": [
         "Puts static common tags in the global metrics.tags map (io.koraframework.micrometer.module.MetricsConfig, top-level config path metrics) and/or a MetricsTagsProvider @Component for values computed at startup",
-        "Explains that MetricsModule's @DefaultComponent commonTagsMeterRegistryInitializer merges every MetricsTagsProvider with metrics.tags into one MeterFilter.commonTags(...), with metrics.tags applied last so config wins on a key conflict",
+        "Explains that MetricsModule's commonTagsMeterRegistryInitializer merges every MetricsTagsProvider with metrics.tags into one MeterFilter.commonTags(...), with metrics.tags applied last so config wins on a key conflict",
         "Notes the tags land on every meter in the registry, JVM meters and kora_up included, and that the values must stay bounded",
-        "If it shows a custom PrometheusMeterRegistryInitializer, warns that declaring one drops the @DefaultComponent common-tags initializer from All<PrometheusMeterRegistryInitializer>, so the initializer must re-apply metrics.tags and the providers itself, and must return the registry",
+        "If it shows a custom PrometheusMeterRegistryInitializer, says it runs alongside the common-tags initializer (not a @DefaultComponent since RC2, #935), so it must not re-merge metrics.tags itself, and must return the registry",
         "May contrast it with the per-component telemetry.metrics.tags config key",
         "Does not invent a MeterRegistryCustomizer, @Default annotation or any external customizer type"
       ],
@@ -153,10 +153,10 @@
       "skills": ["kora-telemetry-metrics"],
       "query": "I am porting a Grafana dashboard from Kora 1.x to Kora 2.0. It uses db_client_request_duration, cache_duration, messaging_receive_duration for Kafka and s3_client_duration. Which of these still work?",
       "expected_behavior": [
-        "Says none of the four are correct for Kora 2.0 and gives the current meters: db.client.operation.duration, cache.operation.duration, messaging.process.duration (Kafka consumer), rpc.client.duration with rpc.system = s3-aws or s3",
-        "Notes that messaging.receive.duration does still exist, but for JMS rather than Kafka",
+        "Says none of the four are correct for Kora 2.0 and gives the current meters: db.client.operation.duration, cache.operation.duration, messaging.process.duration (Kafka consumer), rpc.client.call.duration with rpc.system.name = s3",
+        "Notes that messaging.process.duration is shared with the JMS consumer, so the Kafka query filters by messaging_system=\"kafka\"",
         "Flags the database tag renames: db.client.connection.pool.name, db.system.name, db.query.text, db.operation.name",
-        "Warns that the three S3/SOAP flavours share the meter name rpc.client.duration and must be separated by the rpc_system label",
+        "Warns that S3, SOAP and gRPC clients share the meter name rpc.client.call.duration and must be separated by the rpc_system_name label",
         "Mentions that rpc.*.requests_per_rpc and responses_per_rpc no longer exist in 2.0",
         "Tells the user to read the exact exported series names from a running /metrics rather than assuming the suffix"
       ],
@@ -273,11 +273,11 @@
     {
       "id": "kora-telemetry-metrics-regression-initializer-drops-common-tags",
       "skills": ["kora-telemetry-metrics"],
-      "query": "I set metrics.tags { service = \"orders\" } in my Kora 2.0 app and it worked. Then I added a @Module with a PrometheusMeterRegistryInitializer that installs a MeterFilter deny rule, and now the service tag is gone from every series. Why?",
+      "query": "I set metrics.tags { service = \"orders\" } in my Kora 2.0.0.RC1 app and it worked. Then I added a @Module with a PrometheusMeterRegistryInitializer that installs a MeterFilter deny rule, and now the service tag is gone from every series. Why, and what do I do on RC2?",
       "expected_behavior": [
-        "Explains that metrics.tags and MetricsTagsProvider are applied by MetricsModule's commonTagsMeterRegistryInitializer, which is a @DefaultComponent",
-        "Explains that All<PrometheusMeterRegistryInitializer> leaves a @DefaultComponent candidate out when a non-default candidate of the same type exists, so the new initializer silently displaced the built-in one",
-        "Fixes it by re-applying the merge inside the custom initializer: inject io.koraframework.micrometer.module.MetricsConfig and All<MetricsTagsProvider>, merge providers first and config.tags() last, install MeterFilter.commonTags(...), and return the registry",
+        "Explains that metrics.tags and MetricsTagsProvider are applied by MetricsModule's commonTagsMeterRegistryInitializer, which was a @DefaultComponent in RC1",
+        "Explains that All<PrometheusMeterRegistryInitializer> leaves a @DefaultComponent candidate out when a non-default candidate of the same type exists, so on RC1 the new initializer silently displaced the built-in one",
+        "Says the fix is upgrading to 2.0.0.RC2, where #935 made the common-tags initializer a regular component, so the custom initializer keeps only its deny rule and must not re-merge the tags (that installs the filter twice)",
         "Does not claim the deny filter itself removed the tag or that metrics.tags is ignored in general"
       ],
       "tags": ["regression", "common-tags", "graph"]
@@ -288,12 +288,25 @@
       "query": "Which metrics does a Kora 2.0 Caffeine @Cache publish when I turn its metrics on, and do I need a workaround for duplicate meter registration?",
       "expected_behavior": [
         "Says metrics come on with telemetry.metrics.enabled = true under the @Cache config path, with MetricsModule on the graph",
-        "Lists Kora's cache.operation.duration timer and cache.ratio counter (origin = caffeine)",
+        "Says Kora's own cache.operation.duration / cache.requests meters are not emitted for Caffeine (only Redis caches record them)",
         "Adds Micrometer's CaffeineCacheMetrics binder meters — cache.gets, cache.puts, cache.evictions, cache.eviction.weight, cache.size — registered once over a recordStats() cache, named by the @Cache config path",
         "States that no workaround is needed: the cache is instrumented through the binder only",
         "Does not suggest a custom CaffeineStatsCounter, disabling the binder, or catching IllegalArgumentException at startup"
       ],
       "tags": ["builtin", "cache"]
+    },
+    {
+      "id": "kora-telemetry-metrics-rc2-renames",
+      "skills": ["kora-telemetry-metrics"],
+      "query": "After upgrading Kora 2.0.0.RC1 to RC2 my Grafana panels on rpc_server_duration_seconds_count, cache_ratio_total{type=\"hit\"} and resilient_circuitbreaker_state{name=\"payments\"} are empty. What changed?",
+      "expected_behavior": [
+        "Says RC2 (#972) renamed the meters: rpc.server.duration / rpc.client.duration -> rpc.server.call.duration / rpc.client.call.duration, cache.ratio -> cache.requests",
+        "Gives the new tags: rpc.system -> rpc.system.name, rpc.grpc.status_code -> rpc.response.status_code carrying the gRPC status code name (OK, UNAVAILABLE) instead of the number; cache type -> cache.result, origin/operation -> cache.origin/cache.operation",
+        "Says every resilience tag is now resilient.-prefixed: resilient_circuitbreaker_state{resilient_name=\"payments\"}",
+        "Mentions that the Lettuce completion timer is now db.client.operation.duration with db_system_name=\"redis\" and the JMS consumer timer is messaging.process.duration",
+        "Does not suggest a config switch to restore the old names; none exists"
+      ],
+      "tags": ["builtin", "migration", "regression"]
     }
   ]
 }

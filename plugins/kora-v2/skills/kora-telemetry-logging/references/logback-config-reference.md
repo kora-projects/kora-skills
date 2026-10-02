@@ -1,7 +1,7 @@
 # Logback Configuration Reference
 
 Everything in this file is verified against the Kora 2.0 framework source (`logging/logging-logback`,
-`logging/logging-common`, `logging/logging-logback-json`). Logback is `1.6.4`, SLF4J `2.0.20`.
+`logging/logging-common`, `logging/logging-logback-json`). Logback is `1.6.5`, SLF4J `2.0.20`.
 
 ## Contents
 
@@ -281,7 +281,8 @@ If you keep a `PatternLayout` instead of `ConsoleTextRecordEncoder`, two `Classi
   Behind a synchronous appender it therefore only shows MDC values for records logged inside a
   request/message/job scope; behind `KoraAsyncAppender` it uses the snapshot taken at log time.
 - `KoraLoggingMarkerConverter` — renders the first `StructuredArgument` marker as
-  `fieldName=<json>`.
+  `fieldName=<json>`, and an empty string for an event with no markers or no structured one (RC1
+  threw a `NullPointerException` on marker-less events, #934).
 
 Neither is auto-registered: `logging-logback` ships no `ServiceLoader` entry and no default
 configuration for them, so a Logback conversion rule must declare them before a pattern can use
@@ -298,8 +299,9 @@ read, so "it works on the JVM" proves nothing about it.
 Kora's own logback metadata ships inside the artifact at
 `META-INF/native-image/io.koraframework.logging.logback/` (`reflect-config.json` registering
 `KoraAsyncAppender`, `text.ConsoleTextRecordEncoder`, `KoraMdcConverter`,
-`KoraLoggingMarkerConverter`, `KoraLogbackConfigurator`, `text.ConsoleTextEncoderFactory` and the
-Logback classes it needs; `resource-config.json` including `logback.xml`, `logback-test.xml` and the
+`KoraLoggingMarkerConverter`, `KoraLogbackConfigurator`, `text.ConsoleTextEncoderFactory`,
+`text.ColorConsoleTextEncoderFactory` (RC1 listed a non-existent `PrettyTextEncoderFactory`, #920)
+and the Logback classes it needs; `resource-config.json` including `logback.xml`, `logback-test.xml` and the
 two `META-INF/services` files the configurator is discovered through). `logging-logback-json`
 ships its own pair under `META-INF/native-image/io.koraframework.logging.logback.json/`.
 

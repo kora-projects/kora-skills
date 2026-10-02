@@ -485,7 +485,7 @@
       "query": "Kora 2.0 Java: I added `@Query(\"SELECT payload FROM blobs WHERE batch_id = :batchId\") List<byte[]> findPayloads(long batchId);` to my JdbcRepository and now javac fails with NullPointerException: Cannot invoke \"javax.lang.model.element.Element.getAnnotationMirrors()\" because \"element\" is null, with JdbcTypesExtension.getDependencyGenerator in the trace. Did I break something in my code?",
       "expected_behavior": [
         "Identifies the byte[] / List<byte[]> return type as the trigger: the Java JDBC extension resolves JdbcResultSetMapper<byte[]> and looks for @EntityJdbc on the element of an array type, which is null",
-        "States it is a processor defect fixed by kora-projects/kora PR #959 (on master once merged), not a mistake in the repository code, and that KSP is not affected",
+        "States it is a processor defect fixed in 2.0.0.RC2 (kora-projects/kora PR #959), only 2.0.0.RC1 is affected, not a mistake in the repository code, and that KSP is not affected",
         "Gives the workaround for builds without the fix: a single-column @EntityJdbc record such as record Payload(byte[] data) and a List<Payload> return type",
         "Does not suggest a hand-written JdbcResultColumnMapper<byte[]> as the fix, because JdbcMapperModule already ships JdbcRowMapper<byte[]> and the crash happens inside the extension before it is used"
       ],
@@ -523,7 +523,7 @@
       "expected_behavior": [
         "Explains that post-commit actions run after commit() and a failure there does not undo the commit but propagates out of inTx, so the caller sees an error for committed work",
         "Fixes it by catching inside the afterCommit action (try/catch with logging) rather than around inTx",
-        "Explains that before kora-projects/kora PR #967 the actions are never cleared from the ConnectionContext, so a later inTx in the same withConnection scope re-runs them, and the first throwing post-commit action skips the remaining ones",
+        "Explains that on 2.0.0.RC1 (fixed in RC2 by kora-projects/kora PR #967) the actions are never cleared from the ConnectionContext, so a later inTx in the same withConnection scope re-runs them, and the first throwing post-commit action skips the remaining ones",
         "Recommends one inTx per withConnection scope when it registers actions, and running follow-up transactional work after inTx returns instead of from an action (an afterCommit that opens inTx recurses until StackOverflowError before the fix)",
         "Does not invent a Spring-style TransactionSynchronization, @TransactionalEventListener or a Kora config key to change this behaviour"
       ],

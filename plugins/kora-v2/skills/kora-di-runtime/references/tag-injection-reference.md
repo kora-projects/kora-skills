@@ -177,7 +177,12 @@ that produced this module"*. The processor substitutes it in two places:
 Used outside a factory module it is a compile error:
 
 ```
-@Tag.Factory can only be used inside factory modules.
+@Tag.Factory can only be used inside factory modules:
+  module: com.example.StorageModule
+
+Declared at:
+  com.example.StorageModule#storage(
+    StorageConfig)
 
 Fix:
   - Move this provider to a factory module (@FactoryModule).

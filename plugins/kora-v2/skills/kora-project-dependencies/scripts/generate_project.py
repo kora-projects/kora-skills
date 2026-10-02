@@ -42,8 +42,8 @@ GRADLE_VERSION = "9.7.1"  # matches assets/gradle-wrapper/gradle-wrapper.propert
 
 MYSQL_DRIVER = "com.mysql:mysql-connector-j:9.2.0"
 # database-flyway ships flyway-core only; the dialect artifact is the application's job.
-FLYWAY_POSTGRES_DIALECT = "org.flywaydb:flyway-database-postgresql:13.8.1"
-FLYWAY_MYSQL_DIALECT = "org.flywaydb:flyway-mysql:13.8.1"
+FLYWAY_POSTGRES_DIALECT = "org.flywaydb:flyway-database-postgresql:13.9.0"
+FLYWAY_MYSQL_DIALECT = "org.flywaydb:flyway-mysql:13.9.0"
 
 MOCKITO = "org.mockito:mockito-core:5.24.0"
 MOCKK = "io.mockk:mockk:1.14.11"

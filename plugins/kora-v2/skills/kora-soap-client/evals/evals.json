@@ -317,11 +317,11 @@
       ],
       "query": "Our Grafana dashboard for the SOAP client went blank after the Kora 2.0 upgrade. It queried kora_soap_client_requests_total with soap_service and status labels. What should it query now, and why is there no data?",
       "expected_behavior": [
-        "States that the SOAP client now reports a single Micrometer Timer named rpc.client.duration",
-        "Gives the real tags: rpc.system=soap, rpc.service, rpc.method, server.address, server.port, http.response.status_code, error.type, fault.code, system.config, system.name.simple, system.name.canonical",
+        "States that the SOAP client now reports a single Micrometer Timer named rpc.client.call.duration (RC1 called it rpc.client.duration)",
+        "Gives the real tags: rpc.system.name=soap, rpc.service, rpc.method, server.address, server.port, http.response.status_code, error.type, soap.fault.code, system.config, system.name.simple, system.name.canonical",
         "Explains the blank dashboard has two causes: the metric was renamed, and telemetry.metrics.enabled now defaults to false",
         "Notes that a MeterRegistry must be on the graph (MetricsModule from io.koraframework:micrometer-module) or metrics stay off regardless of the flag",
-        "Suggests alerting on error_type != \"\" or fault_code != \"\" rather than a status label",
+        "Suggests alerting on error_type != \"\" or soap_fault_code != \"\" rather than a status label",
         "Mentions the span name is SOAP <service> <method> with SpanKind.CLIENT"
       ],
       "anti_behavior": [

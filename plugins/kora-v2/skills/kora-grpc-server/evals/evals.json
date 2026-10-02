@@ -155,7 +155,7 @@
       ],
       "query": "What metrics does the Kora gRPC server emit, how do I add custom tags, and why do I see nothing in Prometheus right now?",
       "expected_behavior": [
-        "Names rpc.server.duration as the only metric the module registers (a Micrometer Timer)",
+        "Names rpc.server.call.duration as the only metric the module registers (a Micrometer Timer), tagged rpc.system.name, rpc.service, rpc.method, rpc.response.status_code (the status code name such as OK) and error.type",
         "States that grpcServer.telemetry.metrics.enabled and grpcServer.telemetry.logging.enabled both default to FALSE in Kora 2.0, while tracing.enabled defaults to true, and that this is the reason nothing appears",
         "Shows enabling it explicitly in the grpcServer.telemetry section, and notes that a MeterRegistry must also be in the graph (io.koraframework:micrometer-module)",
         "Configures grpcServer.telemetry.metrics.tags for metric tags and grpcServer.telemetry.tracing.attributes for span attributes",

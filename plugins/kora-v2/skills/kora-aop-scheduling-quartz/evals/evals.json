@@ -293,7 +293,7 @@
       "query": "I put `@ScheduleQuartzWithCron(\"0 0 * * * ?\")` on a method of a component annotated @Conditional(ReportsEnabled.class). With the condition off, the Kora app no longer starts: `Graph node value was not initialized because condition failed: ...`. Isn't the job supposed to disappear with the component?",
       "expected_behavior": [
         "Explains the generated Quartz job factory takes the component directly and carries no @Conditional, so the job node still requests the condition-failed component and graph initialisation fails",
-        "Says this is fixed by kora-projects/kora PR #962 (on master once merged), after which the generated job component carries the component's condition",
+        "Says this is fixed in 2.0.0.RC2 (kora-projects/kora PR #962) and only 2.0.0.RC1 is affected; since then the generated job component carries the component's condition",
         "Gives the workaround for builds without it: keep the scheduled method on an unconditional component; if it must call the conditional one, inject All<T> and return when it is empty",
         "Warns against injecting the conditional component as @Nullable, which hits a separate bug (kora-projects/kora PR #960)"
       ],

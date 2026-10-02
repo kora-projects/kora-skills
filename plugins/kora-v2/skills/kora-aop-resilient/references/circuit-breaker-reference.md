@@ -265,15 +265,15 @@ do not parse it.
 ## Telemetry
 
 Off by default — logging, metrics **and** tracing (the resilient tracing configs override the
-framework default of `true` back to `false`). Metric families, all tagged `name` = **the config
-path** given to `@CircuitBreakerSpec`:
+framework default of `true` back to `false`). Metric families, all tagged `resilient.name` = **the
+config path** given to `@CircuitBreakerSpec`:
 
 | Metric | Type | Extra tags |
 |---|---|---|
 | `resilient.circuitbreaker.state` | gauge, `0` CLOSED / `1` HALF_OPEN / `2` OPEN | — |
-| `resilient.circuitbreaker.transition` | counter | `state` |
-| `resilient.circuitbreaker.call.acquire` | counter | `state`, acquire status |
-| `resilient.circuitbreaker.call.result` | counter | `state`, call result |
+| `resilient.circuitbreaker.transition` | counter | `resilient.state` |
+| `resilient.circuitbreaker.call.acquire` | counter | `resilient.state`, `resilient.status` (acquire status) |
+| `resilient.circuitbreaker.call.result` | counter | `resilient.state`, `resilient.status` (call result) |
 
 Enable globally under `resilient.telemetry.circuitBreaker`, or per breaker under
 `<specPath>.telemetry`; the per-breaker value wins when set. See

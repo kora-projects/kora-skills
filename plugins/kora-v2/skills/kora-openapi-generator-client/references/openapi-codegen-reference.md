@@ -323,7 +323,8 @@ sealed interface GetErrorsApiResponse {
 
 `SEALED` (the default) is everything above: every declared status is a variant of the returned
 sealed type. With `SUCCESSFUL`, operations that declare at least one error response — a non-2xx
-code or `default` — are generated like this:
+code, a `4XX`/`5XX` range or `default` — or whose return type is narrowed (several 2xx sharing one
+body, e.g. `200` + `206`) are generated like this:
 
 | Aspect | `SUCCESSFUL` output |
 |---|---|
@@ -363,9 +364,10 @@ exposes `getCode()`, `getHeaders()` and `getBytes()` (Kotlin: `code`, `headers`,
 Because several statuses can map to one exception, branch on `getCode()` when the distinction
 matters. Catch the typed exception before the base class.
 
-`SUCCESSFUL` cannot be combined with status-code ranges: the mode parses every non-`default` code
-as an integer, so a `4XX` / `5XX` key fails generation with
-`NumberFormatException: For input string: "4XX"`.
+Status-code ranges work in `SUCCESSFUL` mode: the mapper switches on exact codes first, then tests
+`200 <= code < 300`, `400 <= code < 500`, … in order, then falls back to `default`. A `2XX` range is
+a success and is returned (`<Op>2XXApiResponse`); `4XX`/`5XX` ranges are thrown as the typed
+exception of their body type.
 
 ## Status-code ranges (`4XX`, `5XX`) { #ranges }
 
@@ -379,7 +381,7 @@ the generator lowers it:
   and anything else to the `default` mapper — or throws `HttpClientResponseException` when the
   operation has no `default`.
 
-Ranges are generated for Java and Kotlin clients in `SEALED` mode (see the previous section for
+Ranges are generated for Java and Kotlin clients in both modes (see the previous section for
 `SUCCESSFUL`).
 
 ## Enums { #enums }

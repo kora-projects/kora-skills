@@ -311,7 +311,7 @@ at all — the setting simply stops applying.
 | `scheduling.threads` | **Removed.** Runs are virtual threads; the optional cap is `scheduling.jdk.executionParallelism` |
 | `scheduling.shutdownWait` | **Moved** to `scheduling.jdk.shutdownWait` |
 
-| Stale 2.0 snapshot key | Status on master / RC2 |
+| Stale 2.0 snapshot key | Status in `2.0.0.RC2` |
 |---|---|
 | `scheduling.jdk.maxConcurrentExecutions` | **Renamed** to `scheduling.jdk.executionParallelism` by Kora PR #952. The old key is ignored, so the cap silently disappears and runs are unlimited |
 

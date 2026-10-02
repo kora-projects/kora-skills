@@ -199,21 +199,41 @@ Unwrapping applies to `All<T>` too: a provider returning `Wrapped<T>` contribute
 
 ## Breaking Cycles with `ValueOf` and `PromiseOf`
 
-A direct cycle is a compile error:
+The processor first tries to break a cycle on its own: when the dependency that closes it is an
+interface or a non-final class, it generates a *promised proxy* that stands in for the component and
+the graph compiles. A cycle is a compile error only when that is impossible — the dependency is a
+`final` class (every Kotlin class is final by default), not a class or interface at all, or an
+`All<T>` / `TypeRef<T>` / `Graph` claim. With two `final` classes:
 
 ```
 Circular dependency found:
   com.example.ServiceA (no tags)
 
-  Dependency cycle:
-    @--- component  com.example.ServiceA
-    ^--- component  com.example.ServiceB [CYCLE]
+Dependency cycle:
+  @--- component  com.example.ServiceA
+  ^--- component  com.example.ServiceB
+  ^--- component  com.example.ServiceA [CYCLE]
+
+Required at:
+  com.example.ServiceB(
+    com.example.ServiceA)
+  parameter: com.example.ServiceA a
+
+Note:
+  Kora can break a cycle with a proxy only for interface or non-final class dependency, but com.example.ServiceA is final.
 
 Fix:
+  - Depend on an interface implemented by com.example.ServiceA instead of the class itself, or make the class non-final, so Kora can break the cycle with a proxy.
   - Break the cycle with ValueOf<T> or PromiseOf<T> where lazy access is valid.
   - Move shared state into a separate component.
-  - Do not create dependency cycles in io.koraframework.application.graph.Lifecycle.
+  - Do not create dependency cycles in Lifecycle.
 ```
+
+The error is reported on the parameter that closes the cycle (`Required at:`), and `Note:` says why
+no proxy could be used. Prefer the interface fix: the proxy for a *class* is a generated subclass,
+and for a class whose only constructor takes arguments the generated code does not compile
+(`constructor ServiceA … cannot be applied to given types`) — so "make it non-final" is only safe
+for a class with a usable no-arg constructor.
 
 Take an indirect reference on one side:
 

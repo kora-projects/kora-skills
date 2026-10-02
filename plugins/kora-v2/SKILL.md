@@ -3,7 +3,7 @@ name: kora-v2
 description: "Build and maintain Java/Kotlin services on the Kora Framework 2.0 (io.koraframework) — compile-time DI, zero reflection, synchronous contracts on virtual threads, annotation processors (Java) or KSP (Kotlin). Routes to 40 domain sub-skills. Use when the request mentions Kora, or uses Kora APIs: @KoraApp, @Component, @Module, @KoraSubmodule, @Root, @Tag, @Conditional, @FactoryModule, @HttpController, @HttpRoute, @HttpClient, @Repository, @Query, @EntityJdbc, @KafkaListener, @KafkaPublisher, gRPC, SOAP/WSDL, @S3.Client, @S3.Head, MapStruct, Konvert, @Json, @ConfigSource, @ConfigMapper (HOCON/YAML), OpenAPI codegen, @KoraAppTest, Testcontainers, @Valid, @Validate, @Log, @Mdc, @Retryable, @CircuitBreakable, @Timeout, @RateLimited, @Fallback, @Schedule*, @Cacheable, @CachePut, @CacheInvalidate, @CacheInvalidateAll, Micrometer/Prometheus metrics, OpenTelemetry/OTLP tracing, Undertow, Hikari, PostgreSQL, db-scheduler. Also use for Kora project setup, Gradle/BOM dependencies, DI graph errors, or explaining Kora concepts. Do not use for Spring Boot, Micronaut, or Quarkus work. For projects still on Kora 1.x (ru.tinkoff.kora) use the kora-v1 plugin instead."
 license: Apache-2.0
 metadata:
-  version: "0.1.0"
+  version: "0.2.0"
   kora-version: "2.x"
 ---
 
@@ -21,7 +21,7 @@ implementation knowledge lives in the 40 sub-skills listed below.
 | **Kotlin** | 2.4.20 with KSP 2.3.12 — the versions the framework itself is built with |
 | **Build** | Gradle 9.7.1 (the wrapper the framework itself pins) |
 | **Docs** | [koraframework.io/v2/en](https://koraframework.io/v2/en/) ([ru](https://koraframework.io/v2/ru/)) — see R0 for how much to trust it |
-| **Synced with** | Kora `master` at `ab9eef8e9` (2026-09-29) |
+| **Synced with** | Kora tag `2.0.0.RC2` = `master` at `78351e1cf` (2026-10-02) |
 
 **This meta-skill is the single entry point for Kora Framework development.** It routes to 40
 specialized domain skills, each with its own narrow area of expertise.
@@ -376,8 +376,8 @@ test case, never as something a successful build has proved.
 | Log lines go missing under load | `KoraAsyncAppender` defaults to `neverBlock = true` with `queueSize = 512`: a full queue **drops** events |
 | Secrets appear in TRACE Kafka / HTTP body logs | Header masking is on by default (`maskHeaders`), but bodies are masked only by a `DataMasker` you register under the transport's telemetry tag — none is registered by default |
 | DB-scheduled jobs (`scheduling-db-scheduler`) never run, the app starts green | The job table is missing. `scheduling.dbScheduler.initializeTable` — the name the module README and the `DbSchedulerConfig` Javadoc gave until kora-projects/kora PR #966 — is not read; the key is `tableInitialize`, and the default table is now `kora_scheduling_db_scheduler_jobs`. `KoraDbScheduler` is `@Root` itself, so no starter component is needed — see [`kora-aop-scheduling-db`](skills/kora-aop-scheduling-db/SKILL.md) |
-| A JDBC `afterCommit` fires for a transaction that rolled back (or `afterRollback` for one that committed); an `afterCommit` that opens `inTx` ends in `StackOverflowError` | `ConnectionContext` keeps its actions after the transaction ends, so a later `inTx` in the same `withConnection` scope runs them again, and the first failing action skips the rest. Fixed by kora-projects/kora PR #967 (on master once merged); a post-commit failure still propagates out of `inTx` for committed work — see [`kora-database-jdbc`](skills/kora-database-jdbc/references/transactions-reference.md#post-commit-and-post-rollback-actions) |
-| A scheduled job never does its work; with job logging off nothing says so | The scheduled method sits on a `@Conditional` component whose condition failed. The generated job factory does not carry the condition, so a JDK or DB job is still scheduled and every run fails in `ValueOf.get()` with `Graph node value was not initialized because condition failed` (a Quartz job fails graph init instead). Fixed by kora-projects/kora PR #962 (on master once merged); until then keep schedules on an unconditional component — see [`kora-aop-scheduling-jdk`](skills/kora-aop-scheduling-jdk/SKILL.md) |
+| A JDBC `afterCommit` fires for a transaction that rolled back (or `afterRollback` for one that committed); an `afterCommit` that opens `inTx` ends in `StackOverflowError` | `ConnectionContext` keeps its actions after the transaction ends, so a later `inTx` in the same `withConnection` scope runs them again, and the first failing action skips the rest. Fixed in `2.0.0.RC2` (kora-projects/kora PR #967) — only `2.0.0.RC1` is affected; a post-commit failure still propagates out of `inTx` for committed work — see [`kora-database-jdbc`](skills/kora-database-jdbc/references/transactions-reference.md#post-commit-and-post-rollback-actions) |
+| A scheduled job never does its work; with job logging off nothing says so | The scheduled method sits on a `@Conditional` component whose condition failed. The generated job factory does not carry the condition, so a JDK or DB job is still scheduled and every run fails in `ValueOf.get()` with `Graph node value was not initialized because condition failed` (a Quartz job fails graph init instead). Fixed in `2.0.0.RC2` (kora-projects/kora PR #962) — only `2.0.0.RC1` is affected; on RC1 keep schedules on an unconditional component — see [`kora-aop-scheduling-jdk`](skills/kora-aop-scheduling-jdk/SKILL.md) |
 | Scheduler concurrency or shutdown settings have no effect after moving off RC1 / an earlier 2.0 snapshot | Renamed keys are unknown keys: `scheduling.jdk.maxConcurrentExecutions` is now `executionParallelism`, `scheduling.quartz.waitForJobComplete` is now the duration `shutdownWait` — after which Quartz jobs are interrupted — and the annotations are `@ScheduleJdk*` / `@ScheduleQuartz*` / `@ScheduleDb*` |
 | `telemetry.logging.mask = "…"` has no effect | The `mask` key is gone; the replacement text comes from a tagged `MaskingStrategy` component. Unknown keys are ignored silently |
 | Tracing is on, spans are created, and the collector receives nothing | The exporter's `endpoint` is unset. `spanExporter`/`spanProcessor` return `SpanExporter.composite()` / `SpanProcessor.composite()` — a no-op — with no warning, while `tracing.enabled` defaults to **true**, so the service looks fully instrumented |
@@ -393,15 +393,15 @@ test case, never as something a successful build has proved.
 
 | Symptom | Action |
 |---|---|
-| `Required dependency was not found: Foo` | Check `@Component` on the class, that the `*Module` is extended by `@KoraApp`, and that `@KoraSubmodule` exists in multi-module builds |
+| `No component found for dependency:` naming `Foo` | Check `@Component` on the class, that the `*Module` is extended by `@KoraApp`, and that `@KoraSubmodule` exists in multi-module builds |
 | Ambiguous dependency / more than one candidate | Disambiguate with `@Tag`, or inject `All<T>` |
 | `ApplicationGraph` missing after `clean` | Run `./gradlew classes` — processors must run before anything references the graph |
 | Aspect annotation has no effect | Processor/KSP dependency missing, or the Kotlin class is not `open` |
 | `incompatible types: String cannot be converted to Class<? extends Timeouter>` | 1.x string-named resilient annotation; 2.0 takes a spec **type** |
 | KSP crashes with `ClassCastException: String → KSType` | Same cause, seen from Kotlin: a leftover string-named resilient annotation |
 | `error: SQL query placeholder has no matching method parameter: :id … - :arg0` | Incremental build read the repository from a class file. `--rerun-tasks` or `clean` on the module |
-| `Graph node value was not initialized because condition failed` although the dependency is `@Nullable` / `T?` | A nullable dependency on a `@Conditional` component is generated as `g.get(node)`. Fixed by kora-projects/kora PR #960 (on master once merged); until then inject `All<T>` — see [`kora-di-runtime`](skills/kora-di-runtime/SKILL.md) |
-| `@KoraAppTest` fails to start with `Graph node belongs to another application graph` | The tested graph contains a `@Conditional` component; `ApplicationGraphDraw.copy()`/`subgraph()` keep its condition bound to the original graph. Fixed by kora-projects/kora PR #963 (on master once merged) — see [`kora-testing-junit-java`](skills/kora-testing-junit-java/SKILL.md) |
+| `Graph node value was not initialized because condition failed` although the dependency is `@Nullable` / `T?` | A nullable dependency on a `@Conditional` component is generated as `g.get(node)`. Fixed in `2.0.0.RC2` (kora-projects/kora PR #960) — only `2.0.0.RC1` is affected; on RC1 inject `All<T>` — see [`kora-di-runtime`](skills/kora-di-runtime/SKILL.md) |
+| `@KoraAppTest` fails to start with `Graph node belongs to another application graph` | The tested graph contains a `@Conditional` component; `ApplicationGraphDraw.copy()`/`subgraph()` keep its condition bound to the original graph. Fixed in `2.0.0.RC2` (kora-projects/kora PR #963) — only `2.0.0.RC1` is affected — see [`kora-testing-junit-java`](skills/kora-testing-junit-java/SKILL.md) |
 | Generated classes stale or broken after a refactor | Delete `build/generated/`, rebuild with `--no-build-cache` |
 | Build hangs, or `clean` fails to delete a directory | `./gradlew --stop`, then retry |
 | IDE shows errors but Gradle compiles fine | IDE caching — invalidate caches and restart |

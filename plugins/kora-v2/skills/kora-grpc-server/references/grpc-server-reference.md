@@ -375,7 +375,7 @@ telemetry, the virtual-thread executor. Prefer 7.1/7.2.
 
 | Phase | Behaviour |
 |---|---|
-| `init()` | builds and starts the server; logs `gRPC Server started in …` |
+| `init()` | builds and starts the server; logs `gRPC Server started on port <port> in …` (the bound port, also as a `port` structured marker) |
 | bind failure | `IllegalStateException: gRPC server failed to start on port 'N': port is already in use; stop the other process or configure a different port` |
 | readiness | `INIT` → `"GRPC Server init"`, `RUN` → ready, `SHUTDOWN` → `"GRPC Server shutdown"` |
 | `release()` | `shutdown()`, then waits `shutdownWait` (default `30s`); on timeout logs a warning and calls `shutdownNow()` |

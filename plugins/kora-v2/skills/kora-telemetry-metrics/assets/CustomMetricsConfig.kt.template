@@ -1,17 +1,13 @@
 package ${package}
 
-import io.koraframework.application.graph.All
 import io.koraframework.common.annotation.Module
-import io.koraframework.micrometer.module.MetricsConfig
-import io.koraframework.micrometer.module.MetricsTagsProvider
 import io.koraframework.micrometer.module.PrometheusMeterRegistryInitializer
-import io.micrometer.core.instrument.Tag
 import io.micrometer.core.instrument.config.MeterFilter
 
 /**
  * Metrics customization module (Kora 2.0).
  *
- * For common tags alone you need no initializer: use metrics.tags in application.conf or a
+ * For common tags you need no initializer: use metrics.tags in application.conf or a
  * MetricsTagsProvider component (see AppMetricsTagsProvider.kt.template). Declare your own
  * PrometheusMeterRegistryInitializer only for other registry.config() settings -- meter
  * filters, deny rules, naming conventions.
@@ -21,27 +17,19 @@ import io.micrometer.core.instrument.config.MeterFilter
  * PrometheusMeterRegistryWrapper.init(), BEFORE the JVM binders are bound and before
  * kora.up is registered.
  *
- * Declaring one removes MetricsModule's @DefaultComponent common-tags initializer from that
- * All<>, so metrics.tags and every MetricsTagsProvider would be silently ignored. This
- * initializer therefore re-applies the same merge: providers first, config last (config wins).
+ * MetricsModule's common-tags initializer is not a @DefaultComponent (since 2.0.0.RC2), so it
+ * stays in that All<> next to this one: metrics.tags and MetricsTagsProvider keep applying.
+ * Do not re-merge them here.
  *
  * PrometheusMeterRegistryInitializer extends
- * Function<PrometheusMeterRegistry, PrometheusMeterRegistry>, so it MUST return the
- * registry. In Kotlin that means the lambda's last expression is `registry`.
+ * Function<PrometheusMeterRegistry, PrometheusMeterRegistry>, so it MUST return the registry.
  */
 @Module
 interface CustomMetricsConfig {
 
-    fun meterFiltersInit(config: MetricsConfig, tagsProviders: All<MetricsTagsProvider>): PrometheusMeterRegistryInitializer {
-        val merged = LinkedHashMap<String, String>()
-        tagsProviders.forEach { merged.putAll(it.tags()) }
-        merged.putAll(config.tags())
-        val commonTags = merged.map { (key, value) -> Tag.of(key, value) }
-        return PrometheusMeterRegistryInitializer { registry ->
-            registry.config()
-                .meterFilter(MeterFilter.commonTags(commonTags))
-                .meterFilter(MeterFilter.denyNameStartsWith("jvm.buffer"))
+    fun meterFiltersInit(): PrometheusMeterRegistryInitializer =
+        PrometheusMeterRegistryInitializer { registry ->
+            registry.config().meterFilter(MeterFilter.denyNameStartsWith("jvm.buffer"))
             registry
         }
-    }
 }

@@ -139,7 +139,8 @@ sets of components. See
 Used anywhere else it is a compile error:
 
 ```
-@Tag.Factory can only be used inside factory modules.
+@Tag.Factory can only be used inside factory modules:
+  module: com.example.StorageModule
 ```
 
 ## `All<T>`

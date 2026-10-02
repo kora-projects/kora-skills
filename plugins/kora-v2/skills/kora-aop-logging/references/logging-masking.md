@@ -19,7 +19,7 @@ it; see [logging-aspect.md](logging-aspect.md).
 - [Four masking layers](#four-masking-layers)
 - [Shared building blocks](#shared-building-blocks)
 - [`@Mask` — typed values](#mask--typed-values)
-- [Java: declare the rules yourself](#java-declare-the-rules-yourself)
+- [Java and Kotlin both generate the rules](#java-and-kotlin-both-generate-the-rules)
 - [`DataMasker` — raw payloads](#datamasker--raw-payloads)
 - [How a component picks its masker: tagged strategies](#how-a-component-picks-its-masker-tagged-strategies)
 - [The JSON encoder's `<maskField>`](#the-json-encoders-maskfield)
@@ -286,45 +286,23 @@ public void handle(@Mask @Json @Mapping(CustomRules.class) User user) { ... }
 The aspect then constructs `new MaskedStructuredArgumentMapper<>(jsonWriter, customRules, hasJson)`
 directly, so `CustomRules` and a `JsonWriter<User>` must both be resolvable from the graph.
 
-## Java: declare the rules yourself
+## Java and Kotlin both generate the rules
 
-Verified against the framework source at master:
+Verified against the framework source at `2.0.0.RC2`:
 
-- `logging-symbol-processor` registers
-  `META-INF/services/com.google.devtools.ksp.processing.SymbolProcessorProvider` →
-  `MaskingRulesSymbolProcessorProvider`. **Kotlin generates `$<Type>_MaskingRulesModule`
-  automatically.**
-- `logging-annotation-processor` contains `LoggingAnnotationProcessor` and `MaskingRulesProcessor`
-  but registers **only** `META-INF/services/io.koraframework.aop.annotation.processor.KoraAspectFactory`.
-  There is no `javax.annotation.processing.Processor` entry, so javac never runs it. **In Java no
-  masking rules module is generated.**
+- `logging-symbol-processor` registers `MaskingRulesSymbolProcessorProvider` (KSP).
+- `logging-annotation-processor` registers `LoggingAnnotationProcessor` in
+  `META-INF/services/javax.annotation.processing.Processor` (#921, RC2), and it runs
+  `MaskingRulesProcessor`; since #970 it is also declared an **isolating** Gradle incremental
+  processor, so incremental compilation stays on. `io.koraframework:annotation-processors` depends on
+  it, so the usual `annotationProcessor "io.koraframework:annotation-processors"` line is enough.
 
-`@Mask` on the parameter still works — the aspect asks the graph for
-`MaskedStructuredArgumentMapper<User>`, which `LoggingModule` builds from a `JsonWriter<User>` plus a
-`MaskingRules<User>`. Only the second one is missing, and it is not an optional dependency of that
-factory, so the graph build fails on an unresolved `MaskingRules<User>`.
-
-Supply it yourself — the same component the generated module would have declared:
-
-```java
-import io.koraframework.common.annotation.Module;
-import io.koraframework.logging.common.masking.MaskingFull;
-import io.koraframework.logging.common.masking.MaskingKeepLast;
-import io.koraframework.logging.common.masking.MaskingRules;
-
-@Module
-public interface UserMaskingModule {
-    default MaskingRules<User> userMaskingRules() {
-        return MaskingRules.builder(User.class)
-            .mask("credentials.secret", new MaskingFull())
-            .mask("credentials.token", new MaskingKeepLast())
-            .build();
-    }
-}
-```
-
-Field-level `@Mask` annotations are then documentation only — the hand-written builder is the source
-of truth, so keep the two in step. Kotlin services need none of this.
+So **both languages generate `$<Type>_MaskingRulesModule`**; no hand-written `MaskingRules<T>` is
+needed. In 2.0.0.RC1 the Java service entry was missing, the module was never generated and the graph
+failed on an unresolved `MaskingRules<User>` — if you meet a hand-written
+`MaskingRules.builder(User.class)…` `@Module` from that era, delete it, or it competes with the
+generated `@DefaultComponent` (yours, being non-default, wins and silently ignores later `@Mask`
+edits). Declaring `MaskingRules<T>` by hand is still legitimate for a type you cannot annotate.
 
 ## `DataMasker` — raw payloads
 
@@ -494,7 +472,7 @@ encoder and matches field names only. See
 
 | Symptom | Cause | Fix |
 |---|---|---|
-| Graph build fails on `MaskingRules<Foo>` in a Java service | The Java masking processor is not registered with javac | Declare the `MaskingRules<Foo>` component by hand (above) |
+| Graph build fails on `MaskingRules<Foo>` in a Java service | Kora 2.0.0.RC1, where the Java masking processor was not registered with javac (fixed in RC2, #921), or `annotation-processors` missing from `annotationProcessor` | Upgrade to RC2+ and keep `annotationProcessor "io.koraframework:annotation-processors"` |
 | Graph build fails on `JsonWriter<Foo>` | The logged type is not `@Json`, or `JsonModule` is not in the `@KoraApp` | Add `@Json` to the type and `io.koraframework.json.common.JsonModule` to the app |
 | The value logs as one escaped JSON string | `@Mask` without `@Json` on the logged element | Add `@Json` next to `@Mask` |
 | A nested field is not masked | The nested type is not annotated `@Json`/`@Mask`, so the walker did not descend into it | Annotate the nested type |

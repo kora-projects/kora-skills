@@ -38,7 +38,7 @@
         "States that io.koraframework:database-flyway ships only org.flywaydb:flyway-core, and that since Flyway 10 database support lives in separate artifacts",
         "Adds org.flywaydb:flyway-database-postgresql to the application's own dependencies with an explicit version",
         "Notes that kora-bom does not constrain third-party artifacts, so the version must be written out and kept equal to the flyway-core version database-flyway resolves",
-        "Names 13.8.1 as the flyway-core version database-flyway brings for Kora 2.0.0.RC2",
+        "Names 13.9.0 as the flyway-core version database-flyway brings for Kora 2.0.0.RC2",
         "Suggests verifying the resolved versions, e.g. ./gradlew dependencies --configuration runtimeClasspath | grep flyway",
         "Does not suggest downgrading PostgreSQL, changing the JDBC URL, or disabling validation"
       ],

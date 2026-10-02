@@ -225,7 +225,7 @@ in the application's `reflect-config.json`.
 Kora ships a JSON encoder; prefer it. A third-party `Encoder<ILoggingEvent>` still plugs into a
 `ConsoleAppender` wrapped by `KoraAsyncAppender`, but:
 
-- none appears in the Kora 2.0 source or tests; Kora pins Logback `1.6.4` and SLF4J `2.0.20`, so
+- none appears in the Kora 2.0 source or tests; Kora pins Logback `1.6.5` and SLF4J `2.0.20`, so
   check the encoder against those versions on a real run;
 - an encoder that does not know `KoraLoggingEvent` emits neither `koraMdc()` nor `span()` — Kora
   MDC values and `traceId`/`spanId` go missing.

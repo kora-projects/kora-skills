@@ -223,7 +223,7 @@ ctx.afterCommit(connection -> {
 });
 ```
 
-Until kora-projects/kora PR #967 is on master, three more defects apply:
+On `2.0.0.RC1` three more defects apply (fixed in `2.0.0.RC2`, kora-projects/kora PR #967 — only RC1 is affected):
 
 1. The first post-commit action that throws skips the remaining ones; a post-rollback action
    throwing a `RuntimeException` (not an `SQLException`) skips the remaining rollback actions.
@@ -233,7 +233,7 @@ Until kora-projects/kora PR #967 is on master, three more defects apply:
    the next one rolls back.
 3. An `afterCommit` action that opens another `inTx` re-runs itself until `StackOverflowError`.
 
-Without the fix: catch inside every action, keep to one `inTx` per `withConnection` scope when it
+On RC1: catch inside every action, keep to one `inTx` per `withConnection` scope when it
 registers actions, and run follow-up transactional work after `inTx` returns rather than from an
 action.
 
@@ -385,8 +385,8 @@ and run task.
 | Writes outside the lambda are not rolled back | they ran in their own auto-commit statement | move every related call into one `inTx` |
 | `FOR UPDATE` does not block a concurrent writer | the query ran outside a transaction | call it inside `inTx` |
 | Caller gets an exception although the data is committed | a post-commit action threw; the error propagates out of `inTx` | catch inside the action |
-| `afterCommit` fired for a transaction that rolled back, or `afterRollback` for one that committed | before kora-projects/kora PR #967 actions stay in the context, and a later `inTx` in the same `withConnection` scope ran them | one `inTx` per `withConnection` scope when it registers actions |
-| `StackOverflowError` through `JdbcExecutor.doInTx` | before kora-projects/kora PR #967 an `afterCommit` action that opens another `inTx` re-runs itself | run the follow-up after `inTx` returns |
+| `afterCommit` fired for a transaction that rolled back, or `afterRollback` for one that committed | on RC1 (fixed in RC2 by kora-projects/kora PR #967) actions stay in the context, and a later `inTx` in the same `withConnection` scope ran them | one `inTx` per `withConnection` scope when it registers actions |
+| `StackOverflowError` through `JdbcExecutor.doInTx` | on RC1 (fixed in RC2 by kora-projects/kora PR #967) an `afterCommit` action that opens another `inTx` re-runs itself | run the follow-up after `inTx` returns |
 | Long transaction exhausts the pool | remote calls inside `inTx` | keep external I/O outside the transaction |
 
 ---

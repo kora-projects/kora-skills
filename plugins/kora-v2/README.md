@@ -193,7 +193,7 @@ Codex discover the same high-level routing instructions that live in the root `S
 
 | Component      | Version                                                                                                |
 |----------------|--------------------------------------------------------------------------------------------------------|
-| Kora Framework | 2.x — targets `2.0.0.RC2` (synced with `master` at `ab9eef8e9`)                                        |
+| Kora Framework | 2.x — targets `2.0.0.RC2` (synced with the `2.0.0.RC2` tag, `master` at `78351e1cf`)                                        |
 | Java           | 25+ (the JDK running Gradle must also be 25+ when `openapi-generator` is on the buildscript classpath) |
 | Kotlin         | 2.4.20 with KSP 2.3.12                                                                                 |
 | Gradle         | 9+ (the framework pins wrapper 9.7.1)                                                                  |

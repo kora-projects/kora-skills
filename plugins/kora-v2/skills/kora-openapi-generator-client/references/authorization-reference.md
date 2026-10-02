@@ -83,8 +83,9 @@ names `HttpClientTokenProvider`, not the tag you expected.
 | `type: http, scheme: basic` | `@DefaultComponent @Tag(<Scheme>) BasicAuthHttpClientTokenProvider` built from `username` + `password` (UTF-8, base64) | `Authorization: Basic <base64>` |
 | `type: http, scheme: bearer` | tag class only — **no provider** | `Authorization: Bearer <token>` — your provider returns the bare token |
 | `type: oauth2` | tag class only — **no provider** | `Authorization: Bearer <token>` — your provider returns the bare token |
+| `type: openIdConnect` | tag class only — **no provider** (handled exactly like `oauth2`) | `Authorization: Bearer <token>` — your provider returns the bare token |
 
-Any other `type` (for example `openIdConnect` without a supported mapping) aborts generation with
+Any other `type` aborts generation with
 an explicit "unsupported security scheme" message rather than emitting something that silently
 does nothing.
 

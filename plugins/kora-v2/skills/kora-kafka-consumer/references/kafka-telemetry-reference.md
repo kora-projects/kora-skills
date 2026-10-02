@@ -212,6 +212,7 @@ Three meters, registered on the injected `MeterRegistry`:
 Common tags on all three:
 
 `messaging.system` (`kafka`), `messaging.client.id`, `messaging.consumer.group.name`,
+`messaging.operation.name` (`process`; on the two timers),
 `system.config` (the `@KafkaListener` path), `system.name.simple`, `system.name.canonical`, plus
 everything in `telemetry.metrics.tags`.
 
@@ -243,14 +244,20 @@ Two span kinds, both `SpanKind.CONSUMER`:
 
 | Span | When | Parent |
 |---|---|---|
-| `kafka.poll` | one per poll | none (`setNoParent`), so each poll is a trace root |
-| `<topic> process record` | one per record | the W3C context extracted from the record's headers, plus a link to the poll span |
+| `poll` | one per poll | none (`setNoParent`), so each poll is a trace root |
+| `process <topic>` | one per record | the W3C context extracted from the record's headers, plus a link to the poll span |
 
-`kafka.poll` attributes: `messaging.system`, `messaging.client.id`,
+Span names follow the OpenTelemetry messaging convention `<operation> <destination>` since
+2.0.0.RC2 (#972); RC1 named them `kafka.poll` and `<topic> process record`. The poll span ends with a
+`messaging.poll.result` event.
+
+`poll` attributes: `messaging.system`, `messaging.operation.name` = `poll`,
+`messaging.operation.type` = `receive`, `messaging.client.id`,
 `messaging.consumer.group.name`, `system.config`, `system.name.simple`, `system.name.canonical`,
 plus `telemetry.tracing.attributes`.
 
-Record span attributes: the same identity attributes plus `messaging.destination.name`,
+Record span attributes: the same identity attributes with `messaging.operation.name` = `process` and
+`messaging.operation.type` = `process`, plus `messaging.destination.name`,
 `messaging.destination.partition.id`, `messaging.kafka.offset` and, when the key can be stringified,
 `messaging.kafka.message.key`.
 
@@ -364,7 +371,7 @@ Migrating from a 1.x custom telemetry listener: port the logging bits into a
 | A custom header still shows in clear | not in `telemetry.logging.maskHeaders` | add it; the list replaces the default, so keep `authorization` etc. |
 | Telemetry parameter on a listener does not compile | no such parameter kind in 2.0 | drop it; observations are not injectable |
 | Metric cardinality explosion | `driverMetrics = true`, or per-record tags | disable driver metrics; keep `tags` low-cardinality |
-| Every poll is its own trace | `kafka.poll` is created with `setNoParent()` | expected; per-record spans still continue the producer's trace |
+| Every poll is its own trace | the `poll` span is created with `setNoParent()` | expected; per-record spans still continue the producer's trace |
 
 ---
 

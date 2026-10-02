@@ -255,7 +255,7 @@ resilient.telemetry.fallback {
 }
 ```
 
-One counter, `resilient.fallback.attempts`, tagged `name` = `<fully.qualified.Class>.<method>` of
+One counter, `resilient.fallback.attempts`, tagged `resilient.name` = `<fully.qualified.Class>.<method>` of
 the annotated method — fallbacks are identified by call site, not by a config path.
 
 ---

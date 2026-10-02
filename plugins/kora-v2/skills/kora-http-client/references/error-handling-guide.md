@@ -168,7 +168,7 @@ transports**, never `HttpClientTimeoutException`:
 | Transport | `HttpClientConnectionException` | `HttpClientTimeoutException` | `HttpClientUnknownException` |
 |---|---|---|---|
 | OkHttp | any `IOException` except the one below — refused, connect timeout, DNS, reset, TLS | `InterruptedIOException` with message `"timeout"` (`requestTimeout`, `readTimeout`) | any non-I/O `Throwable` |
-| JDK | `ConnectException`, `HttpConnectTimeoutException`, `ProtocolException` | `HttpTimeoutException` (`requestTimeout`; the JDK transport has no read timeout) | `InterruptedException`; any other `IOException` after the transport's single retry (or at once when the request body was already streamed) |
+| JDK | `ConnectException`, `HttpConnectTimeoutException`, `ProtocolException` | `HttpTimeoutException` (`requestTimeout`, else `readTimeout`) | `InterruptedException`; any other `IOException` after the transport's single retry (or at once when the request body was already streamed) |
 | Apache | `ConnectTimeoutException`, and any other `IOException` | `SocketTimeoutException` (`readTimeout`, `requestTimeout`) | any non-I/O `Throwable` |
 
 A timeout is a `HttpClientTimeoutException`, not a response — there is no status code to branch on.

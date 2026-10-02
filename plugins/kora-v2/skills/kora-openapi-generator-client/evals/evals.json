@@ -203,15 +203,15 @@
     {
       "id": "kora-openapi-generator-client-successful-with-ranges",
       "skills": ["kora-openapi-generator-client"],
-      "query": "After adding clientResponseMode: \"SUCCESSFUL\" to our Kora OpenAPI client task, generation fails with 'Could not generate api file' caused by NumberFormatException: For input string: \"4XX\". The spec uses 4XX and 5XX responses. What is going on?",
+      "query": "Can I keep our 4XX/5XX range responses and a 2XX range on DELETE if I switch our generated Kora OpenAPI client to clientResponseMode: \"SUCCESSFUL\"? What does the client do with them?",
       "expected_behavior": [
-        "Identifies the combination: SUCCESSFUL mode parses every non-default status code as an integer, so 4XX/5XX range keys fail generation",
-        "Offers the two ways out: keep the default SEALED mode for this spec (ranges are supported there) or replace the ranges with exact codes plus default",
-        "Explains that in SEALED mode range responses become records carrying int statusCode and are dispatched by a generated <Op>DefaultCodeApiResponseMapper registered under ResponseCodeMapper.DEFAULT"
+        "States that status-code ranges are supported in SUCCESSFUL mode",
+        "Explains that a 2XX range is a success and is returned (e.g. DeletePet2XXApiResponse), while 4XX/5XX ranges are thrown as the typed <Api><Type>HttpClientResponseException of their body type",
+        "Notes that an exact code (e.g. 404) wins over the range that contains it"
       ],
       "anti_behavior": [
-        "Claims status-code ranges are unsupported by the Kora 2.0 generator in general",
-        "Suggests patching generated code or downgrading the generator"
+        "Claims SUCCESSFUL mode fails generation with NumberFormatException on 4XX keys",
+        "Tells the user to replace ranges with exact codes or keep SEALED mode because of ranges"
       ],
       "tags": ["openapi-client", "response-mode", "ranges", "troubleshooting"]
     },
@@ -249,17 +249,32 @@
     {
       "id": "kora-openapi-generator-client-successful-shared-success-no-errors",
       "skills": ["kora-openapi-generator-client"],
-      "query": "I switched my generated Kora client to clientResponseMode SUCCESSFUL. One operation declares only 200 and 206 with the same Page schema, no error responses. Now the generated PetApiClientResponseMappers fails with 'incompatible types: bad type in switch expression'. What's wrong?",
+      "query": "With clientResponseMode SUCCESSFUL, one operation declares only 200 and 206 with the same Page schema and no error responses. What does the generated method return, and do I need to add a default response?",
       "expected_behavior": [
-        "Identifies the SUCCESSFUL-mode case: several 2xx responses sharing a body with no error response and no default, so the return type is narrowed but no successful mapper is generated",
-        "Offers the workarounds: declare an error response or default for that operation, or keep SEALED mode for the spec",
+        "Says the method returns the shared sealed <Op>PageApiResponse with content() and statusCode()",
+        "Says the operation still gets the <Op>SuccessfulResponseMapper (via @Mapping) because its return type is narrowed, so no error response or default is required",
         "Does not suggest editing generated sources"
       ],
       "anti_behavior": [
-        "Blames the Kotlin/Java compiler version or the Kora version pin",
+        "Claims the generated client fails to compile ('bad type in switch expression') and requires a default/error response or SEALED mode",
         "Suggests hand-editing the generated *ApiClientResponseMappers"
       ],
       "tags": ["openapi-client", "successful-mode", "regression"]
+    },
+    {
+      "id": "kora-openapi-generator-client-openidconnect-scheme",
+      "skills": ["kora-openapi-generator-client"],
+      "query": "Our OpenAPI spec declares an `openIdConnect` security scheme (openIdConnectUrl points at Keycloak). Can the Kora client generator handle it, and what do I have to provide to send the token?",
+      "expected_behavior": [
+        "States openIdConnect is a supported client security type, handled like oauth2",
+        "Explains the generator emits only the ApiSecurity tag class and no provider, so the app supplies a @Tag(ApiSecurity.<Scheme>.class) HttpClientTokenProvider",
+        "Says the provider returns the bare token and the generated interceptor sends Authorization: Bearer <token>"
+      ],
+      "anti_behavior": [
+        "Claims openIdConnect aborts generation as an unsupported security scheme",
+        "Has the provider return a value already prefixed with 'Bearer '"
+      ],
+      "tags": ["openapi-client", "security", "openid-connect"]
     }
   ]
 }

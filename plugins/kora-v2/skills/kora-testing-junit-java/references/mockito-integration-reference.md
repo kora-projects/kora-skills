@@ -288,6 +288,6 @@ When one argument uses a matcher, every argument of that call must use one — w
 | Duplicated mocks / doubled strictness reports | `@ExtendWith(MockitoExtension.class)` | Remove it |
 | `Cannot create @Mock using Mockito … does not resolve to a raw class` | Mocked type is not a class or parameterized class | Declare the mock on a class type |
 | `Cannot inject mocks through test method parameters with TestInstance.Lifecycle.PER_CLASS` | Per-method mocks with a shared graph | Use `PER_METHOD`, or move the mock to a field/constructor parameter |
-| `PER_CLASS`: `beforeEach` fails in `resetMocks` with `Graph node value was not initialized because condition failed` | The reset reads every graph node, and a `@Conditional` node whose condition failed throws on read | Fixed by kora-projects/kora PR #964 (on master once merged); until then `PER_METHOD` |
+| `PER_CLASS`: `beforeEach` fails in `resetMocks` with `Graph node value was not initialized because condition failed` | The reset reads every graph node, and a `@Conditional` node whose condition failed throws on read | Fixed in `2.0.0.RC2` (kora-projects/kora PR #964) — only `2.0.0.RC1` is affected; on RC1 use `PER_METHOD` |
 | `UnnecessaryStubbingException` | `STRICT_STUBS` and a stub nobody used | Delete the stub or relax the level for that mock with `@Mock(strictness = LENIENT)` |
 | Stub ignored | Stubbed after the call | Stub in `@BeforeEach` or before invoking |

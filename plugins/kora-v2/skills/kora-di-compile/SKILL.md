@@ -307,23 +307,29 @@ public final class RedisCache implements Cache { }
 
 ## 10. Graph Build Failures
 
-The 2.0 processor prints a diagnosis, a resolution path and a `Fix:` list. Match on the **first
-line**:
+The 2.0 processor prints a diagnosis, the `Required at:` signature with the offending parameter, a
+resolution path (`@---` root … `^---` … `[MISSING]` / `[CYCLE]`), optional `Note:` and `Hint:`
+sections and a `Fix:` list. Tags print as written in code (`@Tag(X.class)`, `@Pg`). Match on the
+**first line**:
 
 | First line | Cause | Fix |
 |---|---|---|
 | `No component found for dependency:` | nothing provides that type+tag | add `@Component`, add a module provider, or `extends` the module that has one |
 | `Multiple components match dependency:` | two providers, same type+tag | differentiate with `@Tag`, mark the fallback `@DefaultComponent`, or delete one |
-| `Circular dependency found:` | a cycle in the graph | wrap one side in `ValueOf<T>` / `PromiseOf<T>`; a cycle through an `All<T>` injection point cannot be broken that way — move the shared piece into a separate component |
-| `@Component class must have exactly one public constructor.` | 0 or 2+ public constructors | keep one; move complex construction to a module provider |
+| `Circular dependency found:` | a cycle the processor could not break with a generated proxy — the closing dependency is a `final` class (Kotlin: not `open`), not a class/interface, or an `All<T>`/`TypeRef<T>`/`Graph` claim; `Note:` says which | depend on an interface so a proxy can be used; or take `ValueOf<T>` / `PromiseOf<T>` on one side; a cycle through an `All<T>` injection point — remove the back-edge, move the shared piece into a separate component (the printed `Use All<ValueOf<T>> or All<PromiseOf<T>>` fix does **not** break it — still the same error) |
+| `@Component class must have exactly one public constructor:` (submodule: `@Component type has more than one public constructor:` / `… has no public constructors:`) | 0 or 2+ public constructors; the error lists the ones found | keep one; move complex construction to a module provider |
 | `@KoraApp can only be applied to interfaces.` / `@Module can only be applied to interfaces.` | annotation on a class | make it an interface |
 | `Kora submodule was not generated yet:` | processor missing in the submodule's build | add `annotationProcessor` / `ksp` there |
-| `@Tag.Factory can only be used inside factory modules.` | `Tag.Factory` outside a `@FactoryModule` | use an explicit `@Tag(...)` |
-| `Dependency uses a raw type:` | raw `List`, `Map`, `Repository` … | supply type arguments |
+| `@Tag.Factory can only be used inside factory modules:` | `Tag.Factory` outside a `@FactoryModule` | use an explicit `@Tag(...)` |
+| `Component provider returns a generated AOP proxy type:` | a module method returns `$Foo__AopProxy` | return (and inject) the original type `Foo` |
+| `Dependency uses a raw type:` / `Component uses a raw type:` | raw `List`, `Map`, `Repository` … as a parameter / as a provided type | supply type arguments |
 | `Expected @KoraApp as SubModule, but Submodule implementation not found` (**warning**) | a test `@KoraApp` extends the main one without `-Akora.app.submodule.enabled=true` | see [@KoraSubmodule Reference](references/kora-submodule-reference.md) |
 
-A `No component found` error also lists **same-type-different-tag** candidates under `Note:` — read
-that section first; a forgotten or mismatched `@Tag` is the usual cause.
+A `No component found` error also lists **same-type-different-tag** candidates under `Note:`, and
+its `Fix:` then starts with the tag move to make (request the candidate's tag, drop the
+dependency's tag, or retag the component) — read that section first; a forgotten or mismatched
+`@Tag` is the usual cause. For a type a Kora module provides, `Hint:` gives numbered steps: the
+Gradle artifact to add and the module interface to `extends` on `@KoraApp`.
 
 ---
 
@@ -337,11 +343,18 @@ ls build/generated/sources/annotationProcessor/java/main/
 ls build/generated/ksp/main/kotlin/
 ```
 
-Raise processor verbosity (Java annotation processor only) by adding the `koraLogLevel` compiler
-argument; the processor also writes a full log under `build/kora/log/`:
+Both processors log to the build console (level `INFO` by default) and take the same `koraLogLevel`
+option. The Java annotation processor also writes a full log under `build/kora/log/`; KSP writes no
+log file:
 
 ```groovy
+// Java
 compileJava { options.compilerArgs += ["-AkoraLogLevel=DEBUG"] }
+```
+
+```kotlin
+// Kotlin (build.gradle.kts)
+ksp { arg("koraLogLevel", "DEBUG") }
 ```
 
 After renaming a package or migrating from 1.x, stale generated sources produce phantom errors that

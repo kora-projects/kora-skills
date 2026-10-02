@@ -169,10 +169,11 @@ Two things follow from that shape:
 3. The factory carries **no** `@Conditional`. On a `@Conditional` component whose condition fails the
    job is still created and scheduled, and every run fails in `ValueOf.get()` with
    `IllegalStateException: Graph node value was not initialized because condition failed: <reason>` —
-   recorded as a job error, invisible with job logging off. Fixed by kora-projects/kora PR #962 (on
-   master once merged), which copies the class's `@Conditional` onto the job factory. Without it, keep the
+   recorded as a job error, invisible with job logging off. Fixed in `2.0.0.RC2`
+   (kora-projects/kora PR #962), which copies the class's `@Conditional` onto the job factory — only
+   `2.0.0.RC1` is affected; on RC1 keep the
    scheduled method on an unconditional component and reach the conditional one through `All<T>`
-   (condition-failed members are skipped); a `@Nullable T` dependency hits the same exception (PR #960).
+   (condition-failed members are skipped); on RC1 a `@Nullable T` dependency hits the same exception (PR #960).
 
 When the annotation carries `config = "<path>"` the processor additionally writes a
 `@ConfigMapper` interface
@@ -375,8 +376,9 @@ That no-op is a single shared `NoopSchedulingTelemetry.INSTANCE` whose `jobClass
 `jobMethod()` is `noop`, and `KoraJdkJob` takes its logger and its lifecycle messages from the
 telemetry. Every job therefore logs `JDK Job 'java.lang.Void#noop' started in …`, `… stopped in …` and
 `… is disabled by configuration …` under the logger `java.lang.Void`, and an invalid config cron is
-reported for `JDK job 'java.lang.Void#noop'`. Fixed by kora-projects/kora PR #961 (on master once
-merged), which makes the no-op carry the job's class and method. Without it, enable
+reported for `JDK job 'java.lang.Void#noop'`. Fixed in `2.0.0.RC2` (kora-projects/kora
+PR #961), which makes the no-op carry the job's class and method — only `2.0.0.RC1` is affected; on
+RC1 enable
 `scheduling.telemetry.logging.enabled` (or `<config-path>.telemetry.logging.enabled` for one job); the
 side effect is an INFO `Scheduled Job execution completed` line per run.
 

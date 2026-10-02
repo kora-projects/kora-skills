@@ -320,7 +320,8 @@ global aspect level.
 
 ### Metric families
 
-Every metric carries a `name` tag. For the four spec-based aspects that tag is **the config path**
+Every metric carries a `resilient.name` tag (all resilience tags are `resilient.`-prefixed since
+2.0.0.RC2, #972; RC1 used bare `name` / `state` / `status` / `reason` / `type`). For the four spec-based aspects that tag is **the config path**
 you gave the spec annotation; for `@Fallback` it is `<fully.qualified.Class>.<method>`.
 Exception messages, by contrast, name the spec interface's **simple name** — the two identifiers
 differ on purpose.
@@ -328,14 +329,14 @@ differ on purpose.
 | Metric | Type | Extra tags |
 |---|---|---|
 | `resilient.circuitbreaker.state` | gauge — `0` CLOSED, `1` HALF_OPEN, `2` OPEN | — |
-| `resilient.circuitbreaker.transition` | counter | `state` |
-| `resilient.circuitbreaker.call.acquire` | counter | `state`, acquire status |
-| `resilient.circuitbreaker.call.result` | counter | `state`, call result |
+| `resilient.circuitbreaker.transition` | counter | `resilient.state` |
+| `resilient.circuitbreaker.call.acquire` | counter | `resilient.state`, `resilient.status` (acquire status) |
+| `resilient.circuitbreaker.call.result` | counter | `resilient.state`, `resilient.status` (call result) |
 | `resilient.retry.attempts` | counter | — |
-| `resilient.retry.exhausted` | counter | `reason` = `EXHAUSTED_ATTEMPTS` / `EXHAUSTED_BUDGET` |
+| `resilient.retry.exhausted` | counter | `resilient.reason` = `EXHAUSTED_ATTEMPTS` / `EXHAUSTED_BUDGET` |
 | `resilient.timeout.exhausted` | counter | — |
-| `resilient.ratelimiter.acquire` | counter | — |
-| `resilient.fallback.attempts` | counter | — |
+| `resilient.ratelimiter.acquire` | counter | `resilient.status` = `acquired` / `rejected` |
+| `resilient.fallback.attempts` | counter | `resilient.type` = `executed` |
 
 Metrics need `io.koraframework:micrometer-module` in the graph; tracing needs the OpenTelemetry
 modules. Without them the factories degrade to no-ops even with `enabled = true`.

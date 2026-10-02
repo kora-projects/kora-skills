@@ -319,10 +319,12 @@ when metrics are enabled:
 
 | Metric | Type | Tags |
 |---|---|---|
-| `cache.operation.duration` | Timer | `system.config`, `system.name.simple`, `system.name.canonical`, `origin` (`redis`), `operation`, `error.type` + configured `telemetry.metrics.tags` |
-| `cache.ratio` | Counter | the same, with `type` = `hit` \| `miss` instead of `error.type` |
+| `cache.operation.duration` | Timer | `system.config`, `system.name.simple`, `system.name.canonical`, `cache.origin` (`redis`), `cache.operation`, `error.type` + configured `telemetry.metrics.tags` |
+| `cache.requests` | Counter | the same, with `cache.result` = `hit` \| `miss` instead of `error.type` |
 
-`operation` is one of `GET`, `GET_MANY`, `GET_ALL`, `PUT`, `PUT_MANY`, `COMPUTE_IF_ABSENT`,
+2.0.0.RC1 named the counter `cache.ratio` with tags `origin` / `operation` / `type`; RC2 (#972)
+renamed them. Spans carry the same `cache.operation` / `cache.origin` attributes.
+`cache.operation` is one of `GET`, `GET_MANY`, `GET_ALL`, `PUT`, `PUT_MANY`, `COMPUTE_IF_ABSENT`,
 `COMPUTE_IF_ABSENT_MANY`, `INVALIDATE`, `INVALIDATE_MANY`, `INVALIDATE_ALL`.
 
 The Lettuce driver has its own `lettuce.telemetry.{logging,metrics}` section, separate from the

@@ -451,7 +451,7 @@
         "Explains that each retry gets its budget from a RetryBudgetFactory: a factory tagged @Tag(PricingRetry.class) wins for that retry, else the untagged one",
         "States the untagged default is DefaultRetryBudgetFactory from ResilientModule, which builds a KoraRetryBudget from the retryBudget block and returns null (no budget) when the block is absent or disabled",
         "Registers a RetryBudgetFactory component tagged @Tag(PricingRetry.class), e.g. in a @Module, and notes an untagged one would replace the default for every retry",
-        "Notes that a denied token propagates the original exception and tags resilient.retry.exhausted with reason=EXHAUSTED_BUDGET"
+        "Notes that a denied token propagates the original exception and tags resilient.retry.exhausted with resilient.reason=EXHAUSTED_BUDGET"
       ],
       "anti_behavior": [
         "Invents a config key such as retryBudget.type or retryBudgetFactoryName to pick the implementation",
@@ -553,6 +553,21 @@
         "debugging",
         "telemetry"
       ]
+    },
+    {
+      "id": "kora-aop-resilient-metric-tags",
+      "skills": ["kora-aop-resilient"],
+      "query": "Write a PromQL alert for Kora 2.0 when the circuit breaker configured at resilient.circuitbreaker.payments is OPEN, and a panel for rejected rate-limiter acquires.",
+      "expected_behavior": [
+        "Enables metrics first (resilient.telemetry.circuitBreaker / rateLimiter or <specPath>.telemetry, off by default) and needs MetricsModule in the graph",
+        "Uses resilient_circuitbreaker_state == 2 (0 CLOSED, 1 HALF_OPEN, 2 OPEN) filtered by the resilient_name label equal to the spec's config path",
+        "Uses resilient_ratelimiter_acquire with resilient_status=\"rejected\"",
+        "States that since 2.0.0.RC2 every resilience tag is resilient.-prefixed (resilient.name, resilient.state, resilient.status, resilient.reason, resilient.type)"
+      ],
+      "anti_behavior": [
+        "Filters on a bare name=\"...\" or status=\"...\" label (the RC1 tag names)"
+      ],
+      "tags": ["telemetry", "metrics"]
     }
   ]
 }

@@ -178,7 +178,7 @@ Members declared `@Conditional` whose condition failed are **skipped**, not retu
 | collection misses the tagged implementations | untagged `All<T>` excludes them by design |
 | `class is not allowed to extend sealed class: All` | `All` is sealed; use `All.of(...)` in tests |
 | a member is unexpectedly absent at runtime | its `@Conditional` condition evaluated to `Failed` |
-| `Circular dependency found:` naming an `All<T>` consumer | a member of the collection depends back on the consumer — directly, or because the member is `@Conditional` on a `GraphCondition` that itself injects the `All<T>`. The processor breaks ordinary cycles with a generated promised proxy, but a proxy stands in for one component and never for a collection (`All<T>`, `TypeRef<T>`, `Graph`), so this cycle is always a compile error. Remove the back-edge: move the shared piece into a separate component |
+| `Circular dependency found:` naming an `All<T>` consumer | a member of the collection depends back on the consumer — directly, or because the member is `@Conditional` on a `GraphCondition` that itself injects the `All<T>`. The processor breaks ordinary cycles with a generated promised proxy, but a proxy stands in for one component and never for a collection (`All<T>`, `TypeRef<T>`, `Graph`), so this cycle is always a compile error. Remove the back-edge: move the shared piece into a separate component. The `Fix:` line `Use All<ValueOf<T>> or All<PromiseOf<T>> instead of All<T>` does not help — those are collection claims as well and the same cycle is reported |
 
 ---
 

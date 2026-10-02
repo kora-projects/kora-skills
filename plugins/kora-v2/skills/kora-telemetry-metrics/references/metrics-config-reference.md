@@ -150,13 +150,13 @@ public interface Application extends
 }
 ```
 
-`MetricsModule` contributes five components, all replaceable:
+`MetricsModule` contributes five components; all but the common-tags initializer are `@DefaultComponent` and replaceable:
 
 | Method | Provides | Notes |
 |---|---|---|
 | `metricsConfig(Config, ConfigValueMapper<MetricsConfig>)` | `@DefaultComponent MetricsConfig` | the global `metrics` section |
 | `prometheusMeterRegistry(MetricsConfig, All<PrometheusMeterRegistryInitializer>)` | `@Root @DefaultComponent Wrapped<MeterRegistry>` | a `PrometheusMeterRegistryWrapper`, or `NoopMeterRegistry` when `metrics.enabled = false`; `@Root` so it starts even if nothing injects it |
-| `commonTagsMeterRegistryInitializer(MetricsConfig, All<MetricsTagsProvider>)` | `@DefaultComponent PrometheusMeterRegistryInitializer` | installs `MeterFilter.commonTags(...)` with the merged tags; an identity function when there are none |
+| `commonTagsMeterRegistryInitializer(MetricsConfig, All<MetricsTagsProvider>)` | `PrometheusMeterRegistryInitializer` (**not** `@DefaultComponent` since RC2, #935) | installs `MeterFilter.commonTags(...)` with the merged tags; an identity function when there are none. Always part of `All<PrometheusMeterRegistryInitializer>`, next to yours |
 | `prometheusMetricsScraper(MeterRegistry)` | `@DefaultComponent MetricsScraper` | `prometheus::scrape` for a `PrometheusMeterRegistry`, otherwise a no-op writer |
 | `micrometerMeterProvider(MeterRegistry, @Nullable CallbackRegistrar)` | `@DefaultComponent MicrometerMeterProvider` | the OpenTelemetry ↔ Micrometer bridge |
 
@@ -390,11 +390,10 @@ service that deliberately used custom ports comes up green on the wrong ones.
 
 ## Common tags: `metrics.tags`, `MetricsTagsProvider`, `PrometheusMeterRegistryInitializer` { #common-tags }
 
-`MetricsModule` ships a `@DefaultComponent` initializer that merges two sources into one global
-`MeterFilter`:
+`MetricsModule` ships an initializer (a plain module component, deliberately **not**
+`@DefaultComponent`) that merges two sources into one global `MeterFilter`:
 
 ```java
-@DefaultComponent
 default PrometheusMeterRegistryInitializer commonTagsMeterRegistryInitializer(MetricsConfig config, All<MetricsTagsProvider> tagsProviders) {
     var merged = new LinkedHashMap<String, String>();
     for (var provider : tagsProviders) {
@@ -465,43 +464,29 @@ chain. It is the hook onto `registry.config()`: `meterFilter(io.micrometer.core.
 [Micrometer meter-filter documentation](https://docs.micrometer.io/micrometer/reference/concepts/meter-filters.html)
 for the factory you need, since those APIs belong to Micrometer, not Kora.
 
-**Declaring one removes the built-in common-tags initializer from the graph.** `prometheusMeterRegistry`
-takes `All<PrometheusMeterRegistryInitializer>`, and `All<T>` skips a `@DefaultComponent` candidate
-whenever a non-default candidate of the same type exists (`GraphBuilder.processAllOf`, covered by
-`DependencyTest.testAllWithDefaultAndNonDefault`). `metrics.tags` and every `MetricsTagsProvider`
-are then silently ignored. Apply them in your initializer:
+**Declaring one does not displace the common-tags initializer.** Since 2.0.0.RC2 (#935)
+`commonTagsMeterRegistryInitializer` is a regular component, so `All<PrometheusMeterRegistryInitializer>`
+always contains it next to yours — `metrics.tags` and every `MetricsTagsProvider` keep applying. (In
+RC1 it was `@DefaultComponent`, and `All<T>` drops a default candidate when a non-default one exists,
+so a custom initializer silently removed the common tags; do not copy the RC1 workaround that
+re-merged `MetricsConfig.tags()` and `All<MetricsTagsProvider>` by hand — it now installs the same
+filter twice.) Your initializer only adds its own rules:
 
 Java:
 
 ```java
 package com.example;
 
-import io.koraframework.application.graph.All;
 import io.koraframework.common.annotation.Module;
-import io.koraframework.micrometer.module.MetricsConfig;
-import io.koraframework.micrometer.module.MetricsTagsProvider;
 import io.koraframework.micrometer.module.PrometheusMeterRegistryInitializer;
-import io.micrometer.core.instrument.Tag;
 import io.micrometer.core.instrument.config.MeterFilter;
-
-import java.util.LinkedHashMap;
 
 @Module
 public interface CustomMetricsConfig {
 
-    default PrometheusMeterRegistryInitializer meterFiltersInit(MetricsConfig config, All<MetricsTagsProvider> tagsProviders) {
-        var merged = new LinkedHashMap<String, String>();
-        for (var provider : tagsProviders) {
-            merged.putAll(provider.tags());
-        }
-        merged.putAll(config.tags());
-        var commonTags = merged.entrySet().stream()
-                .map(e -> Tag.of(e.getKey(), e.getValue()))
-                .toList();
+    default PrometheusMeterRegistryInitializer meterFiltersInit() {
         return registry -> {
-            registry.config()
-                    .meterFilter(MeterFilter.commonTags(commonTags))
-                    .meterFilter(MeterFilter.denyNameStartsWith("jvm.buffer"));
+            registry.config().meterFilter(MeterFilter.denyNameStartsWith("jvm.buffer"));
             return registry;
         };
     }
@@ -513,29 +498,18 @@ Kotlin:
 ```kotlin
 package com.example
 
-import io.koraframework.application.graph.All
 import io.koraframework.common.annotation.Module
-import io.koraframework.micrometer.module.MetricsConfig
-import io.koraframework.micrometer.module.MetricsTagsProvider
 import io.koraframework.micrometer.module.PrometheusMeterRegistryInitializer
-import io.micrometer.core.instrument.Tag
 import io.micrometer.core.instrument.config.MeterFilter
 
 @Module
 interface CustomMetricsConfig {
 
-    fun meterFiltersInit(config: MetricsConfig, tagsProviders: All<MetricsTagsProvider>): PrometheusMeterRegistryInitializer {
-        val merged = LinkedHashMap<String, String>()
-        tagsProviders.forEach { merged.putAll(it.tags()) }
-        merged.putAll(config.tags())
-        val commonTags = merged.map { (key, value) -> Tag.of(key, value) }
-        return PrometheusMeterRegistryInitializer { registry ->
-            registry.config()
-                .meterFilter(MeterFilter.commonTags(commonTags))
-                .meterFilter(MeterFilter.denyNameStartsWith("jvm.buffer"))
+    fun meterFiltersInit(): PrometheusMeterRegistryInitializer =
+        PrometheusMeterRegistryInitializer { registry ->
+            registry.config().meterFilter(MeterFilter.denyNameStartsWith("jvm.buffer"))
             registry
         }
-    }
 }
 ```
 

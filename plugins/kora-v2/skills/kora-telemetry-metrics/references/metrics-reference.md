@@ -66,8 +66,8 @@ string is whatever that constant resolves to in the semconv artifacts the BOM pi
 (`io.opentelemetry.semconv:opentelemetry-semconv:1.44.0` and
 `opentelemetry-semconv-incubating:1.44.0-alpha`), which is why the tables below give the constant
 alongside the label. Tags that Kora hard-codes as string literals (`server.name`, `system.config`,
-`system.name.simple`, `system.name.canonical`, `origin`, `operation`, `type`, `name`, `state`,
-`status`, `reason`) are exact.
+`system.name.simple`, `system.name.canonical`, `cache.origin`, `cache.operation`, `cache.result`,
+`resilient.name`, `resilient.state`, `resilient.status`, `resilient.reason`, `resilient.type`) are exact.
 
 Every metric additionally carries whatever you put in that component's
 `telemetry.metrics.tags { … }`, plus the global common tags from `metrics.tags` and any
@@ -115,7 +115,7 @@ the `@HttpClient("name")` value.
 
 | Meter | Type | Tags |
 |---|---|---|
-| `http.client.request.duration` | Timer (SLO buckets) | `http.request.method`, `HttpAttributes.HTTP_RESPONSE_STATUS_CODE` → `http.response.status_code`, `server.address` (when the URI has a host), `url.scheme` (when present), `http.route` (the URI template), `error.type`, plus `system.config`, `system.name.simple`, `system.name.canonical` |
+| `http.client.request.duration` | Timer (SLO buckets) | `http.request.method`, `HttpAttributes.HTTP_RESPONSE_STATUS_CODE` → `http.response.status_code`, `server.address` (when the URI has a host), `server.port` (the URI port, else `80`/`443` by scheme; omitted when unknown), `url.scheme` (when present), `UrlIncubatingAttributes.URL_TEMPLATE` → `url.template` (the URI template — **not** `http.route`, which is a server-side attribute), `error.type`, plus `system.config`, `system.name.simple`, `system.name.canonical` |
 
 Like the server timer, the client timer carries `http.response.status_code`.
 
@@ -160,7 +160,7 @@ Config roots are the paths you pass to `@KafkaListener("path")` and `@KafkaPubli
 
 | Meter | Type | Tags |
 |---|---|---|
-| `messaging.process.duration` | Timer (SLO buckets) | `MESSAGING_SYSTEM` → `messaging.system` (= `kafka`), `MESSAGING_CLIENT_ID`, `MESSAGING_CONSUMER_GROUP_NAME`, `system.config`, `system.name.simple`, `system.name.canonical`, `error.type`, `MESSAGING_DESTINATION_NAME`, `MESSAGING_DESTINATION_PARTITION_ID` |
+| `messaging.process.duration` | Timer (SLO buckets) | `MESSAGING_SYSTEM` → `messaging.system` (= `kafka`), `MESSAGING_OPERATION_NAME` → `messaging.operation.name` (= `process`), `MESSAGING_CLIENT_ID`, `MESSAGING_CONSUMER_GROUP_NAME`, `system.config`, `system.name.simple`, `system.name.canonical`, `error.type`, `MESSAGING_DESTINATION_NAME`, `MESSAGING_DESTINATION_PARTITION_ID` |
 | `messaging.process.batch.duration` | Timer (SLO buckets) | as above **without** destination/partition |
 | `messaging.kafka.consumer.lag` | Gauge | `messaging.system`, client id, consumer group, the three `system.*` tags, destination name, partition id |
 
@@ -168,7 +168,7 @@ Config roots are the paths you pass to `@KafkaListener("path")` and `@KafkaPubli
 
 | Meter | Type | Tags |
 |---|---|---|
-| `messaging.client.operation.duration` | Timer (SLO buckets) | `messaging.system` (= `kafka`), `MESSAGING_CLIENT_ID`, `MESSAGING_OPERATION_TYPE` (= `send`), the three `system.*` tags, `error.type`, destination name, partition id |
+| `messaging.client.operation.duration` | Timer (SLO buckets) | `messaging.system` (= `kafka`), `MESSAGING_CLIENT_ID`, `messaging.operation.name` (= `send`), `MESSAGING_OPERATION_TYPE` (= `send`), the three `system.*` tags, `error.type`, destination name, partition id |
 | `messaging.client.sent.messages` | Counter | same tag set |
 
 Both sides also expose the Kafka driver's own meters when
@@ -180,8 +180,11 @@ Both sides also expose the Kafka driver's own meters when
 
 | Meter | Type | Config root | Tags |
 |---|---|---|---|
-| `rpc.server.duration` | Timer (SLO buckets) | `grpcServer` | `server.name`, `server.port`, `RPC_SYSTEM` → `rpc.system` (= `grpc`), `RPC_SERVICE`, `RPC_METHOD`, `RPC_GRPC_STATUS_CODE` |
-| `rpc.client.duration` | Timer (SLO buckets) | `grpcClient.<ServiceSimpleName>` | `rpc.system` (= `grpc`), `rpc.service`, `rpc.method`, `rpc.grpc.status_code`, `server.address`, `server.port`, `error.type` |
+| `rpc.server.call.duration` | Timer (SLO buckets) | `grpcServer` | `server.name`, `server.port`, `RPC_SYSTEM_NAME` → `rpc.system.name` (= `grpc`), `RPC_SERVICE`, `RPC_METHOD`, `RPC_RESPONSE_STATUS_CODE` → `rpc.response.status_code`, `error.type` |
+| `rpc.client.call.duration` | Timer (SLO buckets) | `grpcClient.<ServiceSimpleName>` | `rpc.system.name` (= `grpc`), `rpc.service`, `rpc.method`, `rpc.response.status_code`, `server.address`, `server.port`, `error.type` |
+
+`rpc.response.status_code` is the `io.grpc.Status.Code` **name** (`OK`, `UNAVAILABLE`, …), not the
+numeric code. `error.type` is `""` on success and the exception's canonical class name otherwise.
 
 `rpc.server.requests_per_rpc` / `rpc.server.responses_per_rpc` and their client counterparts
 **do not exist in Kora 2.0** — no source registers them.
@@ -190,16 +193,18 @@ Both sides also expose the Kafka driver's own meters when
 
 ## Cache { #cache }
 
-Registered by `DefaultCaffeineCacheMetricsFactory` and `DefaultRedisCacheMetricsFactory`. Config
-root is the `@Cache("path")` value.
+Registered by `DefaultRedisCacheMetricsFactory`. Config root is the `@Cache("path")` value.
+`DefaultCaffeineCacheMetricsFactory` exists but `DefaultCaffeineCacheTelemetry` never calls it, so a
+Caffeine cache publishes only Micrometer's binder meters (below), not these two.
 
 | Meter | Type | Tags |
 |---|---|---|
-| `cache.operation.duration` | Timer (SLO buckets) | `system.config`, `system.name.simple`, `system.name.canonical`, `origin` (`caffeine` \| `redis`), `operation`, `error.type` |
-| `cache.ratio` | Counter | `system.config`, `system.name.simple`, `system.name.canonical`, `origin`, `operation`, `type` |
+| `cache.operation.duration` | Timer (SLO buckets) | `system.config`, `system.name.simple`, `system.name.canonical`, `cache.origin` (= `redis`), `cache.operation`, `error.type` |
+| `cache.requests` | Counter | `system.config`, `system.name.simple`, `system.name.canonical`, `cache.origin`, `cache.operation`, `cache.result` |
 
-`operation` is the cache operation enum name (`GET`, `PUT`, …); `type` on `cache.ratio` is the
-hit/miss discriminator. Both are bounded.
+`cache.operation` is the cache operation enum name (`GET`, `PUT`, …); `cache.result` on
+`cache.requests` is the hit/miss discriminator. Both are bounded. Hit ratio:
+`sum(rate(cache_requests_total{cache_result="hit"}[5m])) / sum(rate(cache_requests_total[5m]))`.
 
 A **Caffeine** cache with `telemetry.metrics.enabled = true` is additionally built with
 `recordStats()` and bound once through Micrometer's `CaffeineCacheMetrics.monitor(...)`
@@ -215,7 +220,7 @@ Registered by `DefaultSchedulingMetricsFactory`. Telemetry config root `scheduli
 
 | Meter | Type | Tags |
 |---|---|---|
-| `scheduling.job.duration` | Timer (SLO buckets) | `CodeAttributes.CODE_FUNCTION_NAME` → `code.function.name` (the job name), `system.config` (when the job has a config path), `system.name.simple`, `system.name.canonical`, `error.type` |
+| `scheduling.job.duration` | Timer (SLO buckets) | `scheduling.system` (`jdk` \| `quartz` \| `dbscheduler`), `CodeAttributes.CODE_FUNCTION_NAME` → `code.function.name` (the job name), `system.config` (when the job has a config path), `system.name.simple`, `system.name.canonical`, `error.type` |
 
 ---
 
@@ -227,19 +232,22 @@ telemetry root `resilient.telemetry`, merged with the per-operation
 
 | Meter | Type | Tags |
 |---|---|---|
-| `resilient.circuitbreaker.state` | Gauge | `name` |
-| `resilient.circuitbreaker.transition` | Counter | `name`, `state` |
-| `resilient.circuitbreaker.call.acquire` | Counter | `name`, `state`, `status` (the `CallAcquireStatus` enum name) |
-| `resilient.circuitbreaker.call.result` | Counter | `name`, `state`, `status` (the `CallResult` enum name) |
-| `resilient.retry.attempts` | Counter | `name` |
-| `resilient.retry.exhausted` | Counter | `name`, `reason` (the `StopReason` enum name) |
-| `resilient.timeout.exhausted` | Counter | `name` |
-| `resilient.ratelimiter.acquire` | Counter | `name`, `status` |
-| `resilient.fallback.attempts` | Counter | `name`, `type` |
+| `resilient.circuitbreaker.state` | Gauge | `resilient.name` |
+| `resilient.circuitbreaker.transition` | Counter | `resilient.name`, `resilient.state` |
+| `resilient.circuitbreaker.call.acquire` | Counter | `resilient.name`, `resilient.state`, `resilient.status` (the `CallAcquireStatus` enum name) |
+| `resilient.circuitbreaker.call.result` | Counter | `resilient.name`, `resilient.state`, `resilient.status` (the `CallResult` enum name) |
+| `resilient.retry.attempts` | Counter | `resilient.name` |
+| `resilient.retry.exhausted` | Counter | `resilient.name`, `resilient.reason` (the `StopReason` enum name) |
+| `resilient.timeout.exhausted` | Counter | `resilient.name` |
+| `resilient.ratelimiter.acquire` | Counter | `resilient.name`, `resilient.status` |
+| `resilient.fallback.attempts` | Counter | `resilient.name`, `resilient.type` |
+
+Every resilience tag is prefixed with `resilient.` (Prometheus label `resilient_name`, …), so it never
+collides with a common tag such as `name`.
 
 `resilient.circuitbreaker.state` encodes the state numerically. Its description, verbatim from
 source: `Circuit Breaker state metrics, where 0 -> CLOSED, 1 -> HALF_OPEN, 2 -> OPEN`.
-Only one gauge exists per breaker `name` — the value is mutated, not re-registered per state.
+Only one gauge exists per breaker `resilient.name` — the value is mutated, not re-registered per state.
 
 `resilient.circuitbreaker.transition` is incremented **only** on a transition to `OPEN` or
 `HALF_OPEN`, never on the return to `CLOSED`. `resilient.circuitbreaker.call.acquire` is
@@ -257,16 +265,19 @@ Note that resilience **tracing** is off by default too: each `*TracingConfig` ov
 
 | Meter | Type | Emitted by | Distinguishing tags |
 |---|---|---|---|
-| `rpc.client.duration` | Timer | `DefaultAwsS3ClientMetricsFactory` | `rpc.system` = **`s3-aws`**, `rpc.method` (operation), `AwsIncubatingAttributes.AWS_S3_BUCKET`, `error.type`, the three `system.*` tags |
-| `rpc.client.duration` | Timer | `DefaultS3ClientMetricsFactory` (declarative client) | `rpc.system` = **`s3`**, same shape |
-| `rpc.client.duration` | Timer | `DefaultSoapClientMetricsFactory` | `rpc.system` = **`soap`**, `rpc.service`, `rpc.method`, `server.address`, `server.port`, `http.response.status_code`, `error.type`, SOAP fault code, the three `system.*` tags |
-| `messaging.receive.duration` | Timer | `DefaultJmsConsumerMetricsFactory` | `messaging.system` = `jms`, `MESSAGING_DESTINATION_NAME`, `error.type` |
-| `lettuce.command.completion.duration` | Timer | `DefaultLettuceTelemetry` | config root `lettuce` |
-| `lettuce.command.firstresponse.duration` | Timer | `DefaultLettuceTelemetry` | config root `lettuce` |
+| `rpc.client.call.duration` | Timer | `DefaultAwsS3ClientMetricsFactory` | `rpc.system.name` = **`s3`**, `rpc.method` (operation), `AwsIncubatingAttributes.AWS_S3_BUCKET`, `error.type`, the three `system.*` tags (`system.config` is the client's config path) |
+| `rpc.client.call.duration` | Timer | `DefaultS3ClientMetricsFactory` (declarative client) | `rpc.system.name` = **`s3`**, same shape |
+| `rpc.client.call.duration` | Timer | `DefaultSoapClientMetricsFactory` | `rpc.system.name` = **`soap`**, `rpc.service`, `rpc.method`, `server.address`, `server.port`, `http.response.status_code`, `error.type`, `soap.fault.code`, the three `system.*` tags |
+| `messaging.process.duration` | Timer | `DefaultJmsConsumerMetricsFactory` | `messaging.system` = `jms`, `messaging.operation.name` = `process`, `MESSAGING_DESTINATION_NAME`, `error.type` |
+| `db.client.operation.duration` | Timer | `DefaultLettuceTelemetry` (command completion) | `db.system.name` = `redis`, `db.operation.name` (the command), `server.address`, `server.port`, `lettuce.type`, `error.type` (the Redis error prefix such as `ERR` / `MOVED` / `WRONGTYPE`, not the full message); config root `lettuce` |
+| `lettuce.command.firstresponse.duration` | Timer | `DefaultLettuceTelemetry` | same tags; config root `lettuce` |
 
-All three S3/SOAP flavours share the meter name `rpc.client.duration`; **always split them by
-`rpc_system`** in a query, or you will aggregate S3 latency together with SOAP latency.
-`s3.client.duration` and `s3.kora.client.duration` from 1.x no longer exist.
+The two S3 clients and SOAP share the meter name `rpc.client.call.duration` with gRPC; both S3
+clients now report `rpc.system.name = s3`, so tell them apart by `system_config` /
+`system_name_simple`, and **always filter by `rpc_system_name`** so S3, SOAP and gRPC latency are not
+aggregated together. Likewise `db.client.operation.duration` is shared by JDBC, Cassandra and Lettuce
+(split by `db_system_name`), and `messaging.process.duration` by Kafka and JMS (split by
+`messaging_system`). `s3.client.duration` and `s3.kora.client.duration` from 1.x no longer exist.
 
 ---
 
@@ -312,11 +323,15 @@ Do not port a 1.x metric list. What changed:
 | `db.client.request.duration` (`V123`) | **`db.client.operation.duration`** |
 | tags `db.pool.name`, `db.statement`, `db.operation` | **`db.client.connection.pool.name`, `db.system.name`, `db.query.text`, `db.operation.name`** |
 | `cache.duration` | **`cache.operation.duration`** |
-| `messaging.receive.duration` (Kafka) | **`messaging.process.duration`** (JMS keeps `messaging.receive.duration`) |
+| `messaging.receive.duration` | **`messaging.process.duration`** (Kafka and JMS) |
 | `messaging.publish.duration` | **`messaging.client.operation.duration`** + **`messaging.client.sent.messages`** |
-| `s3.client.duration`, `s3.kora.client.duration` | **`rpc.client.duration`** with `rpc.system` = `s3-aws` / `s3` |
+| `s3.client.duration`, `s3.kora.client.duration` | **`rpc.client.call.duration`** with `rpc.system.name` = `s3` |
+| `rpc.server.duration`, `rpc.client.duration` (2.0 RC1) | **`rpc.server.call.duration`**, **`rpc.client.call.duration`**, tag `rpc.system` → `rpc.system.name` (2.0.0.RC2, #972) |
+| `cache.ratio` with tags `origin`/`operation`/`type` (2.0 RC1) | **`cache.requests`** with `cache.origin`/`cache.operation`/`cache.result` (RC2) |
+| resilience tags `name`/`state`/`status`/`reason`/`type` (2.0 RC1) | **`resilient.*`**-prefixed (RC2) |
+| `lettuce.command.completion.duration` (2.0 RC1) | **`db.client.operation.duration`** with `db.system.name = redis` (RC2) |
 | `rpc.*.requests_per_rpc`, `rpc.*.responses_per_rpc` | **removed** |
-| `rpc.status` on gRPC | **`rpc.grpc.status_code`** (`RpcIncubatingAttributes.RPC_GRPC_STATUS_CODE`) |
+| `rpc.status` on gRPC | **`rpc.response.status_code`** (`RpcIncubatingAttributes.RPC_RESPONSE_STATUS_CODE`, the status code *name*) |
 | — | **new:** `resilient.circuitbreaker.call.result`, `resilient.ratelimiter.acquire` |
 
 ---

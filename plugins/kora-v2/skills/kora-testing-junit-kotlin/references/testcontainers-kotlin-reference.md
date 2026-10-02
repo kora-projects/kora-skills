@@ -58,7 +58,7 @@ dependencies {
     testImplementation("io.koraframework:database-flyway")
     // database-flyway ships flyway-core only; without the dialect artifact Flyway fails
     // at startup with "Unsupported Database: PostgreSQL"
-    testImplementation("org.flywaydb:flyway-database-postgresql:13.1.0")
+    testImplementation("org.flywaydb:flyway-database-postgresql:13.9.0")
     testRuntimeOnly("org.postgresql:postgresql:42.7.3")
 
     testImplementation("org.testcontainers:junit-jupiter:1.21.4")

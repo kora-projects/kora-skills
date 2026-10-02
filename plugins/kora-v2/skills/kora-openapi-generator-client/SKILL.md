@@ -428,8 +428,9 @@ fun findPet(petId: Long): Pet? = try {
 }
 ```
 
-How `SUCCESSFUL` shapes the output (the mapper and the exceptions exist only for operations that
-declare an error response; an operation without one keeps its per-code `@ResponseCodeMapper`s):
+How `SUCCESSFUL` shapes the output (the mapper exists for operations that declare an error response
+or whose return type is narrowed — e.g. `200` + `206` sharing one body; an operation with neither keeps
+its per-code `@ResponseCodeMapper`s):
 
 - **Return type.** One 2xx response → that variant (`<Op>200ApiResponse`). Several 2xx responses
   with the same body type → the shared sealed `<Op><Type>ApiResponse` with `content()` and
@@ -448,15 +449,8 @@ declare an error response; an operation without one keeps its per-code `@Respons
   carrying the raw body, with the parse failure attached as a suppressed exception. A status the
   contract does not declare, on an operation without `default`, also throws a plain
   `HttpClientResponseException`. Catch the typed subclass first, then the base class.
-- **Not with status-code ranges.** `SUCCESSFUL` reads every non-`default` code as an integer, so a
-  contract with `4XX` / `5XX` responses fails generation with
-  `NumberFormatException: For input string: "4XX"`. Declare exact codes plus `default`, or keep
-  `SEALED` for that spec.
-- **Not for an operation whose only responses are several 2xx sharing one body** (e.g. `200` + `206`,
-  no error response and no `default`). The return type is narrowed, but without an error response the
-  successful mapper is not generated and the per-code mappers still return the sealed type — the
-  generated client does not compile (`incompatible types: bad type in switch expression` in Java,
-  `type mismatch` in Kotlin). Declare an error response or `default` for that operation, or keep `SEALED`.
+- **Status-code ranges.** A `2XX` range is a success (returned, e.g. `<Op>2XXApiResponse`); `4XX` /
+  `5XX` are errors thrown as the typed exception. An exact code wins over the range containing it.
 
 Full service examples: [assets/PetService.successful.client.java.template](assets/PetService.successful.client.java.template)
 · [assets/PetService.successful.client.kt.template](assets/PetService.successful.client.kt.template).
@@ -512,14 +506,12 @@ annotation processor / KSP from the generated interface — they are not OpenAPI
 | Generation fails: *"Invalid OpenAPI generator `mode`"* | Only `java-client`, `java-server`, `kotlin-client`, `kotlin-server` exist |
 | `IllegalArgumentException: No enum constant …` at runtime, on valid data | `Enum.valueOf(raw)` instead of `MyEnum.fromValue(raw)` |
 | Per-operation timeout ignored | Section must be the generated method name (`getPetById`), not `getPetByIdConfig` |
-| `No component found for dependency: HttpClientTokenProvider` | The spec declares a `bearer` or `oauth2` scheme; the generator emits the tag but no provider. Supply `@Tag(ApiSecurity.BearerAuth.class) HttpClientTokenProvider` yourself |
+| `No component found for dependency: HttpClientTokenProvider` | The spec declares a `bearer`, `oauth2` or `openIdConnect` scheme; the generator emits the tag but no provider. Supply `@Tag(ApiSecurity.BearerAuth.class) HttpClientTokenProvider` yourself |
 | Request carries the wrong credential | The generated group interceptor takes the **first** provider returning a non-null token; a scheme you do not use must return `null` |
 | `Required dependency PetApi not found` | No transport module on `@KoraApp`, or the Kora annotation processor / KSP is missing |
 | Phantom `ru.tinkoff.kora` or old-package errors from `build/generated` | Stale generator output — `clean` + `--no-build-cache`, never edit generated files |
 | An HTTP **server** artifact appears in a client-only app | `ValidationModule` drags in `http-server-common`; use `ValidatorModule` from `validation-common` |
 | Unexpected `oneOf`/`anyOf` output | Plugin ≥ 7.0.0 enables `SIMPLIFY_ONEOF_ANYOF`; set `openapiNormalizer = [DISABLE_ALL: "true"]` |
-| Generated client does not compile: `bad type in switch expression` / `type mismatch` in a response mapper | `SUCCESSFUL` mode on an operation with several 2xx responses sharing a body and no error response or `default`. Add one, or use `SEALED` |
-| Generation fails: `NumberFormatException: For input string: "4XX"` | `clientResponseMode: "SUCCESSFUL"` on a contract with `4XX` / `5XX` ranges. Ranges work in the default `SEALED` mode; with `SUCCESSFUL` declare exact codes plus `default` |
 | `SUCCESSFUL` client: a 4xx/5xx response surfaces as plain `HttpClientResponseException`, not the typed one | The error body did not parse (the cause is attached as a suppressed exception), or the status is not declared and the operation has no `default` |
 | Server receives `Authorization: Bearer Bearer …` | The generated interceptor already prefixes `Bearer ` (bearer, oauth2, openIdConnect) and `Basic ` (basic). A `HttpClientTokenProvider` returns the bare token |
 | `date-time` fields stay `OffsetDateTime` | Map it in the generate task: `typeMappings = ["DateTime": "java.time.Instant"]` (also `date-time` as key). Only `Instant`, `ZonedDateTime`, `LocalDateTime` are recognised; anything else falls back to `OffsetDateTime` |

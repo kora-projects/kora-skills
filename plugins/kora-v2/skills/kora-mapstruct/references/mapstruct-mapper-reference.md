@@ -91,7 +91,11 @@ public CarService(@Tag(Internal.class) InternalCarMapper mapper) { … }
 ```
 
 An untagged mapper answers only untagged claims, and vice versa — a tag mismatch surfaces as an
-ordinary unresolved dependency, not as a MapStruct error.
+ordinary unresolved dependency, not as a MapStruct error. Matching uses the graph's normal rule, so a
+`@Tag(Tag.Any.class)` claim accepts the mapper whatever its tag, and the graph node is registered
+under the mapper's tag. `@Tag` on a parameter of the generated `Impl` constructor (e.g. a tagged
+`uses` collaborator) is honoured as well. Tagged mappers resolve correctly from `2.0.0.RC2` on; on
+`2.0.0.RC1` a tagged `@Mapper` was not matched to a tagged claim.
 
 ## Mappers that need dependencies
 

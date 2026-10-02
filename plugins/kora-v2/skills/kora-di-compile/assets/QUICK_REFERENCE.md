@@ -173,11 +173,11 @@ kotlin {
 |---|---|
 | `No component found for dependency:` | add `@Component` / a provider / `extends` the module — read the `Note:` block for tag mismatches |
 | `Multiple components match dependency:` | distinct `@Tag`, or `@DefaultComponent` on the fallback |
-| `Circular dependency found:` | `ValueOf<T>` or `PromiseOf<T>` on one side; through `All<T>` — split out the shared piece |
-| `@Component class must have exactly one public constructor.` | keep one public constructor |
+| `Circular dependency found:` | no proxy possible (final class, `All<T>`…, see `Note:`): depend on an interface, or `ValueOf<T>`/`PromiseOf<T>` on one side; through `All<T>` — split out the shared piece |
+| `@Component class must have exactly one public constructor:` | keep one public constructor (the error lists the ones found) |
 | `@KoraApp can only be applied to interfaces.` | make it an interface (same for `@Module`) |
 | `Kora submodule was not generated yet:` | add the processor to that Gradle subproject |
-| `@Tag.Factory can only be used inside factory modules.` | use an explicit `@Tag(...)` |
+| `@Tag.Factory can only be used inside factory modules:` | use an explicit `@Tag(...)` |
 | `Dependency uses a raw type:` | supply type arguments |
 | `Expected @KoraApp as SubModule, but Submodule implementation not found` (warning) | add `-Akora.app.submodule.enabled=true` to the **main** compilation |
 | `cannot find symbol: ApplicationGraph` | the processor is not on the classpath |
@@ -187,7 +187,7 @@ kotlin {
 ```
 build/generated/sources/annotationProcessor/java/main/<package>/ApplicationGraph.java   # Java
 build/generated/ksp/main/kotlin/<package>/ApplicationGraph.kt                           # Kotlin
-build/kora/log/                                                                         # processor log (Java)
+build/kora/log/                                                                         # processor log (Java only; both log to the console, -AkoraLogLevel / ksp arg koraLogLevel)
 ```
 
 Never hand-edit generated sources. After a package rename or a 1.x migration:

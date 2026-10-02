@@ -216,6 +216,18 @@
         "Does not mark the transactional wrapper interface's inherited methods as suspend or add methods to it"
       ],
       "tags": ["producer", "transactions", "kotlin", "advanced"]
+    },
+    {
+      "id": "kora-kafka-producer-span-names",
+      "skills": ["kora-kafka-producer"],
+      "query": "What spans and meter tags does a Kora 2.0.0.RC2 @KafkaPublisher produce when tracing and metrics are on?",
+      "expected_behavior": [
+        "Names the per-record PRODUCER span 'send <topic>' (RC1 used '<topic> send') with messaging.operation.name = send and messaging.operation.type = send",
+        "Mentions the INTERNAL 'producer transaction' span for transactional publishers, with messaging.operation.name = commit or rollback",
+        "Lists messaging.client.operation.duration and messaging.client.sent.messages with messaging.system, messaging.client.id, messaging.operation.name, messaging.operation.type, destination name/partition and error.type",
+        "Says metrics.enabled defaults to false while tracing.enabled defaults to true"
+      ],
+      "tags": ["telemetry", "tracing"]
     }
   ]
 }

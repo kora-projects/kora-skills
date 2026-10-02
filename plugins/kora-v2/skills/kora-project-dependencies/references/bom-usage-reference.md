@@ -322,7 +322,7 @@ dependencies {
     implementation "org.postgresql:postgresql:42.7.13"
 
     // Flyway dialect — database-flyway ships flyway-core only
-    implementation "org.flywaydb:flyway-database-postgresql:13.8.1"
+    implementation "org.flywaydb:flyway-database-postgresql:13.9.0"
 
     // Mocking — test-junit5 declares Mockito/MockK compileOnly
     testImplementation "org.mockito:mockito-core:5.24.0"   // Java

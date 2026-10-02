@@ -103,7 +103,7 @@ orders.redis.cache {
 
   telemetry {
     logging.enabled = false
-    metrics.enabled = false     # enables cache.operation.duration and cache.ratio
+    metrics.enabled = false     # enables cache.operation.duration and cache.requests
     tracing.enabled = true
   }
 }

@@ -17,7 +17,7 @@ metadata:
 | **Logback classes** | `io.koraframework.logging.logback` — `KoraLogbackConfigurator`, `LogbackEncoderFactory`, `KoraAsyncAppender`, `KoraLoggingEvent`, `KoraMdcConverter`, `KoraLoggingMarkerConverter`; `…logback.text.ConsoleTextRecordEncoder`; `…logback.json.JsonRecordEncoder` |
 | **Structured API** | `io.koraframework.logging.common.MDC`, `…logging.common.arg.{StructuredArgument, StructuredArgumentWriter, StructuredArgumentMapper}`, `…logging.common.masking.{MaskingRules, MaskingStrategy}`, `@…logging.common.annotation.Mask` |
 | **Config** | `logging.levels` (`LoggingConfig.levels()` → `Map<String,String>`); per component `<path>.telemetry.logging.enabled` |
-| **Third party** | Logback `1.6.4`, SLF4J `2.0.20`, Jackson `3.2.3` under `tools.jackson.core` |
+| **Third party** | Logback `1.6.5`, SLF4J `2.0.20`, Jackson `3.2.3` under `tools.jackson.core` |
 
 `@Log` and `@Mdc` are **not** in this skill — they are the declarative aspects, covered by
 [`kora-aop-logging`](../kora-aop-logging/SKILL.md). This skill owns the logging *backend*: module
@@ -329,7 +329,7 @@ and how they relate are documented once, in
 | Added `logging-logback-json`, output still text | A `logback.xml` / `logback-test.xml` wins over encoder selection — declare `JsonRecordEncoder` in it or remove it |
 | `kora.logging.encoder` in `application.conf` ignored | Read before the config exists: `-Dkora.logging.encoder=json` or `KORA_LOGGING_ENCODER=json` |
 | Coloured text in tests even with `logging-logback-json` | `pretty` wins inside a Gradle test worker; set the `kora.logging.encoder` system property on the test task to override |
-| Log records lost under a burst | `KoraAsyncAppender` defaults to `neverBlock = true` with a 512-event queue — raise `queueSize` or set `neverBlock` to `false` |
+| Log records lost under a burst | `KoraAsyncAppender` drops `TRACE`/`DEBUG`/`INFO` once free slots fall below `discardingThreshold` (default `queueSize / 5`) and drops everything when full (`neverBlock = true`, 512-event queue) — raise `queueSize`, set `discardingThreshold` to `0`, or `neverBlock` to `false` |
 | Structured MDC empty behind an async appender | Use `io.koraframework.logging.logback.KoraAsyncAppender`, not Logback `AsyncAppender` |
 | `MDC.get()` throws `NoSuchElementException` | Called outside a bound request/message/job scope. Guard with `MDC.VALUE.isBound()` |
 | `writeStringField` / `writeNumberField` does not compile | Jackson 3: `writeStringProperty` / `writeNumberProperty`; the generator is `tools.jackson.core.JsonGenerator` |

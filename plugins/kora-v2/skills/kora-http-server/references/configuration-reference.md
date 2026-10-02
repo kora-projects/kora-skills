@@ -148,7 +148,10 @@ Compress at the reverse proxy or ingress.
 ## Telemetry
 
 `logging.enabled` and `metrics.enabled` default to **`false`**. Component metrics such as
-`http_server_*` simply do not appear until you switch them on.
+`http_server_*` simply do not appear until you switch them on. With metrics on, the timer
+`http.server.request.duration` is tagged `server.name`, `server.port`, `http.request.method`,
+`http.response.status_code`, `http.route` (the route template), `url.scheme`, `server.address` and
+`error.type`; the gauge `http.server.active_requests` carries the same tags minus status and error.
 
 **This is a change from 1.x, and it is silent.** In Kora 1.x `httpServer.telemetry.metrics.enabled`
 defaulted to `true`, so a config that never mentioned metrics still produced them. In 2.0 the same

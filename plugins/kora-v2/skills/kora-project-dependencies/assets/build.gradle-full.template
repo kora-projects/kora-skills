@@ -57,7 +57,7 @@ dependencies {
     implementation "org.postgresql:postgresql:42.7.13"   // JDBC driver (external version)
     // implementation "io.koraframework:database-jdbc-postgres" // instead of the two lines above: PG mappers + driver
     // implementation "io.koraframework:database-flyway"
-    // implementation "org.flywaydb:flyway-database-postgresql:13.8.1"  // dialect - flyway ships core only
+    // implementation "org.flywaydb:flyway-database-postgresql:13.9.0"  // dialect - flyway ships core only
     // implementation "io.koraframework:database-liquibase"
     // implementation "io.koraframework:database-cassandra"
 

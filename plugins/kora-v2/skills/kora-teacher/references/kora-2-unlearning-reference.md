@@ -126,7 +126,7 @@ form to be patched into**. It has to be redesigned. Three honest answers, in the
   the ambient state go?".
 
 Kora's own `Principal` is the readable example (`io.koraframework.common.Principal`, verified at
-`master` `ab9eef8e9`):
+`2.0.0.RC2`):
 
 ```java
 public interface Principal {

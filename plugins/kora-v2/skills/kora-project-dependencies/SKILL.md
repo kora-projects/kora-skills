@@ -24,7 +24,7 @@ Read this first when:
 - Selecting which Kora modules to include in a build
 - Setting up the BOM in `build.gradle` / `build.gradle.kts`
 - Configuring annotation processors (Java) or KSP (Kotlin)
-- Resolving "Required dependency not found" or transitive version conflicts
+- Resolving "No component found for dependency" (a module artifact missing) or transitive version conflicts
 - Translating 1.x coordinates (`ru.tinkoff.kora:kora-parent`, `json-module`, `cache-redis`, …)
 - Scaffolding a new project (see [Project Generator](#project-generator))
 
@@ -405,7 +405,7 @@ dependencies {
     implementation "org.postgresql:postgresql:42.7.13"
 
     // Flyway dialect — database-flyway ships flyway-core only
-    implementation "org.flywaydb:flyway-database-postgresql:13.8.1"
+    implementation "org.flywaydb:flyway-database-postgresql:13.9.0"
 
     testImplementation "io.koraframework:test-junit5"
     testImplementation "org.testcontainers:testcontainers-postgresql:2.0.5"
@@ -458,7 +458,7 @@ dependencies {
 
     implementation "io.koraframework:database-jdbc-postgres"   // database-jdbc + PG mappers + driver
     implementation "io.koraframework:database-flyway"
-    implementation "org.flywaydb:flyway-database-postgresql:13.8.1"
+    implementation "org.flywaydb:flyway-database-postgresql:13.9.0"
 
     implementation "io.koraframework:logging-logback"
     implementation "io.koraframework:config-hocon"

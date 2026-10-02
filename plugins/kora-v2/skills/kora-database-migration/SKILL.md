@@ -17,7 +17,7 @@ metadata:
 | **Config type** | `FlywayConfig` | `LiquibaseConfig` |
 | **Config section** | `flyway` | `liquibase` |
 | **Interceptor** | `FlywayJdbcDatabaseInterceptor` | `LiquibaseJdbcDatabaseInterceptor` |
-| **Third-party version** | `flyway-core` **13.8.1** | `liquibase-core` **5.0.4** |
+| **Third-party version** | `flyway-core` **13.9.0** | `liquibase-core` **5.0.4** |
 | **Extra artifact needed** | **Yes** — a per-database dialect (`org.flywaydb:flyway-database-postgresql`) | No — `liquibase-core` bundles the standard databases |
 | **Prerequisite** | `io.koraframework:database-jdbc` + `JdbcDatabaseModule` on `@KoraApp` | same |
 
@@ -68,7 +68,7 @@ dependencies {
     // Since Flyway 10 per-database support lives in separate artifacts and
     // database-flyway ships only flyway-core: without this the app dies at
     // startup with "FlywayException: Unsupported Database: PostgreSQL 16.2".
-    implementation "org.flywaydb:flyway-database-postgresql:13.8.1"
+    implementation "org.flywaydb:flyway-database-postgresql:13.9.0"
 
     runtimeOnly "org.postgresql:postgresql:42.7.13"
 }
@@ -84,7 +84,7 @@ dependencies {
 
     implementation("io.koraframework:database-jdbc")
     implementation("io.koraframework:database-flyway")
-    implementation("org.flywaydb:flyway-database-postgresql:13.8.1")
+    implementation("org.flywaydb:flyway-database-postgresql:13.9.0")
 
     runtimeOnly("org.postgresql:postgresql:42.7.13")
 }
@@ -92,7 +92,7 @@ dependencies {
 
 Pick the dialect artifact for your database (`flyway-database-postgresql`, `flyway-mysql`,
 `flyway-database-oracle`, …) and pin it to the same version as the `flyway-core` that
-`database-flyway` brings in — `13.8.1` for Kora `2.0.0.RC2`. Verify with
+`database-flyway` brings in — `13.9.0` for Kora `2.0.0.RC2`. Verify with
 `./gradlew dependencies --configuration runtimeClasspath | grep flyway`.
 
 **2. Plug both modules into `@KoraApp`.** `FlywayJdbcDatabaseModule` supplies only the interceptor;
@@ -306,12 +306,12 @@ through the plugin.
 buildscript {
     dependencies {
         // the plugin runs in the Gradle JVM, so the dialect goes on the buildscript classpath
-        classpath "org.flywaydb:flyway-database-postgresql:13.8.1"
+        classpath "org.flywaydb:flyway-database-postgresql:13.9.0"
     }
 }
 
 plugins {
-    id "org.flywaydb.flyway" version "13.8.1"
+    id "org.flywaydb.flyway" version "13.9.0"
 }
 
 flyway {
@@ -345,7 +345,7 @@ spec:
       restartPolicy: Never
       containers:
         - name: flyway
-          image: flyway/flyway:13.8.1
+          image: flyway/flyway:13.9.0
           args: ["migrate"]
           env:
             - name: FLYWAY_URL

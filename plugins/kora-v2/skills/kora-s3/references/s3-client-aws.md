@@ -9,7 +9,7 @@ no Kora S3 models**. If you want declarative `@S3.Client` interfaces, you want
 [s3-client-kora.md](s3-client-kora.md) instead — the two artifacts are independent and neither
 provides the other's API.
 
-AWS SDK version: `software.amazon.awssdk:s3` **2.55.7**, pulled transitively.
+AWS SDK version: `software.amazon.awssdk:s3` **2.55.10**, pulled transitively.
 
 ---
 
@@ -103,7 +103,7 @@ public class AwsS3Service {
 ```
 
 Using `@Tag.Factory` outside a factory module is a compile error:
-*"@Tag.Factory can only be used inside factory modules."*
+*"@Tag.Factory can only be used inside factory modules:"*
 
 ### Several independently configured clients
 
@@ -321,12 +321,12 @@ interceptors carrying that same tag are.
 
 | Signal | Detail |
 |---|---|
-| Metrics | Micrometer `Timer` **`rpc.client.duration`**, tags `rpc.system=s3-aws`, `rpc.method`, `aws.s3.bucket`, `error.type`, `system.config`, `system.name.simple`, `system.name.canonical` |
+| Metrics | Micrometer `Timer` **`rpc.client.call.duration`**, tags `rpc.system.name=s3`, `rpc.method`, `aws.s3.bucket`, `error.type`, `system.config`, `system.name.simple`, `system.name.canonical` |
 | Tracing | OpenTelemetry span per operation with the same attributes |
 | Logging | SLF4J logger named `software.amazon.awssdk.services.s3.S3Client`; `DEBUG` for request/response, `WARN` on failure |
 
-`rpc.system` is what separates this module's series (`s3-aws`) from the declarative client's
-(`s3`) — both use the same metric name.
+Both S3 modules use the same metric name and `rpc.system.name=s3`; separate their series by
+`system.config` / `system.name.canonical`.
 
 `logging.enabled` and `metrics.enabled` default to **`false`**.
 
@@ -351,7 +351,7 @@ logging.levels { "software.amazon.awssdk.services.s3.S3Client" = "DEBUG" }
 | `checksumValidationEnabled` | `checksumCalculationRequest` / `checksumValidationResponse` (`WHEN_REQUIRED` / `WHEN_SUPPORTED`) |
 | `upload { bufferSize, partSize }` | removed from this module |
 | `S3AsyncClient`, `@Tag(MultipartUpload.class) S3AsyncClient` | removed with the reactive model |
-| Metrics `s3.client.duration` | `rpc.client.duration`, tag `rpc.system=s3-aws` |
+| Metrics `s3.client.duration` | `rpc.client.call.duration`, tag `rpc.system.name=s3` |
 
 ---
 

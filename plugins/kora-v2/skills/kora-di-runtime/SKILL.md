@@ -298,7 +298,7 @@ container does with a condition while it builds the graph is documented here.
 | consumer rebuilt on every config refresh | direct dependency | inject `ValueOf<T>` and call `get()` |
 | `type annotation @Nullable is not expected here` | JSpecify `@Nullable` in a non-type-use position | move it onto the type |
 | `Graph node value was not initialized because condition failed` | a `@Conditional` component was skipped and something still asks for it | fix the condition or the dependency |
-| same message at startup although the consumer declares the dependency `@Nullable` / `T?` | the processors generate a nullable single dependency as `g.get(node)`, which throws for a condition-failed node instead of passing `null` (Java `Optional<T>` goes through the same claim) | fixed by kora-projects/kora PR #960 (on master once merged) — the dependency then receives `null` via the new default `Graph.getNullable`. Without it, inject `All<T>` (condition-failed members are skipped) or make the consumer `@Conditional` on the same tag |
+| same message at startup although the consumer declares the dependency `@Nullable` / `T?` | the processors generate a nullable single dependency as `g.get(node)`, which throws for a condition-failed node instead of passing `null` (Java `Optional<T>` goes through the same claim) | fixed in `2.0.0.RC2` (kora-projects/kora PR #960) — only `2.0.0.RC1` is affected — the dependency then receives `null` via the new default `Graph.getNullable`. On RC1, inject `All<T>` (condition-failed members are skipped) or make the consumer `@Conditional` on the same tag |
 | any Kora `Context` parameter | `Context` no longer exists anywhere in Kora 2.0 | delete it |
 
 ---

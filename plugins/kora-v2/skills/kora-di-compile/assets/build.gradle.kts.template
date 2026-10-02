@@ -64,6 +64,11 @@ tasks.distTar {
 //     arg("kora.app.submodule.enabled", "true")
 // }
 
+// Uncomment to see how the processor resolved the graph (console only; KSP writes no log file).
+// ksp {
+//     arg("koraLogLevel", "DEBUG")
+// }
+
 tasks.test {
     useJUnitPlatform()
     testLogging {

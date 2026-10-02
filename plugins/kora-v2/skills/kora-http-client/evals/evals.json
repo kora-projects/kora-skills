@@ -268,6 +268,22 @@
         "Invents an HTTP-client-specific masking annotation or config key such as maskBody"
       ],
       "tags": ["telemetry", "masking", "config", "intermediate"]
+    },
+    {
+      "id": "kora-http-client-jdk-read-timeout-and-telemetry",
+      "skills": ["kora-http-client"],
+      "query": "We use the JDK transport (http-client-jdk) with httpClient.readTimeout = 10s. Does that bound our calls? And our Grafana dashboard groups http.client.request.duration by http.route but the series are gone after upgrading to Kora 2.0.0.RC2. Also, where are connection-refused errors logged?",
+      "expected_behavior": [
+        "States the JDK transport applies httpClient.readTimeout as the per-request timeout when the client/method sets no requestTimeout, and requestTimeout overrides it",
+        "Says the client timer tags the route template as url.template (not http.route) and also carries server.port (80/443 when the URI has no port)",
+        "Says a failed call without a response is logged at WARN ('HttpClient error received') on the client's .response logger, so that logger's level controls it"
+      ],
+      "anti_behavior": [
+        "Claims the JDK transport ignores readTimeout or applies only connectTimeout",
+        "Tells the user to keep grouping client metrics by http.route",
+        "Claims connection errors are logged on the .request logger"
+      ],
+      "tags": ["transport", "timeouts", "telemetry", "regression"]
     }
   ]
 }

@@ -9,7 +9,7 @@
 --     implementation "io.koraframework:database-flyway"
 --     // database-flyway ships flyway-core only; without a dialect artifact the
 --     // app dies at startup with "Unsupported Database: PostgreSQL <version>"
---     implementation "org.flywaydb:flyway-database-postgresql:13.8.1"
+--     implementation "org.flywaydb:flyway-database-postgresql:13.9.0"
 --
 --   @KoraApp extends JdbcDatabaseModule, FlywayJdbcDatabaseModule
 --

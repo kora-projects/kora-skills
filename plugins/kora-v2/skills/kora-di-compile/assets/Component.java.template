@@ -9,7 +9,7 @@ import io.koraframework.common.annotation.Component;
  * <ul>
  *   <li>a class, not an interface and not abstract
  *   <li><b>exactly one public constructor</b> — otherwise:
- *       "@Component class must have exactly one public constructor."
+ *       "@Component class must have exactly one public constructor:"
  *   <li>no raw types in the class or in constructor parameters
  * </ul>
  *

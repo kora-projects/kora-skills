@@ -55,7 +55,7 @@
       "skills": ["kora-aop-scheduling-db"],
       "query": "Our Kora 2 test profile has scheduling.dbScheduler.initializeTable = true, copied from the DbSchedulerConfig Javadoc, but the scheduler table is never created and the DB jobs never run. What is wrong?",
       "expected_behavior": [
-        "States that the key read by DbSchedulerConfig is tableInitialize (method tableInitialize()), and that initializeTable, the name in the RC1 module README and Javadoc example, is stale (corrected on master by kora-projects/kora PR #966)",
+        "States that the key read by DbSchedulerConfig is tableInitialize (method tableInitialize()), and that initializeTable, the name in the RC1 module README and Javadoc example, is stale (corrected in 2.0.0.RC2 by kora-projects/kora PR #966)",
         "Explains an unknown HOCON key is ignored without a warning, so the table is simply not created",
         "Fixes it with scheduling.dbScheduler.tableInitialize = true and notes it probes `select 1 from <tableName> where 1 = 0` and then runs the bundled script for the detected database",
         "Recommends a real migration rather than tableInitialize for production"
@@ -156,7 +156,7 @@
         "Explains the generated @Root job factory does not carry the @Conditional of the class, so the task is registered and scheduled even when the condition fails",
         "States each run calls ValueOf.get() on the condition-failed component and fails with IllegalStateException: Graph node value was not initialized because condition failed: <reason>, which is rethrown and rescheduled",
         "Explains nothing is logged because job telemetry logging is off by default",
-        "Says it is fixed by kora-projects/kora PR #962 (on master once merged) and, until then, moves the scheduled method to an unconditional component that injects All<T> and returns when it is empty"
+        "Says it is fixed in 2.0.0.RC2 (kora-projects/kora PR #962), only 2.0.0.RC1 is affected, and on RC1 moves the scheduled method to an unconditional component that injects All<T> and returns when it is empty"
       ],
       "anti_behavior": [
         "Injects the conditional component as @Nullable in the unconditional job class without mentioning PR #960",
@@ -170,7 +170,7 @@
       "query": "Kora 2 DB scheduler fails at startup with \"Database scheduled jobs 'java.lang.Void#noop' and 'java.lang.Void#noop' have the same name 'report'\". Which jobs are these?",
       "expected_behavior": [
         "Explains that with job logging and metrics off (the 2.0 defaults) and no tracing (no Tracer component or tracing disabled), DefaultSchedulingTelemetryFactory returns the shared NoopSchedulingTelemetry.INSTANCE whose class is Void and method noop, and KoraDbJob.toString() reads it",
-        "Says it is fixed by kora-projects/kora PR #961 (on master once merged)",
+        "Says it is fixed in 2.0.0.RC2 (kora-projects/kora PR #961) and only 2.0.0.RC1 is affected",
         "Gives the workarounds: enable scheduling.telemetry.logging.enabled (or the job's <config>.telemetry.logging.enabled), or search the code for name = \"report\"",
         "Fixes the actual problem by giving the two jobs distinct names"
       ],

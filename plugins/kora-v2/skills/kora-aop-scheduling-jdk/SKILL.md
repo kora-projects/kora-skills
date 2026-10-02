@@ -48,7 +48,7 @@ only the Quartz trigger annotation change.
 ## Coming from RC1 / earlier 2.0 snapshots
 
 Kora PR #952 renamed the annotations and moved the job classes after `2.0.0.RC1`. Code written against
-RC1 or an earlier `2.0.0-SNAPSHOT` does not compile on master / `2.0.0.RC2`. The `kora-examples`
+RC1 or an earlier `2.0.0-SNAPSHOT` does not compile on `2.0.0.RC2`. The `kora-examples`
 `migration/2.0` scheduling apps (`kora-java-scheduling-jdk`, `kora-kotlin-scheduling-jdk`) were
 written against RC1 and, at the time of writing, still use the old names — rename when copying from them.
 
@@ -352,7 +352,7 @@ scheduling {
 There is **no `scheduling.threads` key in Kora 2.0.** Writing one is not an error — it is an unknown
 HOCON key, silently ignored. Runs are virtual threads, so there is no pool to size; the only knob is the
 concurrency cap `scheduling.jdk.executionParallelism`. The same goes for `maxConcurrentExecutions`, its
-name in post-RC1 snapshots: on master it is an unknown key and the cap silently disappears.
+name in post-RC1 snapshots: in `2.0.0.RC2` it is an unknown key and the cap silently disappears.
 
 Full key list, per-job overrides, metric names and span attributes:
 [references/scheduling-config-reference.md](references/scheduling-config-reference.md).
@@ -421,7 +421,7 @@ in the job body.
 | Symptom | Cause / fix |
 |---|---|
 | Job never fires | The class is not in the graph. Add `@Component` (or a `@Module` factory). `final`/non-`open` is **not** the cause |
-| `cannot find symbol` on `ScheduleAtFixedRate` / `ScheduleWithFixedDelay` / `ScheduleOnce` / `ScheduleWithCron` | RC1-era names; on master they are `@ScheduleJdk*` — see [Coming from RC1](#coming-from-rc1--earlier-20-snapshots) |
+| `cannot find symbol` on `ScheduleAtFixedRate` / `ScheduleWithFixedDelay` / `ScheduleOnce` / `ScheduleWithCron` | RC1-era names; in `2.0.0.RC2` they are `@ScheduleJdk*` — see [Coming from RC1](#coming-from-rc1--earlier-20-snapshots) |
 | `Either period() or config() annotation parameter must be provided` | Annotation has neither a non-zero primary attribute nor `config` |
 | Build fails with `Invalid CRON expression '…' in @ScheduleJdkWithCron on '…'` | The literal is not valid JDK cron — often a Quartz-only `L`/`W`/`#`/`C`, or a field count other than 5–7. Fix the expression, or move the job to Quartz |
 | Startup fails with `Invalid CRON expression '…' for JDK job '…'` | Same check, for a cron that came from config |
@@ -434,8 +434,8 @@ in the job body.
 | Daily cron job ran twice / not at all | DST fall-back repeats the local time, spring-forward skips it; move the job out of the transition hour or use a UTC `@Tag(SchedulingModule.class) ZoneId` |
 | Cron fires at the wrong hour | It runs in the JVM default zone unless a `@Tag(SchedulingModule.class) ZoneId` component exists — see [Time zone](#time-zone) |
 | `scheduling.threads` / `scheduling.shutdownWait` / `scheduling.jdk.maxConcurrentExecutions` have no effect | The first two are 1.x keys, the third a post-RC1 snapshot key. Use `scheduling.jdk.shutdownWait`; the only concurrency knob is `scheduling.jdk.executionParallelism` |
-| Every job logs `JDK Job 'java.lang.Void#noop' started in …` / `stopped` / `is disabled by configuration` under logger `java.lang.Void`; a bad config cron names `JDK job 'java.lang.Void#noop'` | With job logging and metrics off (the 2.0 defaults) and no tracing (no `Tracer` component, or `tracing.enabled = false`), `DefaultSchedulingTelemetryFactory` returns the shared `NoopSchedulingTelemetry.INSTANCE`, whose `jobClass()` is `Void` and `jobMethod()` is `noop`, and `KoraJdkJob` takes its logger and messages from it. Fixed by kora-projects/kora PR #961 (on master once merged). Without it, set `scheduling.telemetry.logging.enabled = true` (or `<config-path>.telemetry.logging.enabled = true` per job) — every run then also logs `Scheduled Job execution completed` at INFO under the `<fqcn>#<method>` logger |
-| Job on a `@Conditional` component runs although the condition failed, and every run fails with `IllegalStateException: Graph node value was not initialized because condition failed: <reason>` — invisible with job logging off | The generated `$X_SchedulingModule` factory is `@Root` and carries no condition, so the job is created and scheduled anyway and `ValueOf.get()` throws on each run. Fixed by kora-projects/kora PR #962 (on master once merged). Without it, keep the scheduled method on an unconditional component; if it must reach the conditional one, inject `All<T>` (condition-failed members are skipped) and return when it is empty — not `@Nullable T`, which hits PR #960 |
+| Every job logs `JDK Job 'java.lang.Void#noop' started in …` / `stopped` / `is disabled by configuration` under logger `java.lang.Void`; a bad config cron names `JDK job 'java.lang.Void#noop'` | With job logging and metrics off (the 2.0 defaults) and no tracing (no `Tracer` component, or `tracing.enabled = false`), `DefaultSchedulingTelemetryFactory` returns the shared `NoopSchedulingTelemetry.INSTANCE`, whose `jobClass()` is `Void` and `jobMethod()` is `noop`, and `KoraJdkJob` takes its logger and messages from it. Fixed in `2.0.0.RC2` (kora-projects/kora PR #961) — only `2.0.0.RC1` is affected; on RC1 set `scheduling.telemetry.logging.enabled = true` (or `<config-path>.telemetry.logging.enabled = true` per job) — every run then also logs `Scheduled Job execution completed` at INFO under the `<fqcn>#<method>` logger |
+| Job on a `@Conditional` component runs although the condition failed, and every run fails with `IllegalStateException: Graph node value was not initialized because condition failed: <reason>` — invisible with job logging off | The generated `$X_SchedulingModule` factory is `@Root` and carries no condition, so the job is created and scheduled anyway and `ValueOf.get()` throws on each run. Fixed in `2.0.0.RC2` (kora-projects/kora PR #962) — only `2.0.0.RC1` is affected; on RC1 keep the scheduled method on an unconditional component; if it must reach the conditional one, inject `All<T>` (condition-failed members are skipped) and return when it is empty — not `@Nullable T`, which on RC1 hits PR #960 |
 
 ---
 

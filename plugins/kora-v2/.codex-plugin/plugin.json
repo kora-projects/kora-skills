@@ -1,6 +1,6 @@
 {
   "name": "kora-v2",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "Kora Framework development skill for building production-grade Java/Kotlin services — with compile-time DI, HTTP, Database, Kafka, gRPC, SOAP, OpenAPI, Telemetry, AOP. Zero reflection, zero proxies, synchronous contracts on virtual threads, AI agent friendly. For Kora version 2.x",
   "author": {
     "name": "Anton Kurako",

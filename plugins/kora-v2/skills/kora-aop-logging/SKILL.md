@@ -229,11 +229,10 @@ public Session authenticate(@Mdc(key = "user") String username, @Log.off String 
 (`MaskingFull` → `***`, `MaskingKeepFirst`, `MaskingKeepLast`, or your own `@Component`) and drives a
 `MaskingRules<T>` that rewrites matching JSON fields as the value is written.
 
-**Java-specific gap:** `logging-annotation-processor` registers only its two AOP aspect
-factories — it has **no** `META-INF/services/javax.annotation.processing.Processor` entry, so javac
-never runs the processor that generates `$<Type>_MaskingRulesModule`. In Java you must declare the
-`MaskingRules<T>` component yourself. Kotlin/KSP is unaffected: `MaskingRulesSymbolProcessorProvider`
-is registered.
+Both processors generate `$<Type>_MaskingRulesModule` for every `@Mask` type: KSP through
+`MaskingRulesSymbolProcessorProvider`, javac through `LoggingAnnotationProcessor` (registered as a
+processor service since 2.0.0.RC2, #921 — in RC1 Java services had to hand-write `MaskingRules<T>`;
+delete such leftovers).
 
 `@Mask` and the raw-payload `DataMasker`s share one rule syntax (`MaskingPathRules`: `password`,
 `user.password`, `users.*.password`) and the `MaskingStrategy` contract, but act on different
@@ -243,7 +242,7 @@ is applied to the other's input, and no `DataMasker` is registered by default.
 
 **[references/logging-masking.md](references/logging-masking.md)** is the canonical masking page for
 the whole package: the four masking layers and how they relate, `@Mask` targets/strategies/rules,
-the Java workaround, `DataMasker` behaviour, and how each transport picks its masker by tag.
+Java/Kotlin rule generation, `DataMasker` behaviour, and how each transport picks its masker by tag.
 
 ---
 
@@ -303,7 +302,7 @@ elements in `logback.xml` therefore do not survive startup — configure levels 
 | Kotlin `@Log.in` does not compile | `in` is a Kotlin keyword | ``@Log.`in` `` |
 | `NoSuchElementException` from `MDC.get()` | `@Mdc` ran outside a bound scope | Call it from an HTTP/Kafka/JMS/gRPC/scheduler entry point, or wrap in `ScopedValue.where(MDC.VALUE, new MDC())` |
 | MDC keys never render | `org.slf4j.MDC` imported instead of Kora's, or the Logback setup does not use `KoraAsyncAppender` + a Kora encoder | Import `io.koraframework.logging.common.MDC`; see [kora-telemetry-logging](../kora-telemetry-logging/SKILL.md) |
-| Graph build fails resolving `MaskingRules<Foo>` (Java only) | The Java masking processor is not registered with javac, so `$Foo_MaskingRulesModule` is never generated | Declare the `MaskingRules<Foo>` component by hand — see the masking reference |
+| Graph build fails resolving `MaskingRules<Foo>` (Java) | Kora 2.0.0.RC1 (Java masking processor not registered, fixed by #921) or no `annotationProcessor "io.koraframework:annotation-processors"` | Upgrade to RC2+; keep the processor line |
 | `@Mask` added, HTTP request bodies still show the password | `@Mask` only applies to `@Log` / structured arguments; telemetry bodies need a `DataMasker` tagged for the transport | See [logging-masking.md](references/logging-masking.md#how-a-component-picks-its-masker-tagged-strategies) |
 | Aspect skipped for a method called internally | `this.method()` does not go through the proxy subclass | Call it through an injected component |
 | `@Mdc` on a `Mono`/`Flux`/`Future`/`CompletionStage` method fails to compile | Rejected by design; Kora 2.0 contracts are synchronous | Make the method synchronous |
@@ -314,7 +313,7 @@ elements in `logback.xml` therefore do not survive startup — configure levels 
 
 - [logging-aspect.md](references/logging-aspect.md) — `@Log` family: level resolution, record shape, per-argument mappers, Java/Kotlin syntax, unsupported return types
 - [logging-mdc.md](references/logging-mdc.md) — `@Mdc` attributes, the `ScopedValue` MDC model, `global`, imperative `MDC`, propagation
-- [logging-masking.md](references/logging-masking.md) — canonical masking page: the four layers, `MaskingStrategy`, `MaskingPathRules`, `@Mask` / `MaskingRules`, the Java workaround, `DataMasker` (JSON/XML/form), tagged transport strategies, `<maskField>`
+- [logging-masking.md](references/logging-masking.md) — canonical masking page: the four layers, `MaskingStrategy`, `MaskingPathRules`, `@Mask` / `MaskingRules` generation in Java and Kotlin, `DataMasker` (JSON/XML/form), tagged transport strategies, `<maskField>`
 - [logging-performance.md](references/logging-performance.md) — cost model, controlling volume, batch loops, what to delegate to the backend skill
 
 ## Assets

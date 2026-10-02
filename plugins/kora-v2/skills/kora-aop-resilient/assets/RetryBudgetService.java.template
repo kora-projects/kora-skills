@@ -33,7 +33,7 @@ class StockService {                                                    // NOT f
     }
 
     // A denied budget token ends the loop: the ORIGINAL exception propagates (no RetryExhaustedException)
-    // and resilient.retry.exhausted is tagged reason=EXHAUSTED_BUDGET.
+    // and resilient.retry.exhausted is tagged resilient.reason=EXHAUSTED_BUDGET.
     @Retryable(InventoryRetry.class)
     public int available(String sku) {
         return inventoryApi.available(sku);

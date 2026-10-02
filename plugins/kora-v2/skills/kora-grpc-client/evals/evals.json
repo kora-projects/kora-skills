@@ -264,7 +264,7 @@
       "skills": [
         "kora-grpc-client"
       ],
-      "query": "Our Kora 2.0 gRPC client produces no rpc.client.duration metric and no request logs, although the service is definitely making calls. Config only sets grpcClient.UserService.url.",
+      "query": "Our Kora 2.0 gRPC client produces no rpc.client.call.duration metric and no request logs, although the service is definitely making calls. Config only sets grpcClient.UserService.url.",
       "expected_behavior": [
         "States that telemetry.logging.enabled and telemetry.metrics.enabled default to false in Kora 2.0",
         "Enables them explicitly under grpcClient.UserService.telemetry",
@@ -275,7 +275,7 @@
       "anti_behavior": [
         "Claims metrics or logging are on by default",
         "Suggests a global telemetry switch outside the grpcClient section as the fix",
-        "Invents a metric name other than rpc.client.duration",
+        "Invents a metric name other than rpc.client.call.duration (rpc.client.duration is the pre-RC2 name)",
         "Says the logger is named after the Java stub class"
       ],
       "tags": [

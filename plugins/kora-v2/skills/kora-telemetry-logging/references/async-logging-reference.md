@@ -5,7 +5,7 @@
 - [What it is and why it is not optional](#what-it-is-and-why-it-is-not-optional)
 - [What append() actually does](#what-append-actually-does)
 - [Configuration](#configuration)
-- [discardingThreshold does nothing here](#discardingthreshold-does-nothing-here)
+- [discardingThreshold drops TRACE/DEBUG/INFO near a full queue](#discardingthreshold-drops-tracedebuginfo-near-a-full-queue)
 - [Caller data is unavailable](#caller-data-is-unavailable)
 - [Serialisation happens on the appender thread](#serialisation-happens-on-the-appender-thread)
 - [Shutdown](#shutdown)
@@ -68,7 +68,7 @@ value set in `logback.xml` overrides both.
 | `queueSize` | `512` | `kora.logging.config.queue-size` / `KORA_LOGGING_CONFIG_QUEUE_SIZE` | Capacity of the `ArrayBlockingQueue` between the logging threads and the worker |
 | `neverBlock` | **`true`** | `kora.logging.config.never-block` / `KORA_LOGGING_CONFIG_NEVER_BLOCK` | `true` → an event that does not fit is **dropped** (`offer`); `false` → the logging thread blocks until there is room |
 | `maxFlushTime` | `1000` ms | `kora.logging.config.max-flush-time` / `KORA_LOGGING_CONFIG_MAX_FLUSH_TIME` (`1s`, `500ms`, `PT1S`; a bare number is ms) | Time budget for draining the queue on `stop()` |
-| `discardingThreshold` | `queueSize / 5` | `kora.logging.config.discarding-threshold` / `KORA_LOGGING_CONFIG_DISCARDING_THRESHOLD` | **No effect — see below** |
+| `discardingThreshold` | `queueSize / 5` | `kora.logging.config.discarding-threshold` / `KORA_LOGGING_CONFIG_DISCARDING_THRESHOLD` | Once fewer than this many slots remain, `TRACE`/`DEBUG`/`INFO` events are dropped; `WARN`/`ERROR` still queue. `0` never drops by level — see below |
 
 An invalid value (`queue-size=0`, `max-flush-time=soon`, `never-block=yes`) falls back to the
 default and is reported as a Logback warning when the appender starts.
@@ -82,13 +82,13 @@ default and is reported as a Logback warning when the appender starts.
 ```
 
 The defaults favour the application over the log: under a burst larger than the queue, records are
-lost rather than request threads stalled. If every record must be kept, set `neverBlock` to
-`false` and size `queueSize` for the burst; memory is roughly `queueSize × average event size`.
+lost rather than request threads stalled. If every record must be kept, set `discardingThreshold`
+to `0`, `neverBlock` to `false` and size `queueSize` for the burst; memory is roughly `queueSize × average event size`.
 
 The same appender, with the same defaults, is what `KoraLogbackConfigurator` installs (named
 `KORA_ASYNC`) when there is no `logback.xml`.
 
-## `discardingThreshold` does nothing here
+## `discardingThreshold` drops TRACE/DEBUG/INFO near a full queue
 
 `AsyncAppenderBase.append` is
 
@@ -100,14 +100,21 @@ protected void append(E eventObject) {
 }
 ```
 
-and `AsyncAppenderBase.isDiscardable` **always returns `false`**. The level-based discarding of
-`TRACE`/`DEBUG`/`INFO` that the Logback manual describes lives in the subclass
-`ch.qos.logback.classic.AsyncAppender`, which overrides `isDiscardable`.
+Since 2.0.0.RC2 (#958) `KoraAsyncAppender` overrides `isDiscardable` the way
+`ch.qos.logback.classic.AsyncAppender` does:
 
-`KoraAsyncAppender` extends `AsyncAppenderBase` **directly** and does not override `isDiscardable`
-(its Javadoc describes level-based dropping, the code does not do it). So no event is ever
-discarded by threshold, whatever `discardingThreshold` or its property says. Loss under load is
-governed by `neverBlock` and `queueSize` alone.
+```java
+@Override
+protected boolean isDiscardable(ILoggingEvent event) {
+    return event.getLevel().toInt() <= Level.INFO_INT;
+}
+```
+
+So when the remaining capacity drops below `discardingThreshold` (default `queueSize / 5`, i.e. ~102
+of 512), `TRACE`, `DEBUG` and `INFO` events are silently skipped while `WARN` and `ERROR` still
+queue. Set `<discardingThreshold>0</discardingThreshold>` (or the property / variable) to never drop
+by level. (In RC1 the base `isDiscardable` returned `false`, so the threshold had no effect.) Once
+the queue is completely full, `neverBlock` decides between dropping and blocking for every level.
 
 ## Caller data is unavailable
 
@@ -147,9 +154,9 @@ records are missing from a container's logs, raise `maxFlushTime` before suspect
 | Symptom | Cause / fix |
 |---|---|
 | `traceId` / `spanId` / Kora MDC missing | The appender chain does not include `KoraAsyncAppender`, or the encoder ignores `KoraLoggingEvent` |
-| Records missing under load | `neverBlock` is `true` by default, so a full queue drops events — raise `queueSize`, or set `neverBlock` to `false` to block instead |
+| Records of every level missing under load | `neverBlock` is `true` by default, so a full queue drops events — raise `queueSize`, or set `neverBlock` to `false` to block instead |
 | Logging threads block under load | `neverBlock` was set to `false` and the queue is full — raise `queueSize` or make the inner appender faster |
-| `discardingThreshold` appears to be ignored | It is. `isDiscardable` always returns `false` for `AsyncAppenderBase` |
+| `INFO` records missing under load while `WARN`/`ERROR` survive | Level-based discarding below `discardingThreshold` (default `queueSize / 5`) — set it to `0`, or raise `queueSize` |
 | `%class` / `%method` / `%line` render as `?` | Caller data is disabled at the event level, by design |
 | Records lost at shutdown | Raise `maxFlushTime`; shut down through `KoraApplication.run(...)` |
 | A logged object shows post-mutation state | The writer lambda ran on the appender thread — pass an immutable snapshot |

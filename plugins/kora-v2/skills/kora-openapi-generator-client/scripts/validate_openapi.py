@@ -181,16 +181,6 @@ class OpenAPIValidator:
             if not responses:
                 self.errors.append(f"No responses defined for {where}")
 
-            # Range responses work in the default SEALED mode; clientResponseMode SUCCESSFUL parses
-            # every non-default code as an int and fails generation on them.
-            ranges = [str(code) for code in responses if re.fullmatch(r"[1-5]XX", str(code))]
-            if ranges:
-                self.warnings.append(
-                    f"{where} declares range response(s) {', '.join(sorted(ranges))} - fine with the "
-                    f"default clientResponseMode SEALED, but SUCCESSFUL fails generation "
-                    f"(NumberFormatException); use exact codes plus 'default' there"
-                )
-
     def validate_components(self) -> None:
         schemas = ((self.spec.get("components") or {}).get("schemas")) or {}
 

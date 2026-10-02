@@ -212,7 +212,7 @@ All of these happen at **graph initialisation**, after a clean compile:
 | Message | Cause |
 |---|---|
 | `Graph node value was not initialized because condition failed: <reason>` | something asked for a node whose condition failed |
-| the same message from a consumer that declared the dependency `@Nullable` / `T?` (or Java `Optional<T>`) | a nullable single dependency is generated as `g.get(node)`, which throws for a condition-failed node. Fixed by kora-projects/kora PR #960 (on master once merged) — the consumer then gets `null`. Without it, inject `All<T>`, which skips condition-failed members, or make the consumer `@Conditional` on the same tag |
+| the same message from a consumer that declared the dependency `@Nullable` / `T?` (or Java `Optional<T>`) | a nullable single dependency is generated as `g.get(node)`, which throws for a condition-failed node. Fixed in `2.0.0.RC2` (kora-projects/kora PR #960) — only `2.0.0.RC1` is affected — the consumer then gets `null`. On RC1, inject `All<T>`, which skips condition-failed members, or make the consumer `@Conditional` on the same tag |
 | `None of conditional candidates was created:` (`NoneOfConditionalNodeMatches`) | a claim had only conditional candidates and every condition failed; the message lists each node with its reason |
 | `More than one conditional candidates was created:` (`MoreThanOneConditionalNodeMatches`) | two or more conditions matched for the same claim |
 
@@ -228,7 +228,7 @@ failure. Write a test that boots the graph for each configuration you actually s
 | A library default the application may replace | `@DefaultComponent` |
 | One of several implementations, chosen by config at startup | `@Conditional` |
 | A branch *inside* one component | a plain `if`/`switch` in a provider |
-| A component that may legitimately be absent | `@Nullable` / `Optional<T>` on the consumer — for a `@Conditional` component only once PR #960 is in (see Failure Modes); until then `All<T>` |
+| A component that may legitimately be absent | `@Nullable` / `Optional<T>` on the consumer — for a `@Conditional` component too since `2.0.0.RC2` (PR #960; on RC1 use `All<T>`, see Failure Modes) |
 | Different wiring per Gradle build | separate `@KoraApp` interfaces or submodules |
 
 `@Conditional` is not a profile system. If the choice is fixed at build time, expressing it in the

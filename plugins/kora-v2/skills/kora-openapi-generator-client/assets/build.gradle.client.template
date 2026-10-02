@@ -92,7 +92,7 @@ def openApiGeneratePet = tasks.register("openApiGeneratePet", GenerateTask) {
 
             // SEALED (default): methods return the sealed *ApiResponse, one variant per status.
             // SUCCESSFUL: methods return the 2xx variant and throw declared error responses as
-            // PetApi.PetApi<Type>HttpClientResponseException. Not compatible with 4XX/5XX ranges.
+            // PetApi.PetApi<Type>HttpClientResponseException. 4XX/5XX ranges are supported.
             // clientResponseMode: "SUCCESSFUL",
 
             // Only when the spec declares components.securitySchemes:

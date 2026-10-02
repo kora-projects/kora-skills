@@ -354,19 +354,25 @@ and timers gain `_count` / `_sum` / `_bucket` / `_max`.
 | Database | `db.client.operation.duration` | Timer |
 | Kafka consumer | `messaging.process.duration`, `messaging.process.batch.duration`, `messaging.kafka.consumer.lag` | Timer, Timer, Gauge |
 | Kafka publisher | `messaging.client.operation.duration`, `messaging.client.sent.messages` | Timer, Counter |
-| gRPC | `rpc.server.duration`, `rpc.client.duration` | Timer |
-| Cache | `cache.operation.duration`, `cache.ratio` | Timer, Counter |
+| gRPC | `rpc.server.call.duration`, `rpc.client.call.duration` | Timer |
+| Cache | `cache.operation.duration`, `cache.requests` (tag `cache.result` = hit/miss) | Timer, Counter |
 | Scheduling | `scheduling.job.duration` | Timer |
 | Resilience | `resilient.circuitbreaker.*`, `resilient.retry.*`, `resilient.timeout.exhausted`, `resilient.ratelimiter.acquire`, `resilient.fallback.attempts` | Gauge, Counter |
-| S3 / SOAP | `rpc.client.duration` (distinguished by the `rpc.system` tag) | Timer |
+| S3 / SOAP | `rpc.client.call.duration` (distinguished by the `rpc.system.name` tag) | Timer |
+| JMS consumer | `messaging.process.duration` (`messaging.system = jms`) | Timer |
+| Redis (Lettuce) | `db.client.operation.duration` (`db.system.name = redis`), `lettuce.command.firstresponse.duration` | Timer |
 | Framework | `kora.up` (gauge, tag `version`) | Gauge |
 
 Several of these were renamed relative to 1.x (`db.client.request.duration` →
 `db.client.operation.duration`, `cache.duration` → `cache.operation.duration`,
 `messaging.receive/publish.duration` → the `messaging.process.*` / `messaging.client.*` pair,
-`s3.client.duration` → `rpc.client.duration`), and `rpc.*.requests_per_rpc` /
+`s3.client.duration` → `rpc.client.call.duration`), and `rpc.*.requests_per_rpc` /
 `responses_per_rpc` **do not exist in 2.0 at all**. Full tables with tag keys, plus the JVM binder
-list: [metrics-reference.md](references/metrics-reference.md).
+list: [metrics-reference.md](references/metrics-reference.md). 2.0.0.RC2 (#972) also renamed RC1 names:
+`rpc.*.duration` → `rpc.*.call.duration` (tag `rpc.system.name`, status tag `rpc.response.status_code`
+with the gRPC code name), `cache.ratio` → `cache.requests`, cache tags → `cache.origin` /
+`cache.operation` / `cache.result`, resilience tags → `resilient.name` / `resilient.state` / … — fix
+dashboards built on RC1.
 
 **The HTTP server duration timer tags:** `server.name`, `server.port`, `http.request.method`,
 `http.response.status_code`, `http.route`, `url.scheme`, `server.address`, `error.type`. The status
@@ -484,12 +490,12 @@ Keep the values bounded — they multiply onto every series.
 JVM binders run. `PrometheusMeterRegistryInitializer extends Function<PrometheusMeterRegistry, PrometheusMeterRegistry>`,
 so it **must return the registry**. Use it for meter filters, deny rules and naming conventions.
 
-**Declaring your own initializer drops the built-in common-tags one.** It is a `@DefaultComponent`,
-and `All<T>` leaves a `@DefaultComponent` out when a non-default candidate of the same type exists
-(`DependencyTest.testAllWithDefaultAndNonDefault` in the Kora processor tests). `metrics.tags` and
-every `MetricsTagsProvider` are then silently ignored — so an app-level initializer has to apply
-them itself. [`assets/CustomMetricsConfig.java.template`](assets/CustomMetricsConfig.java.template)
-/ [`.kt.template`](assets/CustomMetricsConfig.kt.template) show the merge.
+**Your own initializer runs next to the built-in common-tags one, not instead of it.** Since
+2.0.0.RC2 (#935) `commonTagsMeterRegistryInitializer` is not a `@DefaultComponent`, so it stays in
+`All<PrometheusMeterRegistryInitializer>` and `metrics.tags` / `MetricsTagsProvider` keep applying.
+Do not re-merge the common tags in your initializer (the RC1 workaround) — that only installs the
+same filter twice. [`assets/CustomMetricsConfig.java.template`](assets/CustomMetricsConfig.java.template)
+/ [`.kt.template`](assets/CustomMetricsConfig.kt.template) add a deny rule only.
 
 ---
 
@@ -559,7 +565,7 @@ See [metrics-export-reference.md](references/metrics-export-reference.md).
 | `/metrics` body is `# Metric Scraper disabled` | No `MetricsScraper` in the graph | Add `MetricsModule` to `@KoraApp extends …` |
 | `/metrics` returns 200 but only `jvm_*` / `kora_up` | `telemetry.metrics.enabled` left at its `false` default | Enable it per component |
 | `/metrics` returns 200 with an empty body | Global `metrics.enabled = false` put `NoopMeterRegistry` in the graph | Remove it; the default is `true` |
-| `metrics.tags` / `MetricsTagsProvider` tags missing from every series | An app-level `PrometheusMeterRegistryInitializer` displaced the built-in common-tags initializer | Apply the merged tags inside your own initializer (see `CustomMetricsConfig` template) |
+| `metrics.tags` / `MetricsTagsProvider` tags missing from every series | On RC1 only: an app-level `PrometheusMeterRegistryInitializer` displaced the `@DefaultComponent` common-tags initializer (fixed in RC2, #935) | Upgrade to RC2+; on RC2+ check the key is not removed by your own `MeterFilter` |
 | A provider's tag value is ignored | The same key is in `metrics.tags` — config wins | Drop one of them |
 | Config flag set, still nothing | No `MeterRegistry` — `MetricsModule` missing | Both gates must pass |
 | `/metrics` returns 404 on port 8080 | Scraping the public port | Scrape `httpServer.system.port` (default 8085) |

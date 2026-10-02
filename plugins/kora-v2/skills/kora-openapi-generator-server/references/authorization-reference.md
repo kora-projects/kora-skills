@@ -211,7 +211,7 @@ deriving these names instead of normalising it — useful when a rename shuffles
 
 ## 6. OAuth2 scopes
 
-A scheme with `type: oauth2` makes the extractor's principal type `PrincipalWithScopes`, and each
+A scheme with `type: oauth2` or `type: openIdConnect` makes the extractor's principal type `PrincipalWithScopes`, and each
 distinct scope set in the contract gets its own interceptor tag:
 
 ```yaml
@@ -289,10 +289,10 @@ The generated interceptor answers:
 | Situation | Status |
 |---|---|
 | no extractor returned a principal (missing or invalid credential) | `401 Unauthorized` |
-| a principal was extracted, but it lacks an OAuth2 scope the operation requires | `403 Forbidden` |
+| a principal was extracted, but it lacks an OAuth2 / OpenID Connect scope the operation requires | `403 Forbidden` |
 | the operation also allows anonymous access (`- {}`) | neither — the request proceeds |
 
-Only OAuth2 scopes produce the generated `403`. For any other authenticated-but-forbidden rule
+Only OAuth2 / OpenID Connect scopes produce the generated `403`. For any other authenticated-but-forbidden rule
 (roles, ownership, tenant), decide in your own code — never by editing generated code:
 
 - throw `HttpServerResponseException.of(403, …)` from the extractor (the exception is an

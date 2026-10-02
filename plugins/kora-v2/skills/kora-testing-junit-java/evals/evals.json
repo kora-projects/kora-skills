@@ -228,9 +228,9 @@
       "query": "Our Kora 2.0 app has a @Component @Conditional(tag = FeatureEnabled.class) bean. Since we added it, every @KoraAppTest fails during graph init with IllegalArgumentException: Graph node belongs to another application graph, from GraphImpl$GraphConditionKey.hashCode. The app itself starts fine. When we switched one class to @TestInstance(PER_CLASS) on a locally patched Kora, the tests then failed in beforeEach with 'Graph node value was not initialized because condition failed'. What is going on?",
       "expected_behavior": [
         "Explains that the extension always runs the application draw through ApplicationGraphDraw.copy() (and subgraph() for declared roots or mocks), and both keep the original node condition, which then looks up the original condition node on the derived graph",
-        "States the first failure is fixed by kora-projects/kora PR #963 (on master once merged) and has no practical workaround besides keeping @Conditional out of the tested graph",
+        "States the first failure is fixed in 2.0.0.RC2 (kora-projects/kora PR #963) — upgrade; on RC1 there is no practical workaround besides keeping @Conditional out of the tested graph",
         "Explains the second failure: under PER_CLASS with Mockito on the classpath, beforeEach calls KoraJUnit5Extension.resetMocks, which reads every graph node, and a condition-failed node throws on read; KoraAppGraph.getAll fails the same way",
-        "States the second is fixed by kora-projects/kora PR #964 (on master once merged) and the workaround is the default PER_METHOD lifecycle",
+        "States the second is fixed in 2.0.0.RC2 too (kora-projects/kora PR #964: resetMocks and KoraAppGraph.getAll skip condition-failed nodes) and the RC1 workaround is the default PER_METHOD lifecycle",
         "Does not blame the test configuration, the condition implementation, or Mockito strictness"
       ],
       "tags": ["conditional", "lifecycle", "regression"]
