@@ -19,7 +19,7 @@ implementation knowledge lives in the 40 sub-skills listed below.
 | **Java** | **25 minimum.** Kora 2.0 artifacts are compiled to class-file 69; older JVMs cannot load them |
 | **Gradle JVM** | The JDK running Gradle itself must also be ≥ 25 when `io.koraframework:openapi-generator` is on the buildscript classpath |
 | **Kotlin** | 2.4.20 with KSP 2.3.12 — the versions the framework itself is built with |
-| **Build** | Gradle 9.7.1 (the wrapper the framework itself pins) |
+| **Build** | Gradle 9.8.0 (the wrapper the framework itself pins) |
 | **Docs** | [koraframework.io/v2/en](https://koraframework.io/v2/en/) ([ru](https://koraframework.io/v2/ru/)) — see R0 for how much to trust it |
 | **Synced with** | Kora tag `2.0.0.RC2` = `master` at `78351e1cf` (2026-10-02) |
 

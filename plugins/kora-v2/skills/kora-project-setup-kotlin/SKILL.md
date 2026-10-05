@@ -24,7 +24,7 @@ that plugs in Kora capabilities by extending `*Module` interfaces.
 | Kotlin | `2.4.20` | the version Kora 2.0 itself is built with |
 | KSP | `2.3.12` | ditto — see [version drift](#version-drift-is-not-cosmetic) |
 | JVM toolchain | `25` | bytecode floor of Kora 2.0 artifacts; see [JDK](#jdk-choice) |
-| Gradle wrapper | `9.7.1` | the version the framework itself builds with |
+| Gradle wrapper | `9.8.0` | the version the framework itself builds with |
 | JUnit | `6.1.3` (property `junitVersion`) | |
 
 Never version individual `io.koraframework:*` artifacts — the BOM aligns them.
@@ -333,7 +333,7 @@ Full file: [`assets/logback.xml.template`](assets/logback.xml.template)
 ```properties
 distributionBase=GRADLE_USER_HOME
 distributionPath=wrapper/dists
-distributionUrl=https\://services.gradle.org/distributions/gradle-9.7.1-bin.zip
+distributionUrl=https\://services.gradle.org/distributions/gradle-9.8.0-bin.zip
 networkTimeout=10000
 retries=0
 retryBackOffMs=500

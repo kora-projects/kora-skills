@@ -294,10 +294,10 @@ not already installed, making the build reproducible across machines.
 `gradle/wrapper/gradle-wrapper.properties`:
 
 ```properties
-distributionUrl=https\://services.gradle.org/distributions/gradle-9.7.1-bin.zip
+distributionUrl=https\://services.gradle.org/distributions/gradle-9.8.0-bin.zip
 ```
 
-Gradle `9.7.1` is the wrapper the Kora framework itself builds with. Gradle 9 is also what the
+Gradle `9.8.0` is the wrapper the Kora framework itself builds with. Gradle 9 is also what the
 GraalVM `native-build-tools` `1.1.7` plugin expects if you later add native-image
 builds.
 

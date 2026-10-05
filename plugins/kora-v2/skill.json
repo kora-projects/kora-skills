@@ -42,7 +42,7 @@
   "requirements": {
     "java": "25+ (Kora 2.0 artifacts are compiled to class-file 69; the JDK running Gradle must also be 25+ when io.koraframework:openapi-generator is on the buildscript classpath)",
     "kotlin": "2.4.20 with KSP 2.3.12 (must match the versions the framework itself is built with)",
-    "gradle": "9+ (the framework pins wrapper 9.7.1)"
+    "gradle": "9+ (the framework pins wrapper 9.8.0)"
   },
   "kora": {
     "group": "io.koraframework",

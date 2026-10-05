@@ -389,6 +389,6 @@ Drop `--dry-run` to write the files.
 | Kora BOM (`io.koraframework:kora-bom`) | `2.0.0.RC2` from `mavenCentral()` |
 | Java | 25 (hard floor — artifacts are class-file 69) |
 | Kotlin / KSP | 2.4.20 / 2.3.12 |
-| Gradle | 9.7.1 |
+| Gradle | 9.8.0 |
 | HikariCP | 7.1.0 (transitive via `database-jdbc`) |
 | PostgreSQL driver | 42.7.x — the framework tests against `42.7.13` (the version `database-jdbc-postgres` brings); the migrated examples pin `42.7.7` |

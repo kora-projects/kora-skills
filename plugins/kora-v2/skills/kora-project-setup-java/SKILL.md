@@ -23,7 +23,7 @@ skill gets that wiring right the first time.
 | **BOM** | `io.koraframework:kora-bom:2.0.0.RC2` — on Maven Central; plain `mavenCentral()` resolves it |
 | **Processor** | `io.koraframework:annotation-processors` (also as `testAnnotationProcessor`) |
 | **JDK** | **25 or newer** — Kora 2.0 artifacts are compiled for JVM 25; the reference apps pin toolchain `25` |
-| **Gradle** | wrapper `9.7.1` — the version the framework itself builds with |
+| **Gradle** | wrapper `9.8.0` — the version the framework itself builds with |
 
 ---
 

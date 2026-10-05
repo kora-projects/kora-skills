@@ -80,7 +80,7 @@
         "States that Kora 2.0 artifacts are compiled for JVM 25, so 25 is the floor",
         "Configures the Java toolchain with JavaLanguageVersion.of(25) in build.gradle",
         "Adds the foojay-resolver-convention plugin in settings.gradle",
-        "Pins the Gradle wrapper at 9.7.1, the version the Kora framework builds with",
+        "Pins the Gradle wrapper at 9.8.0, the version the Kora framework builds with",
         "Does not claim --enable-preview is required for consumers of Kora 2.0"
       ],
       "tags": ["toolchain", "basic"]

@@ -26,7 +26,7 @@ JDK, Kotlin/KSP, Gradle, and the third-party versions Kora 2.0 builds against.
 | Gradle JVM | **25 or newer** whenever `openapi-generator` is on the buildscript classpath | see below |
 | Kotlin | `2.4.20` | framework version catalog |
 | KSP plugin | `2.3.12` | framework version catalog |
-| Gradle | `9.7.1` (the framework's wrapper; the examples repo still pins `9.5.1`) | wrapper properties |
+| Gradle | `9.8.0` (the framework's wrapper; the examples repo still pins `9.5.1`) | wrapper properties |
 
 The third-party versions further down come from the framework's version catalog
 (`gradle/libs.versions.toml`) for `2.0.0.RC2`.
@@ -130,12 +130,12 @@ rather than a build failure — that is what the reference examples do.
 
 ## Gradle
 
-The framework pins Gradle **9.7.1** through the wrapper (the examples repository is still on 9.5.1;
+The framework pins Gradle **9.8.0** through the wrapper (the examples repository is still on 9.5.1;
 both are Gradle 9):
 
 ```properties
 # gradle/wrapper/gradle-wrapper.properties
-distributionUrl=https\://services.gradle.org/distributions/gradle-9.7.1-bin.zip
+distributionUrl=https\://services.gradle.org/distributions/gradle-9.8.0-bin.zip
 ```
 
 ---

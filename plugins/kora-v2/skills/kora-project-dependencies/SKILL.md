@@ -12,7 +12,7 @@ metadata:
 
 **Group:** `io.koraframework` — except the `experimental/` tree, which is `io.koraframework.experimental`
 **BOM:** `io.koraframework:kora-bom:2.0.0.RC2` — on Maven Central
-**JDK:** bytecode floor **25** | **Kotlin:** 2.4.20 | **KSP:** 2.3.12 | **Gradle:** 9.7.1
+**JDK:** bytecode floor **25** | **Kotlin:** 2.4.20 | **KSP:** 2.3.12 | **Gradle:** 9.8.0
 
 > **Critical:** always import the `kora-bom` platform, and **never put a version on an
 > `io.koraframework:*` artifact** — the BOM does it. The one deliberate exception is the Kotlin

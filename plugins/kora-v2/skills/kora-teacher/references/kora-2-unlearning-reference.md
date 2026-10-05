@@ -173,7 +173,7 @@ an explicit parameter is better than either.
 | Version | 1.x | **`2.0.0.RC2`**, published to plain `mavenCentral()` |
 | Java | 17 / 21 | **25 minimum** (artifacts are class-file 69) |
 | Kotlin / KSP | 1.9.x | **2.4.20 / 2.3.12** |
-| Gradle | 8.x | **9.7.1** (the framework's wrapper) |
+| Gradle | 8.x | **9.8.0** (the framework's wrapper) |
 | DI annotations | `ru.tinkoff.kora.common.annotation` | **`io.koraframework.common.annotation`** |
 | Every framework package | `ru.tinkoff.kora.*` | `io.koraframework.*` |
 

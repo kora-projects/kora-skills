@@ -38,7 +38,7 @@ DEFAULT_JDK = 25
 KOTLIN_VERSION = "2.4.20"
 KSP_VERSION = "2.3.12"
 OPENAPI_PLUGIN_VERSION = "7.25.0"
-GRADLE_VERSION = "9.7.1"  # matches assets/gradle-wrapper/gradle-wrapper.properties
+GRADLE_VERSION = "9.8.0"  # matches assets/gradle-wrapper/gradle-wrapper.properties
 
 MYSQL_DRIVER = "com.mysql:mysql-connector-j:9.2.0"
 # database-flyway ships flyway-core only; the dialect artifact is the application's job.

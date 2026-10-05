@@ -210,7 +210,7 @@
         "Requires JDK 25 or newer, and states that the JVM running Gradle itself must also be 25+ because io.koraframework:openapi-generator resolves on the buildscript classpath",
         "Uses the platform \"io.koraframework:kora-bom:$koraVersion\" with koraVersion=2.0.0.RC2 from mavenCentral()",
         "Java: annotationProcessor \"io.koraframework:annotation-processors\". Kotlin: ksp \"io.koraframework:symbol-processors\" with Kotlin 2.4.20 and KSP 2.3.12",
-        "Names Gradle 9.x (the framework pins the 9.7.1 wrapper)",
+        "Names Gradle 9.x (the framework pins the 9.8.0 wrapper)",
         "Explains that Java 25 is a hard floor because the artifacts are class-file major version 69"
       ],
       "anti_behavior": [

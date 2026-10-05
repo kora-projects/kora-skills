@@ -104,7 +104,7 @@
       "expected_behavior": [
         "Configures kotlin { jvmToolchain { ... } } with JavaLanguageVersion 25 or newer and explains that 25 is the bytecode floor of Kora 2.x artifacts",
         "Distinguishes the toolchain from the JVM running Gradle, and notes the buildscript classpath (openapi-generator) needs a Gradle JVM of 25+",
-        "Pins the Gradle wrapper distributionUrl to gradle-9.7.1-bin.zip",
+        "Pins the Gradle wrapper distributionUrl to gradle-9.8.0-bin.zip",
         "Adds the foojay-resolver-convention plugin in settings.gradle.kts for toolchain auto-download",
         "Does not propose JDK 21, and does not freeze a specific 'latest' JDK without saying to re-derive the latest GA release",
         "Does not rely on Maven or a manually configured JAVA_HOME instead of the toolchain"

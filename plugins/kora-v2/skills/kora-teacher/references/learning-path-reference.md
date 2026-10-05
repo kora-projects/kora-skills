@@ -2,7 +2,7 @@
 
 **Framework:** Kora 2.0, group `io.koraframework`, BOM `io.koraframework:kora-bom`, version
 `2.0.0.RC2` | **Java:** 25 (hard floor) | **Kotlin:** 2.4.20 + KSP 2.3.12 |
-**Gradle:** 9.7.1
+**Gradle:** 9.8.0
 
 Every stop below names a companion application from `kora-examples` at branch `migration/2.0`,
 grounded on disk by **R0** as `.kora-agent/kora-examples-2.0/`. The learner compiles, runs and
@@ -23,7 +23,7 @@ languages.
 |---|---|---|
 | JDK on the path | `java -version` | **25 or newer**, for Java *and* Kotlin learners |
 | JDK running Gradle | `./gradlew -version` (look at "Launcher JVM") | **25 or newer** |
-| Gradle | `./gradlew -version` | 9.x — the framework pins the 9.7.1 wrapper |
+| Gradle | `./gradlew -version` | 9.x — the framework pins the 9.8.0 wrapper |
 
 Java 25 is not a recommendation. Kora 2.0 artifacts are compiled to class-file major version 69;
 an older JVM cannot load them at all. And the toolchain block alone is not enough: the

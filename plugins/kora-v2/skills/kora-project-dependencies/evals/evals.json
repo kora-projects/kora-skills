@@ -653,7 +653,7 @@
       "expected_behavior": [
         "koraVersion=2.0.0.RC2 from plain mavenCentral()",
         "Kotlin 2.4.20 with KSP 2.3.12, the versions the framework is built with",
-        "Gradle wrapper 9.7.1",
+        "Gradle wrapper 9.8.0",
         "grpc-inprocess pinned to 1.84.0, the gRPC version grpc-server brings"
       ],
       "anti_behavior": [
