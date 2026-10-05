@@ -21,7 +21,7 @@
 
 ```groovy
 dependencies {
-    koraBom platform("io.koraframework:kora-bom:$koraVersion")   // koraVersion=2.0.0.RC1
+    koraBom platform("io.koraframework:kora-bom:$koraVersion")   // koraVersion=2.0.0.RC2
     annotationProcessor "io.koraframework:annotation-processors" // Kotlin: ksp "io.koraframework:symbol-processors"
 
     implementation "io.koraframework:resilient-kora"
@@ -148,7 +148,8 @@ resilient {
   }
 
   ratelimiter {
-    notifications { limitForPeriod = 100, limitRefreshPeriod = "1s" }
+    notifications { limitForPeriod = 100, limitRefreshPeriod = "1s" }                   # TOKEN_BUCKET (default)
+    exports       { limitForPeriod = 10, limitRefreshPeriod = "1m", type = FIXED_WINDOW }
   }
 
   telemetry {
@@ -193,6 +194,7 @@ resilient:
     notifications:
       limitForPeriod: 100
       limitRefreshPeriod: "1s"
+      type: TOKEN_BUCKET
   telemetry:
     circuitBreaker:
       metrics:
@@ -244,11 +246,11 @@ because `KoraCircuitBreaker`'s constructor validates the config before choosing 
 | `backoff.delayMax` | Duration | none | optional cap |
 | `jitter.type` | enum | `NONE` | `NONE`, `FULL` |
 | `jitter.ratio` | double | `1.0` | fraction of the delay that may be shaved off |
-| `retryBudget.enabled` | boolean | `true` | the block itself is optional; absent = no budget |
-| `retryBudget.ratio` | double | `0.1` | retries allowed per success |
+| `retryBudget.enabled` | boolean | `true` | the block itself is optional; absent = no budget (with the default `RetryBudgetFactory`) |
+| `retryBudget.ratio` | double | `0.1` | tokens deposited per success; one retry costs one token |
 | `retryBudget.tokensMax` | int | `100` | |
-| `retryBudget.tokensInitial` | int | `10` | |
-| `retryBudget.minTokensPerSecond` | double | `0.0` | |
+| `retryBudget.tokensInitial` | int | `10` | ≤ `tokensMax` |
+| `retryBudget.minTokensPerSecond` | double | `0.0` | time-based refill; ignored by the distributed budget |
 | `telemetry.*` | object | inherits `resilient.telemetry.retry` | |
 
 ### `resilient.timeout.<name>` — `TimeoutConfig`
@@ -264,9 +266,14 @@ because `KoraCircuitBreaker`'s constructor validates the config before choosing 
 | Key | Type | Default | Notes |
 |---|---|---|---|
 | `enabled` | boolean | `true` | |
-| `limitForPeriod` | int | **required** | permits per period |
-| `limitRefreshPeriod` | Duration | **required** | fixed window length |
+| `type` | enum | `TOKEN_BUCKET` | `TOKEN_BUCKET` (GCRA, continuous refill with a burst of `limitForPeriod`), `FIXED_WINDOW` (quota per window, up to 2x at a boundary) |
+| `limitForPeriod` | int | **required** | permits per period; bucket size for `TOKEN_BUCKET` |
+| `limitRefreshPeriod` | Duration | **required** | the period — refill horizon for `TOKEN_BUCKET`, window length for `FIXED_WINDOW` |
 | `telemetry.*` | object | inherits `resilient.telemetry.rateLimiter` | |
+
+A spec annotated `@RateLimiterDistributedSpec` reads a different config type,
+`DistributedRateLimiterConfig`, whose algorithm key is `algorithm` (not `type`) and which requires
+`keyPrefix`. See [distributed-reference.md](distributed-reference.md#configuration).
 
 ### Fallback
 
@@ -313,7 +320,8 @@ global aspect level.
 
 ### Metric families
 
-Every metric carries a `name` tag. For the four spec-based aspects that tag is **the config path**
+Every metric carries a `resilient.name` tag (all resilience tags are `resilient.`-prefixed since
+2.0.0.RC2, #972; RC1 used bare `name` / `state` / `status` / `reason` / `type`). For the four spec-based aspects that tag is **the config path**
 you gave the spec annotation; for `@Fallback` it is `<fully.qualified.Class>.<method>`.
 Exception messages, by contrast, name the spec interface's **simple name** — the two identifiers
 differ on purpose.
@@ -321,14 +329,14 @@ differ on purpose.
 | Metric | Type | Extra tags |
 |---|---|---|
 | `resilient.circuitbreaker.state` | gauge — `0` CLOSED, `1` HALF_OPEN, `2` OPEN | — |
-| `resilient.circuitbreaker.transition` | counter | `state` |
-| `resilient.circuitbreaker.call.acquire` | counter | `state`, acquire status |
-| `resilient.circuitbreaker.call.result` | counter | `state`, call result |
+| `resilient.circuitbreaker.transition` | counter | `resilient.state` |
+| `resilient.circuitbreaker.call.acquire` | counter | `resilient.state`, `resilient.status` (acquire status) |
+| `resilient.circuitbreaker.call.result` | counter | `resilient.state`, `resilient.status` (call result) |
 | `resilient.retry.attempts` | counter | — |
-| `resilient.retry.exhausted` | counter | `reason` = `EXHAUSTED_ATTEMPTS` / `EXHAUSTED_BUDGET` |
+| `resilient.retry.exhausted` | counter | `resilient.reason` = `EXHAUSTED_ATTEMPTS` / `EXHAUSTED_BUDGET` |
 | `resilient.timeout.exhausted` | counter | — |
-| `resilient.ratelimiter.acquire` | counter | — |
-| `resilient.fallback.attempts` | counter | — |
+| `resilient.ratelimiter.acquire` | counter | `resilient.status` = `acquired` / `rejected` |
+| `resilient.fallback.attempts` | counter | `resilient.type` = `executed` |
 
 Metrics need `io.koraframework:micrometer-module` in the graph; tracing needs the OpenTelemetry
 modules. Without them the factories degrade to no-ops even with `enabled = true`.
@@ -364,6 +372,15 @@ public final class PaymentFailurePredicate implements CircuitBreakerPredicate {
 The generated spec module injects the predicate as `@Nullable`, so it is optional — and an
 **untagged** predicate component is simply never found. When present, a tagged predicate replaces
 the `isFailure` default the spec interface may define.
+
+Without either, the defaults exclude marker interfaces: an exception implementing
+`io.koraframework.resilient.retry.NonRetryableException` is never retried, and one implementing
+`io.koraframework.resilient.circuitbreaker.NonCircuitableException` is not counted by the breaker.
+A custom predicate or `isFailure` override drops that check unless it repeats it.
+
+Retry has one more tagged extension point: a `RetryBudgetFactory` tagged `@Tag(<RetrySpec>.class)`
+replaces the budget of that retry; an untagged one replaces the default for all retries. See
+[retry-reference.md](retry-reference.md#where-the-budget-comes-from).
 
 ---
 
@@ -465,3 +482,4 @@ at all — the breaker simply fails on the missing `countBased` block instead.
 - [timeout-reference.md](timeout-reference.md)
 - [rate-limiter-reference.md](rate-limiter-reference.md)
 - [fallback-reference.md](fallback-reference.md)
+- [distributed-reference.md](distributed-reference.md)

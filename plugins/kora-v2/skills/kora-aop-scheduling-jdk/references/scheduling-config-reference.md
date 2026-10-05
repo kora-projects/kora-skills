@@ -13,6 +13,8 @@ For Quartz configuration (`scheduling.quartz.*`) see the sibling skill
 - [Global configuration](#global-configuration) — HOCON and YAML
 - [Per-job configuration](#per-job-configuration)
 - [Per-job telemetry overrides](#per-job-telemetry-overrides)
+- [Switching a job off](#switching-a-job-off)
+- [Cron time zone](#cron-time-zone)
 - [Keys that no longer exist](#keys-that-no-longer-exist)
 
 ---
@@ -24,9 +26,9 @@ scheduling config bug.
 
 | Path | Read by | Contains |
 |---|---|---|
-| `scheduling.jdk` | `SchedulingJdkModule` | `shutdownWait` — nothing else |
-| `scheduling.telemetry` | `SchedulingModule` (shared with Quartz) | `logging` / `metrics` / `tracing` defaults for **all** jobs |
-| whatever you write in `config = "…"` | the generated per-job config | that job's timing plus its own `telemetry` overrides |
+| `scheduling.jdk` | `SchedulingJdkModule` | `shutdownWait`, `executionParallelism` |
+| `scheduling.telemetry` | `SchedulingModule` (shared with Quartz and DB) | `logging` / `metrics` / `tracing` defaults for **all** jobs |
+| whatever you write in `config = "…"` | the generated per-job config | that job's timing, its `enabled` switch and its own `telemetry` overrides |
 
 The third path is arbitrary. It is **not** required to sit under `scheduling`; the official examples
 use `scheduling.jobs.<name>`, which is safe because `jobs` collides with neither `jdk` nor `telemetry`.
@@ -46,7 +48,7 @@ public interface Application extends
 
 ```groovy
 dependencies {
-    koraBom platform("io.koraframework:kora-bom:$koraVersion")   // koraVersion=2.0.0.RC1
+    koraBom platform("io.koraframework:kora-bom:$koraVersion")   // koraVersion=2.0.0.RC2
     annotationProcessor "io.koraframework:annotation-processors" // Kotlin: ksp("io.koraframework:symbol-processors")
 
     implementation "io.koraframework:scheduling-jdk"
@@ -64,7 +66,8 @@ dependencies {
 scheduling {
 
   jdk {
-    shutdownWait = 30s           # executor termination grace period; default 30s
+    shutdownWait = 30s           # graceful drain budget for running jobs; default 30s
+    executionParallelism = 50    # cap on runs executing at once; default Integer.MAX_VALUE (unlimited)
   }
 
   telemetry {
@@ -94,6 +97,7 @@ scheduling {
 scheduling:
   jdk:
     shutdownWait: "30s"
+    executionParallelism: 50
   telemetry:
     logging:
       enabled: false
@@ -112,7 +116,8 @@ scheduling:
 
 | Key | Type | Default | Notes |
 |---|---|---|---|
-| `scheduling.jdk.shutdownWait` | duration | `30s` | How long the executor waits for termination before `shutdownNow()`. It does **not** bound a running job — see [graceful-shutdown-reference.md](graceful-shutdown-reference.md) |
+| `scheduling.jdk.shutdownWait` | duration | `30s` | How long the executor lets running jobs finish at shutdown; after that it calls `shutdownNow()`, which interrupts them — see [graceful-shutdown-reference.md](graceful-shutdown-reference.md) |
+| `scheduling.jdk.executionParallelism` | int | `Integer.MAX_VALUE` (unlimited) | Cap on job runs executing at once across all jobs; values below 1 act as 1; excess runs queue FIFO. Called `maxConcurrentExecutions` in post-RC1 snapshots |
 | `scheduling.telemetry.logging.enabled` | boolean | `false` | Start/end job logs |
 | `scheduling.telemetry.metrics.enabled` | boolean | `false` | `scheduling.job.duration` timer; also needs a `MeterRegistry` component |
 | `scheduling.telemetry.metrics.slo` | duration list | 14 buckets, 1 ms → 90 s | Timer service-level objectives |
@@ -120,9 +125,9 @@ scheduling:
 | `scheduling.telemetry.tracing.enabled` | boolean | `true` | No-op unless a `Tracer` component exists |
 | `scheduling.telemetry.tracing.attributes` | map | `{}` | Extra static span attributes |
 
-**There is no thread-pool key.** The `ScheduledThreadPoolExecutor` core size is the number of jobs
-declared with `config = "…"`; with none, the pool runs on a single thread. See the *Thread model*
-section of the [skill](../SKILL.md).
+**There is no thread-pool key.** Every run gets a fresh virtual thread and one platform timer thread
+drives the schedule; the job count does not size anything. See the *Thread model* section of the
+[skill](../SKILL.md#thread-model).
 
 ---
 
@@ -133,17 +138,17 @@ of the generated config interface; the config file wins. An attribute you leave 
 becomes a **required** key.
 
 ```java
-@ScheduleAtFixedRate(config = "scheduling.jobs.heartbeat")                       // period is required in config
+@ScheduleJdkAtFixedRate(config = "scheduling.jobs.heartbeat")                    // period is required in config
 void heartbeat() { }
 
-@ScheduleWithFixedDelay(delay = 60, unit = ChronoUnit.SECONDS,
-                        config = "scheduling.jobs.cleanup")                      // 60s unless config overrides
+@ScheduleJdkWithFixedDelay(delay = 60, unit = ChronoUnit.SECONDS,
+                           config = "scheduling.jobs.cleanup")                   // 60s unless config overrides
 void cleanup() { }
 
-@ScheduleOnce(config = "scheduling.jobs.warmup")                                 // delay is required in config
+@ScheduleJdkOnce(config = "scheduling.jobs.warmup")                              // delay is required in config
 void warmup() { }
 
-@ScheduleWithCron(config = "scheduling.jobs.compaction")                         // cron is required in config
+@ScheduleJdkWithCron(config = "scheduling.jobs.compaction")                      // cron is required in config
 void compaction() { }
 ```
 
@@ -193,13 +198,13 @@ scheduling:
 
 | Annotation | Keys | Required when the annotation omits the value |
 |---|---|---|
-| `@ScheduleAtFixedRate` | `initialDelay`, `period` | `period` |
-| `@ScheduleWithFixedDelay` | `initialDelay`, `delay` | `delay` |
-| `@ScheduleOnce` | `delay` | `delay` |
-| `@ScheduleWithCron` | `cron` | `cron` |
+| `@ScheduleJdkAtFixedRate` | `initialDelay`, `period`, `enabled` | `period` |
+| `@ScheduleJdkWithFixedDelay` | `initialDelay`, `delay`, `enabled` | `delay` |
+| `@ScheduleJdkOnce` | `delay`, `enabled` | `delay` |
+| `@ScheduleJdkWithCron` | `cron`, `enabled` — or a bare string at the path | `cron` |
 
-`initialDelay` always has a default (the annotation value, `0` if unset), so it is never required.
-`unit` is an annotation-only concept — in config, write real durations.
+`initialDelay` always has a default (the annotation value, `0` if unset), so it is never required;
+`enabled` defaults to `true`. `unit` is an annotation-only concept — in config, write real durations.
 
 Duration values accept a HOCON-style string (`30s`, `5m`, `250ms`), an ISO-8601 string (`PT30S`), or a
 bare number — **a bare number is milliseconds**, so `period = 30` is 30 ms, not 30 seconds.
@@ -210,7 +215,8 @@ A cron path may also be a bare string instead of an object:
 scheduling.jobs.compaction = "0 0 3 * * ?"
 ```
 
-Both forms are handled; use the object form when you also want per-job telemetry.
+Both forms are handled; use the object form when you also want `enabled` or per-job telemetry. When the
+annotation has a `value` too, it applies only if the path is absent altogether.
 
 ---
 
@@ -247,15 +253,51 @@ scheduling {
 | `tracing.enabled` | boolean | `scheduling.telemetry.tracing.enabled` |
 | `tracing.attributes` | map | `scheduling.telemetry.tracing.attributes` |
 
-Jobs **without** a `config` path cannot be tuned individually — they only see the global block. That,
-plus the pool-sizing behaviour, is a good reason to give production jobs a `config` path even when the
+Jobs **without** a `config` path cannot be tuned individually — they only see the global block, and
+they cannot be switched off. That is a good reason to give production jobs a `config` path even when the
 timings are static.
 
-Jobs with a `config` path also get a meaningful `system.config` metric tag / span attribute carrying
-that path, which lets dashboards address a job without hard-coding class names. Without a config path
-the tag is either absent or a copy of the canonical class#method name, depending on language and
-annotation — see *The `system.config` tag* in
+Jobs with a `config` path also get a `system.config` metric tag / span attribute carrying that path,
+which lets dashboards address a job without hard-coding class names. Without a config path the tag is
+absent — see *The `system.config` tag* in
 [jdk-scheduling-reference.md](jdk-scheduling-reference.md#the-systemconfig-tag).
+
+---
+
+## Switching a job off
+
+Every job declared with `config` reads `enabled` (default `true`) from `SchedulingJobConfig`. A
+disabled job is never scheduled and logs at INFO on startup:
+
+```
+JDK Job 'com.example.Jobs#heartbeat' is disabled by configuration and won't be scheduled
+```
+
+```hocon
+scheduling.jobs {
+  heartbeat.enabled = false
+  heartbeat.enabled = ${?HEARTBEAT_ENABLED}           # override from the environment
+  compaction { cron = "0 0 3 * * ?", enabled = false } # a cron job needs the object form
+}
+```
+
+A job without `config` has no such key — it is always enabled.
+
+---
+
+## Cron time zone
+
+Not a config key: the zone is a graph component. Declare an optional `java.time.ZoneId` tagged
+`@Tag(io.koraframework.scheduling.common.SchedulingModule.class)` and every cron job of every scheduler
+(JDK, Quartz, DB) is evaluated in it; without it, the JVM default zone applies. To drive it from config,
+read your own key in the factory:
+
+```java
+@Tag(SchedulingModule.class)
+default ZoneId schedulingZone(Config config) {
+    return ZoneId.of(config.get("app.timezone").asString());
+}
+```
 
 ---
 
@@ -266,11 +308,15 @@ at all — the setting simply stops applying.
 
 | Stale 1.x key | Status in 2.0 |
 |---|---|
-| `scheduling.threads` | **Removed.** No replacement. Pool size is derived from the number of `config`-driven jobs |
+| `scheduling.threads` | **Removed.** Runs are virtual threads; the optional cap is `scheduling.jdk.executionParallelism` |
 | `scheduling.shutdownWait` | **Moved** to `scheduling.jdk.shutdownWait` |
 
-If you are porting a 1.x `application.conf`, grep for both and fix them explicitly — nothing else will
-tell you.
+| Stale 2.0 snapshot key | Status in `2.0.0.RC2` |
+|---|---|
+| `scheduling.jdk.maxConcurrentExecutions` | **Renamed** to `scheduling.jdk.executionParallelism` by Kora PR #952. The old key is ignored, so the cap silently disappears and runs are unlimited |
+
+If you are porting a 1.x or snapshot `application.conf`, grep for all three and fix them explicitly —
+nothing else will tell you.
 
 ---
 

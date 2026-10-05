@@ -9,6 +9,19 @@
 # interface, because every telemetry factory computes
 #     metricEnabled = meterRegistry != null && config.metrics().enabled()
 
+# Global section -> io.koraframework.micrometer.module.MetricsConfig.
+metrics {
+  # Default TRUE. A kill switch, not an opt-in: false replaces the registry with
+  # NoopMeterRegistry and /metrics answers 200 with an EMPTY body.
+  # enabled = false
+
+  # Common tags on EVERY meter (JVM meters and kora_up included). Merged with every
+  # MetricsTagsProvider component; on a key conflict this map wins.
+  tags {
+    "service" = "my-service"
+  }
+}
+
 httpServer {
   # Public API -- business traffic. 1.x name: publicApiHttpPort
   port = 8080
@@ -24,8 +37,8 @@ httpServer {
       slo = [ 1, 10, 50, 100, 200, 500, 1000, 2000, 5000, 10000, 20000, 30000, 60000, 90000 ]
 
       # Extra static tags stamped on this component's meters only. For tags on every
-      # meter in the process use a PrometheusMeterRegistryInitializer instead
-      # (see CustomMetricsConfig.java.template).
+      # meter in the process use metrics.tags above or a MetricsTagsProvider
+      # (see AppMetricsTagsProvider.java.template).
       tags {
         "deployment.environment" = "production"
       }
@@ -86,7 +99,7 @@ jdbc {
 scheduling.telemetry.metrics.enabled = true
 resilient.telemetry.metrics.enabled = true
 
-# There is NO global "metrics { ... }" section in Kora 2.0, and no opentelemetrySpec
+# The global metrics section accepts only enabled and tags -- there is no opentelemetrySpec
 # key. 2.0 emits one fixed naming scheme; setting the 1.x key does nothing.
 
 logging.levels {

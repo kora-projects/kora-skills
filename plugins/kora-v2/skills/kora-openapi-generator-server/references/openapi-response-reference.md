@@ -65,6 +65,7 @@ the contract.
 | Per-operation type | `<OperationId capitalised>ApiResponse` — e.g. `GetPetByIdApiResponse` |
 | Per-status record (multi-status) | `<OperationId capitalised><Code>ApiResponse` — e.g. `GetPetById404ApiResponse` |
 | `default` response record | `<OperationId capitalised>DefaultApiResponse` |
+| range response record | `<OperationId capitalised>4XXApiResponse`, `…5XXApiResponse` |
 
 Nesting is `PetApiResponses.GetPetByIdApiResponse.GetPetById404ApiResponse`. Kotlin uses
 `class` for a status with no data and `data class` otherwise.
@@ -73,7 +74,7 @@ Nesting is `PetApiResponses.GetPetByIdApiResponse.GetPetById404ApiResponse`. Kot
 
 Components are appended in this order:
 
-1. `int statusCode` — only for the `default` response;
+1. `int statusCode` — only for the `default` response and for range responses (`4XX`, `5XX`);
 2. `content` — only when the response declares a body, typed as the model, `List<Model>`,
    `byte[]` for `format: binary`, or the `rawBodyMode` type for a bare object;
 3. one `String` component per declared response header, named from the header in camel case.
@@ -243,17 +244,35 @@ throw HttpServerResponseException.of(409, "pet already exists");
 Use it for conditions the contract does not model; prefer a declared status record when it does.
 Validation failures are turned into a response by `ValidationHttpServerInterceptor` — see
 [Validation Reference](openapi-validation-reference.md). Authentication failures produce
-`401` inside the generated `ApiSecurity` interceptor — see
+`401` (and a principal without a required OAuth2 scope `403`) inside the generated `ApiSecurity`
+interceptor — see
 [Authorization Reference](authorization-reference.md).
 
 ## 9. Status-code ranges (`4XX`, `5XX`)
 
-OpenAPI lets a response cover a whole class of statuses (`2XX`, `4XX`, `5XX`). **`2.0.0.RC1`
-does not support that** — range support for Java and Kotlin, clients and servers, landed after
-RC1 on `master` (commit "Added(openapi): support status-code range responses (4XX, 5XX)…").
+OpenAPI lets a response cover a whole class of statuses (`1XX` … `5XX`). A range is not a single
+code, so its record takes the real status as its first component, exactly like `default`:
 
-On RC1, declare explicit status codes, or a single `default` response, and do not write `4XX` /
-`5XX` keys into the contract used for generation.
+```yaml
+responses:
+  '200': { description: OK, content: { application/json: { schema: { $ref: '#/components/schemas/Pet' } } } }
+  '4XX': { description: Client error, content: { application/json: { schema: { $ref: '#/components/schemas/Error' } } } }
+  '5XX': { description: Server error, content: { application/json: { schema: { $ref: '#/components/schemas/Error' } } } }
+```
+
+```java
+record ListPets4XXApiResponse(int statusCode, ModelError content) implements ListPetsApiResponse { }
+record ListPets5XXApiResponse(int statusCode, ModelError content) implements ListPetsApiResponse { }
+```
+
+```java
+return new PetsApiResponses.ListPetsApiResponse.ListPets4XXApiResponse(
+        409, new ModelError(409, "pet already exists"));
+```
+
+The generated mapper writes `HttpResponseEntity.of(rs.statusCode(), …)`, so the status you pass is
+the status sent. Nothing checks that it lies inside the range — pass a 4xx code to the `4XX`
+record. Exact codes declared next to a range keep their own record.
 
 ## 10. Common pitfalls
 
@@ -264,6 +283,7 @@ On RC1, declare explicit status codes, or a single `default` response, and do no
 | `the switch statement does not cover all possible input values` | A status was added to the contract; handle the new record. |
 | Header missing from the wire response | The header is not declared under that response in the contract, so the mapper never writes it. |
 | `default` response returns `0` | You passed `0` as `statusCode`; the record's first component is the real status. |
+| `4XX` record sent with a 5xx status | The range record sends whatever `statusCode` you pass; nothing validates it against the range. |
 | Wrong `Content-Type` on a `byte[]` body | Declare the media type on that response; binary responses carry their content type from the contract. |
 | Returned a raw DTO | Return the generated record; there is no `ResponseEntity` in Kora. |
 

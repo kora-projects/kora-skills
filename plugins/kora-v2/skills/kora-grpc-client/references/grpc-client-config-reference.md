@@ -54,6 +54,7 @@ Verified against `io.koraframework.grpc.client.GrpcClientConfig` and
 | `loadBalancingPolicy` | `String` | no | unset (gRPC default, `pick_first`) |
 | `defaultServiceConfig` | object | no | unset |
 | `telemetry.logging.enabled` | `boolean` | no | `false` |
+| `telemetry.logging.maskHeaders` | `Set<String>` | no | `["authorization", "cookie", "set-cookie"]` |
 | `telemetry.metrics.enabled` | `boolean` | no | `false` |
 | `telemetry.metrics.slo` | `Duration[]` | no | `1, 10, 50, 100, 200, 500, 1000, 2000, 5000, 10000, 20000, 30000, 60000, 90000` ms |
 | `telemetry.metrics.tags` | `Map<String,String>` | no | `{}` |
@@ -204,7 +205,8 @@ be applied to the wrapper component instead.)
 
 ## 6. Telemetry
 
-`GrpcClientTelemetryConfig extends TelemetryConfig`, adding no keys of its own.
+`GrpcClientTelemetryConfig extends TelemetryConfig`, adding one key of its own:
+`logging.maskHeaders`.
 
 **Defaults are off for logging and metrics.** If a task asks to "show gRPC client metrics" or "log
 gRPC calls", the config must turn them on explicitly:
@@ -222,9 +224,12 @@ Beyond the flags, each signal also needs its provider component in the graph —
 `meterRegistry != null && metrics().enabled()`. With neither and logging off it returns a no-op
 telemetry, so there is no cost when everything is disabled.
 
-**Metric.** One Micrometer `Timer` named `rpc.client.duration`, tagged `rpc.system=grpc`,
-`rpc.service`, `rpc.method`, `rpc.grpc.status_code`, `server.address`, `server.port`, `error.type`,
-plus your `telemetry.metrics.tags`. `slo` becomes the timer's service-level objectives.
+**Metric.** One Micrometer `Timer` named `rpc.client.call.duration`, tagged `rpc.system.name=grpc`,
+`rpc.service`, `rpc.method`, `rpc.response.status_code` (the `Status.Code` **name**, e.g. `OK`,
+`UNAVAILABLE`), `server.address`, `server.port`, `error.type`, plus your `telemetry.metrics.tags`.
+2.0.0.RC1 called it `rpc.client.duration` with `rpc.system` and a numeric `rpc.grpc.status_code`
+(renamed in RC2, #972). The span (named after the full method name) carries the same `rpc.*` /
+`server.*` attributes; `server.port` falls back to `80` when the URL has no port. `slo` becomes the timer's service-level objectives.
 
 **Loggers.** Two, named after the **full** proto service name:
 
@@ -246,6 +251,38 @@ logging.levels {
 
 Turning `telemetry.logging.enabled` on but leaving the logger at `WARN` produces nothing — both
 switches must agree.
+
+**Masking.** The `DEBUG` metadata dump masks the values of every key in
+`telemetry.logging.maskHeaders` (default `authorization`, `cookie`, `set-cookie`; one `key: value`
+line per value, `-bin` values Base64-encoded unless masked). The client logs no message bodies.
+
+- A configured list **replaces** the default — when adding `x-api-key`, restate the three defaults.
+  Keys are lower-cased before matching.
+- There is no `mask` key. The replacement (default `***`) is a
+  `@Tag(GrpcClientTelemetry.class) MaskingStrategy` (`io.koraframework.grpc.client.telemetry.GrpcClientTelemetry`,
+  `io.koraframework.logging.common.masking.MaskingStrategy`), shared by every gRPC client; a tagged
+  component of your own replaces the module's `@DefaultComponent`:
+
+```java
+@Tag(GrpcClientTelemetry.class)
+default MaskingStrategy grpcClientMaskingStrategy() {
+    return new MaskingKeepLast("***", 4);
+}
+```
+
+```kotlin
+@Tag(GrpcClientTelemetry::class)
+fun grpcClientMaskingStrategy(): MaskingStrategy = MaskingKeepLast("***", 4)
+```
+
+```hocon
+grpcClient.UserService.telemetry.logging {
+  enabled = true
+  maskHeaders = ["authorization", "cookie", "set-cookie", "x-api-key"]
+}
+```
+
+Shared masking model: [kora-aop-logging → masking](../../kora-aop-logging/references/logging-masking.md).
 
 ---
 
@@ -324,23 +361,23 @@ configurations {
 }
 
 dependencies {
-    koraBom platform("io.koraframework:kora-bom:$koraVersion")   // 2.0.0.RC1
+    koraBom platform("io.koraframework:kora-bom:$koraVersion")   // 2.0.0.RC2
     annotationProcessor "io.koraframework:annotation-processors"
 
     implementation "io.koraframework:grpc-client"
     implementation "io.koraframework:config-hocon"
     implementation "io.koraframework:logging-logback"
 
-    implementation "io.grpc:grpc-protobuf:1.83.1"   // brings protobuf-java 3.25.9 transitively
+    implementation "io.grpc:grpc-protobuf:1.84.0"   // brings protobuf-java 3.25.9 transitively
     compileOnly "javax.annotation:javax.annotation-api:1.3.2"
 
     testImplementation "io.koraframework:test-junit5"
-    testImplementation "io.grpc:grpc-inprocess:1.83.1"
+    testImplementation "io.grpc:grpc-inprocess:1.84.0"
 }
 
 protobuf {
     protoc { artifact = "com.google.protobuf:protoc:3.25.3" }
-    plugins { grpc { artifact = "io.grpc:protoc-gen-grpc-java:1.83.1" } }
+    plugins { grpc { artifact = "io.grpc:protoc-gen-grpc-java:1.84.0" } }
     generateProtoTasks { all()*.plugins { grpc {} } }
 }
 
@@ -360,8 +397,8 @@ sourceSets {
 import com.google.protobuf.gradle.id
 
 plugins {
-    id("org.jetbrains.kotlin.jvm") version "2.4.10"
-    id("com.google.devtools.ksp") version "2.3.11"
+    id("org.jetbrains.kotlin.jvm") version "2.4.20"
+    id("com.google.devtools.ksp") version "2.3.12"
     id("application")
     id("com.google.protobuf") version "0.10.0"
 }
@@ -377,16 +414,16 @@ dependencies {
     implementation("io.koraframework:config-hocon")
     implementation("io.koraframework:logging-logback")
 
-    implementation("io.grpc:grpc-protobuf:1.83.1")   // brings protobuf-java 3.25.9 transitively
+    implementation("io.grpc:grpc-protobuf:1.84.0")   // brings protobuf-java 3.25.9 transitively
     compileOnly("javax.annotation:javax.annotation-api:1.3.2")
 
     testImplementation("io.koraframework:test-junit5")
-    testImplementation("io.grpc:grpc-inprocess:1.83.1")
+    testImplementation("io.grpc:grpc-inprocess:1.84.0")
 }
 
 protobuf {
     protoc { artifact = "com.google.protobuf:protoc:3.25.3" }
-    plugins { id("grpc") { artifact = "io.grpc:protoc-gen-grpc-java:1.83.1" } }
+    plugins { id("grpc") { artifact = "io.grpc:protoc-gen-grpc-java:1.84.0" } }
     generateProtoTasks { all().forEach { it.plugins { id("grpc") } } }
 }
 
@@ -423,10 +460,10 @@ an older version than the rest. Pin one set across main and test:
 
 | Coordinate | Version |
 |---|---|
-| `io.grpc:grpc-protobuf`, `io.grpc:protoc-gen-grpc-java`, `io.grpc:grpc-inprocess`, `io.grpc:grpc-netty`, `io.grpc:grpc-services` | `1.83.1` |
+| `io.grpc:grpc-protobuf`, `io.grpc:protoc-gen-grpc-java`, `io.grpc:grpc-inprocess`, `io.grpc:grpc-netty`, `io.grpc:grpc-services` | `1.84.0` |
 | `io.grpc:grpc-kotlin-stub`, `io.grpc:protoc-gen-grpc-kotlin` | `1.5.0` |
 | `com.google.protobuf:protoc` | `3.25.3` |
-| `com.google.protobuf:protobuf-java` | leave transitive — `grpc-protobuf:1.83.1` declares `3.25.9` |
+| `com.google.protobuf:protobuf-java` | leave transitive — `grpc-protobuf:1.84.0` declares `3.25.9` |
 | Gradle plugin `com.google.protobuf` | `0.10.0` |
 
 ### protobuf: leave it transitive
@@ -434,13 +471,13 @@ an older version than the rest. Pin one set across main and test:
 The two halves of the alignment are handled differently, and this is the part that most often gets
 copied wrong.
 
-`io.grpc:grpc-protobuf:1.83.1` declares `com.google.protobuf:protobuf-java:3.25.9` (compile scope,
+`io.grpc:grpc-protobuf:1.84.0` declares `com.google.protobuf:protobuf-java:3.25.9` (compile scope,
 verified in the published POM). Pinning `protoc` to `3.25.3` therefore produces generated code that
 the transitively-resolved runtime already satisfies — **no protobuf override is needed, and adding
 one only risks clamping the runtime below whatever a future gRPC bump brings.** All eight migrated
 Kora gRPC projects — both examples and all four guide apps, client and server — pin `protoc:3.25.3`.
 
-**Upgrading protoc is a paired change.** Kora's own version catalog uses protobuf `4.35.1`, and an
+**Upgrading protoc is a paired change.** Kora's own version catalog uses protobuf `4.36.2`, and an
 application may use it too — but protoc 4.x generated code references `com.google.protobuf.Generated`,
 a class that does not exist in `protobuf-java` `3.25.9`. Bumping `protoc` alone fails to compile:
 
@@ -453,8 +490,8 @@ error: cannot find symbol
 The fix is to move the runtime with it, so the explicit pin outranks the transitive `3.25.9`:
 
 ```groovy
-protobuf { protoc { artifact = "com.google.protobuf:protoc:4.35.1" } }
-dependencies { implementation "com.google.protobuf:protobuf-java:4.35.1" }
+protobuf { protoc { artifact = "com.google.protobuf:protoc:4.36.2" } }
+dependencies { implementation "com.google.protobuf:protobuf-java:4.36.2" }
 ```
 
 Both recipes are correct. `3.25.3` is the default here because it is the one that stays correct when
@@ -471,7 +508,7 @@ configurations.configureEach {
         // grpc-kotlin has its own version line (1.5.0); "contains" also spares protoc-gen-grpc-kotlin,
         // which "startsWith" would not.
         if (it.requested.group == "io.grpc" && !it.requested.name.contains("kotlin")) {
-            it.useVersion "1.83.1"
+            it.useVersion "1.84.0"
         }
     }
 }
@@ -488,7 +525,7 @@ configurations.configureEach {
 | TLS handshake failure against a plaintext server | `url` uses `grpc://` — use `http://` |
 | `IllegalArgumentException: Unsupported gRPC client URL scheme` | non-`http`/`https` scheme **and** no explicit port |
 | `DEADLINE_EXCEEDED` on every call | `timeout` too small; it becomes the call's default deadline |
-| No `rpc.client.duration` metric | `telemetry.metrics.enabled` defaults to `false`; a `MeterRegistry` must also be in the graph |
+| No `rpc.client.call.duration` metric | `telemetry.metrics.enabled` defaults to `false`; a `MeterRegistry` must also be in the graph |
 | Nothing logged although `telemetry.logging.enabled = true` | the `<protoService>.request` / `.response` loggers are below `INFO` |
 | `round_robin` behaves like `pick_first` | the target resolves to a single address |
 | `AbstractMethodError … buildClientTransportServers` | gRPC version mismatch — see [version alignment](#10-version-alignment) |

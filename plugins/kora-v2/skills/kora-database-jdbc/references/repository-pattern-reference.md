@@ -348,8 +348,12 @@ public record TaskDAO(
         WHERE t.user_assignee_id = ANY(:assigneeIds)
         ORDER BY t.id
         """)
-List<TaskDAO.SelectAssigned> findAssignedByAssigneeIds(List<Long> assigneeIds);
+List<TaskDAO.SelectAssigned> findAssignedByAssigneeIds(@Pg List<Long> assigneeIds);
 ```
+
+`= ANY(:assigneeIds)` binds the whole list as one PostgreSQL array; the `@Pg` tag selects the
+`List<Long>` mapper from `database-jdbc-postgres`
+([postgres-mappers-reference.md](postgres-mappers-reference.md)). `IN (:assigneeIds)` cannot take a list.
 
 ### Table aliases in macros
 

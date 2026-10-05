@@ -8,11 +8,11 @@ metadata:
 
 # Kora OpenAPI Management
 
-> **Kora sub-skill — obey the [kora-v2 meta rules](../../SKILL.md) on every task:** **R0** ground the workspace on Kora 2.0 refs before starting (framework source at tag `2.0.0.RC1` + `kora-examples` at `migration/2.0`; `kora-docs` is 1.x only) · **R1** read this sub-skill before writing code · **R2** Kora 2.0 APIs only — no Spring/Micronaut/Quarkus, no Kora 1.x APIs, no invented annotations or config keys · **R3** journal any incorrect Kora usage. Add comments/Javadoc only if asked.
+> **Kora sub-skill — obey the [kora-v2 meta rules](../../SKILL.md) on every task:** **R0** ground the workspace on Kora 2.0 refs before starting (framework source at tag `2.0.0.RC2` + `kora-examples` at `migration/2.0` + Kora 2.0 docs at koraframework.io/v2, which trail the source; 1.x `kora-docs` pages are never an authority) · **R1** read this sub-skill before writing code · **R2** Kora 2.0 APIs only — no Spring/Micronaut/Quarkus, no Kora 1.x APIs, no invented annotations or config keys · **R3** journal any incorrect Kora usage. Add comments/Javadoc only if asked.
 
 | | |
 |---|---|
-| **Artifact** | `io.koraframework:openapi-management` (BOM `io.koraframework:kora-bom`, `2.0.0.RC1`) |
+| **Artifact** | `io.koraframework:openapi-management` (BOM `io.koraframework:kora-bom`, `2.0.0.RC2`) |
 | **Graph module** | `io.koraframework.openapi.management.OpenApiManagementModule` |
 | **Also required** | `io.koraframework:http-server-undertow` → `UndertowPublicHttpServerModule`; a config module (`HoconConfigModule` / `YamlConfigModule`) |
 | **Config section** | `openapi.management` |
@@ -60,7 +60,7 @@ configurations {
 }
 
 dependencies {
-    koraBom platform("io.koraframework:kora-bom:$koraVersion")   // koraVersion=2.0.0.RC1
+    koraBom platform("io.koraframework:kora-bom:$koraVersion")   // koraVersion=2.0.0.RC2
     annotationProcessor "io.koraframework:annotation-processors" // mandatory for @KoraApp
 
     implementation "io.koraframework:openapi-management"
@@ -80,7 +80,7 @@ implementation("io.koraframework:http-server-undertow")
 ```
 
 Java **25** is the floor. Artifacts other than the BOM are never versioned individually, and
-`2.0.0.RC1` resolves from plain `mavenCentral()`.
+`2.0.0.RC2` resolves from plain `mavenCentral()`.
 
 ### 2. Application graph
 

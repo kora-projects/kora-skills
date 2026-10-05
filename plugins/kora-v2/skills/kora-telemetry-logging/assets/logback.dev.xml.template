@@ -4,7 +4,9 @@
 
   Trade-off: a <pattern> encoder does not understand StructuredArgument, so structured values,
   Kora MDC entries and traceId/spanId will NOT appear. %X{} reads the SLF4J MDC only. Switch back
-  to ConsoleTextRecordEncoder (see logback.xml.template) when you need them.
+  to io.koraframework.logging.logback.text.ConsoleTextRecordEncoder (see logback.xml.template) when
+  you need them. Without any logback.xml, -Dkora.logging.encoder=pretty gives coloured Kora text
+  output that keeps them.
 -->
 <configuration debug="false">
     <statusListener class="ch.qos.logback.core.status.NopStatusListener"/>

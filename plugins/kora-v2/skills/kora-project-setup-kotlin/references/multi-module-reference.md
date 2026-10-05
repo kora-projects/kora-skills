@@ -57,8 +57,8 @@ Apply the Kotlin and KSP plugins to every subproject and give each the Kora BOM.
 
 ```kotlin
 plugins {
-    kotlin("jvm") version "2.4.10" apply false
-    id("com.google.devtools.ksp") version "2.3.11" apply false
+    kotlin("jvm") version "2.4.20" apply false
+    id("com.google.devtools.ksp") version "2.3.12" apply false
 }
 
 subprojects {

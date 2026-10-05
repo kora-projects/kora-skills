@@ -1,6 +1,6 @@
 ---
 name: kora-openapi-generator-client
-description: "Generate a Kora 2.x HTTP client from an OpenAPI 3.x contract with the `kora` generator (io.koraframework:openapi-generator, modes java-client / kotlin-client). Emits a @HttpClient-annotated *Api interface with synchronous methods, sealed *ApiResponses per status code, *ApiClientRequestMappers / *ApiClientResponseMappers, model records or data classes and an ApiSecurity @Module for securitySchemes. Use for contract-first outbound clients, clientConfig / clientConfigPrefix wiring, the lower-camel httpClient.<client>.<api> config key, enum fromValue parsing, HttpClientTokenProvider auth tags, or a client that starts green but hangs on every request."
+description: "Generate a Kora 2.x HTTP client from an OpenAPI 3.x contract with the `kora` generator (io.koraframework:openapi-generator, modes java-client / kotlin-client). Emits a @HttpClient-annotated *Api interface with synchronous methods, sealed *ApiResponses per status code, *ApiClientRequestMappers / *ApiClientResponseMappers, model records or data classes and an ApiSecurity @Module for securitySchemes. Use for contract-first outbound clients, clientConfig / clientConfigPrefix wiring, the lower-camel httpClient.<client>.<api> config key, clientResponseMode SUCCESSFUL with typed HttpClientResponseException errors, 4XX/5XX range responses, enum fromValue parsing, HttpClientTokenProvider auth tags, or a client that starts green but hangs on every request."
 license: Apache-2.0
 metadata:
   kora-version: "2.x"
@@ -8,9 +8,9 @@ metadata:
 
 # Kora OpenAPI Generator — HTTP Client
 
-> **Kora sub-skill — obey the [kora-v2 meta rules](../../SKILL.md) on every task:** **R0** ground the workspace on Kora 2.0 refs before starting (framework source at tag `2.0.0.RC1` + `kora-examples` at `migration/2.0`; `kora-docs` is 1.x only) · **R1** read this sub-skill before writing code · **R2** Kora 2.0 APIs only — no Spring/Micronaut/Quarkus, no Kora 1.x APIs, no invented annotations or config keys · **R3** journal any incorrect Kora usage. Add comments/Javadoc only if asked.
+> **Kora sub-skill — obey the [kora-v2 meta rules](../../SKILL.md) on every task:** **R0** ground the workspace on Kora 2.0 refs before starting (framework source at tag `2.0.0.RC2` + `kora-examples` at `migration/2.0` + Kora 2.0 docs at koraframework.io/v2, which trail the source; 1.x `kora-docs` pages are never an authority) · **R1** read this sub-skill before writing code · **R2** Kora 2.0 APIs only — no Spring/Micronaut/Quarkus, no Kora 1.x APIs, no invented annotations or config keys · **R3** journal any incorrect Kora usage. Add comments/Javadoc only if asked.
 
-**Version:** Kora 2.0 (`io.koraframework`, `2.0.0.RC1` on Maven Central) | **Java:** 25 | **Kotlin:** 2.4 + KSP | **Gradle:** 9+
+**Version:** Kora 2.0 (`io.koraframework`, `2.0.0.RC2`) | **Java:** 25 | **Kotlin:** 2.4.20 + KSP 2.3.12 | **Gradle:** 9.8.0
 
 Generate a typed, declarative outbound HTTP client from an OpenAPI 3.x contract. The
 `org.openapi.generator` Gradle plugin with `generatorName = "kora"` emits a `@HttpClient`
@@ -144,25 +144,26 @@ JVM setting), not in the toolchain block.
 
 ### 1. `gradle.properties`
 
-`2.0.0.RC1` is the Kora 2.0 release on Maven Central and resolves from plain `mavenCentral()`.
+`2.0.0.RC2` is the Kora 2.0 release and resolves from plain `mavenCentral()`.
 `2.0.0-SNAPSHOT` is the development line; it needs
 `https://central.sonatype.com/repository/maven-snapshots` and does not belong in a new project.
 
 ```properties
-koraVersion=2.0.0.RC1
+koraVersion=2.0.0.RC2
 ```
 
 ### 2. Build wiring
 
 Two independent versions are in play here — do not conflate them:
 
-| What | Where it is set | Value in the 2.0 examples |
+| What | Where it is set | Value |
 |---|---|---|
-| **OpenAPI Generator Gradle plugin** (`org.openapi.generator`) | `plugins { }` block | `7.23.0` (Java example) / `7.24.0` (Kotlin example) |
-| **Kora `kora` generator** (`io.koraframework:openapi-generator`) | `buildscript { dependencies { classpath … } }` | `$koraVersion` = `2.0.0.RC1` |
+| **OpenAPI Generator Gradle plugin** (`org.openapi.generator`) | `plugins { }` block | `7.25.0` |
+| **Kora `kora` generator** (`io.koraframework:openapi-generator`) | `buildscript { dependencies { classpath … } }` | `$koraVersion` = `2.0.0.RC2` |
 
-The Kora generator is compiled against `org.openapitools:openapi-generator` **7.24.0** (framework
-version catalog), so `7.24.0` is the aligned plugin choice.
+The Kora generator is compiled against `org.openapitools:openapi-generator` **7.25.0** (framework
+version catalog), so `7.25.0` is the aligned plugin choice. The migrated examples still pin
+`7.23.0` / `7.24.0`; bump them when you copy a build file.
 
 ```groovy title="build.gradle (Java)"
 import org.openapitools.generator.gradle.plugin.tasks.GenerateTask
@@ -177,7 +178,7 @@ buildscript {
 plugins {
     id "java"
     id "application"
-    id "org.openapi.generator" version "7.24.0"
+    id "org.openapi.generator" version "7.25.0"
 }
 
 java {
@@ -219,9 +220,9 @@ buildscript {
 
 plugins {
     id("application")
-    kotlin("jvm") version "2.4.10"
-    id("com.google.devtools.ksp") version "2.3.11"
-    id("org.openapi.generator") version "7.24.0"
+    kotlin("jvm") version "2.4.20"
+    id("com.google.devtools.ksp") version "2.3.12"
+    id("org.openapi.generator") version "7.25.0"
 }
 
 kotlin {
@@ -250,11 +251,7 @@ Transports and their `@KoraApp` modules:
 | `io.koraframework:http-client-jdk` | `JdkHttpClientModule` | `io.koraframework.http.client.jdk` |
 | `io.koraframework:http-client-apache` | `ApacheHttpClientModule` | `io.koraframework.http.client.apache` |
 
-The generator is transport-agnostic — the same generated `*Api` works with any of them. One
-caveat specific to `2.0.0.RC1`: the Apache and JDK transport integrations received correctness
-fixes *after* the RC1 tag, so on the released version `http-client-ok` is the safer default. (The
-migrated Java example does use `http-client-apache`; if you pick it, exercise it against the real
-service rather than assuming.)
+The generator is transport-agnostic — the same generated `*Api` works with any of them.
 
 ### 3. Generation task — one per spec, unique `outputDir`
 
@@ -388,15 +385,87 @@ interface methods. The 1.x `<operationId>Config` spelling is not read.
 
 ---
 
+## Response mode: `SEALED` (default) or `SUCCESSFUL`
+
+`configOptions.clientResponseMode` decides what a generated method returns when the operation
+declares error responses (any non-2xx code, or `default`):
+
+| `clientResponseMode` | Return type | Declared error responses |
+|---|---|---|
+| `SEALED` (default) | the sealed `<Op>ApiResponse` — you `switch` / `when` over every variant | returned as variants |
+| `SUCCESSFUL` | the success variant itself, e.g. `GetPetById200ApiResponse` | **thrown** as typed `HttpClientResponseException` subclasses |
+
+```groovy
+configOptions = [
+        mode              : "java-client",
+        clientConfigPrefix: "httpClient.pet",
+        clientResponseMode: "SUCCESSFUL",
+]
+```
+
+```java
+public Pet getPet(long petId) {
+    return petApi.getPetById(petId).content();          // 404 arrives as an exception
+}
+
+public Optional<Pet> findPet(long petId) {
+    try {
+        return Optional.of(petApi.getPetById(petId).content());
+    } catch (PetApi.PetApiModelErrorHttpClientResponseException e) {
+        if (e.getCode() == 404) {
+            return Optional.empty();
+        }
+        throw e;
+    }
+}
+```
+
+```kotlin
+fun findPet(petId: Long): Pet? = try {
+    petApi.getPetById(petId).content
+} catch (e: PetApi.PetApiModelErrorHttpClientResponseException) {
+    if (e.code == 404) null else throw e
+}
+```
+
+How `SUCCESSFUL` shapes the output (the mapper exists for operations that declare an error response
+or whose return type is narrowed — e.g. `200` + `206` sharing one body; an operation with neither keeps
+its per-code `@ResponseCodeMapper`s):
+
+- **Return type.** One 2xx response → that variant (`<Op>200ApiResponse`). Several 2xx responses
+  with the same body type → the shared sealed `<Op><Type>ApiResponse` with `content()` and
+  `statusCode()`. Several 2xx responses with different bodies (or one without a body) → the full
+  sealed `<Op>ApiResponse` type, but error responses are still thrown rather than returned.
+- **Error types.** One exception class per distinct error **body type**, shared by every operation
+  of the API and nested in the `*Api` interface: `<Api><Type>HttpClientResponseException` with
+  `getContent()` (Kotlin: `content`). An error response without a body throws
+  `<Api>NoContentHttpClientResponseException`. A schema named `Error` is generated as `ModelError`,
+  so its exception is `PetApiModelErrorHttpClientResponseException`. Status code, headers and the
+  raw body come from the base class: `getCode()`, `getHeaders()`, `getBytes()`.
+- **Mapper.** The method carries `@Mapping(<Api>ClientResponseMappers.<Op>SuccessfulResponseMapper.class)`
+  instead of one `@ResponseCodeMapper` per code. It is a `@Component` (and `@DefaultComponent`), so
+  it resolves from the graph like the per-code mappers.
+- **Fallbacks.** An error body that fails to parse becomes a plain `HttpClientResponseException`
+  carrying the raw body, with the parse failure attached as a suppressed exception. A status the
+  contract does not declare, on an operation without `default`, also throws a plain
+  `HttpClientResponseException`. Catch the typed subclass first, then the base class.
+- **Status-code ranges.** A `2XX` range is a success (returned, e.g. `<Op>2XXApiResponse`); `4XX` /
+  `5XX` are errors thrown as the typed exception. An exact code wins over the range containing it.
+
+Full service examples: [assets/PetService.successful.client.java.template](assets/PetService.successful.client.java.template)
+· [assets/PetService.successful.client.kt.template](assets/PetService.successful.client.kt.template).
+
+---
+
 ## What gets generated
 
 For `apiPackage = com.example.openapi.petV2.api`, tag `pet`:
 
 | File | Contents |
 |---|---|
-| `PetApi` | `@HttpClient("…")` interface, one synchronous method per operation, `@HttpRoute` / `@Path` / `@Query` / `@Header` / `@Json`, `@ResponseCodeMapper` per status code |
-| `PetApiResponses` | nested `sealed interface <Op>ApiResponse` with a record/data class per status code; the OpenAPI `default` response becomes `<Op>DefaultApiResponse(int statusCode, T content)` |
-| `PetApiClientResponseMappers` | one `HttpClientResponseMapper` per response variant |
+| `PetApi` | `@HttpClient("…")` interface, one synchronous method per operation, `@HttpRoute` / `@Path` / `@Query` / `@Header` / `@Json`, `@ResponseCodeMapper` per exact status code; in `SUCCESSFUL` mode a `@Mapping(…SuccessfulResponseMapper.class)` instead, plus the nested `PetApi<Type>HttpClientResponseException` classes |
+| `PetApiResponses` | nested `sealed interface <Op>ApiResponse` with a record/data class per status code; the OpenAPI `default` response becomes `<Op>DefaultApiResponse(int statusCode, T content)` and a range becomes `<Op>4XXApiResponse(int statusCode, T content)`; responses sharing a body type also implement a sealed `<Op><Type>ApiResponse` with `content()` and `statusCode()` |
+| `PetApiClientResponseMappers` | one `HttpClientResponseMapper` per response variant; `<Op>DefaultCodeApiResponseMapper` when the operation declares `4XX`/`5XX` ranges; `<Op>SuccessfulResponseMapper` in `SUCCESSFUL` mode |
 | `PetApiClientRequestMappers` | request body / form mappers where needed |
 | `PetApi<Op>OptArgs` | an optional-argument holder plus overloads, when an operation has optional parameters |
 | `ApiSecurity` | a `@Module` with a marker class per security scheme, a `SecurityConfig` record and `HttpClientTokenProvider` components — only when the spec declares `securitySchemes` |
@@ -437,13 +506,15 @@ annotation processor / KSP from the generated interface — they are not OpenAPI
 | Generation fails: *"Invalid OpenAPI generator `mode`"* | Only `java-client`, `java-server`, `kotlin-client`, `kotlin-server` exist |
 | `IllegalArgumentException: No enum constant …` at runtime, on valid data | `Enum.valueOf(raw)` instead of `MyEnum.fromValue(raw)` |
 | Per-operation timeout ignored | Section must be the generated method name (`getPetById`), not `getPetByIdConfig` |
-| `No component found for dependency: HttpClientTokenProvider` | The spec declares a `bearer` or `oauth2` scheme; the generator emits the tag but no provider. Supply `@Tag(ApiSecurity.BearerAuth.class) HttpClientTokenProvider` yourself |
+| `No component found for dependency: HttpClientTokenProvider` | The spec declares a `bearer`, `oauth2` or `openIdConnect` scheme; the generator emits the tag but no provider. Supply `@Tag(ApiSecurity.BearerAuth.class) HttpClientTokenProvider` yourself |
 | Request carries the wrong credential | The generated group interceptor takes the **first** provider returning a non-null token; a scheme you do not use must return `null` |
 | `Required dependency PetApi not found` | No transport module on `@KoraApp`, or the Kora annotation processor / KSP is missing |
 | Phantom `ru.tinkoff.kora` or old-package errors from `build/generated` | Stale generator output — `clean` + `--no-build-cache`, never edit generated files |
 | An HTTP **server** artifact appears in a client-only app | `ValidationModule` drags in `http-server-common`; use `ValidatorModule` from `validation-common` |
 | Unexpected `oneOf`/`anyOf` output | Plugin ≥ 7.0.0 enables `SIMPLIFY_ONEOF_ANYOF`; set `openapiNormalizer = [DISABLE_ALL: "true"]` |
-| `4XX` / `5XX` range responses not generated | Not supported at `2.0.0.RC1` — declare exact codes plus `default`. Range support landed after RC1 |
+| `SUCCESSFUL` client: a 4xx/5xx response surfaces as plain `HttpClientResponseException`, not the typed one | The error body did not parse (the cause is attached as a suppressed exception), or the status is not declared and the operation has no `default` |
+| Server receives `Authorization: Bearer Bearer …` | The generated interceptor already prefixes `Bearer ` (bearer, oauth2, openIdConnect) and `Basic ` (basic). A `HttpClientTokenProvider` returns the bare token |
+| `date-time` fields stay `OffsetDateTime` | Map it in the generate task: `typeMappings = ["DateTime": "java.time.Instant"]` (also `date-time` as key). Only `Instant`, `ZonedDateTime`, `LocalDateTime` are recognised; anything else falls back to `OffsetDateTime` |
 | `Dependency requires at least JVM runtime version 25` | The **Gradle JVM** is too old; a toolchain block does not fix a buildscript dependency |
 
 ---
@@ -452,8 +523,8 @@ annotation processor / KSP from the generated interface — they are not OpenAPI
 
 | File | Purpose |
 |---|---|
-| [references/openapi-codegen-reference.md](references/openapi-codegen-reference.md) | Every `configOptions` key, config-path derivation, `extensions`, `tags`, normalizer, discriminators, response shapes |
-| [references/authorization-reference.md](references/authorization-reference.md) | `securitySchemes` → `ApiSecurity`, `HttpClientTokenProvider` tags, credential config paths, `authAsMethodArgument` |
+| [references/openapi-codegen-reference.md](references/openapi-codegen-reference.md) | Every `configOptions` key, config-path derivation, response shapes, `clientResponseMode`, `4XX`/`5XX` ranges, type mapping (`typeMappings`), `extensions`, `tags`, normalizer, discriminators |
+| [references/authorization-reference.md](references/authorization-reference.md) | `securitySchemes` → `ApiSecurity`, `HttpClientTokenProvider` tags, the `Bearer `/`Basic ` prefix the interceptor adds, credential config paths, `authAsMethodArgument` |
 
 ## Assets
 
@@ -462,5 +533,6 @@ annotation processor / KSP from the generated interface — they are not OpenAPI
 | [assets/build.gradle.client.template](assets/build.gradle.client.template) | Ready-to-edit Java client `build.gradle` |
 | [assets/Application.client.java.template](assets/Application.client.java.template) · [assets/Application.client.kt.template](assets/Application.client.kt.template) | `@KoraApp` module wiring for a client-only app |
 | [assets/PetService.client.java.template](assets/PetService.client.java.template) · [assets/PetService.client.kt.template](assets/PetService.client.kt.template) | `*Api` injection and sealed-response handling |
+| [assets/PetService.successful.client.java.template](assets/PetService.successful.client.java.template) · [assets/PetService.successful.client.kt.template](assets/PetService.successful.client.kt.template) | `clientResponseMode = SUCCESSFUL`: success record returned, typed error exceptions caught |
 | [assets/openapi-spec.yaml.template](assets/openapi-spec.yaml.template) | Example OpenAPI 3.x contract (enums, discriminator, apiKey scheme) |
 | [scripts/validate_openapi.py](scripts/validate_openapi.py) | Pre-generation linter; also prints the derived client config keys |

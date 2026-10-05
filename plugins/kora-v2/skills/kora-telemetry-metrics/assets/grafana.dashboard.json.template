@@ -11,7 +11,7 @@
     "title": "Kora 2.0 Application Metrics",
     "tags": ["kora", "micrometer", "prometheus"],
     "timezone": "browser",
-    "description": "Import into Grafana against a Prometheus data source that scrapes the Kora SYSTEM port (httpServer.system.port, default 8085). BEFORE USING: (1) every panel needs httpServer.telemetry.metrics.enabled = true in application.conf, otherwise the queries return no data while /metrics still answers 200; (2) confirm the exact series names on your deployment with: curl -s http://HOST:8085/metrics | grep '^# TYPE' -- Micrometer derives the Prometheus name from the meter name plus a base-unit suffix, so http.server.request.duration is exported as http_server_request_duration_seconds_*; (3) in Kora 2.0 the HTTP SERVER duration timer carries NO http_response_status_code label, so error panels filter on error_type instead. The HTTP client timer does carry the status code.",
+    "description": "Import into Grafana against a Prometheus data source that scrapes the Kora SYSTEM port (httpServer.system.port, default 8085). BEFORE USING: (1) every panel needs httpServer.telemetry.metrics.enabled = true in application.conf, otherwise the queries return no data while /metrics still answers 200; (2) confirm the exact series names on your deployment with: curl -s http://HOST:8085/metrics | grep '^# TYPE' -- Micrometer derives the Prometheus name from the meter name plus a base-unit suffix, so http.server.request.duration is exported as http_server_request_duration_seconds_*; (3) the HTTP server duration timer carries http_response_status_code (the code actually sent) and error_type (the exception class, empty on success); the error panel plots both.",
     "panels": [
       {
         "id": 1,
@@ -27,14 +27,18 @@
       },
       {
         "id": 2,
-        "title": "Error rate (error.type is set)",
+        "title": "Error rate",
         "type": "timeseries",
-        "description": "Kora 2.0 puts no status code on the server duration timer. error_type is \"\" on success and the exception's canonical class name on failure.",
+        "description": "5xx share by http_response_status_code, and the share of requests that ended in an exception (error_type is \"\" on success and the exception's canonical class name on failure).",
         "gridPos": { "h": 8, "w": 12, "x": 12, "y": 0 },
         "targets": [
           {
+            "expr": "sum(rate(http_server_request_duration_seconds_count{http_response_status_code=~\"5..\"}[5m])) / sum(rate(http_server_request_duration_seconds_count[5m])) * 100",
+            "legendFormat": "5xx %"
+          },
+          {
             "expr": "sum(rate(http_server_request_duration_seconds_count{error_type!=\"\"}[5m])) / sum(rate(http_server_request_duration_seconds_count[5m])) * 100",
-            "legendFormat": "Error rate %"
+            "legendFormat": "Exceptions %"
           }
         ]
       },

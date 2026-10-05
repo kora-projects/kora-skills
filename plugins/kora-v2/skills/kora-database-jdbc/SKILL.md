@@ -1,6 +1,6 @@
 ---
 name: kora-database-jdbc
-description: "Kora 2.0 JDBC repositories — @Repository interfaces extending JdbcRepository, @Query with SQL macros (%{return#selects}, %{entity#inserts}, %{entity#where = @id}), @EntityJdbc from io.koraframework.database.jdbc.annotation, @Table/@Column/@Id/@Embedded/@Batch, UpdateCount, generated keys via @Id on the method, JdbcResultSetMapper/JdbcRowMapper/JdbcResultColumnMapper/JdbcParameterColumnMapper, and transactions through repository.executor().inTx(...) on JdbcExecutor. HikariCP pool configured under the jdbc config section. Use when adding a PostgreSQL/MySQL/Oracle repository to a Kora service, porting a 1.x repository, or debugging 'Config expected value, but got null at path ROOT.jdbc.username', suspend-repository rejections, or repository mapper graph errors."
+description: "Kora 2.0 JDBC repositories — @Repository interfaces extending JdbcRepository, @Query with SQL macros (%{return#selects}, %{entity#inserts}, %{entity#where = @id}), @EntityJdbc from io.koraframework.database.jdbc.annotation, @Table/@Column/@Id/@Embedded/@Batch, UpdateCount, generated keys via @Id on the method, JdbcResultSetMapper/JdbcRowMapper/JdbcResultColumnMapper/JdbcParameterColumnMapper, transactions through repository.executor().inTx(...) on JdbcExecutor, and PostgreSQL types via database-jdbc-postgres (@Pg arrays/List and interval, PgRange, @PgJson/@PgJsonb). HikariCP pool configured under the jdbc config section. Use when adding a PostgreSQL/MySQL/Oracle repository to a Kora service, porting a 1.x repository, or debugging 'Config expected value, but got null at path ROOT.jdbc.username', suspend-repository rejections, or repository mapper graph errors."
 license: Apache-2.0
 metadata:
   kora-version: "2.x"
@@ -8,7 +8,7 @@ metadata:
 
 # Kora Database JDBC
 
-> **Kora sub-skill — obey the [kora-v2 meta rules](../../SKILL.md) on every task:** **R0** ground the workspace on Kora 2.0 refs before starting (framework source at tag `2.0.0.RC1` + `kora-examples` at `migration/2.0`; `kora-docs` is 1.x only) · **R1** read this sub-skill before writing code · **R2** Kora 2.0 APIs only — no Spring/Micronaut/Quarkus, no Kora 1.x APIs, no invented annotations or config keys · **R3** journal any incorrect Kora usage. Add comments/Javadoc only if asked.
+> **Kora sub-skill — obey the [kora-v2 meta rules](../../SKILL.md) on every task:** **R0** ground the workspace on Kora 2.0 refs before starting (framework source at tag `2.0.0.RC2` + `kora-examples` at `migration/2.0` + Kora 2.0 docs at koraframework.io/v2, which trail the source; 1.x `kora-docs` pages are never an authority) · **R1** read this sub-skill before writing code · **R2** Kora 2.0 APIs only — no Spring/Micronaut/Quarkus, no Kora 1.x APIs, no invented annotations or config keys · **R3** journal any incorrect Kora usage. Add comments/Javadoc only if asked.
 
 | | |
 |---|---|
@@ -17,6 +17,7 @@ metadata:
 | **Graph module** | `io.koraframework.database.jdbc.JdbcDatabaseModule` |
 | **Config section** | **`jdbc`** (was `db` in Kora 1.x) |
 | **Pool** | HikariCP `7.1.0`, pulled in transitively by `database-jdbc` |
+| **PostgreSQL types** | `io.koraframework:database-jdbc-postgres` → `io.koraframework.database.jdbc.postgres.PostgresJdbcDatabaseModule` (arrays, `interval`, ranges, `json`/`jsonb`) |
 
 JDBC access to relational databases. A repository is a `@Repository` interface extending
 `JdbcRepository`; the annotation processor (Java) or KSP (Kotlin) generates
@@ -35,7 +36,7 @@ R2DBC and Vert.x SQL do not exist in 2.0 at all.
 
 ```groovy
 dependencies {
-    koraBom platform("io.koraframework:kora-bom:2.0.0.RC1")
+    koraBom platform("io.koraframework:kora-bom:2.0.0.RC2")
     annotationProcessor "io.koraframework:annotation-processors"   // mandatory: generates $<Name>_Impl
 
     implementation "io.koraframework:database-jdbc"
@@ -45,6 +46,10 @@ dependencies {
     implementation "org.postgresql:postgresql:42.7.7"              // the driver is NOT bundled
 }
 ```
+
+On PostgreSQL, `implementation "io.koraframework:database-jdbc-postgres"` replaces both the
+`database-jdbc` line and the driver line — it depends on `database-jdbc` and brings
+`org.postgresql:postgresql` with it. See [PostgreSQL types](#postgresql-types-database-jdbc-postgres).
 
 Kotlin uses `ksp("io.koraframework:symbol-processors")` instead of `annotationProcessor`.
 Artifacts inherit their version from `kora-bom` — never pin `io.koraframework:*` individually.
@@ -87,7 +92,8 @@ public record Entity(
   `io.koraframework.database.common.annotation`, unchanged position.
 - `@Nullable` — JSpecify `org.jspecify.annotations.Nullable`. It is a **type-use** annotation, so on
   a qualified nested type it goes before the simple name: `Entity.@Nullable FieldType`.
-- Without `@Column` a field maps to its `snake_lower_case` name.
+- Without `@Column` a field maps to its `snake_lower_case` name (`executorUuid` → `executor_uuid`,
+  `HTTPClient` → `http_client`) — the annotation processor and KSP produce the same names.
 
 Kotlin uses use-site targets on data-class properties:
 
@@ -220,6 +226,41 @@ Full key list, telemetry sub-keys and the YAML form:
 
 ---
 
+## PostgreSQL types (`database-jdbc-postgres`)
+
+Arrays, `interval`, range types and `json`/`jsonb` need no hand-written mappers on PostgreSQL. Put
+`PostgresJdbcDatabaseModule` on the `@KoraApp` **in place of** `JdbcDatabaseModule` (it extends
+it) and opt in per field or parameter with a tag:
+
+```java
+@EntityJdbc
+@Table("articles")
+public record Article(
+        @Id Long id,
+        @Pg List<String> tags,                  // varchar[]
+        @Pg @Nullable Duration ttl,             // interval
+        PgRange<LocalDate> validity,            // daterange — PgRange needs no tag
+        @PgJsonb Attributes attributes) {}      // jsonb; Attributes is a @Json record
+
+@Query("SELECT %{return#selects} FROM %{return#table} WHERE id = ANY(:ids)")
+List<Article> findByIds(@Pg List<Long> ids);
+```
+
+- `@Pg`, `@PgJson`, `@PgJsonb` live in `io.koraframework.database.jdbc.postgres.annotation`;
+  `PgRange` in `io.koraframework.database.jdbc.postgres`. The mappers are tagged, so an untagged
+  `List<Long>` field is still unsupported.
+- `@Pg` element types: `bool`, `int2`, `int4`, `int8`, `float4`, `float8`, `numeric`, `varchar`,
+  `uuid` — as `List<T>` (parameters also `Set<T>`/`Collection<T>`), boxed `T[]`, or primitive
+  arrays. `@Pg Duration` / `@Pg Period` map to `interval`.
+- `@PgJson` / `@PgJsonb` pick the sent parameter type (`jsonb` operators such as `@>` need
+  `@PgJsonb`); no `::jsonb` cast in SQL. `JsonNullable<T>` keeps SQL `NULL` and JSON `null` apart.
+- Kotlin writes the tags without a use-site target: `@Pg val tags: List<String>`.
+
+Full matrix, null handling, `= ANY(:ids)`, range canonicalisation and pitfalls:
+[postgres-mappers-reference.md](references/postgres-mappers-reference.md).
+
+---
+
 ## SQL macros
 
 Macros expand at compile time into SQL you could have written by hand. `#` separates the target
@@ -281,6 +322,7 @@ Kotlin writes the same set with `T?` and `Unit`. **`suspend` is rejected**, and 
 | `@Repository`, `@Query`, macros, batch, generated ids, joins, generic base repos, second database | [repository-pattern-reference.md](references/repository-pattern-reference.md) |
 | `@Table`/`@Column`/`@Id`/`@Embedded`, naming strategy, supported types, JSONB, nullability | [entity-mapping-reference.md](references/entity-mapping-reference.md) |
 | `executor().inTx(...)`, isolation levels, post-commit/rollback actions, locking, Kotlin SAM | [transactions-reference.md](references/transactions-reference.md) |
+| PostgreSQL module: `@Pg` arrays/collections and `interval`, `PgRange`, `@PgJson`/`@PgJsonb`, `JsonNullable`, `= ANY(:ids)` | [postgres-mappers-reference.md](references/postgres-mappers-reference.md) |
 | The four mapper contracts, enum/array/JSONB mappers, `@Mapping`, Kotlin nullability | [custom-mappers-reference.md](references/custom-mappers-reference.md) |
 | When a mapper is constructed vs injected, `@Component` rules, generic mapper modules, batch limits | [custom-mappers-advanced-reference.md](references/custom-mappers-advanced-reference.md) |
 | Full `jdbc` config key list, telemetry defaults, drivers, YAML | [database-jdbc-config-reference.md](references/database-jdbc-config-reference.md) |
@@ -299,7 +341,8 @@ Kotlin writes the same set with `T?` and `Unit`. **`suspend` is rejected**, and 
 | `jdbc-crud-composite-id-repository.{java,kt}.template` | full CRUD repository (composite id) |
 | `jdbc-crud-abstract-macros-repository.java.template`, `jdbc-crud-abstract-single-id-macros-repository.kt.template` | reusable generic CRUD base interface |
 | `jdbc-repository-with-enum-mapper.{java,kt}.template` | entity + enum column/parameter mappers |
-| `jdbc-repository-with-array-mapper.java.template` | PostgreSQL array column mapper |
+| `jdbc-postgres-repository.{java,kt}.template` | `database-jdbc-postgres`: `@Pg` list/interval, `PgRange`, `@PgJsonb`, `= ANY(:ids)` |
+| `jdbc-repository-with-array-mapper.java.template` | hand-written `List<T>` mappers discovered by type (types the PostgreSQL module does not cover) |
 | `jdbc-service-with-transactions.java.template` | `@Component` service using `executor().inTx()` |
 
 Generate a starter entity + repository:
@@ -327,8 +370,12 @@ Drop `--dry-run` to write the files.
 | `Multiple components match dependency` for a mapper | two graph components produce the same mapper type — drop the redundant `@Component`, or disambiguate with `@Mapping`/`@Tag` |
 | `Query macro target 'entity' cannot be resolved` | the macro target must be a parameter of *that* method; use a literal table name or `%{V#table}` |
 | `$<Name>_Impl` not generated | the processor is missing (`annotation-processors` / KSP `symbol-processors`) |
+| Java build dies with `NullPointerException: Cannot invoke "javax.lang.model.element.Element.getAnnotationMirrors()" because "element" is null`, `JdbcTypesExtension.getDependencyGenerator` in the trace | a repository method returns `byte[]` or `List<byte[]>`: the extension resolves `JdbcResultSetMapper<byte[]>` and asks the array type for its `@EntityJdbc` element, which an array does not have. Fixed in `2.0.0.RC2` (kora-projects/kora PR #959) — only `2.0.0.RC1` is affected, KSP never was; on RC1 return a single-column `@EntityJdbc` record (`record Payload(byte[] data)`, `List<Payload>`) |
+| Client gets an error for committed work; an `afterCommit` fires for a rolled-back transaction; `StackOverflowError` through `JdbcExecutor.doInTx` | a post-commit action failure propagates out of `inTx`; on `2.0.0.RC1` (fixed in `2.0.0.RC2`, kora-projects/kora PR #967) actions are also never cleared from the context and the first failure skips the rest — see [transactions-reference.md](references/transactions-reference.md#post-commit-and-post-rollback-actions) |
 | `SQL query placeholder has no matching method parameter: :id / Available parameters: - :arg0` | stale incremental build — the processor read the interface from a class file without parameter names; `./gradlew clean` or `--rerun-tasks` |
 | Metrics/logs for queries never appear | `telemetry.logging.enabled` and `telemetry.metrics.enabled` default to **false** in 2.0 |
+| `No component found for dependency: JdbcResultColumnMapper<List<Long>>` on PostgreSQL | add `database-jdbc-postgres`, extend `PostgresJdbcDatabaseModule`, and tag the field/parameter `@Pg` |
+| `WHERE id IN (:ids)` with a `List` parameter | bind one array: `WHERE id = ANY(:ids)` with `@Pg List<Long> ids` |
 | `connectionTimeout = 30000` ignored | durations are strings: `"10s"`, `"10m"` |
 | Driver `ClassNotFoundException` | add the JDBC driver dependency; it is not bundled |
 | Looking for an R2DBC or Vert.x SQL module | neither exists in 2.0; synchronous JDBC on virtual threads is the only option |
@@ -339,9 +386,9 @@ Drop `--dry-run` to write the files.
 
 | Component | Version |
 |-----------|---------|
-| Kora BOM (`io.koraframework:kora-bom`) | `2.0.0.RC1` from `mavenCentral()` |
+| Kora BOM (`io.koraframework:kora-bom`) | `2.0.0.RC2` from `mavenCentral()` |
 | Java | 25 (hard floor — artifacts are class-file 69) |
-| Kotlin / KSP | 2.4.10 / 2.3.11 |
-| Gradle | 9+ |
+| Kotlin / KSP | 2.4.20 / 2.3.12 |
+| Gradle | 9.8.0 |
 | HikariCP | 7.1.0 (transitive via `database-jdbc`) |
-| PostgreSQL driver | 42.7.x — the framework tests against `42.7.13`; the migrated examples pin `42.7.7` |
+| PostgreSQL driver | 42.7.x — the framework tests against `42.7.13` (the version `database-jdbc-postgres` brings); the migrated examples pin `42.7.7` |

@@ -105,9 +105,8 @@ Work in this order — a blind package rename leaves the last three items broken
    `gen.writeFieldName(...)` → `gen.writeName(...)`.
 4. **`*Unchecked` methods.** `toStringUnchecked` → `toString`,
    `toByteArrayUnchecked` → `toByteArray`, `readUnchecked` → `read`.
-5. **`IOException` handling.** The surviving methods declare no checked exception — in
-   `2.0.0.RC1` no `throws` clause at all, and on the snapshot line only the unchecked
-   `JacksonException`. In Java a leftover `try/catch (IOException)` is now a **compile
+5. **`IOException` handling.** The surviving methods declare no checked exception — only the
+   unchecked `tools.jackson.core.JacksonException`. In Java a leftover `try/catch (IOException)` is now a **compile
    error**:
 
    ```java

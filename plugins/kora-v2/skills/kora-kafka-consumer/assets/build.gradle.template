@@ -24,7 +24,7 @@ repositories {
 }
 
 dependencies {
-    // koraVersion=2.0.0.RC1 in gradle.properties — never pin a Kora artifact individually
+    // koraVersion=2.0.0.RC2 in gradle.properties — never pin a Kora artifact individually
     koraBom platform("io.koraframework:kora-bom:${koraVersion}")
     annotationProcessor "io.koraframework:annotation-processors"
 

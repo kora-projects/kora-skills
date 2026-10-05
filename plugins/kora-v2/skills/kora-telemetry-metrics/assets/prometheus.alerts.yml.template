@@ -14,10 +14,10 @@
 #    http_server_request_duration_seconds_{count,sum,bucket,max}. Latency thresholds below
 #    are therefore in SECONDS, not milliseconds.
 #
-# 3. Kora 2.0 puts NO status-code label on the HTTP SERVER duration timer. Its tags are
-#    server.name, server.port, http.request.method, http.route, url.scheme, server.address
-#    and error.type. A 1.x rule filtering http_response_status_code=~"5.." matches nothing
-#    and stays silently green. The HTTP CLIENT timer does carry http_response_status_code.
+# 3. The HTTP SERVER duration timer is tagged server.name, server.port, http.request.method,
+#    http.response.status_code, http.route, url.scheme, server.address and error.type.
+#    http_response_status_code is the code actually sent; error_type is "" unless the
+#    request ended in an exception.
 #
 # 4. Scrape the SYSTEM port (httpServer.system.port, default 8085), not the public one.
 
@@ -27,14 +27,14 @@ groups:
     rules:
       - alert: HighErrorRate
         expr: |
-          sum(rate(http_server_request_duration_seconds_count{error_type!=""}[5m]))
+          sum(rate(http_server_request_duration_seconds_count{http_response_status_code=~"5.."}[5m]))
           / sum(rate(http_server_request_duration_seconds_count[5m])) > 0.01
         for: 5m
         labels:
           severity: warning
         annotations:
           summary: "High error rate detected"
-          description: "{{ $value | humanizePercentage }} of requests failed over the last 5 minutes"
+          description: "{{ $value | humanizePercentage }} of requests answered 5xx over the last 5 minutes"
 
       - alert: HighLatency
         expr: |

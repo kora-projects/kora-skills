@@ -13,7 +13,7 @@ repositories {
 }
 
 // io.koraframework:kora-bom aligns every Kora artifact version.
-// Put koraVersion=2.0.0.RC1 in gradle.properties; never pin a version on an individual artifact.
+// Put koraVersion=2.0.0.RC2 in gradle.properties; never pin a version on an individual artifact.
 configurations {
     koraBom
     annotationProcessor.extendsFrom(koraBom)
@@ -27,11 +27,12 @@ dependencies {
     koraBom platform("io.koraframework:kora-bom:$koraVersion")
 
     // MANDATORY — Kotlin uses ksp "io.koraframework:symbol-processors" instead.
-    // Also generates the <Type>MaskingRulesModule for @Mask types.
     annotationProcessor "io.koraframework:annotation-processors"
 
     // SLF4J + Logback backend. Transitively brings logging-common (MDC, StructuredArgument,
     // masking, @Log/@Mdc), json-common and the OpenTelemetry API that KoraAsyncAppender uses.
+    // For one JSON object per line use "io.koraframework:logging-logback-json" instead
+    // (it depends on logging-logback and is picked automatically when there is no logback.xml).
     implementation "io.koraframework:logging-logback"
 
     // MANDATORY alongside logging: LoggingModule reads the `logging` config section.

@@ -198,9 +198,10 @@ if (authorization != null && authorization.startsWith("Bearer ")) {
 - **401 Unauthorized** — no credentials, or the credentials are invalid. Authentication failed.
 - **403 Forbidden** — the caller is authenticated but lacks the required role/scope.
 
-Kora never chooses between them for you. Note that the OpenAPI-generated security interceptor emits
-**only 401**, including for a failed oauth2 scope check — if your API must answer `403` there, do the
-scope check yourself against `Principal.current()` in the delegate.
+A hand-written interceptor chooses for itself. The OpenAPI-generated security interceptor answers
+`401` when no alternative authenticated, and `403 Forbidden` when an oauth2/openIdConnect extractor
+returned a principal but a scope the contract requires is missing. Any other authorization rule
+(roles, ownership) is a `403` you throw from the delegate after `Principal.current()`.
 
 ```java
 throw HttpServerResponseException.of(401, "Unauthorized");

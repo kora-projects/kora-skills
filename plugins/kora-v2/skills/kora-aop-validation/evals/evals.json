@@ -147,7 +147,7 @@
       "query": "I need Kora 2.0 validation in a batch job with no HTTP server. Which artifact and module should I use, and will validation-module drag an HTTP server onto my classpath?",
       "expected_behavior": [
         "Recommends io.koraframework:validation-common with io.koraframework.validation.common.constraint.ValidatorModule for a non-HTTP application",
-        "States correctly that validation-module does NOT bring http-server-common with it — the dependency is compileOnly (requires static in module-info) and the published 2.0.0.RC1 POM and Gradle module metadata list only validation-common and jspecify",
+        "States correctly that validation-module does NOT bring http-server-common with it — the dependency is compileOnly (requires static in module-info) and the published 2.0.0.RC2 POM and Gradle module metadata list only validation-common and jspecify",
         "Notes that ValidationModule extends ValidatorModule and would still compile in a non-HTTP app (the untagged interceptor is simply pruned), but ValidatorModule is the right choice for intent",
         "Keeps the mandatory processor: annotationProcessor \"io.koraframework:annotation-processors\" (or ksp \"io.koraframework:symbol-processors\") and resolves versions through io.koraframework:kora-bom",
         "Does not claim ValidationModule transitively pulls in an HTTP server artifact, and does not tell the user to exclude http-server-common"

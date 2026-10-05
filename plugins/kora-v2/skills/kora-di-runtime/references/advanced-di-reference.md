@@ -28,8 +28,10 @@ of them:
 | `Node<T>` | `NODE_OF` | handle to another node |
 | `Graph` / `RefreshableGraph` | `GRAPH` | the live graph |
 
-Anything else — `List<T>`, `Optional<T>`, `Provider<T>`, `Supplier<T>` used as a laziness wrapper —
-is just a request for a component of that exact type.
+`java.util.Optional<T>` is a special case of `T`: the claim is for a component of type `Optional<T>`,
+and when none exists the processor synthesises one, `Optional.ofNullable(...)` over a nullable claim of
+`T` with the same tag (Java and KSP `GraphBuilder`). Anything else — `List<T>`, `Provider<T>`,
+`Supplier<T>` used as a laziness wrapper — is just a request for a component of that exact type.
 
 Every claim also carries a tag, so `@Tag(X.class) All<ValueOf<T>>` is a normal, supported shape.
 

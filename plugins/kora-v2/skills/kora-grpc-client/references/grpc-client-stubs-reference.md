@@ -182,7 +182,7 @@ What that does *not* mean:
 `grpc-kotlin` `1.5.0` is the version in Kora's catalog; it appears there for the symbol
 processor's own tests, and is not a dependency of `grpc-client`. If you do use coroutine stubs,
 add `io.grpc:grpc-kotlin-stub:1.5.0` and the `protoc-gen-grpc-kotlin:1.5.0` protoc plugin
-yourself, and keep them aligned with grpc-java `1.83.1`.
+yourself, and keep them aligned with grpc-java `1.84.0`.
 
 **Recommendation:** use the Java stubs. They match Kora 2.0's execution model with no extra
 machinery.
@@ -265,6 +265,6 @@ a stub flavour generated into a different package). For everything routine, inje
 | Stub type exists in the IDE but not at build time | generated dirs missing from `sourceSets` — add `build/generated/source/proto/main/grpc` and `.../main/java` |
 | Graph fails on a stub parameter that carries `@Tag` | remove the `@Tag`; the extension only serves **untagged** stub requests |
 | `Required dependency not found: io.grpc.Channel` | you asked for a `Channel` **without** a tag — tag it with the generated `<Service>Grpc` class |
-| Extension never fires at all | the enclosing `*Grpc` class has no `@GrpcGenerated` — regenerate with `protoc-gen-grpc-java:1.83.1` and keep `io.grpc:grpc-stub` on the compile classpath (it arrives with `grpc-client`) |
+| Extension never fires at all | the enclosing `*Grpc` class has no `@GrpcGenerated` — regenerate with `protoc-gen-grpc-java:1.84.0` and keep `io.grpc:grpc-stub` on the compile classpath (it arrives with `grpc-client`) |
 | `cannot find symbol: javax.annotation.Generated` | add `compileOnly "javax.annotation:javax.annotation-api:1.3.2"` |
 | Phantom `ru.tinkoff.kora` errors in `build/generated` | stale protobuf output — `./gradlew clean --continue` then `./gradlew classes testClasses --no-build-cache` |

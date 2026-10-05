@@ -1,7 +1,7 @@
 // gRPC contract for ${service_name}.
 // Save as: src/main/proto/${service_name}.proto
 //
-// Generated with com.google.protobuf:protoc:3.25.3 + io.grpc:protoc-gen-grpc-java:1.83.1
+// Generated with com.google.protobuf:protoc:3.25.3 + io.grpc:protoc-gen-grpc-java:1.84.0
 // (see the build.gradle template — those two versions are load-bearing).
 //
 // Names on the wire come from the proto `package` below, NOT from java_package:

@@ -8,7 +8,7 @@ metadata:
 
 # Kora Database Cassandra
 
-> **Kora sub-skill — obey the [kora-v2 meta rules](../../SKILL.md) on every task:** **R0** ground the workspace on Kora 2.0 refs before starting (framework source at tag `2.0.0.RC1` + `kora-examples` at `migration/2.0`; `kora-docs` is 1.x only) · **R1** read this sub-skill before writing code · **R2** Kora 2.0 APIs only — no Spring/Micronaut/Quarkus, no Kora 1.x APIs, no invented annotations or config keys · **R3** journal any incorrect Kora usage. Add comments/Javadoc only if asked.
+> **Kora sub-skill — obey the [kora-v2 meta rules](../../SKILL.md) on every task:** **R0** ground the workspace on Kora 2.0 refs before starting (framework source at tag `2.0.0.RC2` + `kora-examples` at `migration/2.0` + Kora 2.0 docs at koraframework.io/v2, which trail the source; 1.x `kora-docs` pages are never an authority) · **R1** read this sub-skill before writing code · **R2** Kora 2.0 APIs only — no Spring/Micronaut/Quarkus, no Kora 1.x APIs, no invented annotations or config keys · **R3** journal any incorrect Kora usage. Add comments/Javadoc only if asked.
 
 | | |
 |---|---|
@@ -51,7 +51,7 @@ configurations {
 }
 
 dependencies {
-    koraBom platform("io.koraframework:kora-bom:$koraVersion")   // koraVersion=2.0.0.RC1
+    koraBom platform("io.koraframework:kora-bom:$koraVersion")   // koraVersion=2.0.0.RC2
     annotationProcessor "io.koraframework:annotation-processors"
 
     implementation "io.koraframework:database-cassandra"
@@ -64,8 +64,8 @@ dependencies {
 
 ```kotlin
 plugins {
-    kotlin("jvm") version "2.4.10"
-    id("com.google.devtools.ksp") version "2.3.11"
+    kotlin("jvm") version "2.4.20"
+    id("com.google.devtools.ksp") version "2.3.12"
 }
 
 dependencies {

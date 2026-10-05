@@ -1,12 +1,12 @@
 # MockK with `@KoraAppTest` (Kora 2.x)
 
 Verified against
-[`GraphMockkMock`](https://github.com/kora-projects/kora/blob/2.0.0.RC1/test/test-junit5/src/main/java/io/koraframework/test/extension/junit5/GraphMockkMock.java),
-[`GraphMockkSpyk`](https://github.com/kora-projects/kora/blob/2.0.0.RC1/test/test-junit5/src/main/java/io/koraframework/test/extension/junit5/GraphMockkSpyk.java),
+[`GraphMockkMock`](https://github.com/kora-projects/kora/blob/2.0.0.RC2/test/test-junit5/src/main/java/io/koraframework/test/extension/junit5/GraphMockkMock.java),
+[`GraphMockkSpyk`](https://github.com/kora-projects/kora/blob/2.0.0.RC2/test/test-junit5/src/main/java/io/koraframework/test/extension/junit5/GraphMockkSpyk.java),
 `MockUtils`, the framework's own Kotlin tests under
-[`test/test-junit5/src/test/kotlin/.../kotlin/mockk`](https://github.com/kora-projects/kora/tree/2.0.0.RC1/test/test-junit5/src/test/kotlin/io/koraframework/test/extension/junit5/kotlin/mockk),
+[`test/test-junit5/src/test/kotlin/.../kotlin/mockk`](https://github.com/kora-projects/kora/tree/2.0.0.RC2/test/test-junit5/src/test/kotlin/io/koraframework/test/extension/junit5/kotlin/mockk),
 the version catalog
-[`gradle/libs.versions.toml`](https://github.com/kora-projects/kora/blob/2.0.0.RC1/gradle/libs.versions.toml),
+[`gradle/libs.versions.toml`](https://github.com/kora-projects/kora/blob/2.0.0.RC2/gradle/libs.versions.toml),
 and the migrated
 [`kora-kotlin-crud`](https://github.com/kora-projects/kora-examples/tree/migration/2.0/examples/kotlin/kora-kotlin-crud)
 example.

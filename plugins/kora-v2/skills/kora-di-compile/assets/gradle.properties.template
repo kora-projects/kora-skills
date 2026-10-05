@@ -1,8 +1,8 @@
 # Kora framework version — the same value for every Kora dependency.
-# 2.0.0.RC1 is the released 2.0 line on Maven Central.
+# 2.0.0.RC2 is the released 2.0 line on Maven Central.
 # 2.0.0-SNAPSHOT is the development line and additionally requires the snapshot repository
 # https://central.sonatype.com/repository/maven-snapshots (or a local publishToMavenLocal).
-koraVersion=2.0.0.RC1
+koraVersion=2.0.0.RC2
 
 # Kora 2.0 artifacts are Java 25 class files. The Gradle process itself must also run on a JDK
 # recent enough for anything Kora puts on the buildscript classpath (for example

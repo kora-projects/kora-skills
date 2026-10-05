@@ -23,8 +23,8 @@ import io.koraframework.json.common.annotation.JsonField
  * ```
  *
  * The client id and secret travel in `Authorization: Basic`, which the client logger masks by
- * default. Putting them in the form body instead would put them in the log, because there is no
- * body masking.
+ * default. Putting them in the form body instead would log them at TRACE unless a
+ * `@Tag(HttpClientTelemetry::class)` `FormUrlencodedDataMasker` is in the graph.
  *
  * Do **not** attach a Bearer interceptor here: this client is what produces the token.
  * Methods are plain functions — `suspend` is not a Kora 2.0 contract.

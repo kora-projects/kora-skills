@@ -10,7 +10,7 @@ plugins {
 
 repositories {
     mavenCentral()
-    // io.koraframework:kora-bom:2.0.0.RC1 is on Maven Central; nothing else is needed.
+    // io.koraframework:kora-bom:2.0.0.RC2 is on Maven Central; nothing else is needed.
     // Only the 2.0.0-SNAPSHOT development line also needs:
     // maven { url = "https://central.sonatype.com/repository/maven-snapshots" }
 }
@@ -46,17 +46,18 @@ dependencies {
     implementation "io.koraframework:database-jdbc"
     implementation "io.koraframework:database-flyway"
 
-    // JDBC driver - external, database-jdbc ships Hikari but never a driver
-    implementation "org.postgresql:postgresql:42.7.7"
+    // JDBC driver - external, database-jdbc ships Hikari but never a driver.
+    // Alternative: database-jdbc-postgres instead of database-jdbc brings PostgreSQL mappers and this driver.
+    implementation "org.postgresql:postgresql:42.7.13"
 
     // Flyway dialect - database-flyway ships flyway-core only.
     // Match the version to the flyway-core your build resolves:
     //   ./gradlew dependencyInsight --dependency flyway-core
-    implementation "org.flywaydb:flyway-database-postgresql:13.1.0"
+    implementation "org.flywaydb:flyway-database-postgresql:13.9.0"
 
     // Testing - test-junit5 declares Mockito/MockK compileOnly, add your own
     testImplementation "io.koraframework:test-junit5"
-    testImplementation "org.testcontainers:junit-jupiter:1.21.4"
+    testImplementation "org.testcontainers:testcontainers-junit-jupiter:2.0.5"
 }
 
 application {

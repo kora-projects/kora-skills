@@ -7,9 +7,13 @@
       "expected_behavior": [
         "Adds io.koraframework:scheduling-quartz plus the mandatory processor (annotation-processors for Java, symbol-processors via ksp for Kotlin) under the io.koraframework:kora-bom BOM",
         "Extends the @KoraApp interface with io.koraframework.scheduling.quartz.QuartzModule",
-        "Annotates a method on a graph component with @ScheduleWithCron(\"0 0 3 * * ?\") imported from io.koraframework.scheduling.quartz (flat package, no .annotation segment)",
-        "Uses a Quartz cron with 6 or 7 fields and '?' in exactly one of day-of-month / day-of-week",
+        "Annotates a method on a graph component with @ScheduleQuartzWithCron(\"0 0 3 * * ?\") imported from io.koraframework.scheduling.quartz.annotation",
+        "Uses a Quartz cron with 6 or 7 fields and '?' in exactly one of day-of-month / day-of-week, and notes the literal is validated at compile time",
         "Does not emit ru.tinkoff.kora imports, kora-parent, a Spring-style @Scheduled, or field injection"
+      ],
+      "anti_behavior": [
+        "Imports the RC1-era io.koraframework.scheduling.quartz.ScheduleWithCron",
+        "Writes `0 0 3 * * *` without a '?'"
       ],
       "tags": ["quartz", "basic", "kora-2.0"]
     },
@@ -18,8 +22,8 @@
       "skills": ["kora-aop-scheduling-quartz"],
       "query": "I am porting this Kora 1.x job to Kora 2.0 and it no longer compiles:\n\n@Component\npublic class TriggerScheduler {\n    @ScheduleWithTrigger(@Tag(TriggerScheduler.class))\n    void schedule() { }\n}\n\njavac says: annotation not valid for an element of type Class<?>. What changed?",
       "expected_behavior": [
-        "Identifies that @ScheduleWithTrigger.value() is Class<?> in Kora 2.0, so the nested @Tag form no longer compiles",
-        "Rewrites it as @ScheduleWithTrigger(TriggerScheduler.class) — the class tag passed directly",
+        "Identifies that the trigger annotation's value() is Class<?> in Kora 2.0, so the nested @Tag form no longer compiles",
+        "Rewrites it as @ScheduleQuartzWithTrigger(TriggerScheduler.class) from io.koraframework.scheduling.quartz.annotation — the class tag passed directly, under the current annotation name",
         "Explains the class becomes a @Tag on the org.quartz.Trigger parameter of the generated factory method, so the graph must supply @Tag(TriggerScheduler.class) Trigger",
         "Shows the Trigger declared on the @KoraApp interface with io.koraframework.common.annotation.Tag",
         "Does not suggest a string name, does not suggest keeping @Tag nested, and does not invent a value/tag attribute pair"
@@ -29,11 +33,11 @@
     {
       "id": "kora-aop-scheduling-quartz-trigger-nested-tag-kotlin",
       "skills": ["kora-aop-scheduling-quartz"],
-      "query": "Kotlin, Kora 2.0. My KSP build fails on @ScheduleWithTrigger(Tag(ReportJob::class)) fun schedule() {} inside class ReportJob. How should this look now?",
+      "query": "Kotlin, Kora 2.0. My KSP build fails on @ScheduleWithTrigger(Tag(ReportJob::class)) fun schedule() {} inside class ReportJob, ported from Kora 1.x. How should this look now?",
       "expected_behavior": [
-        "Rewrites it as @ScheduleWithTrigger(ReportJob::class) — a KClass, not a nested Tag(...)",
+        "Rewrites it as @ScheduleQuartzWithTrigger(ReportJob::class) — a KClass, not a nested Tag(...)",
         "Shows the matching @Tag(ReportJob::class) fun reportTrigger(): Trigger on the @KoraApp interface",
-        "Uses io.koraframework.scheduling.quartz.ScheduleWithTrigger and io.koraframework.common.annotation.Tag",
+        "Uses io.koraframework.scheduling.quartz.annotation.ScheduleQuartzWithTrigger and io.koraframework.common.annotation.Tag",
         "Does not claim the class or function must be open — scheduling generates a separate job wrapper, not an AOP proxy",
         "Does not carry ru.tinkoff.kora imports into the fix"
       ],
@@ -42,12 +46,12 @@
     {
       "id": "kora-aop-scheduling-quartz-kotlin-non-open-class",
       "skills": ["kora-aop-scheduling-quartz"],
-      "query": "Kotlin Kora 2.0. My cron job never fires and there is no error anywhere. The class is:\n\n@Component\nclass CleanupJob {\n    @ScheduleWithCron(\"0 0 4 * * ?\")\n    fun cleanup() { }\n}\n\nSomebody told me the class has to be `open` for Kora aspects. Is that the problem?",
+      "query": "Kotlin Kora 2.0. My cron job never fires and there is no error anywhere. The class is:\n\n@Component\nclass CleanupJob {\n    @ScheduleQuartzWithCron(\"0 0 4 * * ?\")\n    fun cleanup() { }\n}\n\nSomebody told me the class has to be `open` for Kora aspects. Is that the problem?",
       "expected_behavior": [
         "States that `open` is NOT required for scheduling: Kora generates a separate $CleanupJob_cleanup_Job wrapper that calls the component directly, so a plain non-open class is correct",
         "Notes that `open` is only needed when a method-wrapping aspect such as @Log, @Retryable or @Timeout is stacked on the same class",
-        "Directs the diagnosis at the real silent causes instead: QuartzModule missing from the @KoraApp interface, the KSP processor (io.koraframework:symbol-processors) not applied, or the class not being a graph component",
-        "Also checks that ScheduleWithCron was imported from io.koraframework.scheduling.quartz and not io.koraframework.scheduling.jdk.annotation",
+        "Directs the diagnosis at the real silent causes instead: QuartzModule missing from the @KoraApp interface, the KSP processor (io.koraframework:symbol-processors) not applied, the class not being a graph component, or enabled = false under the job's config path",
+        "Checks that the annotation is io.koraframework.scheduling.quartz.annotation.ScheduleQuartzWithCron (each scheduler now has its own annotation name)",
         "Does not tell the user to add `open` as the fix"
       ],
       "tags": ["quartz", "kotlin", "silent-failure", "regression"]
@@ -55,7 +59,7 @@
     {
       "id": "kora-aop-scheduling-quartz-suspend-rejected",
       "skills": ["kora-aop-scheduling-quartz"],
-      "query": "Kora 2.0 Kotlin. I want my Quartz cron job to call two suspend repositories in parallel, so I wrote `@ScheduleWithCron(\"0 0 * * * ?\") suspend fun refresh()`. KSP fails the build. What is the right shape?",
+      "query": "Kora 2.0 Kotlin. I want my Quartz cron job to call two suspend repositories in parallel, so I wrote `@ScheduleQuartzWithCron(\"0 0 * * * ?\") suspend fun refresh()`. KSP fails the build. What is the right shape?",
       "expected_behavior": [
         "Explains that suspend is rejected by the scheduling symbol processor: Kora 2.0 contracts are synchronous and the error says 'Suspend methods are not supported by the scheduling generator'",
         "Removes suspend and makes the scheduled function a plain function returning Unit",
@@ -70,9 +74,10 @@
       "skills": ["kora-aop-scheduling-quartz"],
       "query": "I want the cron schedule of my Kora 2.0 Quartz job to be configurable in application.conf instead of hardcoded in the annotation.",
       "expected_behavior": [
-        "Uses @ScheduleWithCron(config = \"jobs.nightly\") and points config at a HOCON node",
-        "Shows the node as either a bare string or an object with a `cron` field",
+        "Uses @ScheduleQuartzWithCron(config = \"jobs.nightly\") and points config at a HOCON node",
+        "Shows the node as either a bare string or an object with `cron` (and optionally `enabled` and `telemetry`)",
         "Explains that the config node wins over the annotation `value`, and that with no `value` the node is required — an absent one fails the graph build with ConfigValueException",
+        "Mentions that `enabled = false` in the object form registers the job without triggers, and that a cron from config is validated at graph init rather than at compile time",
         "Mentions that per-job telemetry overrides are only available through the config form",
         "Does not invent an annotation attribute such as cron =, expression = or timezone ="
       ],
@@ -85,9 +90,9 @@
       "expected_behavior": [
         "Identifies both keys as Kora 1.x paths that Kora 2.0 does not read, and that unknown HOCON keys are ignored without a warning — hence the green but wrong startup",
         "Moves the Quartz properties to scheduling.quartz.properties { \"org.quartz.threadPool.threadCount\" = \"30\" }, read by QuartzModule.quartzProperties",
-        "Moves the shutdown flag to scheduling.quartz.waitForJobComplete and notes its 2.0 default is true (it was not true in the 1.x layout)",
+        "Replaces the shutdown flag with scheduling.quartz.shutdownWait (a duration, default 30s): waitForJobComplete is not read anywhere in the current module, under either path",
         "Notes the effective defaults that were silently in force instead: SimpleThreadPool with threadCount 10 and RAMJobStore, from the quartz.properties bundled in the Quartz jar",
-        "Does not claim the old keys still work, and does not invent a `quartz.properties` or `scheduling.quartz.threadCount` key"
+        "Does not claim the old keys still work, does not move the flag to scheduling.quartz.waitForJobComplete, and does not invent a `quartz.properties` or `scheduling.quartz.threadCount` key"
       ],
       "tags": ["quartz", "config", "migration", "silent-failure", "regression"]
     },
@@ -97,7 +102,7 @@
       "query": "I need a Quartz job in my Kora 2.0 app that fires every 5 seconds using a custom Trigger rather than a cron expression.",
       "expected_behavior": [
         "Declares an org.quartz.Trigger built with TriggerBuilder and SimpleScheduleBuilder as a @Tag(SomeClass.class) factory method on the @KoraApp interface",
-        "Annotates the job method with @ScheduleWithTrigger(SomeClass.class) using the same class",
+        "Annotates the job method with @ScheduleQuartzWithTrigger(SomeClass.class) from io.koraframework.scheduling.quartz.annotation using the same class",
         "Explains that the class is a tag on the generated factory method's Trigger parameter, and that a missing tagged Trigger is a DI graph failure",
         "Places the job method on a graph component and keeps it synchronous",
         "Does not use the 1.x nested @Tag(...) form and does not pass a string"
@@ -109,10 +114,10 @@
       "skills": ["kora-aop-scheduling-quartz"],
       "query": "My hourly Quartz job in Kora 2.0 sometimes runs longer than an hour and I get two overlapping executions. How do I prevent that?",
       "expected_behavior": [
-        "Adds @DisallowConcurrentExecution from io.koraframework.scheduling.quartz on the method, next to @ScheduleWithCron",
+        "Adds @DisallowConcurrentExecution from io.koraframework.scheduling.quartz.annotation on the method, next to @ScheduleQuartzWithCron",
         "Notes it is Kora's own annotation read on the method, while org.quartz.DisallowConcurrentExecution is read on the class — the two placements are not interchangeable",
         "Explains the generated job class ends up carrying org.quartz.DisallowConcurrentExecution either way",
-        "Optionally mentions bounding the job body, since scheduling.quartz.waitForJobComplete defaults to true and shutdown will wait for a long run",
+        "Optionally mentions bounding the job body, since shutdown waits scheduling.quartz.shutdownWait (30s) and then interrupts a long run",
         "Does not propose a manual lock as the primary solution"
       ],
       "tags": ["quartz", "concurrency", "kora-2.0"]
@@ -122,9 +127,9 @@
       "skills": ["kora-aop-scheduling-quartz"],
       "query": "I just need to run a cleanup task every 30 seconds in my Kora 2.0 service. Should I use Quartz for that?",
       "expected_behavior": [
-        "Recommends the lighter scheduling-jdk module with @ScheduleAtFixedRate or @ScheduleWithFixedDelay from io.koraframework.scheduling.jdk.annotation",
+        "Recommends the lighter scheduling-jdk module with @ScheduleJdkAtFixedRate or @ScheduleJdkWithFixedDelay from io.koraframework.scheduling.jdk.annotation",
         "Explains Quartz earns its place for custom org.quartz.Trigger instances, misfire policies, JobExecutionContext/JobDataMap, or a persistent/clustered job store",
-        "Warns that both modules ship a @ScheduleWithCron in different packages, so the import decides which scheduler runs the job",
+        "Notes that each scheduler has its own annotation names (@ScheduleJdkWithCron, @ScheduleQuartzWithCron, @ScheduleDbWithCron), so the annotation decides which scheduler runs the job",
         "Does not add io.koraframework:scheduling-quartz for a plain fixed interval",
         "Does not reference a non-Kora @Scheduled annotation"
       ],
@@ -146,18 +151,21 @@
       "tags": ["quartz", "persistence", "clustering", "advanced", "regression"]
     },
     {
-      "id": "kora-aop-scheduling-quartz-shutdown-no-interrupt",
+      "id": "kora-aop-scheduling-quartz-shutdown-interrupt",
       "skills": ["kora-aop-scheduling-quartz"],
-      "query": "My long-running Quartz batch job in Kora 2.0 must stop cleanly on SIGTERM. I copied this from our 1.x service and the job never reacts:\n\nfor (var item : items) {\n    if (Thread.currentThread().isInterrupted()) return;\n    process(item);\n}\n\nWhy is the interrupt never delivered?",
+      "query": "My long-running Quartz batch job in Kora 2.0 must stop cleanly on SIGTERM. Our 1.x service had this loop, and a colleague says Quartz never interrupts jobs so it is dead code:\n\nfor (var item : items) {\n    if (Thread.currentThread().isInterrupted()) return;\n    process(item);\n}\n\nShould I delete it? What happens on shutdown?",
       "expected_behavior": [
-        "Explains that KoraQuartzScheduler.release() calls Scheduler.shutdown(waitForJobComplete) and Quartz's SimpleThreadPool never interrupts a busy worker — it only clears a run flag, and Quartz documents that jobs in progress complete",
-        "States that the isInterrupted() check is therefore dead code for Quartz jobs, and that waitForJobComplete = false does not cancel anything either — it only stops release() from blocking",
-        "Notes that Kora's generated job class and KoraQuartzJob.execute are final, so it cannot implement org.quartz.InterruptableJob and Scheduler.interrupt() cannot reach it",
-        "Recommends bounding the job body with a deadline or batch cap, keeping scheduling.quartz.waitForJobComplete at its default true, and making the job idempotent and resumable",
-        "Uses the 2.0 config path scheduling.quartz.waitForJobComplete, not the 1.x scheduling.waitForJobComplete",
-        "Does not claim an interrupt is delivered on shutdown"
+        "Explains that KoraQuartzScheduler.release() puts the scheduler on standby, waits scheduling.quartz.shutdownWait (default 30s) for running jobs, then interrupts the ones still running through org.quartz.InterruptableJob, which KoraQuartzJob implements, and waits up to shutdownWait once more",
+        "Keeps the isInterrupted() check: it is the shutdown signal, and InterruptedException from blocking calls must not be swallowed",
+        "Recommends additionally bounding the run below shutdownWait with a deadline or batch cap, and making the job idempotent and resumable",
+        "Mentions that 0s interrupts immediately and a large value waits for completion, and that the platform grace period (e.g. Kubernetes terminationGracePeriodSeconds) must cover up to about 2 × shutdownWait"
       ],
-      "tags": ["quartz", "shutdown", "silent-failure", "regression"]
+      "anti_behavior": [
+        "Claims Quartz or Kora never interrupts a running job on shutdown",
+        "Recommends scheduling.quartz.waitForJobComplete or scheduling.waitForJobComplete",
+        "Claims Kora jobs cannot implement InterruptableJob"
+      ],
+      "tags": ["quartz", "shutdown", "regression"]
     },
     {
       "id": "kora-aop-scheduling-quartz-telemetry-defaults",
@@ -167,7 +175,7 @@
         "Explains that in Kora 2.0 TelemetryConfig defaults logging.enabled and metrics.enabled to false while tracing.enabled defaults to true, which matches exactly what the user observes",
         "Turns them on explicitly under scheduling.telemetry.logging.enabled and scheduling.telemetry.metrics.enabled",
         "Names the metric correctly: a Micrometer Timer scheduling.job.duration",
-        "Notes metrics also need a MeterRegistry in the graph, and that per-job overrides live under the job's config node and only work for the @ScheduleWithCron(config = ...) form",
+        "Notes metrics also need a MeterRegistry in the graph, that per-job overrides live under the job's config node and only work for the @ScheduleQuartzWithCron(config = ...) form, and that the timer carries scheduling.system = quartz",
         "Does not claim metrics default to true (that was the Kora 1.x behaviour)"
       ],
       "tags": ["quartz", "telemetry", "silent-failure", "regression"]
@@ -185,6 +193,130 @@
         "Does not claim Quartz jobs are virtual threads and does not confuse this with the JDK scheduler's executor"
       ],
       "tags": ["quartz", "threading", "kora-2.0"]
+    },
+    {
+      "id": "kora-aop-scheduling-quartz-vs-db-cluster",
+      "skills": ["kora-aop-scheduling-quartz", "kora-aop-scheduling-db"],
+      "query": "Kora 2.0, three replicas, PostgreSQL already in place. A cron job must fire once per hour on exactly one replica and keep its schedule across deploys. We don't need custom triggers or misfire policies. Do I have to set up a clustered Quartz JDBC JobStore?",
+      "expected_behavior": [
+        "Says no: kora-aop-scheduling-db (io.koraframework:scheduling-db-scheduler, DbSchedulerModule) covers this with db-scheduler on one table in the existing database",
+        "Uses @ScheduleDbWithCron from io.koraframework.scheduling.db.scheduler.annotation",
+        "Keeps Quartz with a clustered JDBC JobStore for needs the DB scheduler lacks: custom org.quartz.Trigger, misfire policies, JobDataMap, L/W/#/C cron",
+        "Explains that the JDK scheduler is not an option because every replica runs every job and nothing is persisted",
+        "Does not add io.koraframework:scheduling-quartz or Quartz qrtz_* tables for this requirement"
+      ],
+      "tags": ["quartz", "decision", "routing"]
+    },
+    {
+      "id": "kora-aop-scheduling-quartz-rc1-annotation-rename",
+      "skills": ["kora-aop-scheduling-quartz"],
+      "query": "We built our service against Kora 2.0.0.RC1 and moved to the latest 2.0 build. Now `import io.koraframework.scheduling.quartz.ScheduleWithCron;` and `import io.koraframework.scheduling.quartz.DisallowConcurrentExecution;` fail with 'cannot find symbol'. What changed?",
+      "expected_behavior": [
+        "Explains the Quartz annotations were renamed and moved into io.koraframework.scheduling.quartz.annotation after RC1 (Kora PR #952)",
+        "Maps ScheduleWithCron → ScheduleQuartzWithCron and ScheduleWithTrigger → ScheduleQuartzWithTrigger, and moves DisallowConcurrentExecution / PersistJobDataAfterExecution to the .annotation package under the same names",
+        "Mentions the silent config change in the same release: scheduling.quartz.waitForJobComplete is gone, replaced by scheduling.quartz.shutdownWait",
+        "Mentions that jobs now live in the Quartz group `kora` and that existing DEFAULT-group jobs of known classes are moved automatically"
+      ],
+      "anti_behavior": [
+        "Suggests downgrading back to RC1 or adding a compatibility dependency",
+        "Keeps the flat io.koraframework.scheduling.quartz package for the annotations",
+        "Uses the JDK or DB annotation (@ScheduleJdkWithCron / @ScheduleDbWithCron) as the replacement for a Quartz job"
+      ],
+      "tags": ["quartz", "migration", "rc1", "regression"]
+    },
+    {
+      "id": "kora-aop-scheduling-quartz-wait-for-job-complete-gone",
+      "skills": ["kora-aop-scheduling-quartz"],
+      "query": "application.conf of our Kora 2.0 service has `scheduling.quartz.waitForJobComplete = true` so deploys never cut a running Quartz job short. After upgrading Kora a 5-minute job now gets interrupted during shutdown. Why, and how do I keep the old behaviour?",
+      "expected_behavior": [
+        "States waitForJobComplete no longer exists; QuartzConfig reads scheduling.quartz.shutdownWait (duration, default 30s) and the stale key is ignored without a warning",
+        "Describes the new shutdown: standby, wait shutdownWait, interrupt still-running jobs via InterruptableJob (WARN 'KoraQuartzScheduler interrupting jobs ... still running after PT30S'), wait shutdownWait again, then shutdown(false)",
+        "To wait for completion, sets shutdownWait to a value longer than the longest run (e.g. 10m, or 365d for unbounded) and raises the platform termination grace period to match",
+        "Recommends making the job honour Thread.currentThread().isInterrupted() / InterruptedException anyway"
+      ],
+      "anti_behavior": [
+        "Tells the user to keep or rename waitForJobComplete",
+        "Claims the interrupt cannot reach a Kora Quartz job"
+      ],
+      "tags": ["quartz", "shutdown", "config", "migration", "silent-failure"]
+    },
+    {
+      "id": "kora-aop-scheduling-quartz-persisted-trigger-restart",
+      "skills": ["kora-aop-scheduling-quartz"],
+      "query": "We run Kora Quartz on a JDBC JobStore. Will every application restart reschedule our persisted cron and simple triggers and lose the misfires that happened while the service was down?",
+      "expected_behavior": [
+        "Says no: KoraQuartzJobRegistrar keeps a persisted trigger unless its schedule (cron expression, simple repeat interval/count), end time or cron time zone changed",
+        "Explains the start time is ignored by default because a trigger built without startAt() gets a new start time on every build, and comparing it would reschedule every trigger, losing misfire handling and shifting simple-trigger phases",
+        "Names scheduling.quartz.compareStartTime (default false) and says to enable it only when every trigger uses a fixed startAt()",
+        "Mentions jobs are stored in the Quartz group `kora` under the generated job class's canonical name"
+      ],
+      "anti_behavior": [
+        "Claims Kora reschedules every persisted trigger on each start",
+        "Invents a misfire or reschedule config key other than compareStartTime"
+      ],
+      "tags": ["quartz", "persistence", "config"]
+    },
+    {
+      "id": "kora-aop-scheduling-quartz-cleanup-orphaned-jobs",
+      "skills": ["kora-aop-scheduling-quartz"],
+      "query": "We deleted a Quartz job class from our Kora 2.0 service that uses a PostgreSQL JobStore. Now every start logs `JobPersistenceException: Couldn't retrieve job because a required class was not found`. How do we get rid of it? We deploy with rolling updates.",
+      "expected_behavior": [
+        "Explains the deleted class's job row stays in the persistent store, so Quartz fails to load it",
+        "Names scheduling.quartz.cleanupOrphanedJobs = true (default false), which removes Kora jobs (group `kora`, plus DEFAULT-group jobs named like generated $Type_method_Job classes) the starting instance does not know, before the scheduler starts; jobs added to the Scheduler directly are kept",
+        "Warns it is unsafe during a rolling deployment that runs two versions at once (an old instance removes the new version's jobs until a new instance restarts) and when several applications share the Quartz tables under the same scheduler name",
+        "Offers the safe alternative for this team: delete the orphaned rows once, or enable the cleanup only for a deploy that does not overlap versions"
+      ],
+      "anti_behavior": [
+        "Recommends enabling cleanupOrphanedJobs permanently without the rolling-deploy caveat",
+        "Invents a different cleanup key"
+      ],
+      "tags": ["quartz", "persistence", "operations"]
+    },
+    {
+      "id": "kora-aop-scheduling-quartz-duplicate-identity",
+      "skills": ["kora-aop-scheduling-quartz"],
+      "query": "After adding a second cron job with `@ScheduleQuartzWithCron(value = \"0 0 * * * ?\", identity = \"hourly\")` in another class, our Kora service fails to start with `IllegalStateException: Quartz trigger 'DEFAULT.hourly' is declared more than once, by jobs ...`. What does it want?",
+      "expected_behavior": [
+        "Explains KoraQuartzJobRegistrar checks that trigger identities are unique across all jobs and names both jobs in the error",
+        "Fixes it by giving each job a unique identity, or by dropping identity so the default <fully.qualified.Class>#<method> applies, which never collides",
+        "Notes the same check covers Trigger beans used with @ScheduleQuartzWithTrigger (TriggerBuilder.withIdentity)"
+      ],
+      "anti_behavior": [
+        "Suggests catching or ignoring the exception",
+        "Claims Quartz silently replaces one of the triggers"
+      ],
+      "tags": ["quartz", "startup-error"]
+    },
+    {
+      "id": "kora-aop-scheduling-quartz-conditional-component",
+      "skills": ["kora-aop-scheduling-quartz", "kora-di-runtime"],
+      "query": "I put `@ScheduleQuartzWithCron(\"0 0 * * * ?\")` on a method of a component annotated @Conditional(ReportsEnabled.class). With the condition off, the Kora app no longer starts: `Graph node value was not initialized because condition failed: ...`. Isn't the job supposed to disappear with the component?",
+      "expected_behavior": [
+        "Explains the generated Quartz job factory takes the component directly and carries no @Conditional, so the job node still requests the condition-failed component and graph initialisation fails",
+        "Says this is fixed in 2.0.0.RC2 (kora-projects/kora PR #962) and only 2.0.0.RC1 is affected; since then the generated job component carries the component's condition",
+        "Gives the workaround for builds without it: keep the scheduled method on an unconditional component; if it must call the conditional one, inject All<T> and return when it is empty",
+        "Warns against injecting the conditional component as @Nullable, which hits a separate bug (kora-projects/kora PR #960)"
+      ],
+      "anti_behavior": [
+        "Claims @Conditional on the class already removes its scheduled jobs in current master",
+        "Suggests making the component's constructor tolerate the failed condition"
+      ],
+      "tags": ["quartz", "conditional", "known-bug"]
+    },
+    {
+      "id": "kora-aop-scheduling-quartz-time-zone",
+      "skills": ["kora-aop-scheduling-quartz"],
+      "query": "Our Kora 2.0 pods run in UTC, but the Quartz cron `0 0 9 ? * MON-FRI` must fire at 09:00 Moscow time. Is there a timezone attribute on the annotation?",
+      "expected_behavior": [
+        "Says there is no time-zone attribute on @ScheduleQuartzWithCron",
+        "Declares a ZoneId component tagged @Tag(io.koraframework.scheduling.common.SchedulingModule.class), e.g. ZoneId.of(\"Europe/Moscow\"), which every generated cron trigger uses; without it the JVM default zone applies",
+        "Notes the component applies to the JDK and DB cron schedulers as well, and that changing it reschedules persisted Quartz cron triggers at the next start"
+      ],
+      "anti_behavior": [
+        "Invents a timezone/zone annotation attribute or a scheduling.quartz.timeZone key",
+        "Only suggests changing the JVM default zone with -Duser.timezone"
+      ],
+      "tags": ["quartz", "cron", "time-zone"]
     }
   ]
 }

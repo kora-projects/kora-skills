@@ -1,29 +1,31 @@
 ---
 name: kora-v2
-description: "Build and maintain Java/Kotlin services on the Kora Framework 2.0 (io.koraframework) — compile-time DI, zero reflection, synchronous contracts on virtual threads, annotation processors (Java) or KSP (Kotlin). Routes to 39 domain sub-skills. Use when the request mentions Kora, or uses Kora APIs: @KoraApp, @Component, @Module, @KoraSubmodule, @Root, @Tag, @Conditional, @FactoryModule, @HttpController, @HttpRoute, @HttpClient, @Repository, @Query, @EntityJdbc, @KafkaListener, @KafkaPublisher, gRPC, SOAP/WSDL, @S3.Client, @S3.Head, MapStruct, Konvert, @Json, @ConfigSource, @ConfigMapper (HOCON/YAML), OpenAPI codegen, @KoraAppTest, Testcontainers, @Valid, @Validate, @Log, @Mdc, @Retryable, @CircuitBreakable, @Timeout, @RateLimited, @Fallback, @Schedule*, @Cacheable, @CachePut, @CacheInvalidate, @CacheInvalidateAll, Micrometer/Prometheus metrics, OpenTelemetry/OTLP tracing, Undertow, Hikari. Also use for Kora project setup, Gradle/BOM dependencies, DI graph errors, or explaining Kora concepts. Do not use for Spring Boot, Micronaut, or Quarkus work. For projects still on Kora 1.x (ru.tinkoff.kora) use the kora-v1 plugin instead."
+description: "Build and maintain Java/Kotlin services on the Kora Framework 2.0 (io.koraframework) — compile-time DI, zero reflection, synchronous contracts on virtual threads, annotation processors (Java) or KSP (Kotlin). Routes to 40 domain sub-skills. Use when the request mentions Kora, or uses Kora APIs: @KoraApp, @Component, @Module, @KoraSubmodule, @Root, @Tag, @Conditional, @FactoryModule, @HttpController, @HttpRoute, @HttpClient, @Repository, @Query, @EntityJdbc, @KafkaListener, @KafkaPublisher, gRPC, SOAP/WSDL, @S3.Client, @S3.Head, MapStruct, Konvert, @Json, @ConfigSource, @ConfigMapper (HOCON/YAML), OpenAPI codegen, @KoraAppTest, Testcontainers, @Valid, @Validate, @Log, @Mdc, @Retryable, @CircuitBreakable, @Timeout, @RateLimited, @Fallback, @Schedule*, @Cacheable, @CachePut, @CacheInvalidate, @CacheInvalidateAll, Micrometer/Prometheus metrics, OpenTelemetry/OTLP tracing, Undertow, Hikari, PostgreSQL, db-scheduler. Also use for Kora project setup, Gradle/BOM dependencies, DI graph errors, or explaining Kora concepts. Do not use for Spring Boot, Micronaut, or Quarkus work. For projects still on Kora 1.x (ru.tinkoff.kora) use the kora-v1 plugin instead."
 license: Apache-2.0
 disable-model-invocation: true   # Claude Code: this is the Codex-only mirror of the root kora-v2 meta; stay dormant here
 user-invocable: false
 metadata:
-  version: "0.1.0"
+  version: "0.2.0"
   kora-version: "2.x"
 ---
 
 # Kora Framework 2.0 — Meta-skill
 
 Single entry point for all Kora 2.0 development. This file is **routing and rules only** — the
-implementation knowledge lives in the 39 sub-skills listed below.
+implementation knowledge lives in the 40 sub-skills listed below.
 
 | | |
 |---|---|
 | **Framework** | Kora 2.0, group `io.koraframework`, BOM `io.koraframework:kora-bom` |
-| **Version** | `2.0.0.RC1` — the only 2.0 release on Maven Central. `2.0.0-SNAPSHOT` is the `master` development line and needs a snapshot repository |
+| **Version** | `2.0.0.RC2`. `2.0.0-SNAPSHOT` is the `master` development line and needs a snapshot repository |
 | **Java** | **25 minimum.** Kora 2.0 artifacts are compiled to class-file 69; older JVMs cannot load them |
 | **Gradle JVM** | The JDK running Gradle itself must also be ≥ 25 when `io.koraframework:openapi-generator` is on the buildscript classpath |
-| **Kotlin** | 2.4.10 with KSP 2.3.11 — the versions the framework itself is built with |
-| **Build** | Gradle 9.5.1 (the wrapper the Kora 2.0 examples pin) |
+| **Kotlin** | 2.4.20 with KSP 2.3.12 — the versions the framework itself is built with |
+| **Build** | Gradle 9.8.0 (the wrapper the framework itself pins) |
+| **Docs** | [koraframework.io/v2/en](https://koraframework.io/v2/en/) ([ru](https://koraframework.io/v2/ru/)) — see R0 for how much to trust it |
+| **Synced with** | Kora tag `2.0.0.RC2` = `master` at `78351e1cf` (2026-10-02) |
 
-**This meta-skill is the single entry point for Kora Framework development.** It routes to 39
+**This meta-skill is the single entry point for Kora Framework development.** It routes to 40
 specialized domain skills, each with its own narrow area of expertise.
 
 **Read this file first when:**
@@ -49,35 +51,52 @@ R0 is a **gate**: satisfy it before doing anything else. R1–R3 govern the work
 The upstream material is level 5 of the R1 chain and the final authority for every Kora question.
 It must be on disk **before** you begin, not fetched reactively once you are already stuck.
 
-**Kora 2.0 has no published documentation site of its own.** The `kora-docs` repository documents
-Kora **1.x** on every branch that currently exists, including `feature/kora-2.0`, whose `docs/v2`
-directory is a byte-identical copy of the 1.x pages. Grounding on it would silently feed you
-`ru.tinkoff.kora` APIs. So for 2.0 the ground truth is the **framework source at a 2.0 ref** plus
-the **migrated example applications**, and nothing else.
+Kora 2.0 has its own documentation: [koraframework.io/v2/en](https://koraframework.io/v2/en/)
+([ru](https://koraframework.io/v2/ru/)), built from the `kora-docs` branch `feature/kora-2.0`
+(`mkdocs/docs/v2/{en,ru}/`). It is rewritten for 2.0, but it trails the framework — some pages still
+describe behaviour that has since changed. Evidence order, highest first:
+
+1. **Framework source and tests** at the 2.0 ref — the only authority for API names, config keys and defaults
+2. **Migrated example applications** (`kora-examples`, branch `migration/2.0`) — working code, may lag the source
+3. **Kora 2.0 docs** (`docs/v2`) — concepts, intent, recipes; verify any key, default or signature in source
+4. **Kora 1.x docs** (`kora-projects.github.io/kora-docs`, `docs/v1`) — vocabulary and background only,
+   and only when you say so out loud. They describe `ru.tinkoff.kora` and are never an authority for 2.0
 
 **Run this at the start of every Kora task.** It is idempotent — it does nothing when the material
 is already present, so there is no cost to running it every time:
 
 ```bash
-if [ ! -d .kora-agent/kora-source-2.0 ] || [ ! -d .kora-agent/kora-examples-2.0 ]; then
+if [ ! -d .kora-agent/kora-source-2.0 ] || [ ! -d .kora-agent/kora-examples-2.0 ] \
+   || [ ! -d .kora-agent/kora-docs-2.0 ]; then
   mkdir -p .kora-agent
   [ -d .kora-agent/kora-source-2.0 ] \
-    || git clone --depth 1 --branch 2.0.0.RC1 \
+    || git clone --depth 1 --branch 2.0.0.RC2 \
+         https://github.com/kora-projects/kora.git .kora-agent/kora-source-2.0 \
+    || git clone --depth 1 \
          https://github.com/kora-projects/kora.git .kora-agent/kora-source-2.0
   [ -d .kora-agent/kora-examples-2.0 ] \
     || git clone --depth 1 --branch migration/2.0 \
          https://github.com/kora-projects/kora-examples.git .kora-agent/kora-examples-2.0
-  rm -rf .kora-agent/kora-source-2.0/.git .kora-agent/kora-examples-2.0/.git
+  [ -d .kora-agent/kora-docs-2.0 ] \
+    || git clone --depth 1 --branch feature/kora-2.0 \
+         https://github.com/kora-projects/kora-docs.git .kora-agent/kora-docs-2.0
+  rm -rf .kora-agent/kora-source-2.0/.git .kora-agent/kora-examples-2.0/.git .kora-agent/kora-docs-2.0/.git
   grep -qxF '.kora-agent/' .gitignore 2>/dev/null || echo '.kora-agent/' >> .gitignore
 fi
 ```
 
 **Gate:** `.kora-agent/kora-source-2.0/` and `.kora-agent/kora-examples-2.0/` both exist → proceed.
+`.kora-agent/kora-docs-2.0/` is wanted but not a gate; without it, read the published site.
 
 - Clone fails (no network, restricted environment) → say so explicitly and continue with sub-skills
   only. Never silently substitute recollection for the source you could not fetch.
-- The service targets `2.0.0-SNAPSHOT` rather than `2.0.0.RC1` → clone the framework at `master`
+- The `2.0.0.RC2` tag is missing, so the block fell back to `master` → say that you grounded on
+  `master`, not on a release.
+- The service targets `2.0.0-SNAPSHOT` rather than `2.0.0.RC2` → clone the framework at `master`
   instead, and say which ref you grounded on.
+- The service pins an older release (`2.0.0.RC1`) → clone the framework at that tag. Several features
+  taught by the sub-skills (PostgreSQL mappers, DB scheduling, distributed resilience, Logback JSON
+  encoder, telemetry masking) do not exist there.
 - The user declines the clone → note that level 5 is unavailable for this session, and flag any
   answer that would normally have been verified against it.
 
@@ -93,14 +112,16 @@ Resolve every Kora question through this chain, in order. Stop at the first leve
 2. ../<sub-skill>/SKILL.md          → the actual expertise, templates, scripts
 3. ../<sub-skill>/references/       → detailed patterns for that domain
 4. kora-journal (search)            → known mistakes and fixes from past sessions
-5. .kora-agent/kora-source-2.0/     → framework source: the final authority
+5. .kora-agent/kora-source-2.0/     → framework source and tests: the final authority
    .kora-agent/kora-examples-2.0/   → working migrated applications
+   .kora-agent/kora-docs-2.0/       → Kora 2.0 docs (mkdocs/docs/v2/{en,ru}/): verify before trusting
 ```
 
 - **Never** write Kora code straight from memory. Open the sub-skill first.
 - **Never** skip to level 5 because "it's a small change". Levels 2–3 hold the vetted patterns.
 - Sub-skill and source disagree → **source wins**; fix the sub-skill and journal it (R3).
-- Within level 5, framework source outranks the examples: an example can be behind, the source cannot.
+- Within level 5, framework source outranks the examples, and the examples outrank the docs: an
+  example or a doc page can be behind, the source cannot.
 
 **Recovery:** caught writing Kora code without having opened the sub-skill → stop, discard the
 draft, open the sub-skill, rewrite.
@@ -217,8 +238,9 @@ Read the matching sub-skill's `SKILL.md` **before** writing any code for that do
 | When the task is about | Sub-skill |
 |---|---|
 | JDBC repositories, `@EntityJdbc`, `@Query`, SQL macros, transactions via `executor().inTx()`, Hikari | [`kora-database-jdbc`](../kora-database-jdbc/SKILL.md) |
+| PostgreSQL types (`database-jdbc-postgres`) — `@Pg` arrays and `interval`, `PgRange`, `@PgJson` / `@PgJsonb`, `= ANY(?)` | [`kora-database-jdbc`](../kora-database-jdbc/references/postgres-mappers-reference.md) |
 | Cassandra / ScyllaDB, `@EntityCassandra`, `@UDT`, CQL, driver profiles | [`kora-database-cassandra`](../kora-database-cassandra/SKILL.md) |
-| Flyway / Liquibase migrations, SQL versioning | [`kora-database-migration`](../kora-database-migration/SKILL.md) |
+| Flyway / Liquibase migrations, SQL versioning, the `kora_scheduling_db_scheduler_jobs` table for `scheduling-db-scheduler` | [`kora-database-migration`](../kora-database-migration/SKILL.md) |
 
 R2DBC and Vert.x SQL were **removed** in Kora 2.0. There is no reactive database integration —
 JDBC on virtual threads is the only path.
@@ -237,7 +259,7 @@ JDBC on virtual threads is the only path.
 | Kafka publishing, `@KafkaPublisher`, transactional producers | [`kora-kafka-producer`](../kora-kafka-producer/SKILL.md) |
 | Kafka consuming, `@KafkaListener`, batch mode, error handling | [`kora-kafka-consumer`](../kora-kafka-consumer/SKILL.md) |
 | OpenAPI → server code, delegates, controllers | [`kora-openapi-generator-server`](../kora-openapi-generator-server/SKILL.md) |
-| OpenAPI → client code, typed `Api` interfaces | [`kora-openapi-generator-client`](../kora-openapi-generator-client/SKILL.md) |
+| OpenAPI → client code, typed `Api` interfaces, `clientResponseMode` `SEALED` / `SUCCESSFUL` with typed error exceptions | [`kora-openapi-generator-client`](../kora-openapi-generator-client/SKILL.md) |
 | Serving the spec — Swagger UI, Scalar, publishing | [`kora-openapi-management`](../kora-openapi-management/SKILL.md) |
 | JSON DTOs, `@Json`, sealed discriminators, custom (de)serialization | [`kora-json`](../kora-json/SKILL.md) |
 
@@ -247,19 +269,25 @@ JDBC on virtual threads is the only path.
 |---|---|
 | OpenTelemetry tracing, OTLP export, spans, Jaeger/Zipkin | [`kora-telemetry-tracing`](../kora-telemetry-tracing/SKILL.md) |
 | Micrometer metrics, Prometheus scrape endpoint, custom meters | [`kora-telemetry-metrics`](../kora-telemetry-metrics/SKILL.md) |
-| SLF4J / Logback, structured logs | [`kora-telemetry-logging`](../kora-telemetry-logging/SKILL.md) |
+| SLF4J / Logback, structured logs, JSON log encoder, `kora.logging.encoder` | [`kora-telemetry-logging`](../kora-telemetry-logging/SKILL.md) |
+| Masking secrets in telemetry logs — HTTP / gRPC / Kafka headers, queries, payloads (`DataMasker`) | [`kora-aop-logging`](../kora-aop-logging/references/logging-masking.md), then the transport sub-skill |
 
-In Kora 2.0 component **metrics and logging are disabled by default** — see §4.
+In Kora 2.0 **per-component metrics and logging are disabled by default** (`<component>.telemetry.metrics.enabled`,
+`…logging.enabled`); the global `metrics.enabled` switch defaults to `true` — see §4. Common metric tags
+(`metrics.tags`, `MetricsTagsProvider`) and tracing resource attributes (`OpentelemetryTracingAttributesProvider`)
+live in the metrics and tracing sub-skills.
 
 ### AOP
 
 | When the task is about | Sub-skill |
 |---|---|
-| `@Retryable`, `@CircuitBreakable`, `@Timeout`, `@RateLimited`, `@Fallback` and their `*Spec` types | [`kora-aop-resilient`](../kora-aop-resilient/SKILL.md) |
+| `@Retryable`, `@CircuitBreakable`, `@Timeout`, `@RateLimited`, `@Fallback` and their `*Spec` types, token-bucket / fixed-window limiter, `RetryBudget`, `NonRetryableException` / `NonCircuitableException` | [`kora-aop-resilient`](../kora-aop-resilient/SKILL.md) |
+| Redis-backed distributed rate limiter and retry budget — `@RateLimiterDistributedSpec`, `LettuceDistributedResilientModule`, `DistributedRetryBudgetFactory` | [`kora-aop-resilient`](../kora-aop-resilient/references/distributed-reference.md) |
 | `@Log`, `@Mdc`, method logging aspects | [`kora-aop-logging`](../kora-aop-logging/SKILL.md) |
 | `@Cacheable`, `@CachePut`, `@CacheInvalidate`, `@CacheInvalidateAll`, Caffeine / Redis-Lettuce | [`kora-aop-caching`](../kora-aop-caching/SKILL.md) |
-| `@ScheduleAtFixedRate`, `@ScheduleWithFixedDelay`, `@ScheduleOnce` (JDK executor) | [`kora-aop-scheduling-jdk`](../kora-aop-scheduling-jdk/SKILL.md) |
-| Quartz scheduling, cron, `@ScheduleWithTrigger`, clustered jobs, job stores | [`kora-aop-scheduling-quartz`](../kora-aop-scheduling-quartz/SKILL.md) |
+| `@ScheduleJdkAtFixedRate`, `@ScheduleJdkWithFixedDelay`, `@ScheduleJdkWithCron`, `@ScheduleJdkOnce` in-process (JDK executor, virtual threads) | [`kora-aop-scheduling-jdk`](../kora-aop-scheduling-jdk/SKILL.md) |
+| Quartz scheduling, `@ScheduleQuartzWithCron`, `@ScheduleQuartzWithTrigger`, clustered jobs, job stores | [`kora-aop-scheduling-quartz`](../kora-aop-scheduling-quartz/SKILL.md) |
+| Database-backed clustered jobs on db-scheduler (`scheduling-db-scheduler`): `@ScheduleDbWithCron` / `@ScheduleDbWithFixedDelay` / `@ScheduleDbOnce`, one execution per cluster | [`kora-aop-scheduling-db`](../kora-aop-scheduling-db/SKILL.md) |
 | `@Valid`, `@Validate`, constraint annotations, custom validators | [`kora-aop-validation`](../kora-aop-validation/SKILL.md) |
 
 ### Testing
@@ -275,7 +303,7 @@ In Kora 2.0 component **metrics and logging are disabled by default** — see §
 | When the task is about | Sub-skill |
 |---|---|
 | S3 object storage — declarative `@S3` client and the AWS SDK wrapper | [`kora-s3`](../kora-s3/SKILL.md) |
-| MapStruct mappers, DTO ↔ entity mapping | [`kora-mapstruct`](../kora-mapstruct/SKILL.md) |
+| DTO ↔ entity mapping — MapStruct in Java, Konvert in Kotlin (never crossed) | [`kora-mapstruct`](../kora-mapstruct/SKILL.md) |
 | Recording incorrect Kora usage (R3), searching past mistakes | [`kora-journal`](../kora-journal/SKILL.md) |
 | Teaching Kora, guided tutorials, explaining concepts to a newcomer | [`kora-teacher`](../kora-teacher/SKILL.md) |
 
@@ -344,6 +372,16 @@ test case, never as something a successful build has proved.
 | Service starts fine but nothing answers on the ports you configured | `publicApiHttpPort`/`privateApiHttpPort` still in config. Unrecognised HOCON keys are ignored without a warning, so both servers fall back to their defaults — 8080 public, 8085 system. Probes, scrapers and load balancers hit nothing |
 | `ConfigValueException: … got null at path: 'ROOT.jdbc.username'` | Datasource section still called `db`; 2.0 wires `new JdbcDatabaseFactoryModule("jdbc")` |
 | `/metrics` returns 200 but has no `http_server_*` / `db_*` series | Component metrics default to **off** in 2.0. Set `telemetry.metrics.enabled = true` per component. Logging is off by default too; tracing is on |
+| `/metrics` returns 200 with an **empty** body | The global `metrics.enabled = false` swaps in a no-op `MeterRegistry` for the whole service |
+| `metrics.tags` and every `MetricsTagsProvider` are ignored | The application declares its own `PrometheusMeterRegistryInitializer`; the built-in common-tags initializer is a `@DefaultComponent` and drops out of the graph |
+| Console stays empty although `logback.xml` looks right | The encoder class is still `io.koraframework.logging.logback.ConsoleTextRecordEncoder`; it moved to `io.koraframework.logging.logback.text.ConsoleTextRecordEncoder`, and the failure is hidden behind `NopStatusListener` |
+| Log lines go missing under load | `KoraAsyncAppender` defaults to `neverBlock = true` with `queueSize = 512`: a full queue **drops** events |
+| Secrets appear in TRACE Kafka / HTTP body logs | Header masking is on by default (`maskHeaders`), but bodies are masked only by a `DataMasker` you register under the transport's telemetry tag — none is registered by default |
+| DB-scheduled jobs (`scheduling-db-scheduler`) never run, the app starts green | The job table is missing. `scheduling.dbScheduler.initializeTable` — the name the module README and the `DbSchedulerConfig` Javadoc gave until kora-projects/kora PR #966 — is not read; the key is `tableInitialize`, and the default table is now `kora_scheduling_db_scheduler_jobs`. `KoraDbScheduler` is `@Root` itself, so no starter component is needed — see [`kora-aop-scheduling-db`](../kora-aop-scheduling-db/SKILL.md) |
+| A JDBC `afterCommit` fires for a transaction that rolled back (or `afterRollback` for one that committed); an `afterCommit` that opens `inTx` ends in `StackOverflowError` | `ConnectionContext` keeps its actions after the transaction ends, so a later `inTx` in the same `withConnection` scope runs them again, and the first failing action skips the rest. Fixed in `2.0.0.RC2` (kora-projects/kora PR #967) — only `2.0.0.RC1` is affected; a post-commit failure still propagates out of `inTx` for committed work — see [`kora-database-jdbc`](../kora-database-jdbc/references/transactions-reference.md#post-commit-and-post-rollback-actions) |
+| A scheduled job never does its work; with job logging off nothing says so | The scheduled method sits on a `@Conditional` component whose condition failed. The generated job factory does not carry the condition, so a JDK or DB job is still scheduled and every run fails in `ValueOf.get()` with `Graph node value was not initialized because condition failed` (a Quartz job fails graph init instead). Fixed in `2.0.0.RC2` (kora-projects/kora PR #962) — only `2.0.0.RC1` is affected; on RC1 keep schedules on an unconditional component — see [`kora-aop-scheduling-jdk`](../kora-aop-scheduling-jdk/SKILL.md) |
+| Scheduler concurrency or shutdown settings have no effect after moving off RC1 / an earlier 2.0 snapshot | Renamed keys are unknown keys: `scheduling.jdk.maxConcurrentExecutions` is now `executionParallelism`, `scheduling.quartz.waitForJobComplete` is now the duration `shutdownWait` — after which Quartz jobs are interrupted — and the annotations are `@ScheduleJdk*` / `@ScheduleQuartz*` / `@ScheduleDb*` |
+| `telemetry.logging.mask = "…"` has no effect | The `mask` key is gone; the replacement text comes from a tagged `MaskingStrategy` component. Unknown keys are ignored silently |
 | Tracing is on, spans are created, and the collector receives nothing | The exporter's `endpoint` is unset. `spanExporter`/`spanProcessor` return `SpanExporter.composite()` / `SpanProcessor.composite()` — a no-op — with no warning, while `tracing.enabled` defaults to **true**, so the service looks fully instrumented |
 | `No component found for dependency: …Mapper` | A mapper *with* constructor dependencies needs `@Component` — the generated module injects it rather than building it |
 | `Multiple components match` for a mapper | A mapper *without* dependencies must **not** carry `@Component` — Kora constructs it itself. Decide per mapper, by its constructor |
@@ -357,13 +395,15 @@ test case, never as something a successful build has proved.
 
 | Symptom | Action |
 |---|---|
-| `Required dependency was not found: Foo` | Check `@Component` on the class, that the `*Module` is extended by `@KoraApp`, and that `@KoraSubmodule` exists in multi-module builds |
+| `No component found for dependency:` naming `Foo` | Check `@Component` on the class, that the `*Module` is extended by `@KoraApp`, and that `@KoraSubmodule` exists in multi-module builds |
 | Ambiguous dependency / more than one candidate | Disambiguate with `@Tag`, or inject `All<T>` |
 | `ApplicationGraph` missing after `clean` | Run `./gradlew classes` — processors must run before anything references the graph |
 | Aspect annotation has no effect | Processor/KSP dependency missing, or the Kotlin class is not `open` |
 | `incompatible types: String cannot be converted to Class<? extends Timeouter>` | 1.x string-named resilient annotation; 2.0 takes a spec **type** |
 | KSP crashes with `ClassCastException: String → KSType` | Same cause, seen from Kotlin: a leftover string-named resilient annotation |
 | `error: SQL query placeholder has no matching method parameter: :id … - :arg0` | Incremental build read the repository from a class file. `--rerun-tasks` or `clean` on the module |
+| `Graph node value was not initialized because condition failed` although the dependency is `@Nullable` / `T?` | A nullable dependency on a `@Conditional` component is generated as `g.get(node)`. Fixed in `2.0.0.RC2` (kora-projects/kora PR #960) — only `2.0.0.RC1` is affected; on RC1 inject `All<T>` — see [`kora-di-runtime`](../kora-di-runtime/SKILL.md) |
+| `@KoraAppTest` fails to start with `Graph node belongs to another application graph` | The tested graph contains a `@Conditional` component; `ApplicationGraphDraw.copy()`/`subgraph()` keep its condition bound to the original graph. Fixed in `2.0.0.RC2` (kora-projects/kora PR #963) — only `2.0.0.RC1` is affected — see [`kora-testing-junit-java`](../kora-testing-junit-java/SKILL.md) |
 | Generated classes stale or broken after a refactor | Delete `build/generated/`, rebuild with `--no-build-cache` |
 | Build hangs, or `clean` fails to delete a directory | `./gradlew --stop`, then retry |
 | IDE shows errors but Gradle compiles fine | IDE caching — invalidate caches and restart |
@@ -376,8 +416,8 @@ test case, never as something a successful build has proved.
 Availability of this material is **R0**, the gate in §1 — it is a precondition for starting work,
 not a step you reach once you need it.
 
-Module-by-module map of the framework source, the migrated example apps, and the areas this plugin
-does not cover: [`references/kora-docs-map.md`](../../references/kora-docs-map.md).
+Module-by-module map of the framework source, the 2.0 docs pages, the migrated example apps, and the
+areas this plugin does not cover: [`references/kora-docs-map.md`](../../references/kora-docs-map.md).
 
 ---
 

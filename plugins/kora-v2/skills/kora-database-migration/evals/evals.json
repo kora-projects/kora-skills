@@ -38,6 +38,7 @@
         "States that io.koraframework:database-flyway ships only org.flywaydb:flyway-core, and that since Flyway 10 database support lives in separate artifacts",
         "Adds org.flywaydb:flyway-database-postgresql to the application's own dependencies with an explicit version",
         "Notes that kora-bom does not constrain third-party artifacts, so the version must be written out and kept equal to the flyway-core version database-flyway resolves",
+        "Names 13.9.0 as the flyway-core version database-flyway brings for Kora 2.0.0.RC2",
         "Suggests verifying the resolved versions, e.g. ./gradlew dependencies --configuration runtimeClasspath | grep flyway",
         "Does not suggest downgrading PostgreSQL, changing the JDBC URL, or disabling validation"
       ],
@@ -202,6 +203,23 @@
         "Uses synchronous assertions; does not use Mono, CompletionStage or suspend repository contracts"
       ],
       "tags": ["testing", "flyway", "regression"]
+    },
+    {
+      "id": "kora-database-migration-scheduling-db-table",
+      "skills": ["kora-database-migration"],
+      "query": "I added io.koraframework:scheduling-db-scheduler to my Kora 2.0 service that already runs Flyway on startup with db/migration/V1__init.sql. Where does the scheduler's job table come from, and can I just add the module's Flyway folder to flyway.locations?",
+      "expected_behavior": [
+        "States that the artifact ships the schema as classpath resources: plain scripts db/kora/scheduling-db-scheduler/schema/<database>.sql and an idempotent Liquibase changelog db/kora/scheduling-db-scheduler/liquibase/changelog.yaml",
+        "Explains there is no versioned Flyway folder to add to flyway.locations: the script for the database is copied into the application's own migrations under the next free version (e.g. V2__create_kora_scheduling_db_scheduler_jobs.sql)",
+        "Names the table kora_scheduling_db_scheduler_jobs, the default of scheduling.dbScheduler.tableName, and says a custom tableName must be replaced in the copied script",
+        "Routes the details of applying the table to the kora-aop-scheduling-db skill",
+        "Does not invent a flyway config key for per-location history tables or a Kora-specific migration hook"
+      ],
+      "anti_behavior": [
+        "Points flyway.locations at classpath:db/scheduling-db/flyway/<database> or expects a bundled V1__create_scheduled_tasks.sql",
+        "Uses the earlier snapshot table names scheduled_tasks or kora_scheduling_db_jobs as the default"
+      ],
+      "tags": ["flyway", "scheduling", "integration"]
     }
   ]
 }

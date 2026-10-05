@@ -1,7 +1,7 @@
 // Kora 2.0 — declarative method logging with @Log and @Mdc (Kotlin / KSP).
 //
 // Requires, in build.gradle.kts:
-//     implementation(platform("io.koraframework:kora-bom:${property("koraVersion")}"))  // 2.0.0.RC1
+//     implementation(platform("io.koraframework:kora-bom:${property("koraVersion")}"))  // 2.0.0.RC2
 //     ksp("io.koraframework:symbol-processors:${property("koraVersion")}")
 //     implementation("io.koraframework:logging-logback")
 //

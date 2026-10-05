@@ -22,7 +22,7 @@ instances, swaps them into the application graph, resets them and reports unused
 ## Dependency and the Java 25 floor
 
 ```groovy
-testImplementation "org.mockito:mockito-core:5.23.0"
+testImplementation "org.mockito:mockito-core:5.24.0"
 ```
 
 Mockito is `compileOnly` inside `io.koraframework:test-junit5`, and `io.koraframework:kora-bom`
@@ -44,7 +44,7 @@ Application graph failed to initialize with N errors
 
 with no visible suppressed exception, so it reads like a dependency-injection problem.
 
-- `mockito-core` `5.23.0` (Byte Buddy `1.18.11`) is what the framework's own version catalog pins —
+- `mockito-core` `5.24.0` (Byte Buddy `1.18.14`) is what the framework's own version catalog pins —
   use it as the floor. Several migrated examples still carry `5.18.0`; do not copy that number.
 - Diagnose with
   `./gradlew <module>:dependencyInsight --dependency byte-buddy --configuration testRuntimeClasspath`.
@@ -281,12 +281,13 @@ When one argument uses a matcher, every argument of that call must use one — w
 
 | Symptom | Cause | Fix |
 |---|---|---|
-| `Java 25 (69) is not supported by the current version of Byte Buddy` | Old Mockito / Byte Buddy | `mockito-core:5.23.0` |
+| `Java 25 (69) is not supported by the current version of Byte Buddy` | Old Mockito / Byte Buddy | `mockito-core:5.24.0` |
 | `Application graph failed to initialize with N errors`, no cause shown | The same Byte Buddy failure, swallowed | Same fix; temporarily enable `junitXml.required` to see suppressed exceptions |
 | Mock field stays `null` | `@Mock` without `@TestComponent` | Add `@TestComponent` |
 | The real implementation runs instead of the mock | The mock never entered the graph | `@Mock` + `@TestComponent` on the same element, and no `MockitoExtension` |
 | Duplicated mocks / doubled strictness reports | `@ExtendWith(MockitoExtension.class)` | Remove it |
 | `Cannot create @Mock using Mockito … does not resolve to a raw class` | Mocked type is not a class or parameterized class | Declare the mock on a class type |
 | `Cannot inject mocks through test method parameters with TestInstance.Lifecycle.PER_CLASS` | Per-method mocks with a shared graph | Use `PER_METHOD`, or move the mock to a field/constructor parameter |
+| `PER_CLASS`: `beforeEach` fails in `resetMocks` with `Graph node value was not initialized because condition failed` | The reset reads every graph node, and a `@Conditional` node whose condition failed throws on read | Fixed in `2.0.0.RC2` (kora-projects/kora PR #964) — only `2.0.0.RC1` is affected; on RC1 use `PER_METHOD` |
 | `UnnecessaryStubbingException` | `STRICT_STUBS` and a stub nobody used | Delete the stub or relax the level for that mock with `@Mock(strictness = LENIENT)` |
 | Stub ignored | Stubbed after the call | Stub in `@BeforeEach` or before invoking |

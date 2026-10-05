@@ -12,7 +12,7 @@
         "Adds annotationProcessor \"io.koraframework:annotation-processors\"",
         "References Kora modules without an explicit version",
         "Sets a Java toolchain of 25 or newer",
-        "Pins koraVersion=2.0.0.RC1 and resolves it from repositories { mavenCentral() }"
+        "Pins koraVersion=2.0.0.RC2 and resolves it from repositories { mavenCentral() }"
       ],
       "anti_behavior": [
         "Uses ru.tinkoff.kora:kora-parent or any ru.tinkoff.kora coordinate",
@@ -35,12 +35,12 @@
       ],
       "query": "Configure a Kotlin Kora 2.0 project with KSP and the BOM.",
       "expected_behavior": [
-        "Applies kotlin(\"jvm\") version 2.4.10 and com.google.devtools.ksp version 2.3.11",
+        "Applies kotlin(\"jvm\") version 2.4.20 and com.google.devtools.ksp version 2.3.12",
         "Puts the BOM directly on implementation: implementation(platform(\"io.koraframework:kora-bom:...\"))",
         "Adds ksp(\"io.koraframework:symbol-processors:<koraVersion>\") WITH an explicit version",
         "Explains that the BOM does not constrain the ksp configuration, which is why the version stays",
         "Sets a Kotlin jvmToolchain of 25 or newer",
-        "Includes repositories { mavenCentral() } and pins koraVersion=2.0.0.RC1"
+        "Includes repositories { mavenCentral() } and pins koraVersion=2.0.0.RC2"
       ],
       "anti_behavior": [
         "Creates a koraBom configuration or uses ksp.get().extendsFrom(koraBom) in a Kotlin build",
@@ -62,8 +62,8 @@
       ],
       "query": "Which Kora 2.0 version do I pin, and which repositories do I need for it?",
       "expected_behavior": [
-        "Pins io.koraframework:kora-bom:2.0.0.RC1",
-        "States that 2.0.0.RC1 is published on Maven Central and is the only 2.0.x release of kora-bom there",
+        "Pins io.koraframework:kora-bom:2.0.0.RC2",
+        "States that 2.0.0.RC2 is published on Maven Central and resolves from plain mavenCentral()",
         "Says repositories { mavenCentral() } is sufficient for a release build",
         "Describes 2.0.0-SNAPSHOT as the master development line, needing the Sonatype snapshot repository (or publishToMavenLocal), and not something to pin in a new project"
       ],
@@ -314,15 +314,17 @@
       "skills": [
         "kora-project-dependencies"
       ],
-      "query": "How do I wire MapStruct into a Kora 2.0 Kotlin service?",
+      "query": "How do I wire mappers into a Kora 2.0 Kotlin service? We used MapStruct on 1.x.",
       "expected_behavior": [
-        "States that mapstruct-ksp-extension already ships inside io.koraframework:symbol-processors, so it is not listed separately",
-        "Adds only the third-party halves: org.mapstruct:mapstruct plus the MapStruct processor",
-        "Mentions konvert-ksp-extension as the Konvert equivalent, also already inside symbol-processors"
+        "Says Kotlin maps with Konvert in Kora 2.0 - MapStruct is Java-only",
+        "Adds only the third-party half: ksp(\"io.mcarle:konvert:4.5.1\") plus implementation(\"io.mcarle:konvert-api:4.5.1\")",
+        "States that konvert-ksp-extension already ships inside io.koraframework:symbol-processors, so it is not listed separately",
+        "Points to the kora-mapstruct skill for the @Konverter mapper itself"
       ],
       "anti_behavior": [
         "Adds io.koraframework:mapstruct-extension (a 1.x name that does not exist)",
         "Lists mapstruct-ksp-extension or konvert-ksp-extension as its own dependency",
+        "Adds org.mapstruct:mapstruct or org.mapstruct:mapstruct-processor to the Kotlin module",
         "Recommends kapt alongside KSP"
       ],
       "tags": [
@@ -482,7 +484,7 @@
         "Runs scripts/generate_project.py with --dry-run",
         "Reports that nothing is written to disk",
         "Shows a build.gradle.kts with the BOM on implementation and ksp(\"io.koraframework:symbol-processors:<version>\") carrying an explicit version",
-        "Shows kotlin(\"jvm\") 2.4.10 and com.google.devtools.ksp 2.3.11"
+        "Shows kotlin(\"jvm\") 2.4.20 and com.google.devtools.ksp 2.3.12"
       ],
       "anti_behavior": [
         "Generates the project for real when asked for a preview",
@@ -504,7 +506,7 @@
       "expected_behavior": [
         "States the Maven Central directory listing is cumulative and still shows 1.x/alpha leftovers",
         "Names them: kora-parent, cache-redis, declarative-logging-annotation-processor, declarative-logging-symbol-processor, scheduling-ksp, experimental/s3-client",
-        "States none of them is constrained by the 2.0.0.RC1 BOM",
+        "States none of them is constrained by the 2.0.0.RC2 BOM",
         "Points to the kora-bom pom, or the artifact's maven-metadata.xml, as the way to check whether a 2.0.x version exists",
         "Gives the 2.0 replacements: cache-redis-lettuce and kora-bom"
       ],
@@ -529,8 +531,8 @@
       "expected_behavior": [
         "Warns that a group-only rename is not sufficient: io.koraframework:kora-parent is published at 2.0.0.alpha5/2.0.0.alpha6, so it resolves instead of failing and silently pins a pre-release BOM",
         "Says the same applies to io.koraframework:cache-redis",
-        "States the correct coordinate is io.koraframework:kora-bom:2.0.0.RC1, and that kora-parent has no 2.0.0.RC1 version",
-        "Lists the artifact renames a group replace cannot catch: json-module -> json-common, cache-redis -> cache-redis-lettuce, mapstruct-extension -> mapstruct-java-extension/mapstruct-ksp-extension, and the removals",
+        "States the correct coordinate is io.koraframework:kora-bom:2.0.0.RC2, and that kora-parent has no 2.0.0.RC* version",
+        "Lists the artifact renames a group replace cannot catch: json-module -> json-common, cache-redis -> cache-redis-lettuce, mapstruct-extension -> nothing to declare (mapstruct-java-extension is inside annotation-processors; Kotlin moves to Konvert), and the removals",
         "Notes that a successful resolve is not evidence the coordinate is correct"
       ],
       "anti_behavior": [
@@ -603,7 +605,7 @@
       "query": "Which protoc version do I pin for a Kora 2.0 gRPC service? Kora's version catalog says protobuf 4.35.1.",
       "expected_behavior": [
         "Pins protoc 3.25.3, matching what the migrated projects use",
-        "Explains that protobuf-java:3.25.9 is what actually resolves, declared at compile scope by io.grpc:grpc-protobuf:1.83.1",
+        "Explains that protobuf-java:3.25.9 is what actually resolves, declared at compile scope by io.grpc:grpc-protobuf:1.84.0",
         "Explains that Kora's grpc-server declares protobuf-java as compileOnly, so the catalog's 4.35.1 never propagates to a consumer",
         "Warns that protoc 4.x without an explicit protobuf-java 4.x fails with 'cannot find symbol: class Generated'"
       ],
@@ -617,6 +619,70 @@
         "versions",
         "regression",
         "advanced"
+      ]
+    },
+    {
+      "id": "kora-project-dependencies-new-2-0-artifacts",
+      "skills": [
+        "kora-project-dependencies"
+      ],
+      "query": "Which Kora 2.0 artifacts do I need for: PostgreSQL-specific column mappers (arrays, jsonb, ranges), clustered scheduled jobs stored in the database, a rate limiter shared across instances through Redis, and JSON console logs?",
+      "expected_behavior": [
+        "PostgreSQL: io.koraframework:database-jdbc-postgres with PostgresJdbcDatabaseModule, which extends JdbcDatabaseModule and brings the org.postgresql driver",
+        "DB jobs: io.koraframework:scheduling-db-scheduler with DbSchedulerModule, annotations from io.koraframework.scheduling.db.scheduler.annotation, and a DataSource in the graph",
+        "Shared rate limiter: io.koraframework:resilient-kora-distributed-redis-lettuce (LettuceDistributedResilientModule), which pulls resilient-kora-distributed",
+        "JSON logs: io.koraframework:logging-logback-json, picked automatically as the Logback encoder and overridable with kora.logging.encoder / KORA_LOGGING_ENCODER",
+        "Puts no version on any io.koraframework artifact - the kora-bom 2.0.0.RC2 platform owns them"
+      ],
+      "anti_behavior": [
+        "Invents coordinates such as database-postgres, scheduling-db, resilient-redis or logging-json",
+        "Adds a separate org.postgresql driver version as mandatory when database-jdbc-postgres is used",
+        "Claims JSON logging needs a hand-written Logback encoder"
+      ],
+      "tags": [
+        "catalog",
+        "regression"
+      ]
+    },
+    {
+      "id": "kora-project-dependencies-rc2-versions",
+      "skills": [
+        "kora-project-dependencies"
+      ],
+      "query": "Which versions should a new Kora 2.0 service pin for Kora, Kotlin, KSP and the Gradle wrapper, and which gRPC version must my grpc-inprocess test dependency match?",
+      "expected_behavior": [
+        "koraVersion=2.0.0.RC2 from plain mavenCentral()",
+        "Kotlin 2.4.20 with KSP 2.3.12, the versions the framework is built with",
+        "Gradle wrapper 9.8.0",
+        "grpc-inprocess pinned to 1.84.0, the gRPC version grpc-server brings"
+      ],
+      "anti_behavior": [
+        "Pins 2.0.0.RC1, Kotlin 2.4.10, KSP 2.3.11 or Gradle 9.5.1 for a new project",
+        "Pins grpc test transports to 1.83.1"
+      ],
+      "tags": [
+        "versions",
+        "regression"
+      ]
+    },
+    {
+      "id": "kora-project-dependencies-flyway-mysql-dialect",
+      "skills": [
+        "kora-project-dependencies"
+      ],
+      "query": "Kora 2.0 service on MySQL with database-flyway fails with FlywayException: Unsupported Database: MySQL. Which dependency is missing?",
+      "expected_behavior": [
+        "Explains database-flyway ships flyway-core only, so the dialect artifact is the app's job",
+        "Adds org.flywaydb:flyway-mysql at the resolved flyway-core version (13.9.0 in Kora's catalog)",
+        "Suggests ./gradlew dependencyInsight --dependency flyway-core to confirm the version"
+      ],
+      "anti_behavior": [
+        "Adds org.flywaydb:flyway-database-mysql, which is not published",
+        "Puts a version on io.koraframework:database-flyway"
+      ],
+      "tags": [
+        "troubleshooting",
+        "database"
       ]
     }
   ]

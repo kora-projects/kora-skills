@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
-# Sanity-check a Quartz cron expression for io.koraframework.scheduling.quartz.@ScheduleWithCron.
+# Sanity-check a Quartz cron expression for
+# io.koraframework.scheduling.quartz.annotation.ScheduleQuartzWithCron.
 #
 # Read-only: nothing is written, nothing is executed against your project.
 #
@@ -11,8 +12,10 @@
 #   - numeric values within each field's range
 #
 # This is a linter, not the Quartz parser — it will not catch every malformed expression.
-# The Kora JDK scheduler (io.koraframework.scheduling.jdk.annotation.ScheduleWithCron) uses a
-# different parser that also accepts 5 fields; this script deliberately rejects that form.
+# The Kora annotation processor validates a literal @ScheduleQuartzWithCron cron at compile time;
+# use this script for crons that live in configuration and are only parsed at startup.
+# The Kora JDK scheduler (@ScheduleJdkWithCron) uses a different parser that also accepts
+# 5 fields; this script deliberately rejects that form.
 
 set -uo pipefail
 
@@ -70,7 +73,7 @@ if [ "$FIELD_COUNT" -lt 6 ] || [ "$FIELD_COUNT" -gt 7 ]; then
     echo "       Format: <sec> <min> <hour> <day-of-month> <month> <day-of-week> [year]" >&2
     if [ "$FIELD_COUNT" -eq 5 ]; then
         echo "       A 5-field Unix expression is rejected by Quartz. The JDK scheduler" >&2
-        echo "       (io.koraframework.scheduling.jdk.annotation.ScheduleWithCron) accepts it;" >&2
+        echo "       (io.koraframework.scheduling.jdk.annotation.ScheduleJdkWithCron) accepts it;" >&2
         echo "       for Quartz, prepend a seconds field: '0 $CRON_EXPR'." >&2
     fi
     exit 1
@@ -219,6 +222,7 @@ Special characters:
   W  nearest weekday 1W = first weekday of the month
   #  nth weekday     6#2 = second Friday
 
-Quartz uses the JVM default time zone; @ScheduleWithCron has no time-zone attribute.
+Time zone: a @Tag(SchedulingModule.class) ZoneId component if the graph has one,
+otherwise the JVM default; @ScheduleQuartzWithCron has no time-zone attribute.
 LEGEND
 fi

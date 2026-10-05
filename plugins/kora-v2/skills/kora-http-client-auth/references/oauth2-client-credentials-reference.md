@@ -131,9 +131,12 @@ var form = new FormUrlEncoded(
         new FormUrlEncoded.FormPart("scope", config.scopes()));
 ```
 
-A secret in the body is not masked by the client logger — `maskHeaders` covers headers only, and
-there is no body masking. If you enable `httpClient.oauth2.telemetry.logging.enabled`, the secret
-lands in the log. Prefer the Basic-header form, where `authorization` is masked by default.
+A secret in the body is not masked by `maskHeaders`, which covers headers only. With
+`httpClient.oauth2.telemetry.logging.enabled` and the auth client's request logger at `TRACE`, the
+form body — secret included — is logged verbatim unless a `@Tag(HttpClientTelemetry.class)`
+`FormUrlencodedDataMasker` is in the graph (the token response's `access_token` likewise needs a
+`JsonDataMasker`; see [http-client-auth-reference.md](http-client-auth-reference.md#keeping-the-credential-out-of-the-logs)).
+Prefer the Basic-header form, where `authorization` is masked by default.
 
 ---
 
@@ -273,8 +276,8 @@ httpClient {
 - The auth client's `requestTimeout` should be **shorter** than the business client's: its call runs
   inside the business request's budget, holding the refresh lock.
 - `maskHeaders` **replaces** the default `["authorization", "set-cookie", "cookie"]` rather than
-  extending it, and is matched against the lower-cased header name. Restate the defaults whenever
-  you set it. See [http-client-auth-reference.md](http-client-auth-reference.md#keeping-the-credential-out-of-the-logs).
+  extending it; names are compared lower-cased, so their case does not matter. Restate the
+  defaults whenever you set it. See [http-client-auth-reference.md](http-client-auth-reference.md#keeping-the-credential-out-of-the-logs).
 
 ---
 
@@ -351,7 +354,7 @@ public interface Application extends HoconConfigModule, JsonModule, LogbackModul
 
     @Tag(ApiSecurity.OAuth.class)
     default HttpClientTokenProvider oAuthTokenProvider(OAuth2ClientCredentialsProvider provider) {
-        return request -> "Bearer " + provider.getToken(request);
+        return provider;                              // bare token; the interceptor adds "Bearer "
     }
 
     @Tag(ApiSecurity.BearerAuth.class)
@@ -369,9 +372,10 @@ Three rules, all from the generated interceptor's own shape:
 2. If no alternative comes out complete, the request is forwarded with **no** credential after a
    single `WARN Security schema is defined for api but no data was provided` — the call then fails
    as a `401` from the upstream, not as an error in your process.
-3. For `http`, `oauth2` and `openId` schemes the returned string becomes the **whole**
-   `Authorization` header value — so return `"Bearer " + token`. This is the opposite of
-   `BearerAuthHttpClientInterceptor`, which adds the prefix itself.
+3. It writes `authorization` with the scheme prefix itself — `"Basic "` for `http`/`basic`,
+   `"Bearer "` for `http`/`bearer`, `oauth2` and `openId` — so the provider returns the **bare**
+   token, the same contract as `BearerAuthHttpClientInterceptor`. Returning `"Bearer " + token`
+   sends `Bearer Bearer …`.
 
 Everything else about generated clients — the `ApiSecurity` tag names, the security config prefix,
 the per-API config path — is [kora-openapi-generator-client](../../kora-openapi-generator-client/SKILL.md).

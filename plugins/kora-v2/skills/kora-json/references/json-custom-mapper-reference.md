@@ -1,6 +1,6 @@
 # Custom JSON Mappers Reference (Kora 2.x)
 
-Verified against the Kora 2.0 sources — [`json/json-common`](https://github.com/kora-projects/kora/tree/2.0.0.RC1/json/json-common)
+Verified against the Kora 2.0 sources — [`json/json-common`](https://github.com/kora-projects/kora/tree/2.0.0.RC2/json/json-common)
 (`JsonReader`, `JsonWriter`, `JsonModule`, `reader/`, `writer/`) and the generated-code paths
 in `JsonReaderGenerator` / `JsonWriterGenerator`.
 
@@ -41,18 +41,16 @@ Two registration routes, with different scope:
 
 ## 2. The Two Contracts
 
-As published in `2.0.0.RC1`:
-
 ```java
 package io.koraframework.json.common;
 
 public interface JsonReader<T> extends Mapping.MappingFunction {
-    @Nullable T read(JsonParser parser);
+    @Nullable T read(JsonParser parser) throws JacksonException;
     // plus default read(byte[]) / read(byte[], int, int) / read(String) / read(InputStream)
 }
 
 public interface JsonWriter<T> extends Mapping.MappingFunction {
-    void write(JsonGenerator generator, @Nullable T object);
+    void write(JsonGenerator generator, @Nullable T object) throws JacksonException;
     // plus default toByteArray(T) / toString(T) / toPrettyString(T)
 }
 ```
@@ -61,9 +59,8 @@ Three things follow:
 
 - **Only `read(JsonParser)` and `write(JsonGenerator, T)` have to be implemented.** The
   byte-array / String / stream helpers are `default` methods on the interface.
-- **No checked exception, on either line.** RC1 declares no `throws` clause at all; the
-  `2.0.0-SNAPSHOT` development line adds `throws tools.jackson.core.JacksonException`, which
-  is unchecked (Kora's own `RawJsonWriter.write` and `ListJsonReader.read` override with no
+- **No checked exception.** Every method declares `throws tools.jackson.core.JacksonException`,
+  which is unchecked (Kora's own `RawJsonWriter.write` and `ListJsonReader.read` override with no
   `throws` clause). An implementation therefore never has to declare anything, and a caller
   must never write `catch (IOException …)` around these methods — in Java that is a compile
   error (`exception IOException is never thrown in body of corresponding try statement`).
@@ -496,15 +493,18 @@ every built-in reader in `JsonModule` does.
 
 ### Fail with a locatable message
 
-`StreamReadException(parser, message)` carries the parser location, which is what every
-built-in reader in `JsonModule` throws:
+`StreamReadException(parser, message)` carries the parser location. Match the built-in
+readers, which say what was expected, what arrived and where — the JSON Pointer from
+`parser.streamReadContext().pathAsPointer()`, `<root>` when it is empty:
 
 ```java
-throw new StreamReadException(parser, "Expecting VALUE_STRING token, got " + parser.currentToken());
+var path = parser.streamReadContext().pathAsPointer().toString();
+throw new StreamReadException(parser, "Failed to read json Money: expected a string, but got "
+    + parser.currentToken() + " (at " + (path.isEmpty() ? "<root>" : path) + ")");
 ```
 
-Jackson can also give you the JSON pointer of the cursor —
-`parser.streamReadContext().pathAsPointer()` — if you want it in the message.
+The built-in and generated readers all use the `Failed to read json …: expected …, but got …
+(at /pointer)` shape, so a custom reader written this way reads the same in logs.
 
 ### Do not re-position the parser
 

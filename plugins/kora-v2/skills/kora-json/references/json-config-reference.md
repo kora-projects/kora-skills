@@ -1,9 +1,9 @@
 # JSON Artifacts, Wiring and Jackson (Kora 2.x)
 
-Verified against the Kora 2.0 build — [`settings.gradle`](https://github.com/kora-projects/kora/blob/2.0.0.RC1/settings.gradle),
-[`gradle/libs.versions.toml`](https://github.com/kora-projects/kora/blob/2.0.0.RC1/gradle/libs.versions.toml),
-[`json/json-common/build.gradle`](https://github.com/kora-projects/kora/blob/2.0.0.RC1/json/json-common/build.gradle),
-[`json/jackson-module`](https://github.com/kora-projects/kora/tree/2.0.0.RC1/json/jackson-module).
+Verified against the Kora 2.0 build — [`settings.gradle`](https://github.com/kora-projects/kora/blob/2.0.0.RC2/settings.gradle),
+[`gradle/libs.versions.toml`](https://github.com/kora-projects/kora/blob/2.0.0.RC2/gradle/libs.versions.toml),
+[`json/json-common/build.gradle`](https://github.com/kora-projects/kora/blob/2.0.0.RC2/json/json-common/build.gradle),
+[`json/jackson-module`](https://github.com/kora-projects/kora/tree/2.0.0.RC2/json/jackson-module).
 
 ## Contents
 
@@ -51,13 +51,12 @@ individual `io.koraframework:*` version.
 
 ### Version and repository
 
-**`2.0.0.RC1`** is the Kora 2.0 release on Maven Central (published 2026-08-13; the only
-`2.0.x` there, constraining all 95 published modules). Plain `mavenCentral()` resolves it —
-no extra repository is required.
+Pin the released **`2.0.0.RC2`** from Maven Central. Plain `mavenCentral()` resolves it — no
+extra repository is required.
 
 ```properties
 # gradle.properties
-koraVersion=2.0.0.RC1
+koraVersion=2.0.0.RC2
 ```
 
 ```groovy
@@ -68,11 +67,11 @@ repositories {
 
 `2.0.0-SNAPSHOT` is the `master` development line, not a version for a new project. It
 resolves only from `https://central.sonatype.com/repository/maven-snapshots` (or a local
-`publishToMavenLocal`), and its `JsonReader`/`JsonWriter` signatures differ from RC1's — see
+`publishToMavenLocal`). The `JsonReader`/`JsonWriter` contracts are described in
 [the contracts](json-custom-mapper-reference.md#2-the-two-contracts).
 
 Central still lists `kora-parent`, `cache-redis`, `scheduling-ksp` and other 1.x/alpha
-leftovers under `io/koraframework/`. None is constrained by the RC1 BOM; do not use them.
+leftovers under `io/koraframework/`. None is constrained by the 2.0 BOM; do not use them.
 
 ### Java (Gradle)
 
@@ -204,7 +203,7 @@ body boundary moves onto Jackson. The Kora-native HTTP mappers are `@DefaultComp
 ### Which Jackson
 
 **Jackson 3, group `tools.jackson.core`.** `jackson-module` declares
-`api tools.jackson.core:jackson-databind` and the version catalog pins `jackson = "3.2.1"`.
+`api tools.jackson.core:jackson-databind` and the version catalog pins `jackson = "3.2.3"`.
 The `ObjectMapper` type is `tools.jackson.databind.ObjectMapper`.
 
 The catalog also keeps a separate Jackson 2 line (`com.fasterxml.jackson.*`, `2.22.x`) for
@@ -236,8 +235,8 @@ dependencies {
 
 | Item | Who provides it |
 |---|---|
-| `tools.jackson.core:jackson-databind:3.2.1` | `jackson-module` — declared `api`, arrives transitively. **Do not add it yourself.** |
-| `tools.jackson.core:jackson-core:3.2.1` | `json-common` — declared `api` |
+| `tools.jackson.core:jackson-databind:3.2.3` | `jackson-module` — declared `api`, arrives transitively. **Do not add it yourself.** |
+| `tools.jackson.core:jackson-core:3.2.3` | `json-common` — declared `api` |
 | a `tools.jackson.databind.ObjectMapper` **component** | **you**, as a factory in `@Module`/`@KoraApp` — `JacksonModule` supplies none |
 | `http-server-common` / `http-client-common` | **you** (they are `compileOnly` in `jackson-module`) — normally already present via `http-server-undertow` |
 | `io.koraframework:json-common` | **you** — `jackson-module` does not publish a dependency on it |
@@ -360,6 +359,7 @@ public record UserDto(
 | `@JsonTypeInfo` | `@JsonDiscriminatorField` |
 | `@JsonSubTypes` | `@JsonDiscriminatorValue` (or the subtype simple name) |
 | `@JsonCreator` on a constructor | `@JsonReader` on a constructor |
+| `@JsonCreator(mode = DELEGATING)` factory + `@JsonValue` on a value type | `@JsonReader` on a `public static` factory + `@JsonWriter` on the value method ([single-value types](json-dto-reference.md#single-value-types)) |
 | `@JsonValue` on an enum accessor | `@Json` on the enum accessor |
 | `@JsonFormat(pattern = "…")` | custom `JsonReader`/`JsonWriter`, or `@Mapping` per field |
 
@@ -380,7 +380,7 @@ public record UserDto(
 
 ```properties
 # gradle.properties
-koraVersion=2.0.0.RC1
+koraVersion=2.0.0.RC2
 ```
 
 ```groovy
@@ -394,7 +394,7 @@ dependencies {
     implementation "io.koraframework:json-common"
 
     // Jackson 3 for the HTTP bodies (optional, additive)
-    implementation "io.koraframework:jackson-module"   // brings tools.jackson.core:jackson-databind:3.2.1
+    implementation "io.koraframework:jackson-module"   // brings tools.jackson.core:jackson-databind:3.2.3
 }
 ```
 

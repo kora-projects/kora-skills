@@ -1,6 +1,6 @@
 # Micrometer Types Reference
 
-Choosing and building the right meter. Micrometer is pinned to **`1.17.0`** by the Kora 2.0 BOM and
+Choosing and building the right meter. Micrometer is pinned to **`1.17.1`** by the Kora 2.0 BOM and
 arrives transitively with `io.koraframework:micrometer-module` — never add
 `io.micrometer:micrometer-core` or `micrometer-registry-prometheus` yourself.
 
@@ -219,7 +219,7 @@ if it is sampled, it is a `Gauge`; otherwise it is a `DistributionSummary`.**
 | Registering the same meter per request | Register once in the constructor, or cache with `computeIfAbsent` |
 | Dynamic tags passed to a cached builder | The cache key must contain every varying tag, or meters collide |
 | Missing base unit | Set `baseUnit(...)` on every `DistributionSummary` |
-| Added `micrometer-core` explicitly | Remove it — the BOM pins `1.17.0` through `micrometer-module` |
+| Added `micrometer-core` explicitly | Remove it — the BOM pins `1.17.1` through `micrometer-module` |
 
 ---
 

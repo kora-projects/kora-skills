@@ -25,7 +25,7 @@ import argparse
 import sys
 from pathlib import Path
 
-KORA_VERSION = "2.0.0.RC1"
+KORA_VERSION = "2.0.0.RC2"
 TESTCONTAINERS_VERSION = "2.0.5"
 KAFKA_IMAGE = "apache/kafka-native:4.3.1"
 

@@ -7,7 +7,7 @@
       "expected_behavior": [
         "Annotates the test class with @KoraAppTest(Application.class) imported from io.koraframework.test.extension.junit5",
         "Injects UserService with @TestComponent on a non-static, non-final field",
-        "Adds testImplementation \"io.koraframework:test-junit5\" versioned through platform(\"io.koraframework:kora-bom:$koraVersion\") with koraVersion=2.0.0.RC1, plus annotationProcessor \"io.koraframework:annotation-processors\"",
+        "Adds testImplementation \"io.koraframework:test-junit5\" versioned through platform(\"io.koraframework:kora-bom:$koraVersion\") with koraVersion=2.0.0.RC2, plus annotationProcessor \"io.koraframework:annotation-processors\"",
         "Pins JUnit through platform(\"org.junit:junit-bom:$junitVersion\") with junitVersion=6.1.3, and a Java 25 toolchain",
         "Asserts on the value the synchronous method returned; does not block, join or subscribe",
         "Does not use ru.tinkoff.kora coordinates, the kora-parent BOM, or foreign-framework test annotations"
@@ -23,7 +23,7 @@
         "States that @Mock on its own is invisible to the extension, which only inspects elements that also carry @TestComponent",
         "Stubs with Mockito.when(...).thenReturn(...) on plain values and checks interactions with verify(...)",
         "Explicitly avoids @ExtendWith(MockitoExtension.class) because @KoraAppTest already creates, injects, resets and strictness-checks the mocks",
-        "Adds org.mockito:mockito-core at 5.23.0 or newer",
+        "Adds org.mockito:mockito-core at 5.24.0 or newer",
         "Does not rely on a mock-bean construct or any foreign-framework testing construct"
       ],
       "tags": ["mock", "basic"]
@@ -158,7 +158,7 @@
       "query": "After migrating to Kora 2.0 my tests fail with 'Application graph failed to initialize with 3 errors' and no cause. Sometimes I see 'IllegalArgumentException: Java 25 (69) is not supported by the current version of Byte Buddy'. My build has org.mockito:mockito-core:5.18.0.",
       "expected_behavior": [
         "Identifies the root cause as a Byte Buddy that predates Java 25 class files, pulled in transitively by the old mockito-core",
-        "Raises mockito-core to 5.23.0 (Byte Buddy 1.18.x), the version in Kora's own catalog, and notes that several migrated examples still carry 5.18.0",
+        "Raises mockito-core to 5.24.0 (Byte Buddy 1.18.x), the version in Kora's own catalog, and notes that several migrated examples still carry 5.18.0",
         "Explains that the failure is hidden inside 'Application graph failed to initialize with N errors' with no visible suppressed exception, so it looks like a dependency-injection problem",
         "Suggests ./gradlew <module>:dependencyInsight --dependency byte-buddy --configuration testRuntimeClasspath to confirm the resolved version, and temporarily enabling junitXml.required to see suppressed exceptions",
         "Treats -Dnet.bytebuddy.experimental=true as a diagnostic probe only, not a fix",
@@ -221,6 +221,31 @@
         "Does not suggest disabling the extension or caching the graph manually"
       ],
       "tags": ["lifecycle", "advanced"]
+    },
+    {
+      "id": "kora-testing-junit-java-conditional-component-graph",
+      "skills": ["kora-testing-junit-java"],
+      "query": "Our Kora 2.0 app has a @Component @Conditional(tag = FeatureEnabled.class) bean. Since we added it, every @KoraAppTest fails during graph init with IllegalArgumentException: Graph node belongs to another application graph, from GraphImpl$GraphConditionKey.hashCode. The app itself starts fine. When we switched one class to @TestInstance(PER_CLASS) on a locally patched Kora, the tests then failed in beforeEach with 'Graph node value was not initialized because condition failed'. What is going on?",
+      "expected_behavior": [
+        "Explains that the extension always runs the application draw through ApplicationGraphDraw.copy() (and subgraph() for declared roots or mocks), and both keep the original node condition, which then looks up the original condition node on the derived graph",
+        "States the first failure is fixed in 2.0.0.RC2 (kora-projects/kora PR #963) — upgrade; on RC1 there is no practical workaround besides keeping @Conditional out of the tested graph",
+        "Explains the second failure: under PER_CLASS with Mockito on the classpath, beforeEach calls KoraJUnit5Extension.resetMocks, which reads every graph node, and a condition-failed node throws on read; KoraAppGraph.getAll fails the same way",
+        "States the second is fixed in 2.0.0.RC2 too (kora-projects/kora PR #964: resetMocks and KoraAppGraph.getAll skip condition-failed nodes) and the RC1 workaround is the default PER_METHOD lifecycle",
+        "Does not blame the test configuration, the condition implementation, or Mockito strictness"
+      ],
+      "tags": ["conditional", "lifecycle", "regression"]
+    },
+    {
+      "id": "kora-testing-junit-java-jsonreader-not-in-graph",
+      "skills": ["kora-testing-junit-java"],
+      "query": "In a Kora 2.0 integration test I inject `@TestComponent JsonReader<OrderResponse> reader;` to parse what my controller returns, and the extension fails: Cannot inject Kora component ... No matching component was found in the application graph. OrderResponse is @Json. Why?",
+      "expected_behavior": [
+        "Explains that @TestComponent can only select nodes that already exist in the application graph",
+        "Explains that the JSON extension creates a JsonReader<T> node only where some component reads T; a controller that only returns OrderResponse needs JsonWriter<OrderResponse>, so no reader exists",
+        "Recommends parsing the response body in the test itself (or asserting on the raw string) instead of injecting a reader",
+        "Does not suggest adding @Root or components = {...} for JsonReader, since it is not a declared component"
+      ],
+      "tags": ["injection", "json", "integration"]
     }
   ]
 }

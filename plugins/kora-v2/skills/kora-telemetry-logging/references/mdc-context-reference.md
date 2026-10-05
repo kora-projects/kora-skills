@@ -23,9 +23,10 @@ declarative `@Mdc` aspect see [`kora-aop-logging`](../../kora-aop-logging/SKILL.
 | API | static `put` / `remove`, instance `put0` / `remove0` / `fork` / `values` | `put` / `remove` / `clear` / `putCloseable` |
 | Carried across `KoraAsyncAppender` | yes — snapshotted into `KoraLoggingEvent.koraMdc()` | yes — Logback copies `getMDCPropertyMap()` |
 | Rendered by `ConsoleTextRecordEncoder` | yes, as `key=<json>` | yes, as `key=value` |
-| Readable by a `%X{key}` pattern | **no** | yes |
+| Rendered by `JsonRecordEncoder` | yes, inside `mdc` with its JSON type | yes, inside `mdc` as a string; a Kora key of the same name wins |
+| Readable by a `%X{key}` pattern | **no** (use `KoraMdcConverter`) | yes |
 
-Both are printed by `ConsoleTextRecordEncoder`; the difference that matters day to day is that
+Both are printed by the Kora encoders; the difference that matters day to day is that
 `%X{}` only sees the SLF4J one, and only the Kora one can hold non-string values.
 
 Do not import both under the bare name `MDC` in one file — one of them has to be fully qualified.
@@ -65,7 +66,7 @@ works; outside them it throws.
 | gRPC call | `VirtualThreadExecutorTransportFilter` |
 | Kafka record / batch | `RecordHandler` / `RecordsHandler` (a per-record handler `fork()`s the batch MDC) |
 | Kafka publish | `DefaultKafkaPublisherRecordObservation` — forks the bound MDC, or creates an empty one if none |
-| Scheduled job | `AbstractJob` / `CronJob` (JDK), `KoraQuartzJob` (Quartz) |
+| Scheduled job | `KoraJdkJob` (JDK), `KoraQuartzJob` (Quartz), `KoraDbJob` (db-scheduler) |
 | JMS message | `JmsMessageListenerContainer` |
 
 Because the `MDC` instance is created per unit of work and discarded with it, removing your keys at
@@ -172,8 +173,8 @@ exists, but nothing looks interceptors up by it. The interceptor is then silentl
 Cover it with a test.
 
 Do not put `traceId` / `spanId` in MDC by hand: `KoraAsyncAppender` captures
-`Span.current().getSpanContext()` into the event and `ConsoleTextRecordEncoder` prints
-`traceId=… spanId=…` from it whenever the span context is valid.
+`Span.current().getSpanContext()` into the event, and `ConsoleTextRecordEncoder` / `JsonRecordEncoder`
+write `traceId` and `spanId` from it whenever the span context is valid.
 
 ## Porting a Kora 1.x `Context`-based helper
 

@@ -142,10 +142,10 @@ public record Event(@Id @Embedded EventId id, String payload) {
 
 Binding uses the full path: `:event.id.bucket`, `:event.id.eventId`.
 
-> On `2.0.0.RC1`, `@Embedded` over a **collection** field generates a non-nullable read for a value
-> that can legitimately be absent. Fixed after RC1 in `c5c97c6e5` *"Fixed(database): mapping empty
-> embedded (#852)"* (`DbEntityReadHelper.java`, `DbEntityReader.kt`). Scalar embedded records —
-> the composite-key shape above — are unaffected.
+`@Embedded` over a **collection** field reads the child columns as nullable first, so a row whose
+embedded part is entirely absent contributes no element instead of failing; a child that is only
+*partially* null still fails its non-null check. Scalar embedded records — the composite-key shape
+above — are read with the fields' own nullability.
 
 ---
 

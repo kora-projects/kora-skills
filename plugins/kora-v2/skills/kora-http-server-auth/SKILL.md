@@ -8,11 +8,11 @@ metadata:
 
 # Kora HTTP Server Auth
 
-> **Kora sub-skill — obey the [kora-v2 meta rules](../../SKILL.md) on every task:** **R0** ground the workspace on Kora 2.0 refs before starting (framework source at tag `2.0.0.RC1` + `kora-examples` at `migration/2.0`; `kora-docs` is 1.x only) · **R1** read this sub-skill before writing code · **R2** Kora 2.0 APIs only — no Spring/Micronaut/Quarkus, no Kora 1.x APIs, no invented annotations or config keys · **R3** journal any incorrect Kora usage. Add comments/Javadoc only if asked.
+> **Kora sub-skill — obey the [kora-v2 meta rules](../../SKILL.md) on every task:** **R0** ground the workspace on Kora 2.0 refs before starting (framework source at tag `2.0.0.RC2` + `kora-examples` at `migration/2.0` + Kora 2.0 docs at koraframework.io/v2, which trail the source; 1.x `kora-docs` pages are never an authority) · **R1** read this sub-skill before writing code · **R2** Kora 2.0 APIs only — no Spring/Micronaut/Quarkus, no Kora 1.x APIs, no invented annotations or config keys · **R3** journal any incorrect Kora usage. Add comments/Javadoc only if asked.
 
 | | |
 |---|---|
-| **Artifacts** | `io.koraframework:http-server-undertow` (BOM `io.koraframework:kora-bom`, version `2.0.0.RC1`) |
+| **Artifacts** | `io.koraframework:http-server-undertow` (BOM `io.koraframework:kora-bom`, version `2.0.0.RC2`) |
 | **Extractor** | `io.koraframework.http.server.common.auth.HttpServerPrincipalExtractor<T, P extends Principal>` |
 | **Principal** | `io.koraframework.common.Principal` · `io.koraframework.http.common.auth.PrincipalWithScopes` |
 | **Interceptor** | `io.koraframework.http.server.common.interceptor.HttpServerInterceptor` |
@@ -153,7 +153,8 @@ request. It is `@Nullable`, and it is **not** visible on threads you start yours
 |---|---|
 | Plain `401 Unauthorized` | `return null` — the generated interceptor throws it for you |
 | A specific status/message/body | `throw HttpServerResponseException.of(401, "Token expired")` — it *is* an `HttpServerResponse` and Undertow sends it verbatim |
-| `403` for an authenticated caller lacking a right | `throw HttpServerResponseException.of(403, "…")` from the delegate, after `Principal.current()` |
+| `403` for a missing OAuth2 scope declared in the contract | nothing — the generated interceptor answers `403 Forbidden` when the extractor authenticated the caller but a required scope is absent |
+| `403` for any other right (roles, ownership) | `throw HttpServerResponseException.of(403, "…")` from the delegate, after `Principal.current()` |
 | A JSON error body for every auth failure | a **global** `@Tag(HttpServer.class)` interceptor — see below |
 
 **Do not throw `SecurityException`.** The string `SecurityException` appears in no Kora 2.0 source

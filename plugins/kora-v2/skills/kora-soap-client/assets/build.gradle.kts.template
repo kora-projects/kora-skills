@@ -1,5 +1,5 @@
 // Kora 2.0 SOAP client — Kotlin + KSP.
-// Requires gradle.properties:  koraVersion=2.0.0.RC1
+// Requires gradle.properties:  koraVersion=2.0.0.RC2
 //
 // Build chain:
 //   src/main/resources/wsdl/*.wsdl
@@ -11,8 +11,8 @@ import org.gradle.api.tasks.testing.logging.TestExceptionFormat
 
 plugins {
     id("application")
-    kotlin("jvm") version ("2.4.10")
-    id("com.google.devtools.ksp") version ("2.3.11")
+    kotlin("jvm") version ("2.4.20")
+    id("com.google.devtools.ksp") version ("2.3.12")
     id("com.github.bjornvester.wsdl2java") version ("2.0.2")
 }
 

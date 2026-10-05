@@ -32,11 +32,11 @@ io.koraframework:kora-bom:<koraVersion>
 Pin the version in `gradle.properties`:
 
 ```properties
-koraVersion=2.0.0.RC1
+koraVersion=2.0.0.RC2
 ```
 
-**`2.0.0.RC1` is published on Maven Central** and is the only `2.0.x` release of `kora-bom` there,
-so a release build needs nothing but `mavenCentral()`:
+**`2.0.0.RC2` is published on Maven Central**, so a release build needs nothing but
+`mavenCentral()`:
 
 ```groovy
 repositories {
@@ -116,8 +116,8 @@ straight on `implementation`, and the KSP processor carries an explicit version.
 ```kotlin
 plugins {
     id("application")
-    kotlin("jvm") version "2.4.10"
-    id("com.google.devtools.ksp") version "2.3.11"
+    kotlin("jvm") version "2.4.20"
+    id("com.google.devtools.ksp") version "2.3.12"
 }
 
 dependencies {
@@ -201,7 +201,7 @@ Resilience is Kora's own implementation — `resilient-kora` brings no Resilienc
 
 ```groovy
 // WRONG
-implementation "io.koraframework:http-server-undertow:2.0.0.RC1"
+implementation "io.koraframework:http-server-undertow:2.0.0.RC2"
 
 // RIGHT
 koraBom platform("io.koraframework:kora-bom:$koraVersion")
@@ -244,13 +244,13 @@ dependencies {
 Browsing `repo1.maven.org/maven2/io/koraframework/` is **not** a way to check what 2.0 publishes.
 The listing is cumulative, so 1.x and alpha leftovers are still visible there — `kora-parent`,
 `cache-redis`, `declarative-logging-annotation-processor`, `declarative-logging-symbol-processor`,
-`scheduling-ksp`, `experimental/s3-client`. None of them is constrained by the `2.0.0.RC1` BOM.
+`scheduling-ksp`, `experimental/s3-client`. None of them is constrained by the `2.0.0.RC2` BOM.
 
 **And a resolved dependency is not proof either.** `io.koraframework:kora-parent` and
 `io.koraframework:cache-redis` are published at `2.0.0.alpha5` and `2.0.0.alpha6`. A blind group-only
 rename that keeps the old artifact id therefore does not fail loudly — at an alpha version it
 resolves and quietly pins a **pre-release BOM** from before the 2.0 renames. `kora-parent` has no
-`2.0.0.RC1`, so whether you get a 404 or a silently wrong BOM depends only on the version string
+`2.0.0.RC*` version, so whether you get a 404 or a silently wrong BOM depends only on the version string
 that happened to survive the rename. Rename the **artifact**, not just the group.
 
 The authoritative list is what `kora-bom` constrains — see
@@ -318,18 +318,18 @@ produces are in [compatibility-matrix.md](compatibility-matrix.md#externally-ver
 
 ```groovy
 dependencies {
-    // JDBC driver — database-jdbc ships Hikari, never a driver
-    implementation "org.postgresql:postgresql:42.7.7"
+    // JDBC driver — database-jdbc ships Hikari, never a driver (database-jdbc-postgres brings one)
+    implementation "org.postgresql:postgresql:42.7.13"
 
     // Flyway dialect — database-flyway ships flyway-core only
-    implementation "org.flywaydb:flyway-database-postgresql:13.1.0"
+    implementation "org.flywaydb:flyway-database-postgresql:13.9.0"
 
     // Mocking — test-junit5 declares Mockito/MockK compileOnly
-    testImplementation "org.mockito:mockito-core:5.23.0"   // Java
+    testImplementation "org.mockito:mockito-core:5.24.0"   // Java
     testImplementation "io.mockk:mockk:1.14.11"            // Kotlin
 
     testImplementation "io.koraframework:test-junit5"
-    testImplementation "org.testcontainers:junit-jupiter:1.21.4"
+    testImplementation "org.testcontainers:testcontainers-postgresql:2.0.5"
 }
 ```
 
@@ -338,7 +338,7 @@ Force a transitive version only against a concrete, reproduced conflict:
 ```groovy
 configurations.configureEach {
     resolutionStrategy {
-        force "io.grpc:grpc-netty:1.83.1"
+        force "io.grpc:grpc-netty:1.84.0"
     }
 }
 ```
@@ -366,7 +366,7 @@ configurations.configureEach {
 Change one property; every module follows.
 
 ```properties
-koraVersion=2.0.0.RC1
+koraVersion=2.0.0.RC2
 ```
 
 ```bash

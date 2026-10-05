@@ -211,7 +211,7 @@ deriving these names instead of normalising it — useful when a rename shuffles
 
 ## 6. OAuth2 scopes
 
-A scheme with `type: oauth2` makes the extractor's principal type `PrincipalWithScopes`, and each
+A scheme with `type: oauth2` or `type: openIdConnect` makes the extractor's principal type `PrincipalWithScopes`, and each
 distinct scope set in the contract gets its own interceptor tag:
 
 ```yaml
@@ -229,13 +229,23 @@ default OAuth2ClientCredentials_PetsReadHttpServerInterceptor …(
 whose body is
 
 ```java
+var forbidden = false;
+var principal = /* extractor */.extract(request, request.headers().getFirst("authorization"));
 if (principal != null) {
   if (principal.scopes().contains("pets:read")) {
     return Principal.with(principal, () -> chain.process(request));
   }
+  forbidden = true;
+}
+if (forbidden) {
+  throw HttpServerResponseException.of(403, "Forbidden");
 }
 throw HttpServerResponseException.of(401, "Unauthorized");
 ```
+
+A principal that was extracted but lacks a required scope gets **`403 Forbidden`**; no principal at
+all gets `401 Unauthorized`. When the operation also allows anonymous access (`- {}`), neither is
+thrown and the request proceeds unauthenticated.
 
 You register **one** extractor, tagged with the scheme marker (`ApiSecurity.OAuth2ClientCredentials`),
 typed `HttpServerPrincipalExtractor<String, PrincipalWithScopes>`, and return a principal whose
@@ -274,12 +284,19 @@ exists. `Principal.current()` returns `null` outside a bound scope, so guard it.
 
 ## 9. 401 vs 403
 
-The generated interceptor answers **`401 Unauthorized`** both for a missing/invalid credential
-and for a missing OAuth2 scope. If your contract needs `403` for the authenticated-but-forbidden
-case, do it in one of these places — never by editing generated code:
+The generated interceptor answers:
 
-- throw `HttpServerResponseException.of(403, …)` from the extractor for the forbidden case (the
-  exception is an `HttpServerResponse`, so it is returned as-is);
+| Situation | Status |
+|---|---|
+| no extractor returned a principal (missing or invalid credential) | `401 Unauthorized` |
+| a principal was extracted, but it lacks an OAuth2 / OpenID Connect scope the operation requires | `403 Forbidden` |
+| the operation also allows anonymous access (`- {}`) | neither — the request proceeds |
+
+Only OAuth2 / OpenID Connect scopes produce the generated `403`. For any other authenticated-but-forbidden rule
+(roles, ownership, tenant), decide in your own code — never by editing generated code:
+
+- throw `HttpServerResponseException.of(403, …)` from the extractor (the exception is an
+  `HttpServerResponse`, so it is returned as-is);
 - return the contract's `403` response record from the delegate after checking authorisation
   there;
 - register your own `@Component` `HttpServerInterceptor` under the generated interceptor tag,
@@ -295,7 +312,8 @@ case, do it in one of these places — never by editing generated code:
 | `ApiSecurity` not generated | The contract has no `components.securitySchemes`, or no operation references them. |
 | Extractor never sees the token | The credential location in the contract does not match reality (`in: header` vs `in: cookie`). |
 | `Bearer <token>` fails to parse | The raw `Authorization` header is passed through; strip the prefix yourself. |
-| OAuth2 route 401s for a valid token | The principal's `scopes()` does not contain the scope the contract requires. |
+| OAuth2 route 403s for a valid token | The principal's `scopes()` does not contain the scope the contract requires. |
+| OAuth2 route 401s for a valid token | The extractor returned `null` — the token was not recognised, or the extractor's `@Tag` does not match. |
 | Duplicate/renamed tags after a spec edit | Tag names derive from scheme and scope names; try `useSecurityDeclarationOrder: "true"`, and regenerate with `clean`. |
 
 ## Related

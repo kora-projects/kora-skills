@@ -43,7 +43,8 @@ interface ${mapper_module_name} {
             JsonToken.VALUE_STRING -> ${default_value}
             else -> throw StreamReadException(
                 parser,
-                "Expecting VALUE_STRING token for ${type_name}, got " + parser.currentToken()
+                "Failed to read json ${type_name}: expected a string, but got " + parser.currentToken() +
+                    " (at " + parser.streamReadContext().pathAsPointer() + ")"
             )
         }
     }

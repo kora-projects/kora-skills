@@ -8,11 +8,11 @@ metadata:
 
 # Kora HTTP Server
 
-> **Kora sub-skill — obey the [kora-v2 meta rules](../../SKILL.md) on every task:** **R0** ground the workspace on Kora 2.0 refs before starting (framework source at tag `2.0.0.RC1` + `kora-examples` at `migration/2.0`; `kora-docs` is 1.x only) · **R1** read this sub-skill before writing code · **R2** Kora 2.0 APIs only — no Spring/Micronaut/Quarkus, no Kora 1.x APIs, no invented annotations or config keys · **R3** journal any incorrect Kora usage. Add comments/Javadoc only if asked.
+> **Kora sub-skill — obey the [kora-v2 meta rules](../../SKILL.md) on every task:** **R0** ground the workspace on Kora 2.0 refs before starting (framework source at tag `2.0.0.RC2` + `kora-examples` at `migration/2.0` + Kora 2.0 docs at koraframework.io/v2, which trail the source; 1.x `kora-docs` pages are never an authority) · **R1** read this sub-skill before writing code · **R2** Kora 2.0 APIs only — no Spring/Micronaut/Quarkus, no Kora 1.x APIs, no invented annotations or config keys · **R3** journal any incorrect Kora usage. Add comments/Javadoc only if asked.
 
 | | |
 |---|---|
-| **Artifact** | `io.koraframework:http-server-undertow` (BOM `io.koraframework:kora-bom`, `2.0.0.RC1`) |
+| **Artifact** | `io.koraframework:http-server-undertow` (BOM `io.koraframework:kora-bom`, `2.0.0.RC2`) |
 | **Graph module** | `io.koraframework.http.server.undertow.UndertowPublicHttpServerModule` |
 | **Processor** | `io.koraframework:annotation-processors` (Java) · `io.koraframework:symbol-processors` (KSP) |
 | **Config sections** | `httpServer` (public) · `httpServer.system` (probes/metrics) · `httpServer.undertow` (transport) |
@@ -32,7 +32,7 @@ Five changes cause silent or confusing failures. Each is covered in depth in the
 | 1.x | 2.0 | If you skip it |
 |---|---|---|
 | `@Tag(HttpServerModule.class)` on a global interceptor | **`@Tag(HttpServer.class)`** | **Compiles clean, never runs.** `HttpServerModule` still exists so the annotation is legal, but nothing collects interceptors by that tag — the component is pruned from the graph without a warning. [Interceptors](references/interceptors-reference.md) |
-| `httpServer.publicApiHttpPort` / `privateApiHttpPort` | **`httpServer.port`** / **`httpServer.system.port`** | **Starts green on the wrong ports.** A stale key is just an unknown HOCON key: ignored silently, so each server falls back to its own default (8080 public, 8085 system) and probes hit nothing. [Configuration](references/configuration-reference.md) |
+| `httpServer.publicApiHttpPort` / `privateApiHttpPort` | **`httpServer.port`** / **`httpServer.system.port`** | **Starts green on the wrong ports.** A stale key is just an unknown HOCON key: ignored silently, so each server falls back to its own default (8080 public, 8085 system) and probes hit nothing. The startup log `HTTP Server <name> (Undertow) started on port <N> in …` (structured `port` marker) shows the port actually bound. [Configuration](references/configuration-reference.md) |
 | `intercept(Context, request, chain)` → `CompletionStage` | **`intercept(request, chain)` → `HttpServerResponse`** | Compile error. `Context` no longer exists anywhere in Kora. [Interceptors](references/interceptors-reference.md) |
 | `CompletionStage<T>` / `Mono<T>` / `suspend fun` handlers | plain synchronous return types | No reactive response mapper exists; KSP rejects `suspend` outright. [Response Types](references/response-types-reference.md) |
 | `writer.toByteArrayUnchecked(v)` in a `try/catch (IOException)` | **`writer.toByteArray(v)`**, no catch | `error: exception IOException is never thrown in body of corresponding try statement`. [Error Handling](references/error-handling-reference.md) |
@@ -56,7 +56,7 @@ configurations {
 }
 
 dependencies {
-    koraBom platform("io.koraframework:kora-bom:$koraVersion")   // koraVersion=2.0.0.RC1
+    koraBom platform("io.koraframework:kora-bom:$koraVersion")   // koraVersion=2.0.0.RC2
     annotationProcessor "io.koraframework:annotation-processors" // mandatory
 
     implementation "io.koraframework:http-server-undertow"
@@ -293,9 +293,12 @@ httpServer {
   ignoreTrailingSlash = false
   shutdownWait = "30s"
   maxRequestBodySize = "256MiB"
+  headerServerNameEnabled = false   # default false: no `Server` response header
+  headerServerDateEnabled = true    # default true: `Date` on every response
 
   telemetry {
     logging.enabled = true    # default false
+    logging.maskHeaders = ["authorization", "cookie", "set-cookie"]   # the default set
     metrics.enabled = true    # default false
     tracing.enabled = true    # default true (but false under httpServer.system)
   }
@@ -316,6 +319,18 @@ httpServer {
 `telemetry.logging.enabled` and `telemetry.metrics.enabled` default to **`false`** everywhere — an
 example that claims to demonstrate them must switch them on. See
 [Configuration](references/configuration-reference.md) for every key that actually exists.
+
+**Response headers.** Undertow sends no `Server` header unless `headerServerNameEnabled = true`
+(then it is `Server: Kora`). A `server` header set on an `HttpServerResponse` is dropped either
+way — the server owns that header, like `content-length` and `transfer-encoding`.
+
+**Log masking.** `maskHeaders` / `maskQueries` choose *which* header and query values are masked;
+*how* they are masked is the `@Tag(HttpServerTelemetry.class) MaskingStrategy` component (default:
+`***`). Bodies are logged only at `TRACE`, and a body is masked only when a
+`@Tag(HttpServerTelemetry.class) DataMasker` for its format (`json`, `xml`, `form-urlencoded`) is
+in the graph. There is no `mask` config key. See
+[Configuration → Log masking](references/configuration-reference.md#log-masking) and the shared
+masking model in [kora-aop-logging](../kora-aop-logging/references/logging-masking.md).
 
 ---
 
@@ -363,6 +378,10 @@ regressions above (`--json` for machine output, `--help` for usage).
 | 404 on a valid URL | `{var}` has no matching `@Path` argument, or the `@HttpController` prefix is not what you think — in **Kotlin** the prefix is concatenated raw, so it must start with `/` and must not end with one |
 | `Cannot add path template …, matcher already contains an equivalent pattern` | Two routes on one method resolve to the same template (e.g. `/a/{x}` and `/a/{y}`) |
 | Metrics endpoint returns nothing useful | `telemetry.metrics.enabled` defaults to `false` — enable it explicitly |
+| Responses — including a large `/metrics` scrape — go out uncompressed, and no `compression`/`gzip` key works | Neither Undertow server (public or system) wires response compression, and `HttpServerConfig` / `SystemHttpServerConfig` / `UndertowConfig` have no key for it; an unknown key is ignored silently. Compress at the reverse proxy or ingress |
+| No `Server` header, or a custom `Server` value never reaches the client | `headerServerNameEnabled` defaults to `false`; when on, the value is fixed to `Kora`, and a `server` header from the handler is always dropped |
+| `telemetry.logging.mask = "..."` has no effect | The key does not exist. Replace the replacement text through a `@Tag(HttpServerTelemetry.class) MaskingStrategy` component |
+| Passwords/tokens appear in `TRACE` body logs | Body masking needs a `@Tag(HttpServerTelemetry.class)` `DataMasker` (e.g. `JsonDataMasker`) for that content type; without one the body is logged verbatim |
 
 ---
 

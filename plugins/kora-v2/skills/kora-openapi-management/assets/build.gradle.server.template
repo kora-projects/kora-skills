@@ -9,14 +9,14 @@ buildscript {
         mavenCentral()
     }
     dependencies {
-        classpath "io.koraframework:openapi-generator:$koraVersion"   // gradle.properties: koraVersion=2.0.0.RC1
+        classpath "io.koraframework:openapi-generator:$koraVersion"   // gradle.properties: koraVersion=2.0.0.RC2
     }
 }
 
 plugins {
     id "java"
     id "application"
-    id "org.openapi.generator" version "7.24.0"
+    id "org.openapi.generator" version "7.25.0"
 }
 
 repositories {

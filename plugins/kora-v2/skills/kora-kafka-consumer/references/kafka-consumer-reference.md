@@ -1,7 +1,7 @@
 # Kafka Consumer Configuration Reference (Kora 2.0)
 
 Every key of `io.koraframework.kafka.common.consumer.KafkaListenerConfig`, taken from the interface
-at tag `2.0.0.RC1`.
+at tag `2.0.0.RC2`.
 
 ## Contents
 
@@ -44,8 +44,9 @@ kafka.consumer.orders {
 | `topics` | `List<String>` (`@Nullable`) | a single scalar is accepted by HOCON: `topics = "orders"` |
 | `topicsPattern` | `Pattern` (`@Nullable`) | regex subscription, **subscribe mode only** |
 
-`topics` or `topicsPattern` must be set. In assign mode (no `group.id`) RC1 requires **exactly one**
-topic and no pattern — see the [strategies reference](kafka-strategies-reference.md).
+`topics` or `topicsPattern` must be set. In assign mode (no `group.id`) `topics` is required (one or
+more topics) and `topicsPattern` is rejected at startup — see the
+[strategies reference](kafka-strategies-reference.md).
 
 ---
 
@@ -90,6 +91,7 @@ poll regardless of this flag.
 | Key | Default | |
 |---|---|---|
 | `telemetry.logging.enabled` | **`false`** | |
+| `telemetry.logging.maskHeaders` | `["authorization", "cookie", "set-cookie"]` | header names (case-insensitive) masked in TRACE record logs |
 | `telemetry.metrics.enabled` | **`false`** | |
 | `telemetry.metrics.driverMetrics` | `false` | bind Micrometer's `KafkaClientMetrics` for the underlying client |
 | `telemetry.metrics.slo` | 1,10,50,100,200,500,1000,2000,5000,10000,20000,30000,60000,90000 ms | timer buckets |
@@ -200,9 +202,9 @@ kafka {
       }
     }
 
-    # assign strategy: no group.id, exactly one topic at RC1
+    # assign strategy: no group.id, one or more topics, no topicsPattern
     price-cache {
-      topics = ["prices"]
+      topics = ["prices", "rates"]
       offset = "earliest"
       partitionRefreshInterval = 1m
       driverProperties {
@@ -229,8 +231,8 @@ The logging section is `logging.levels` (`LoggingConfig.levels()`), not `logging
 - [Offsets](kafka-offset-reference.md)
 - [Telemetry](kafka-telemetry-reference.md)
 
-**Source:** framework tag `2.0.0.RC1` —
-[KafkaListenerConfig](https://github.com/kora-projects/kora/blob/2.0.0.RC1/kafka/kafka/src/main/java/io/koraframework/kafka/common/consumer/KafkaListenerConfig.java) ·
-[consumer containers](https://github.com/kora-projects/kora/tree/2.0.0.RC1/kafka/kafka/src/main/java/io/koraframework/kafka/common/consumer/containers);
+**Source:** framework tag `2.0.0.RC2` —
+[KafkaListenerConfig](https://github.com/kora-projects/kora/blob/2.0.0.RC2/kafka/kafka/src/main/java/io/koraframework/kafka/common/consumer/KafkaListenerConfig.java) ·
+[consumer containers](https://github.com/kora-projects/kora/tree/2.0.0.RC2/kafka/kafka/src/main/java/io/koraframework/kafka/common/consumer/containers);
 migrated examples on `migration/2.0` —
 [kora-java-kafka](https://github.com/kora-projects/kora-examples/tree/migration/2.0/examples/java/kora-java-kafka)

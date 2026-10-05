@@ -386,7 +386,7 @@ The client config type extends `DeclarativeHttpClientConfig`:
 |---|---|---|---|
 | `url` | `String` | **yes** | Base URL; the route path is appended |
 | `requestTimeout` | `Duration` | no | Whole-call budget: DNS, connect, write, server processing, read |
-| `telemetry.logging.*` | object | no | `enabled` (**false** by default), `maskQueries`, `maskHeaders`, `mask`, `pathFull`, `maxRequestBodyLogSize`, `maxResponseBodyLogSize` |
+| `telemetry.logging.*` | object | no | `enabled` (**false** by default), `maskQueries`, `maskHeaders`, `pathFull`, `maxRequestBodyLogSize`, `maxResponseBodyLogSize` — no `mask` key, see [Log masking](transports-reference.md#log-masking) |
 | `telemetry.metrics.*` | object | no | `enabled` (**false** by default), `slo`, `tags` |
 | `telemetry.tracing.*` | object | no | `enabled` (**true** by default), `attributes`, `pathFull` (default `true`) |
 | `<methodName>` | object | no | Per-operation override: `requestTimeout` and the same three telemetry sections |
@@ -403,7 +403,6 @@ httpClient {
         enabled = true
         maskQueries = ["token"]
         maskHeaders = ["authorization", "cookie", "set-cookie"]
-        mask = "***"
         pathFull = false
         maxResponseBodyLogSize = "2MiB"
       }

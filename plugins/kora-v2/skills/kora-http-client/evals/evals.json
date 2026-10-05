@@ -10,7 +10,7 @@
         "Maps path variables with @Path and query parameters with @Query, marking optional ones @Nullable (Kotlin: T?)",
         "Uses @Json on the method and on the body parameter, and adds implementation \"io.koraframework:json-common\" plus JsonModule on @KoraApp",
         "Supplies the url key under httpClient.<client> in config and adds a transport module (OkHttpClientModule with io.koraframework:http-client-ok)",
-        "Uses the platform \"io.koraframework:kora-bom\" at 2.0.0.RC1 from mavenCentral() rather than pinning per-artifact versions"
+        "Uses the platform \"io.koraframework:kora-bom\" at 2.0.0.RC2 from mavenCentral() rather than pinning per-artifact versions"
       ],
       "anti_behavior": [
         "Writes @HttpClient(configPath = \"httpClient.userApi\")",
@@ -56,7 +56,7 @@
         "Suggests io.koraframework:http-client-async or any AsyncHttpClientModule",
         "Keeps CompletionStage, Mono or Flux as the client return type",
         "Claims one of the remaining transports still supports async client contracts",
-        "Presents http-client-apache as a drop-in equal of http-client-ok without noting it is new in 2.0 and had transport fixes after 2.0.0.RC1"
+        "Moves httpClient.async timeouts into httpClient.apache (or .ok / .jdk) instead of the shared httpClient block"
       ],
       "tags": ["transport", "migration", "intermediate", "regression-async-artifact"]
     },
@@ -172,15 +172,17 @@
         "Catches io.koraframework.http.client.common.exception.HttpClientResponseException and branches on e.getCode()",
         "States that non-2xx throws HttpClientResponseException by default when no mapper claims the status",
         "Handles decode failures by catching HttpClientDecoderException or the common supertype HttpClientException",
-        "Notes that on 2.0.0.RC1 the generated client does not wrap mapper failures, so a decode failure can surface as HttpClientUnknownException — catching HttpClientException is the version-independent choice",
+        "States that the generated client wraps every response-mapper failure (JsonReader error, IOException, RuntimeException) in HttpClientDecoderException, so catching HttpClientDecoderException reliably covers an undecodable body",
         "Offers HttpResponseEntity<T>, Either<T, E> or @ResponseCodeMapper as ways to avoid exceptions, and notes that only Either disables the status check",
-        "Mentions that HttpClientTimeoutException and HttpClientConnectionException are separate branches with no status code"
+        "Mentions that HttpClientTimeoutException and HttpClientConnectionException are separate branches with no status code, and that a refused connection or elapsed connectTimeout is HttpClientConnectionException on OkHttp, JDK and Apache alike"
       ],
       "anti_behavior": [
         "Uses e.code() instead of e.getCode()",
         "Invents per-status exception classes such as NotFoundException or HttpStatusCodeException in the Kora API",
         "Imports the exceptions from ru.tinkoff.kora.http.client.common or from io.koraframework.http.client.common without the .exception package",
-        "Claims HttpResponseEntity<T> alone stops non-2xx from throwing"
+        "Claims HttpResponseEntity<T> alone stops non-2xx from throwing",
+        "Claims a decode failure can surface as HttpClientUnknownException or propagate as a raw JsonReader/RuntimeException",
+        "Treats a connect timeout as HttpClientTimeoutException"
       ],
       "tags": ["error-handling", "intermediate"]
     },
@@ -215,14 +217,14 @@
         "Puts connectTimeout, readTimeout, useEnvProxy and the proxy block at the base httpClient path, and followRedirects / httpVersion under httpClient.ok",
         "Adds a separate httpClient.usersApi block with url and requestTimeout",
         "Lists the three available transports (http-client-ok, http-client-jdk, http-client-apache) and their module interfaces and config sections",
-        "Notes that http-client-apache is new in Kora 2.0 and that its transport integration was corrected only after 2.0.0.RC1 — on RC1 it reads timeouts and proxy from httpClient.apache",
+        "Notes that http-client-apache is new in Kora 2.0, reads timeouts and proxy from the shared httpClient block like the other transports, and keeps only followRedirects / maxRedirects / maxConnections under httpClient.apache",
         "States that exactly one transport module may be plugged into @KoraApp"
       ],
       "anti_behavior": [
         "Offers http-client-async or AsyncHttpClientModule as an option",
         "Uses OkHttpConfigurer for advanced tuning instead of io.koraframework.common.Configurer<OkHttpClient.Builder>",
         "Plugs two transport modules into the same @KoraApp",
-        "Presents post-RC1 Apache/JDK behaviour as released 2.0.0.RC1 behaviour"
+        "Repeats connectTimeout / readTimeout / proxy inside httpClient.apache as if they were Apache keys"
       ],
       "tags": ["transport", "config", "basic"]
     },
@@ -246,6 +248,42 @@
         "Marks the service class carrying the aspects final"
       ],
       "tags": ["resilience", "advanced", "regression-resilient-specs"]
+    },
+    {
+      "id": "kora-http-client-log-masking",
+      "skills": ["kora-http-client"],
+      "query": "Our Kora 2.0 client httpClient.payments logs requests. Security found the partner's X-Signature header and the access_token field of the JSON token response in our logs. Our config has telemetry.logging { enabled = true, mask = \"[hidden]\", maskHeaders = [\"X-Signature\"] }. Fix it.",
+      "expected_behavior": [
+        "Removes the mask key: it does not exist on the client (or per-method) logging config; the replacement text comes from a @Tag(HttpClientTelemetry.class) MaskingStrategy component",
+        "Restates the defaults in maskHeaders: [\"authorization\", \"set-cookie\", \"cookie\", \"x-signature\"], explaining that a configured list replaces the default one",
+        "Explains that headers are logged at DEBUG and bodies at TRACE on the client's .request / .response loggers",
+        "Adds a @Tag(HttpClientTelemetry.class) DataMasker, e.g. new JsonDataMasker(MaskingPathRules.builder().mask(\"access_token\", new MaskingFull()).build()), which is applied to application/json and +json bodies",
+        "Notes that the tagged strategy and maskers are shared by all clients and that per-client body rules need a DefaultHttpClientBodyConverter subclass overriding selectRequestDataMasker / selectResponseDataMasker",
+        "Links or defers to kora-aop-logging for the shared DataMasker / MaskingPathRules model"
+      ],
+      "anti_behavior": [
+        "Keeps telemetry.logging.mask as a working key",
+        "Claims header names must be written in lower case for maskHeaders to match",
+        "Claims response bodies are masked by default or by maskHeaders",
+        "Invents an HTTP-client-specific masking annotation or config key such as maskBody"
+      ],
+      "tags": ["telemetry", "masking", "config", "intermediate"]
+    },
+    {
+      "id": "kora-http-client-jdk-read-timeout-and-telemetry",
+      "skills": ["kora-http-client"],
+      "query": "We use the JDK transport (http-client-jdk) with httpClient.readTimeout = 10s. Does that bound our calls? And our Grafana dashboard groups http.client.request.duration by http.route but the series are gone after upgrading to Kora 2.0.0.RC2. Also, where are connection-refused errors logged?",
+      "expected_behavior": [
+        "States the JDK transport applies httpClient.readTimeout as the per-request timeout when the client/method sets no requestTimeout, and requestTimeout overrides it",
+        "Says the client timer tags the route template as url.template (not http.route) and also carries server.port (80/443 when the URI has no port)",
+        "Says a failed call without a response is logged at WARN ('HttpClient error received') on the client's .response logger, so that logger's level controls it"
+      ],
+      "anti_behavior": [
+        "Claims the JDK transport ignores readTimeout or applies only connectTimeout",
+        "Tells the user to keep grouping client metrics by http.route",
+        "Claims connection errors are logged on the .request logger"
+      ],
+      "tags": ["transport", "timeouts", "telemetry", "regression"]
     }
   ]
 }

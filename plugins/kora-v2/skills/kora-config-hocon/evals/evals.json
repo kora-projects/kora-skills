@@ -354,6 +354,28 @@
         "regression",
         "yaml-interop"
       ]
+    },
+    {
+      "id": "kora-config-hocon-watcher-refresh",
+      "skills": [
+        "kora-config-hocon"
+      ],
+      "query": "Kora 2.0 service, application.conf includes file(\"/etc/app/secrets.conf\"). Which edits make Kora reload the config at runtime, how often does it check, and does it keep refreshing the graph after the first change?",
+      "expected_behavior": [
+        "Explains that the ConfigWatcher polls on a virtual thread named config-reload once a second",
+        "States that it tracks the main file and every filesystem include (secrets.conf included), comparing modification time and symlink target; classpath and URL includes are not watched",
+        "States that a refresh is triggered only when a tracked file changed or an included file was added or removed, so an unchanged config never triggers further refreshes",
+        "Mentions that the refresh rebuilds only components whose config value actually changed, and that ValueOf<T> consumers are not rebuilt",
+        "Mentions KORA_CONFIG_WATCHER_ENABLED=false or -Dkora.config.watcher.enabled=false to turn it off"
+      ],
+      "anti_behavior": [
+        "Claims the watcher refreshes the graph on every check once the config changed",
+        "Invents a config key for the poll interval or a hot-reload annotation"
+      ],
+      "tags": [
+        "watcher",
+        "refresh"
+      ]
     }
   ]
 }

@@ -6,7 +6,7 @@
       "query": "I have an OpenAPI 3 spec at src/main/resources/openapi/pet.yaml with a single tag `pet`. Set up Gradle to generate a Kora HTTP client from it, then show me how to inject the generated Api and call it.",
       "expected_behavior": [
         "Puts io.koraframework:openapi-generator:$koraVersion on the buildscript classpath and applies the org.openapi.generator Gradle plugin",
-        "Uses koraVersion=2.0.0.RC1 from plain mavenCentral() and the io.koraframework:kora-bom platform, never ru.tinkoff.kora:kora-parent",
+        "Uses koraVersion=2.0.0.RC2 from plain mavenCentral() and the io.koraframework:kora-bom platform, never ru.tinkoff.kora:kora-parent",
         "Registers a GenerateTask with generatorName = \"kora\" and configOptions mode = \"java-client\", with a unique outputDir wired into sourceSets.main and compileJava.dependsOn",
         "Adds annotationProcessor \"io.koraframework:annotation-processors\", io.koraframework:json-common, and exactly one transport (http-client-ok / http-client-jdk / http-client-apache) whose module is extended by @KoraApp",
         "Injects the generated *Api by constructor into a @Component from io.koraframework.common.annotation and pattern matches the sealed *ApiResponses variant, reading .content() on the success record",
@@ -106,6 +106,7 @@
       "expected_behavior": [
         "Explains the generator emits a @DefaultComponent token provider for apiKey and basic schemes, but for bearer and oauth2 it emits only the tag class, so the application must supply the provider",
         "Adds a @Tag(ApiSecurity.BearerAuth.class) HttpClientTokenProvider, using the scheme-derived nested marker rather than an ordinal SecurityRequirementTagN name",
+        "Has the bearer provider return the bare token, because the generated interceptor writes Authorization: Bearer <token> itself; returning \"Bearer \" + token would send \"Bearer Bearer ...\"",
         "States that the unused scheme's provider must return null, because the generated interceptor tries each security alternative in order and applies the first one whose providers ALL returned non-null — a placeholder would complete the bearer alternative and pre-empt apiKeyAuth",
         "Warns that if no alternative comes out complete the interceptor logs \"Security schema is defined for api but no data was provided\" and forwards the request with no credential, so the failure surfaces as a silent 401 rather than an error",
         "Puts the api key credential under <securityConfigPrefix>.apiKeyAuth using the scheme name verbatim, while the tag capitalises it",
@@ -163,6 +164,117 @@
         "Does not rely on a non-Kora application context or reflection-based injection"
       ],
       "tags": ["openapi-client", "testing", "advanced"]
+    },
+    {
+      "id": "kora-openapi-generator-client-successful-mode-java",
+      "skills": ["kora-openapi-generator-client"],
+      "query": "Our generated Kora 2.0 Java client makes us switch over PetApiResponses variants on every call just to throw on the 404. The spec declares getPetById with 200 Pet and 404 Error, and addPet with 200 Pet, 400 Error and default Error. Can the generator just return the Pet and throw on errors?",
+      "expected_behavior": [
+        "Sets configOptions clientResponseMode = \"SUCCESSFUL\" in the kora GenerateTask and states the default is SEALED",
+        "Explains the method now returns the single 2xx variant (GetPetById200ApiResponse), so the payload is petApi.getPetById(id).content()",
+        "Explains declared error responses (non-2xx and default) are thrown as HttpClientResponseException subclasses nested in the generated PetApi, one class per distinct error body type shared by all operations, e.g. PetApi.PetApiModelErrorHttpClientResponseException for the Error schema (generated as ModelError), with getContent() for the parsed body",
+        "Reads the status from the base class getCode() (plus getHeaders() / getBytes()) and branches on it when several statuses share one exception type, e.g. 404 -> Optional.empty()",
+        "Catches the typed exception before the base HttpClientResponseException, which is what an unparseable error body or an undeclared status without default arrives as",
+        "Does not ask the user to register the generated *SuccessfulResponseMapper by hand — it is a @Component the graph resolves"
+      ],
+      "anti_behavior": [
+        "Claims SUCCESSFUL returns the bare Pet model instead of the 200 response record",
+        "Invents one exception class per operation or per status code",
+        "Suggests hand-editing the generated interface or writing a custom @ResponseCodeMapper for each error code"
+      ],
+      "tags": ["openapi-client", "java", "response-mode", "intermediate"]
+    },
+    {
+      "id": "kora-openapi-generator-client-successful-mode-kotlin",
+      "skills": ["kora-openapi-generator-client"],
+      "query": "Kotlin, Kora 2.0 kotlin-client with clientResponseMode SUCCESSFUL. deletePet declares 204 and 404, both without a body, and getPetById declares 200 Pet and 404 Error. Show a service that returns false on a missing pet for delete and null on a missing pet for get.",
+      "expected_behavior": [
+        "Calls petApi.getPetById(id).content (a property on the data class) and catches PetApi.PetApiModelErrorHttpClientResponseException, returning null when e.code == 404 and rethrowing otherwise",
+        "Catches PetApi.PetApiNoContentHttpClientResponseException for the body-less 404 of deletePet and returns false",
+        "Reads the parsed error body through the content property and the status through the inherited code property",
+        "Injects the generated PetApi by constructor into a @Component from io.koraframework.common.annotation and keeps the calls synchronous (no suspend)"
+      ],
+      "anti_behavior": [
+        "Uses a when over sealed variants for the error case as if the mode were SEALED",
+        "Calls content() or getContent() as a method in Kotlin"
+      ],
+      "tags": ["openapi-client", "kotlin", "response-mode", "intermediate"]
+    },
+    {
+      "id": "kora-openapi-generator-client-successful-with-ranges",
+      "skills": ["kora-openapi-generator-client"],
+      "query": "Can I keep our 4XX/5XX range responses and a 2XX range on DELETE if I switch our generated Kora OpenAPI client to clientResponseMode: \"SUCCESSFUL\"? What does the client do with them?",
+      "expected_behavior": [
+        "States that status-code ranges are supported in SUCCESSFUL mode",
+        "Explains that a 2XX range is a success and is returned (e.g. DeletePet2XXApiResponse), while 4XX/5XX ranges are thrown as the typed <Api><Type>HttpClientResponseException of their body type",
+        "Notes that an exact code (e.g. 404) wins over the range that contains it"
+      ],
+      "anti_behavior": [
+        "Claims SUCCESSFUL mode fails generation with NumberFormatException on 4XX keys",
+        "Tells the user to replace ranges with exact codes or keep SEALED mode because of ranges"
+      ],
+      "tags": ["openapi-client", "response-mode", "ranges", "troubleshooting"]
+    },
+    {
+      "id": "kora-openapi-generator-client-range-responses",
+      "skills": ["kora-openapi-generator-client"],
+      "query": "Our contract for GET /pets declares 200, 404, 4XX, 5XX and default responses, each error with an Error body. How does the Kora 2.0 Java client expose these and how do I tell a 409 from a 503?",
+      "expected_behavior": [
+        "States range responses are supported: the 4XX and 5XX variants are records with an int statusCode component plus content",
+        "Explains exact codes (200, 404) keep their own @ResponseCodeMapper, while ranges and default share one @ResponseCodeMapper(code = ResponseCodeMapper.DEFAULT) pointing at the generated <Op>DefaultCodeApiResponseMapper that dispatches 400-499 to 4XX, 500-599 to 5XX and the rest to default",
+        "Reads statusCode() on the matched variant to distinguish 409 from 503",
+        "Mentions the variants sharing the Error body also implement a sealed <Op>ModelErrorApiResponse with content() and statusCode(), so one pattern-match branch can cover them"
+      ],
+      "anti_behavior": [
+        "Tells the user to replace ranges with explicit codes because ranges are not supported"
+      ],
+      "tags": ["openapi-client", "ranges", "responses", "intermediate"]
+    },
+    {
+      "id": "kora-openapi-generator-client-datetime-typemappings",
+      "skills": ["kora-openapi-generator-client"],
+      "query": "We keep timestamps as java.time.Instant. Can the Kora 2.0 OpenAPI generator emit Instant instead of OffsetDateTime for date-time fields? Also our spec has a metadata property with type: object, additionalProperties: true, and a tags property that is an array of an inline enum — what types do those get?",
+      "expected_behavior": [
+        "Sets typeMappings on the GenerateTask (typeMappings = [\"DateTime\": \"java.time.Instant\"] in Groovy or typeMappings.set(mapOf(\"DateTime\" to \"java.time.Instant\")) in Kotlin DSL), not inside configOptions",
+        "States the recognised targets are Instant, ZonedDateTime and LocalDateTime (simple or fully qualified name) and that anything else falls back to OffsetDateTime",
+        "States a free-form additionalProperties: true object is generated as Map<String, Object> (Kotlin Map<String, Any>)",
+        "States an array of an inline enum is generated as a List of the nested enum type, keeping the collection"
+      ],
+      "anti_behavior": [
+        "Claims date-time is always OffsetDateTime with no override",
+        "Suggests converting in a custom JSON reader or editing generated models"
+      ],
+      "tags": ["openapi-client", "models", "type-mapping"]
+    },
+    {
+      "id": "kora-openapi-generator-client-successful-shared-success-no-errors",
+      "skills": ["kora-openapi-generator-client"],
+      "query": "With clientResponseMode SUCCESSFUL, one operation declares only 200 and 206 with the same Page schema and no error responses. What does the generated method return, and do I need to add a default response?",
+      "expected_behavior": [
+        "Says the method returns the shared sealed <Op>PageApiResponse with content() and statusCode()",
+        "Says the operation still gets the <Op>SuccessfulResponseMapper (via @Mapping) because its return type is narrowed, so no error response or default is required",
+        "Does not suggest editing generated sources"
+      ],
+      "anti_behavior": [
+        "Claims the generated client fails to compile ('bad type in switch expression') and requires a default/error response or SEALED mode",
+        "Suggests hand-editing the generated *ApiClientResponseMappers"
+      ],
+      "tags": ["openapi-client", "successful-mode", "regression"]
+    },
+    {
+      "id": "kora-openapi-generator-client-openidconnect-scheme",
+      "skills": ["kora-openapi-generator-client"],
+      "query": "Our OpenAPI spec declares an `openIdConnect` security scheme (openIdConnectUrl points at Keycloak). Can the Kora client generator handle it, and what do I have to provide to send the token?",
+      "expected_behavior": [
+        "States openIdConnect is a supported client security type, handled like oauth2",
+        "Explains the generator emits only the ApiSecurity tag class and no provider, so the app supplies a @Tag(ApiSecurity.<Scheme>.class) HttpClientTokenProvider",
+        "Says the provider returns the bare token and the generated interceptor sends Authorization: Bearer <token>"
+      ],
+      "anti_behavior": [
+        "Claims openIdConnect aborts generation as an unsupported security scheme",
+        "Has the provider return a value already prefixed with 'Bearer '"
+      ],
+      "tags": ["openapi-client", "security", "openid-connect"]
     }
   ]
 }

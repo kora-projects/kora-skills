@@ -128,7 +128,7 @@ produces **no error at all**: both keys are ignored, and each server falls back 
 `8081`/`8086` and hit nothing.
 
 Guidance claiming the system server falls back to `8080` and collides with the public one describes a
-pre-release build; that default was fixed before `2.0.0.RC1`. `Address already in use` happens only in
+pre-release build; that default was fixed before the first release candidate. `Address already in use` happens only in
 the narrower case where the *new* keys genuinely point two servers at one port.
 
 Telemetry defaults also changed: `telemetry.metrics.enabled` and `telemetry.logging.enabled` default
@@ -252,8 +252,8 @@ dependencies {
 ```kotlin
 plugins {
     id("application")
-    kotlin("jvm") version "2.4.10"
-    id("com.google.devtools.ksp") version "2.3.11"
+    kotlin("jvm") version "2.4.20"
+    id("com.google.devtools.ksp") version "2.3.12"
 }
 
 repositories {

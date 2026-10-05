@@ -5,7 +5,7 @@ plugins {
 
 repositories {
     mavenCentral()
-    // io.koraframework:kora-bom:2.0.0.RC1 is on Maven Central; nothing else is needed.
+    // io.koraframework:kora-bom:2.0.0.RC2 is on Maven Central; nothing else is needed.
     // Only the 2.0.0-SNAPSHOT development line also needs:
     // maven { url = "https://central.sonatype.com/repository/maven-snapshots" }
 }

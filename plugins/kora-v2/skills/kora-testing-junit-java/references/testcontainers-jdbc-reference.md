@@ -54,7 +54,7 @@ dependencies {
     testImplementation "io.koraframework:test-junit5"
     testImplementation "io.koraframework:database-jdbc"
     testImplementation "io.koraframework:database-flyway"
-    testImplementation "org.flywaydb:flyway-database-postgresql:13.1.0"
+    testImplementation "org.flywaydb:flyway-database-postgresql:13.9.0"
     testImplementation "io.koraframework:config-hocon"
     testImplementation "io.koraframework:logging-logback"
 
@@ -210,7 +210,7 @@ FlywayException: Unsupported Database: PostgreSQL 16.x
 
 ```groovy
 testImplementation "io.koraframework:database-flyway"
-testImplementation "org.flywaydb:flyway-database-postgresql:13.1.0"
+testImplementation "org.flywaydb:flyway-database-postgresql:13.9.0"
 ```
 
 ```hocon

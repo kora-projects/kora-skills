@@ -1,8 +1,7 @@
 # OpenAPI Client Codegen Reference — Kora 2.x
 
-Everything here is verified against the `io.koraframework:openapi-generator` source at tag
-`2.0.0.RC1` and against the migrated Java/Kotlin OpenAPI HTTP-client examples and guides.
-Where `master` has moved past RC1 it is called out explicitly.
+Everything here is verified against the `io.koraframework:openapi-generator` source and tests
+for `2.0.0.RC2` and against the migrated Java/Kotlin OpenAPI HTTP-client examples and guides.
 
 ## Contents
 
@@ -14,14 +13,16 @@ Where `master` has moved past RC1 it is called out explicitly.
 - [Runtime configuration keys](#runtime-config)
 - [`configOptions` reference](#config-options)
 - [Generated artifacts](#generated)
+- [`clientResponseMode` — sealed or successful](#response-mode)
+- [Status-code ranges (`4XX`, `5XX`)](#ranges)
 - [Enums](#enums)
 - [Models and constructor order](#models)
+- [Type mapping notes](#type-mapping)
 - [`extensions` — annotations and interceptors](#extensions)
 - [`tags` — per-tag client and telemetry tags](#tags)
 - [OpenAPI normalizer](#normalizer)
 - [Discriminators (oneOf + allOf)](#discriminators)
 - [Testing a generated client](#testing)
-- [RC1 vs `master`](#rc1)
 
 ---
 
@@ -40,11 +41,12 @@ Two versions that are easy to conflate:
 
 | What | Where | Value |
 |---|---|---|
-| `org.openapi.generator` Gradle plugin | `plugins { }` | `7.23.0` (Java example) / `7.24.0` (Kotlin example) |
-| `io.koraframework:openapi-generator` (the `kora` generator) | `buildscript { dependencies { classpath … } }` | `$koraVersion` = `2.0.0.RC1` |
+| `org.openapi.generator` Gradle plugin | `plugins { }` | `7.25.0` |
+| `io.koraframework:openapi-generator` (the `kora` generator) | `buildscript { dependencies { classpath … } }` | `$koraVersion` = `2.0.0.RC2` |
 
-The Kora generator is compiled against `org.openapitools:openapi-generator` **7.24.0** (the
-framework's version catalog), so `7.24.0` is the aligned plugin choice.
+The Kora generator is compiled against `org.openapitools:openapi-generator` **7.25.0** (the
+framework's version catalog), so `7.25.0` is the aligned plugin choice. The migrated examples still
+pin `7.23.0` / `7.24.0`.
 
 ```groovy
 buildscript {
@@ -55,7 +57,7 @@ buildscript {
 }
 
 plugins {
-    id "org.openapi.generator" version "7.24.0"
+    id "org.openapi.generator" version "7.25.0"
 }
 ```
 
@@ -170,7 +172,7 @@ return params.clientConfig;
 **tag**: tag `pets` → `PetsApi` → `petsApi`; tag `pet` → `PetApi` → `petApi`; an operation with no
 tag lands in `DefaultApi` → `defaultApi`.
 
-The generator's own tests pin this behaviour at RC1 —
+The generator's own tests pin this behaviour —
 `HttpClientJavaOpenapiTest.clientConfigPrefixAppendsLowerCamelClientName` and its Kotlin twin
 generate from a spec tagged `pets` with `clientConfigPrefix = "httpClient"` and assert
 `value = "httpClient.petsApi"`.
@@ -233,14 +235,15 @@ name verbatim, so a `getPetByIdConfig { … }` block is dead config.
 
 ## `configOptions` reference { #config-options }
 
-Verified against `CodegenParams` at `2.0.0.RC1`. Options marked *server* are ignored in client
-modes (the parser gates them on `codegenMode.isServer()`).
+Verified against `CodegenParams`. Options marked *server* are ignored in client modes (the parser
+gates them on `codegenMode.isServer()`).
 
 | Option | Type | Default | Meaning |
 |---|---|---|---|
 | `mode` | String | `java-client` | One of the four modes above |
 | `clientConfig` | String | — | Fixed config path applied to every generated client in this spec |
 | `clientConfigPrefix` | String | — | Config prefix; `.` + lower-camel API name is appended per client |
+| `clientResponseMode` | String | `SEALED` | `SEALED` returns the sealed response; `SUCCESSFUL` returns the success variant and throws declared errors — see [below](#response-mode). Case-insensitive |
 | `securityConfigPrefix` | String | derived | Config prefix for generated credential lookups — see [authorization-reference.md](authorization-reference.md) |
 | `primaryAuth` | String | — | Security scheme to prefer when an operation allows several |
 | `authAsMethodArgument` | Boolean | `false` | Pass the credential as a generated method parameter instead of via the interceptor |
@@ -250,12 +253,12 @@ modes (the parser gates them on `codegenMode.isServer()`).
 | `filterWithModels` | Boolean | `false` | When `openapiNormalizer` `FILTER` is set, also drop unused models |
 | `implicitHeaders` | Boolean | `false` | Do not generate header parameters as method arguments |
 | `implicitHeadersRegex` | String | — | Regex selecting which headers `implicitHeaders` applies to |
-| `forceIncludeOptional` | Boolean | `false` | Always serialise nullable / non-required fields, even when null |
+| `forceIncludeOptional` | Boolean | `false` | Parsed, but no generator consumes it — it has no effect |
 | `rawBodyMode` | String | `BYTES` | Bare-object body handling: `BYTES`, `BODY` or `OBJECT` |
 | `enableServerValidation` | Boolean | `false` | *server* |
 | `enableServerValidationInterceptor` | Boolean | `true` | *server* |
 | `requestInDelegateParams` | Boolean | `false` | *server* |
-| `serverConfigPrefix` | String | — | *server* |
+| `serverConfigPrefix` | String | `httpServer.controller.%{ControllerTypeNameInCamelCase}` | *server* |
 | `prefixPath` | String | `""` | *server* |
 | `delegateMethodBodyMode` | String | `NONE` | *server* |
 
@@ -300,6 +303,86 @@ Java variants expose the payload as `ok.content()`; Kotlin variants are data cla
 Three further files — `$PetApi_ClientImpl`, `$PetApi_Config`, `$PetApi_Module` — are produced by
 the Kora annotation processor or KSP from the generated interface. They are not OpenAPI generator
 output, and they only appear if the processor is on the build.
+
+When two or more responses of one operation share a body type, they also implement a sealed
+`<Op><Type>ApiResponse` interface exposing `content()` and `statusCode()`, so one branch can handle
+them together:
+
+```java
+sealed interface GetErrorsApiResponse {
+    sealed interface GetErrorsModelErrorApiResponse extends GetErrorsApiResponse {
+        ModelError content();
+        int statusCode();
+    }
+    record GetErrors400ApiResponse(ModelError content) implements GetErrorsModelErrorApiResponse { … }
+    record GetErrors404ApiResponse(ModelError content) implements GetErrorsModelErrorApiResponse { … }
+}
+```
+
+## `clientResponseMode` — sealed or successful { #response-mode }
+
+`SEALED` (the default) is everything above: every declared status is a variant of the returned
+sealed type. With `SUCCESSFUL`, operations that declare at least one error response — a non-2xx
+code, a `4XX`/`5XX` range or `default` — or whose return type is narrowed (several 2xx sharing one
+body, e.g. `200` + `206`) are generated like this:
+
+| Aspect | `SUCCESSFUL` output |
+|---|---|
+| Return type | the single 2xx variant (`<Op>200ApiResponse`); for several 2xx with one body type the shared `<Op><Type>ApiResponse`; otherwise the full sealed `<Op>ApiResponse` |
+| Method mapping | `@Mapping(<Api>ClientResponseMappers.<Op>SuccessfulResponseMapper.class)` replaces the `@ResponseCodeMapper` list |
+| Mapper | `<Op>SuccessfulResponseMapper`, `@Component` + `@DefaultComponent`, built from the per-code mappers; switches on the status code |
+| Error statuses | body buffered, parsed by the per-code mapper, thrown as `<Api><Type>HttpClientResponseException` |
+| Error without a body | `<Api>NoContentHttpClientResponseException` |
+| Undeclared status | the `default` response's exception if `default` is declared, else `HttpClientResponseException.fromResponse(response)` |
+| Error body that fails to parse | plain `HttpClientResponseException(code, headers, body)` with the parse failure added as suppressed |
+
+The exception classes are nested in the `*Api` interface and generated **once per distinct error
+body type across the whole API**, not per operation — `PetApi.PetApiModelErrorHttpClientResponseException`
+serves every operation of `PetApi` whose error body is `ModelError`:
+
+```java
+public interface PetApi {
+    class PetApiModelErrorHttpClientResponseException extends HttpClientResponseException {
+        public PetApiModelErrorHttpClientResponseException(int code, HttpHeaders headers,
+                                                           ModelError content, byte[] body) { … }
+        public ModelError getContent() { … }
+    }
+    class PetApiNoContentHttpClientResponseException extends HttpClientResponseException { … }
+}
+```
+
+```kotlin
+public class PetApiModelErrorHttpClientResponseException(
+    code: Int, headers: HttpHeaders, public val content: ModelError, body: ByteArray,
+) : HttpClientResponseException(code, headers, body)
+```
+
+The type part of the name is the generated model name: a schema called `Error` becomes `ModelError`.
+`HttpClientResponseException` (`io.koraframework.http.client.common.exception`) is unchecked and
+exposes `getCode()`, `getHeaders()` and `getBytes()` (Kotlin: `code`, `headers`, `bytes`).
+
+Because several statuses can map to one exception, branch on `getCode()` when the distinction
+matters. Catch the typed exception before the base class.
+
+Status-code ranges work in `SUCCESSFUL` mode: the mapper switches on exact codes first, then tests
+`200 <= code < 300`, `400 <= code < 500`, … in order, then falls back to `default`. A `2XX` range is
+a success and is returned (`<Op>2XXApiResponse`); `4XX`/`5XX` ranges are thrown as the typed
+exception of their body type.
+
+## Status-code ranges (`4XX`, `5XX`) { #ranges }
+
+A response keyed `1XX`…`5XX` covers the whole class. It cannot be an `int` annotation member, so
+the generator lowers it:
+
+- the variant carries the real status: `record ListPets4XXApiResponse(int statusCode, ModelError content)`;
+- exact codes keep their own `@ResponseCodeMapper(code = 404, …)` — an exact code wins over a range;
+- ranges and `default` share one `@ResponseCodeMapper(code = ResponseCodeMapper.DEFAULT, mapper = <Op>DefaultCodeApiResponseMapper.class)`,
+  which dispatches `400 <= code < 500` to the `4XX` mapper, `500 <= code < 600` to the `5XX` mapper,
+  and anything else to the `default` mapper — or throws `HttpClientResponseException` when the
+  operation has no `default`.
+
+Ranges are generated for Java and Kotlin clients in both modes (see the previous section for
+`SUCCESSFUL`).
 
 ## Enums { #enums }
 
@@ -400,6 +483,34 @@ public record Pet(long id, @Nullable Long nonRequiredId, String name, @Nullable 
 Two constructors of different arity means an over- or under-supplied positional call can bind to
 the other one. Nullability uses JSpecify (`org.jspecify.annotations.Nullable`) as a **type-use**
 annotation, so its position in a qualified or generic type matters.
+
+## Type mapping notes { #type-mapping }
+
+| Schema | Generated type |
+|---|---|
+| `type: string, format: date-time` | `OffsetDateTime`, unless `typeMappings` maps `DateTime` (or `date-time`) to `Instant`, `ZonedDateTime` or `LocalDateTime` — simple or fully qualified name. Any other target falls back to `OffsetDateTime` |
+| `type: object, additionalProperties: true` (free-form map) | `Map<String, Object>` / `Map<String, Any>` |
+| `type: array` whose `items` is an inline `enum` | `List<Model.XxxEnum>` — the collection is kept, the nested enum is the element |
+
+`typeMappings` is a property of the plugin's `GenerateTask`, not a `configOptions` entry:
+
+```groovy
+tasks.register("openApiGeneratePet", GenerateTask) {
+    // …
+    typeMappings = ["DateTime": "java.time.Instant"]
+}
+```
+
+```kotlin
+tasks.register<GenerateTask>("openApiGeneratePet") {
+    // …
+    typeMappings.set(mapOf("DateTime" to "java.time.Instant"))
+}
+```
+
+Descriptions, summaries, response messages and string defaults are copied into Javadoc/KDoc and
+default values as text, so a `%` (`%2B`) or `$` in the contract is safe; Kotlin string defaults get
+their `$` escaped.
 
 ## `extensions` — annotations and interceptors { #extensions }
 
@@ -571,26 +682,6 @@ class PetApiTest implements KoraAppTestConfigModifier {
 
 A test that hangs until its timeout instead of failing is the signature of a misspelled config
 section — including inside `KoraConfigModification.ofString`, which no `.conf` scanner will check.
-
-## RC1 vs `master` { #rc1 }
-
-`2.0.0.RC1` is what Maven Central resolves; the generator has moved on since. Two differences
-matter for clients:
-
-- **Status-code *range* responses (`4XX`, `5XX`) are not supported at RC1.** Support landed after
-  the tag. On RC1, declare exact codes plus the OpenAPI `default` response; `default` is registered
-  as `@ResponseCodeMapper(code = -1, …)`, which is the value of `ResponseCodeMapper.DEFAULT`.
-- **Multipart form mapping and parsing were fixed after RC1.** If a contract uses
-  `multipart/form-data`, verify the generated mappers rather than assuming current behaviour.
-
-Also post-RC1, in the framework rather than the generator: the Apache and JDK HTTP client transport
-integrations were corrected, and response-body decoding failures are now wrapped. At RC1,
-`http-client-ok` is the best-exercised transport for a generated client.
-
-One RC1 defect worth knowing if a contract uses `float`: in `kotlin-client` / `kotlin-server`, the
-boxed-type mapping in `AbstractKotlinGenerator.asKt()` swaps `Float` and `Boolean`, so a `List` or
-`Map` **element** typed `number/float` is generated as `Boolean` and vice versa. Non-boxed
-(non-collection) properties are unaffected. Fixed after RC1 on `master`.
 
 ---
 

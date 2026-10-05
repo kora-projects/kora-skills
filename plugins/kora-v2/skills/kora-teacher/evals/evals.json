@@ -9,14 +9,14 @@
       "expected_behavior": [
         "Asks whether the learner is on Java or Kotlin, and whether they are coming from Kora 1.x, before choosing a starting point",
         "Checks the environment first: JDK 25 or newer on the PATH and running Gradle, Gradle 9.x wrapper",
-        "Grounds the session on the Kora 2.0 refs (framework source at tag 2.0.0.RC1 and kora-examples at branch migration/2.0) per R0, or says explicitly that it could not and is therefore teaching unverified",
+        "Grounds the session on the Kora 2.0 refs (framework source at tag 2.0.0.RC2 and kora-examples at branch migration/2.0, plus the 2.0 docs) per R0, or says explicitly that it could not and is therefore teaching unverified",
         "Starts from the smallest runnable service - the getting-started guide app - rather than an arbitrary topic",
         "Teaches @KoraApp on an interface, the generated ApplicationGraph named after that interface, KoraApplication.run(ApplicationGraph::graph), and constructor-only injection",
         "Has the learner compile with ./gradlew clean classes and open build/generated to see what was generated",
         "Does not teach Kora through Spring/Micronaut/Quarkus analogies and does not invent behaviour"
       ],
       "anti_behavior": [
-        "Tells the learner to clone kora-docs, or points them at kora-projects.github.io/kora-docs, as the source of Kora 2.0 answers",
+        "Points the learner at kora-projects.github.io/kora-docs or a docs/v1 page as the source of Kora 2.0 answers",
         "Uses ru.tinkoff.kora imports, the kora-parent BOM, or a 1.x version",
         "States Java 21 (or anything below 25) is enough for a Kora 2.0 project"
       ],
@@ -33,16 +33,16 @@
       ],
       "query": "Where's the official Kora 2.0 documentation? Just give me the link so I can read it myself this weekend.",
       "expected_behavior": [
-        "States plainly that Kora 2.0 has no documentation site of its own",
-        "Explains that kora-docs describes Kora 1.x on every branch, including feature/kora-2.0 whose docs/v2 is a byte-identical copy of the 1.x pages",
-        "Points the learner at the framework source at tag 2.0.0.RC1 (github.com/kora-projects/kora/tree/2.0.0.RC1) and the migrated examples at kora-examples branch migration/2.0 instead",
-        "Warns that even in the migrated examples the per-app README prose still links to the 1.x site and names removed modules, so the code and build files are the thing to read",
-        "Offers kora-docs only as explicitly-labelled 1.x conceptual background, if at all"
+        "Gives https://koraframework.io/v2/en/ (or /v2/ru/) as the Kora 2.0 documentation, built from kora-docs branch feature/kora-2.0 mkdocs/docs/v2",
+        "Says the 2.0 docs are good reading but can trail the framework, so keys, defaults and signatures a lesson relies on are checked in the framework source (tag 2.0.0.RC2) before being relied on",
+        "Also points at the migrated examples at kora-examples branch migration/2.0 as runnable companions",
+        "Warns that the 1.x site kora-projects.github.io/kora-docs and docs/v1 pages describe ru.tinkoff.kora and are not a 2.0 answer",
+        "Warns that the per-app README prose in the migrated examples still links to the 1.x site, so the code and build files are the thing to read"
       ],
       "anti_behavior": [
-        "Hands over a kora-docs URL as the Kora 2.0 documentation",
-        "Claims a v2 section of the documentation site exists and is current",
-        "Says the documentation is 'mostly still accurate' for 2.0"
+        "Hands over kora-projects.github.io/kora-docs as the Kora 2.0 documentation",
+        "Claims Kora 2.0 has no documentation site, or that docs/v2 is a copy of the 1.x pages",
+        "Presents the 2.0 docs as the final authority over the framework source"
       ],
       "tags": [
         "teacher",
@@ -191,7 +191,7 @@
       ],
       "anti_behavior": [
         "Invents companion apps that do not exist, such as kora-java-guide-scheduling-app or kora-java-guide-di-app",
-        "Builds the plan around kora-docs guide markdown files as the primary material",
+        "Builds the plan around documentation pages (2.0 docs guides or 1.x kora-docs) instead of runnable companion apps",
         "Includes removed integrations (R2DBC, Vert.x SQL, MinIO S3 client) as learning stops"
       ],
       "tags": [
@@ -208,14 +208,14 @@
       "query": "What do I need installed and what goes in build.gradle before my first Kora lesson?",
       "expected_behavior": [
         "Requires JDK 25 or newer, and states that the JVM running Gradle itself must also be 25+ because io.koraframework:openapi-generator resolves on the buildscript classpath",
-        "Uses the platform \"io.koraframework:kora-bom:$koraVersion\" with koraVersion=2.0.0.RC1 from mavenCentral()",
-        "Java: annotationProcessor \"io.koraframework:annotation-processors\". Kotlin: ksp \"io.koraframework:symbol-processors\" with Kotlin 2.4.10 and KSP 2.3.11",
-        "Names Gradle 9.x (the examples pin the 9.5.1 wrapper)",
+        "Uses the platform \"io.koraframework:kora-bom:$koraVersion\" with koraVersion=2.0.0.RC2 from mavenCentral()",
+        "Java: annotationProcessor \"io.koraframework:annotation-processors\". Kotlin: ksp \"io.koraframework:symbol-processors\" with Kotlin 2.4.20 and KSP 2.3.12",
+        "Names Gradle 9.x (the framework pins the 9.8.0 wrapper)",
         "Explains that Java 25 is a hard floor because the artifacts are class-file major version 69"
       ],
       "anti_behavior": [
         "Uses ru.tinkoff.kora:kora-parent or any ru.tinkoff.kora coordinate",
-        "Pins 2.0.0-SNAPSHOT or 2.0.0.alpha6 for a new project",
+        "Pins 2.0.0-SNAPSHOT, 2.0.0.RC1 or 2.0.0.alpha6 for a new project",
         "Says Kotlin learners can stay on JDK 21",
         "Tells the learner to add --enable-preview as a blanket Kora requirement"
       ],
@@ -390,6 +390,30 @@
         "teacher",
         "pedagogy",
         "session-management"
+      ]
+    },
+    {
+      "id": "kora-teacher-new-capabilities-handoff",
+      "skills": [
+        "kora-teacher"
+      ],
+      "query": "I've finished the basics. What else can Kora 2.0 do for a real service — I need scheduled jobs that run once per cluster, Postgres arrays and jsonb, rate limiting shared between replicas, and JSON logs without leaking tokens.",
+      "expected_behavior": [
+        "Names the database-backed scheduler (scheduling-db-scheduler) for one-execution-per-cluster jobs and hands off to kora-aop-scheduling-db, contrasting it with the in-process JDK scheduler",
+        "Names the database-jdbc-postgres module (@Pg arrays and interval, PgRange, @PgJson/@PgJsonb) and hands off to kora-database-jdbc's postgres mappers reference",
+        "Names the Redis-backed distributed rate limiter / retry budget (resilient-kora-distributed-redis-lettuce) and hands off to kora-aop-resilient",
+        "Names Kora's built-in Logback JSON encoder and telemetry masking (DataMasker) and hands off to kora-telemetry-logging / kora-aop-logging",
+        "Says these topics have no guide app and are taught from the sub-skill and the framework tests"
+      ],
+      "anti_behavior": [
+        "Tells the learner to write a custom Logback JSON encoder",
+        "Suggests Quartz or the JDK scheduler with a hand-rolled database lock for one-per-cluster jobs without mentioning the db-scheduler module",
+        "Invents a guide app for these topics"
+      ],
+      "tags": [
+        "teacher",
+        "handoff",
+        "new-capabilities"
       ]
     }
   ]

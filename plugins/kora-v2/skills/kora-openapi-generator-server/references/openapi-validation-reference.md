@@ -84,7 +84,19 @@ controller, before your delegate is called, so a delegate method only ever sees 
 | a `$ref` to another model | `@Valid` (cascades) |
 
 A missing `minimum` in a `@Range` is filled with the type's floor (`Long.MIN_VALUE`,
-`Integer.MIN_VALUE`, `Double.MIN_VALUE`, `Float.MIN_VALUE`) and likewise for `maximum`.
+`Integer.MIN_VALUE`) and likewise for `maximum`.
+
+Up to 2.0.0.RC1 — fixed on master by kora-projects/kora PR #965 — the generator gets these schemas wrong:
+
+| Schema | What happens | Without the fix |
+|---|---|---|
+| `type: number` (`BigDecimal`/`BigInteger`) with only `minimum` or only `maximum`, e.g. an amount with `minimum: 0` | generation fails: `IllegalArgumentException: Invalid OpenAPI numeric validation schema. Schema dataType: BigDecimal` | declare both bounds, or check the bound in the delegate |
+| `format: double` / `float` with only `maximum` | the missing lower bound is `Double.MIN_VALUE` / `Float.MIN_VALUE` — the smallest **positive** value, so `0` and every negative value are rejected | declare `minimum` explicitly |
+| Kotlin, fractional `minimum` and `maximum` | the upper bound is taken from `minimum`: `@Range(from = 0.5, to = 0.5)` | check the range in the delegate |
+| `pattern` containing a backslash (`\S`, `\d`) | escaped twice: `.*\S.*` becomes `@Pattern(".*\\\\S.*")`, a literal backslash followed by `S` | check the pattern in the delegate |
+
+With the fix a single bound on `BigDecimal`/`BigInteger` generates the same annotations as on
+integers (`@PositiveOrZero`, `@Min`, …), and the pattern reaches `@Pattern` unchanged.
 
 `required` is **not** a validation annotation — it is expressed as non-nullability in the
 generated signature and enforced by the request parser, which answers `400` before validation
@@ -92,8 +104,9 @@ runs.
 
 ## 4. One annotation per property — the precedence chain
 
-The generator returns **at most one** constraint annotation per property, from a first-match
-chain in this order:
+Fixed on master by kora-projects/kora PR #965: every constraint the schema declares is generated,
+and an array of models also gets `@Valid`. Up to 2.0.0.RC1 the generator returns
+**at most one** constraint annotation per property, from a first-match chain in this order:
 
 1. `minimum` / `maximum`
 2. `minLength` / `maxLength`
@@ -102,7 +115,8 @@ chain in this order:
 5. `$ref` to a model → `@Valid`
 
 So a string schema declaring **both** `maxLength` and `pattern` generates only `@Size` — the
-`pattern` is silently not enforced. If you need both, validate the second constraint in the
+`pattern` is silently not enforced — and an array of models with `minItems` gets `@Size` but no
+`@Valid`, so its items are not validated at all. If you need both, validate the second constraint in the
 delegate and return the contract's `400`, or split the schema. Do not add the annotation to
 generated code.
 

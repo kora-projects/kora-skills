@@ -78,6 +78,23 @@ interface SmsModule {
 KSP treats `isMarkedNullable` as the optional marker. Do not carry JSpecify annotations into Kotlin
 sources; `@field:Nullable` in particular is an invalid target under Kotlin 2.4.
 
+### Java — `java.util.Optional<T>` works too
+
+An `Optional<T>` parameter is also an optional dependency. When the graph has no component of the
+exact type `Optional<T>`, both processors synthesise one: they resolve `T` as a **nullable** claim
+with the parameter's tag and generate `Optional.ofNullable(...)` around it, so an absent `T` arrives
+as `Optional.empty()` (`GraphBuilder` / `GraphFileGenerator` in the Java and KSP processors). It
+nests with the lazy handles — `ValueOf<Optional<T>>`, `Optional<ValueOf<T>>`,
+`PromiseOf<Optional<T>>`, `Optional<PromiseOf<T>>` all compile and initialise
+(`DependencyTest.testOptionalDependencies`).
+
+```java
+public NotificationService(Optional<SmsCellularProvider> provider) { ... }
+```
+
+`@Nullable T` stays the convention; in Kotlin write `T?`. Because `Optional<T>` goes through the same
+nullable claim, it shares the `@Conditional` pitfall below (PR #960).
+
 ### When it is the wrong tool
 
 `@Nullable` is for a dependency that may genuinely not be in the container — an optional telemetry
@@ -219,9 +236,10 @@ promise.
 | `type annotation @Nullable is not expected here` | JSpecify `@Nullable` in a non-type-use position |
 | `cannot find symbol: method refresh()` on `ValueOf` | 1.x memory — refresh lives on `RefreshableGraph` |
 | NPE on an optional dependency | `@Nullable` added, fallback path not written |
+| `Graph node value was not initialized because condition failed` on a `@Nullable` dependency | the target is `@Conditional` and its condition failed; the nullable claim is generated as `g.get(node)`, which throws instead of yielding `null`. Fixed in `2.0.0.RC2` (kora-projects/kora PR #960) — only `2.0.0.RC1` is affected; on RC1 inject `All<T>` — see [`conditional-graph-evaluation-reference.md`](conditional-graph-evaluation-reference.md#7-runtime-pitfalls) |
 | consumer still rebuilt on refresh | dependency declared directly, not as `ValueOf<T>` |
 | `@field:Nullable` rejected by Kotlin | invalid target; use `T?` |
-| `Optional<T>` constructor parameter not injected | `Optional` is not a Kora claim type |
+| `Optional<T>` parameter is always `Optional.empty()` | no component of type `T` (with that tag) in the graph — the processor wraps a nullable claim of `T`, so check the tag and that `T` is registered |
 
 ---
 

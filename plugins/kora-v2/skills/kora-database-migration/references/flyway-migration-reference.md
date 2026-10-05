@@ -4,7 +4,7 @@ Kora 2.0 module `io.koraframework.database.flyway.FlywayJdbcDatabaseModule`, art
 `io.koraframework:database-flyway`, config type `FlywayConfig`, config section `flyway`.
 Requires `io.koraframework:database-jdbc` and `JdbcDatabaseModule` on the `@KoraApp` interface.
 
-Bundled third-party version: **`org.flywaydb:flyway-core` 13.3.0**.
+Bundled third-party version: **`org.flywaydb:flyway-core` 13.9.0**.
 
 ## Contents
 
@@ -41,12 +41,12 @@ an explicit version. Keep it identical to the `flyway-core` version `database-fl
 
 ```groovy
 dependencies {
-    koraBom platform("io.koraframework:kora-bom:$koraVersion")   // koraVersion=2.0.0.RC1
+    koraBom platform("io.koraframework:kora-bom:$koraVersion")   // koraVersion=2.0.0.RC2
     annotationProcessor "io.koraframework:annotation-processors"
 
     implementation "io.koraframework:database-jdbc"
     implementation "io.koraframework:database-flyway"
-    implementation "org.flywaydb:flyway-database-postgresql:13.3.0"
+    implementation "org.flywaydb:flyway-database-postgresql:13.9.0"
 
     runtimeOnly "org.postgresql:postgresql:42.7.13"
 }
@@ -59,7 +59,7 @@ dependencies {
 
     implementation("io.koraframework:database-jdbc")
     implementation("io.koraframework:database-flyway")
-    implementation("org.flywaydb:flyway-database-postgresql:13.3.0")
+    implementation("org.flywaydb:flyway-database-postgresql:13.9.0")
 
     runtimeOnly("org.postgresql:postgresql:42.7.13")
 }
@@ -80,8 +80,8 @@ Confirm what actually resolved before blaming the config:
 ```
 
 A version skew between `flyway-core` and the dialect artifact is the second-most-common failure
-after omitting the artifact entirely. The migrated Kora 2.0 example apps pin `13.1.0` while the
-framework catalog is on `13.3.0`; align both to whatever `flyway-core` your build resolves.
+after omitting the artifact entirely. The migrated Kora 2.0 example apps pin `13.1.0`–`13.8.1` while the
+framework catalog is on `13.9.0`; align both to whatever `flyway-core` your build resolves.
 
 ---
 
@@ -360,7 +360,7 @@ declares both:
 
 ```groovy
 testImplementation "io.koraframework:database-flyway"
-testImplementation "org.flywaydb:flyway-database-postgresql:13.3.0"
+testImplementation "org.flywaydb:flyway-database-postgresql:13.9.0"
 ```
 
 `mode = CLEAN_MIGRATE` is a legitimate choice for a shared, non-disposable test database that must

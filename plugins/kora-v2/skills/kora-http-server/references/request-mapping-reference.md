@@ -74,10 +74,8 @@ Supply your own for a domain type by declaring a `@Component` `HttpServerParamet
 reader that throws produces a `400` with the message you give
 `HttpServerParameterReader.of(converter, message)`.
 
-> On `2.0.0.RC1` a `Boolean` query value is parsed with `Boolean.parseBoolean`, so anything other
-> than `"true"` silently becomes `false`. A post-RC1 commit tightened this to reject values that
-> are not exactly `"true"`/`"false"` with a `400`. Validate booleans yourself if the distinction
-> matters on RC1.
+> A `Boolean` path or query value must be `true` or `false` (case-insensitive); anything else,
+> including a blank value, is a `400`. It is never silently read as `false`.
 
 ---
 
@@ -108,6 +106,11 @@ public UserResponse me(@Cookie("sessionId") String sessionId) { /* ... */ }
 @HttpRoute(method = HttpMethod.GET, path = "/me/raw")
 public UserResponse raw(@Cookie("sessionId") Cookie cookie) { /* ... */ }
 ```
+
+The request `Cookie` header is parsed without allowing `=` inside a value, with one exception: a
+run of `=` at the **end** of a value (base64 padding, `token=YWJj==`) stays part of the value. An
+`=` followed by more characters still splits the value, so URL-encode cookie values that can carry
+an inner `=`.
 
 ---
 

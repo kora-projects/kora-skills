@@ -1,6 +1,6 @@
 ---
 name: kora-grpc-server
-description: "Kora 2.0 gRPC server — io.koraframework:grpc-server, GrpcServerModule, untagged @Component handlers extending the generated *Grpc.*ImplBase (io.grpc.BindableService), untagged io.grpc.ServerInterceptor components, the grpcServer config section (port, reflectionEnabled, maxMessageSize, telemetry), OkHttp transport on virtual threads, gRPC Server Reflection. Use when serving unary or streaming RPCs from a Kora service, pinning io.grpc/protobuf versions against grpc-java 1.83.1, or debugging AbstractMethodError buildClientTransportServers, an interceptor that never runs, or handlers that are not registered."
+description: "Kora 2.0 gRPC server — io.koraframework:grpc-server, GrpcServerModule, untagged @Component handlers extending the generated *Grpc.*ImplBase (io.grpc.BindableService), untagged io.grpc.ServerInterceptor components, the grpcServer config section (port, reflectionEnabled, maxMessageSize, telemetry), OkHttp transport on virtual threads, gRPC Server Reflection. Use when serving unary or streaming RPCs from a Kora service, pinning io.grpc/protobuf versions against grpc-java 1.84.0, or debugging AbstractMethodError buildClientTransportServers, an interceptor that never runs, or handlers that are not registered."
 license: Apache-2.0
 metadata:
   kora-version: "2.x"
@@ -8,17 +8,17 @@ metadata:
 
 # Kora gRPC Server
 
-> **Kora sub-skill — obey the [kora-v2 meta rules](../../SKILL.md) on every task:** **R0** ground the workspace on Kora 2.0 refs before starting (framework source at tag `2.0.0.RC1` + `kora-examples` at `migration/2.0`; `kora-docs` is 1.x only) · **R1** read this sub-skill before writing code · **R2** Kora 2.0 APIs only — no Spring/Micronaut/Quarkus, no Kora 1.x APIs, no invented annotations or config keys · **R3** journal any incorrect Kora usage. Add comments/Javadoc only if asked.
+> **Kora sub-skill — obey the [kora-v2 meta rules](../../SKILL.md) on every task:** **R0** ground the workspace on Kora 2.0 refs before starting (framework source at tag `2.0.0.RC2` + `kora-examples` at `migration/2.0` + Kora 2.0 docs at koraframework.io/v2, which trail the source; 1.x `kora-docs` pages are never an authority) · **R1** read this sub-skill before writing code · **R2** Kora 2.0 APIs only — no Spring/Micronaut/Quarkus, no Kora 1.x APIs, no invented annotations or config keys · **R3** journal any incorrect Kora usage. Add comments/Javadoc only if asked.
 
 | | |
 |---|---|
-| **Artifact** | `io.koraframework:grpc-server` (BOM `io.koraframework:kora-bom:2.0.0.RC1`, plain `mavenCentral()`) |
+| **Artifact** | `io.koraframework:grpc-server` (BOM `io.koraframework:kora-bom:2.0.0.RC2`, plain `mavenCentral()`) |
 | **Module** | `io.koraframework.grpc.server.GrpcServerModule` — add it to the `@KoraApp` interface |
 | **Config section** | `grpcServer` (telemetry component name `kora-grpc`) |
 | **Transport** | **OkHttp** (`io.grpc.okhttp.OkHttpServerBuilder`), calls dispatched onto **virtual threads** |
 | **Handler** | untagged `@Component` extending the generated `*Grpc.*ImplBase` (an `io.grpc.BindableService`) |
 | **Interceptor** | untagged `@Component` implementing `io.grpc.ServerInterceptor` |
-| **Pinned gRPC** | grpc-java **`1.83.1`**, protobuf-java **`3.25.9`** (transitive), protoc **`3.25.3`**, protobuf Gradle plugin **`0.10.0`** |
+| **Pinned gRPC** | grpc-java **`1.84.0`**, protobuf-java **`3.25.9`** (transitive), protoc **`3.25.3`**, protobuf Gradle plugin **`0.10.0`** |
 
 The `.proto` contract is the source of truth. The `com.google.protobuf` Gradle plugin generates the
 message classes and a `*Grpc.*ImplBase` base type; you implement a Kora `@Component` that extends
@@ -55,7 +55,7 @@ Do NOT use this skill for:
 | `telemetry.metrics.enabled` defaulted **true** | defaults **`false`** | metrics silently absent |
 | Kora `Context` for per-call state | **`Context` no longer exists anywhere in Kora** (`io.grpc.Context` is gRPC's own, unrelated type) | compile error |
 | Kotlin `suspend` / `Mono` / `Flux` handlers | **synchronous only**, on virtual threads | not a Kora contract |
-| grpc-java `1.74.x` pins | **`1.83.1` everywhere** | `AbstractMethodError` at runtime |
+| grpc-java `1.74.x` pins | **`1.84.0` everywhere** | `AbstractMethodError` at runtime |
 
 ---
 
@@ -64,13 +64,13 @@ Do NOT use this skill for:
 `kora-bom` constrains **only `io.koraframework:*`**. It pins nothing under `io.grpc` or
 `com.google.protobuf`, so every one of those coordinates is yours to keep consistent.
 
-`io.koraframework:grpc-server:2.0.0.RC1` declares `io.grpc:grpc-okhttp:1.83.1` and
-`io.grpc:grpc-stub:1.83.1`, and `grpc-okhttp:1.83.1` drags in `grpc-core`/`grpc-api`/`grpc-util` at
-`1.83.1`.
+`io.koraframework:grpc-server:2.0.0.RC2` declares `io.grpc:grpc-okhttp:1.84.0` and
+`io.grpc:grpc-stub:1.84.0`, and `grpc-okhttp:1.84.0` drags in `grpc-core`/`grpc-api`/`grpc-util` at
+`1.84.0`.
 
-**Rule 1 — pin every `io.grpc:*` you add to `1.83.1`**, in `implementation` and `testImplementation`
+**Rule 1 — pin every `io.grpc:*` you add to `1.84.0`**, in `implementation` and `testImplementation`
 alike (`grpc-protobuf`, `grpc-services`, `grpc-netty`, `grpc-inprocess`, `grpc-testing`,
-`protoc-gen-grpc-java`). An older pin resolves `grpc-core` to 1.83.1 while leaving your module
+`protoc-gen-grpc-java`). An older pin resolves `grpc-core` to 1.84.0 while leaving your module
 behind, and the server dies at **runtime** with an error that names nothing useful:
 
 ```
@@ -78,7 +78,10 @@ java.lang.AbstractMethodError: ... does not define or inherit an implementation 
 resolved method 'buildClientTransportServers(List, MetricRecorder)'
 ```
 
-**Rule 2 — generate with `com.google.protobuf:protoc:3.25.3`.** `io.grpc:grpc-protobuf:1.83.1`
+The migrated examples on `migration/2.0` still pin the previous `1.83.1`; raise every `io.grpc` pin
+to `1.84.0` when copying from them.
+
+**Rule 2 — generate with `com.google.protobuf:protoc:3.25.3`.** `io.grpc:grpc-protobuf:1.84.0`
 brings `com.google.protobuf:protobuf-java:` **`3.25.9`**, not the 4.x line. protoc 4.x gencode
 references `com.google.protobuf.Generated` and `com.google.protobuf.RuntimeVersion`, and **neither
 class exists in protobuf-java 3.25.9**, so the build fails:
@@ -94,8 +97,8 @@ error: cannot find symbol
 mismatch surfaces later as `NoClassDefFoundError: com/google/protobuf/RuntimeVersion`.)
 
 All eight migrated gRPC projects — client and server, examples and guides — pin `protoc:3.25.3`.
-To use protobuf 4.x instead, pin **both** `com.google.protobuf:protoc:4.35.1` and an explicit
-`implementation "com.google.protobuf:protobuf-java:4.35.1"`; the catalog's `4.35.1` works inside
+To use protobuf 4.x instead, pin **both** `com.google.protobuf:protoc:4.36.2` and an explicit
+`implementation "com.google.protobuf:protobuf-java:4.36.2"`; the catalog's `4.36.2` works inside
 Kora's own build only because it pins `protobuf-java` alongside it.
 
 Details and the full compatible matrix: [references/grpc-server-reference.md](references/grpc-server-reference.md).
@@ -108,18 +111,18 @@ Details and the full compatible matrix: [references/grpc-server-reference.md](re
 
 ```groovy
 dependencies {
-    koraBom platform("io.koraframework:kora-bom:$koraVersion")   // 2.0.0.RC1
+    koraBom platform("io.koraframework:kora-bom:$koraVersion")   // 2.0.0.RC2
     annotationProcessor "io.koraframework:annotation-processors"
 
     implementation "io.koraframework:grpc-server"
     implementation "io.koraframework:config-hocon"
     implementation "io.koraframework:logging-logback"
 
-    implementation "io.grpc:grpc-protobuf:1.83.1"
+    implementation "io.grpc:grpc-protobuf:1.84.0"
     compileOnly "javax.annotation:javax.annotation-api:1.3.2"    // generated stubs need @Generated
 
     // Optional: gRPC Server Reflection (grpcurl / Postman gRPC)
-    implementation "io.grpc:grpc-services:1.83.1"
+    implementation "io.grpc:grpc-services:1.84.0"
 
     testImplementation "io.koraframework:test-junit5"
 }
@@ -127,7 +130,7 @@ dependencies {
 
 Kotlin: replace the processor with `ksp("io.koraframework:symbol-processors:$koraVersion")`.
 Never put a version on an `io.koraframework:*` artifact — the BOM controls those. Always put an
-explicit `1.83.1` on every `io.grpc:*` artifact — the BOM controls none of those.
+explicit `1.84.0` on every `io.grpc:*` artifact — the BOM controls none of those.
 
 Full build files: [assets/build.gradle.server.template](assets/build.gradle.server.template),
 [assets/build.gradle.server.kt.template](assets/build.gradle.server.kt.template).
@@ -142,7 +145,7 @@ plugins {
 protobuf {
     protoc { artifact = "com.google.protobuf:protoc:3.25.3" }
     plugins {
-        grpc { artifact = "io.grpc:protoc-gen-grpc-java:1.83.1" }
+        grpc { artifact = "io.grpc:protoc-gen-grpc-java:1.84.0" }
     }
     generateProtoTasks {
         all()*.plugins { grpc {} }
@@ -358,7 +361,7 @@ Details: [references/grpc-interceptors-reference.md](references/grpc-interceptor
 
 ### Reflection
 
-Add `io.grpc:grpc-services:1.83.1` **and** set `reflectionEnabled = true` (default `false`).
+Add `io.grpc:grpc-services:1.84.0` **and** set `reflectionEnabled = true` (default `false`).
 The module probes for `io.grpc.protobuf.services.ProtoReflectionServiceV1` and, if the class is
 missing, ignores the flag **without a warning**.
 
@@ -375,9 +378,14 @@ See [references/grpc-reflection-reference.md](references/grpc-reflection-referen
 
 ### Telemetry
 
-One metric — `rpc.server.duration` (a Micrometer `Timer`). Spans are named `<service>/<method>`,
+One metric — `rpc.server.call.duration` (a Micrometer `Timer`, tags `rpc.system.name`, `rpc.service`, `rpc.method`, `rpc.response.status_code` = the status code name, `error.type`; RC1 called it `rpc.server.duration`). Spans are named `<service>/<method>`,
 kind `SERVER`, with the W3C traceparent read from the call metadata. Request/response logs go to
-`io.koraframework.grpc.server.GrpcServer.request` / `.response`.
+`io.koraframework.grpc.server.GrpcServer.request` / `.response`: metadata at `DEBUG` with the
+`telemetry.logging.maskHeaders` keys (default `authorization`, `cookie`, `set-cookie`) masked by the
+`@Tag(GrpcServerTelemetry.class) MaskingStrategy` (default `***`), protobuf bodies at `TRACE`
+**unmasked** unless you supply your own `DefaultGrpcServerBodyConverter`. Details:
+[grpc-config-reference → Log masking](references/grpc-config-reference.md#log-masking); shared
+model: [kora-aop-logging](../kora-aop-logging/references/logging-masking.md).
 
 **Logging and metrics default to `false`; tracing defaults to `true`.** Any config that claims to
 demonstrate metrics or request logging must enable them explicitly.
@@ -389,13 +397,15 @@ Keys and tag lists: [references/grpc-config-reference.md](references/grpc-config
 
 | Symptom | Cause / fix |
 |---------|-------------|
-| `AbstractMethodError ... buildClientTransportServers(List, MetricRecorder)` | An `io.grpc:*` artifact pinned below `1.83.1` (often `grpc-inprocess`/`grpc-netty` in tests). Pin every one to `1.83.1` |
-| `cannot find symbol: class Generated` / `class RuntimeVersion` in generated sources | protoc 4.x gencode against the protobuf-java `3.25.9` that `grpc-protobuf:1.83.1` brings. Use `protoc:3.25.3`, or pin `protobuf-java:4.35.1` explicitly |
+| `AbstractMethodError ... buildClientTransportServers(List, MetricRecorder)` | An `io.grpc:*` artifact pinned below `1.84.0` (often `grpc-inprocess`/`grpc-netty` in tests). Pin every one to `1.84.0` |
+| `cannot find symbol: class Generated` / `class RuntimeVersion` in generated sources | protoc 4.x gencode against the protobuf-java `3.25.9` that `grpc-protobuf:1.84.0` brings. Use `protoc:3.25.3`, or pin `protobuf-java:4.36.2` explicitly |
 | Handler compiles, RPC answers `UNIMPLEMENTED` | Missing `@Component`, not extending `*Grpc.*ImplBase`, or a `@Tag(...)` on the component — the collection is untagged |
 | Interceptor never runs | Same cause: a `@Tag(...)` on the `ServerInterceptor` component takes it out of `All<ValueOf<ServerInterceptor>>` |
 | `Component` import won't resolve | It is `io.koraframework.common.annotation.Component` |
-| No `rpc_server_duration` metric | `grpcServer.telemetry.metrics.enabled` defaults to **`false`** in 2.0 — set it, and add `micrometer-module` |
+| No `rpc_server_call_duration` metric | `grpcServer.telemetry.metrics.enabled` defaults to **`false`** in 2.0 — set it, and add `micrometer-module` |
 | No request logs | `grpcServer.telemetry.logging.enabled` defaults to **`false`** |
+| `authorization` shows up in clear after adding a key to `maskHeaders` | The list **replaces** the default `authorization`, `cookie`, `set-cookie` — restate them |
+| Personal data in `TRACE` logs | Bodies are logged via `DefaultGrpcServerBodyConverter` without masking — provide a subclass as a component, or keep `TRACE` off |
 | `grpcurl list` → `UNIMPLEMENTED` | `io.grpc:grpc-services` missing (flag ignored silently) or `reflectionEnabled` not set |
 | `netty { }` tuning changes nothing | 2.0 serves gRPC over OkHttp; that section belongs to `redis-lettuce` |
 | `Kotlin suspend fun overrides nothing` | The generated stubs are Java; handler methods are plain synchronous overrides |

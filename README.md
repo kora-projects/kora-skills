@@ -162,7 +162,7 @@ If you are an AI coding agent reading this README and the user asks to install K
 
 ## Package Contents
 
-Each package contains **39 domain skills plus one Codex meta-skill**:
+`kora-v1` contains **39 domain skills** and `kora-v2` **40**, each plus one Codex meta-skill:
 
 - Core: `kora-di-compile`, `kora-di-runtime`, `kora-config-hocon`, `kora-config-yaml`, `kora-json`
 - Project setup: `kora-project-setup-java`, `kora-project-setup-kotlin`, `kora-project-dependencies`
@@ -173,7 +173,7 @@ Each package contains **39 domain skills plus one Codex meta-skill**:
 - gRPC and SOAP: `kora-grpc-server`, `kora-grpc-client`, `kora-soap-client`
 - Telemetry: `kora-telemetry-tracing`, `kora-telemetry-metrics`, `kora-telemetry-logging`
 - AOP: `kora-aop-caching`, `kora-aop-resilient`, `kora-aop-logging`, `kora-aop-scheduling-jdk`,
-  `kora-aop-scheduling-quartz`, `kora-aop-validation`
+  `kora-aop-scheduling-quartz`, `kora-aop-scheduling-db` (`kora-v2` only), `kora-aop-validation`
 - Testing: `kora-testing-junit-java`, `kora-testing-junit-kotlin`, `kora-testing-blackbox`
 - Tools and learning: `kora-s3`, `kora-mapstruct`, `kora-journal`, `kora-teacher`
 - Agent compatibility: `kora-starter`
@@ -212,7 +212,9 @@ skill folders:
 
 | Resource               | Line | Link                                                  |
 |------------------------|------|-------------------------------------------------------|
+| Kora Framework docs    | 2.x  | https://koraframework.io/v2/en/                       |
 | Kora Framework docs    | 1.x  | https://kora-projects.github.io/kora-docs             |
+| Official examples      | 2.x  | https://github.com/kora-projects/kora-examples/tree/migration/2.0 |
 | Official examples      | 1.x  | https://github.com/kora-projects/kora-examples        |
 | Java template          | 1.x  | https://github.com/kora-projects/kora-java-template   |
 | Kotlin template        | 1.x  | https://github.com/kora-projects/kora-kotlin-template |

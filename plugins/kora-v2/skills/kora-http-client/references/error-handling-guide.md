@@ -1,7 +1,7 @@
 # HTTP Client Error Handling Guide (Kora 2.x)
 
 Reference for [kora-http-client](../SKILL.md). Verified against the framework source at tag
-**`2.0.0.RC1`**.
+**`2.0.0.RC2`**.
 
 ## Contents
 
@@ -28,7 +28,7 @@ RuntimeException
     ├── HttpClientResponseException    non-2xx response with no mapper for that status
     ├── HttpClientDecoderException     response body could not be turned into the result type
     ├── HttpClientEncoderException     request body mapper threw
-    ├── HttpClientConnectionException  I/O failure: DNS, connect, reset, TLS
+    ├── HttpClientConnectionException  connection could not be used: refused, connect timeout, I/O
     ├── HttpClientTimeoutException     request timed out
     └── HttpClientUnknownException     anything else
 ```
@@ -122,20 +122,24 @@ try {
 So a `JsonWriter` failure or a throwing custom `HttpClientRequestMapper` always surfaces as
 `HttpClientEncoderException`.
 
-**Response side — version-dependent.** `HttpClientResponseMapper.apply` declares
-`throws IOException, HttpClientDecoderException`, and a mapper may throw
-`HttpClientDecoderException` itself. What the *generated client* does with a mapper failure changed
-after RC1:
+**Response side — symmetric.** The generated client wraps every response-mapper call the same way:
 
-| | Mapper throws a checked exception | Mapper throws a `RuntimeException` |
-|---|---|---|
-| `2.0.0.RC1` | `HttpClientUnknownException` wrapping it | propagates unchanged |
-| after RC1 (`master`, commit `e3bb76681`) | `HttpClientDecoderException` wrapping it | `HttpClientDecoderException` wrapping it |
+```java
+try {
+    return this.getUserResponseMapper.apply(_response);
+} catch (Exception _e) {
+    throw new HttpClientDecoderException(_e);
+}
+```
 
-On RC1, `catch (HttpClientDecoderException e)` therefore only catches what a mapper threw
-deliberately. **Catch `HttpClientException` if you need to be version-independent**, and throw
-`HttpClientDecoderException` explicitly from your own mappers so the intent survives either
-version:
+So a `JsonReader` failure, an `IOException` while reading the body, or any `RuntimeException` from a
+custom `HttpClientResponseMapper` surfaces as `HttpClientDecoderException` — for the method-level
+mapper, for every `@ResponseCodeMapper` arm whose mapper returns the result type, and for the
+default 2xx mapping. The exception is: a `@ResponseCodeMapper` arm whose mapper produces an
+*exception* (`throw mapper.apply(_response)`) throws that exception as is.
+
+A mapper may still reject a payload itself, e.g. an empty body. A `HttpClientDecoderException`
+thrown inside `apply` arrives wrapped in another one, so read `getCause()` for the original:
 
 ```java
 @Override
@@ -157,16 +161,19 @@ public UserResponse apply(HttpClientResponse response) throws IOException {
 
 ## Connection and timeout failures
 
-Mapped by each transport, before any decoding happens:
+Mapped by each transport, before any decoding happens. **A failure to connect — refused
+connection or `connectTimeout` elapsed — is `HttpClientConnectionException` on all three
+transports**, never `HttpClientTimeoutException`:
 
-| Cause | Exception |
-|---|---|
-| OkHttp `InterruptedIOException("timeout")`, JDK `HttpTimeoutException`, Apache `SocketTimeoutException` | `HttpClientTimeoutException` |
-| Any other `IOException` — DNS, refused connection, reset, TLS | `HttpClientConnectionException` |
-| Everything else | `HttpClientUnknownException` |
+| Transport | `HttpClientConnectionException` | `HttpClientTimeoutException` | `HttpClientUnknownException` |
+|---|---|---|---|
+| OkHttp | any `IOException` except the one below — refused, connect timeout, DNS, reset, TLS | `InterruptedIOException` with message `"timeout"` (`requestTimeout`, `readTimeout`) | any non-I/O `Throwable` |
+| JDK | `ConnectException`, `HttpConnectTimeoutException`, `ProtocolException` | `HttpTimeoutException` (`requestTimeout`, else `readTimeout`) | `InterruptedException`; any other `IOException` after the transport's single retry (or at once when the request body was already streamed) |
+| Apache | `ConnectTimeoutException`, and any other `IOException` | `SocketTimeoutException` (`readTimeout`, `requestTimeout`) | any non-I/O `Throwable` |
 
-A `requestTimeout` breach is a `HttpClientTimeoutException`, not a response — there is no status
-code to branch on:
+A timeout is a `HttpClientTimeoutException`, not a response — there is no status code to branch on.
+On the JDK transport a reset mid-exchange can surface as `HttpClientUnknownException`, so catch
+`HttpClientException` as the last branch:
 
 ```java
 try {
@@ -175,6 +182,9 @@ try {
     return ItemResponse.unavailable(id);
 } catch (HttpClientConnectionException e) {
     log.warn("items-service unreachable", e);
+    return ItemResponse.unavailable(id);
+} catch (HttpClientException e) {
+    log.warn("items-service call failed", e);
     return ItemResponse.unavailable(id);
 }
 ```
@@ -381,7 +391,8 @@ every required value must be present in each section. Full reference:
 | `cannot find symbol: method code()` on the exception | It is `getCode()` in 2.0 (Kotlin: `e.code`) |
 | `HttpClientResponseException` cannot be imported | Moved to `…http.client.common.exception` |
 | Non-2xx silently returns instead of throwing | The method returns `Either` (status check disabled), or a `@Mapping` response mapper is attached (it is called for every status) |
-| A malformed body throws `HttpClientUnknownException` | Expected on RC1 — decode-failure wrapping landed after RC1. Catch `HttpClientException` |
+| A malformed body throws `HttpClientDecoderException` whose cause is another `HttpClientDecoderException` | Your mapper threw `HttpClientDecoderException` itself; the generated client wraps every mapper failure once more — read `getCause()` |
+| Connect timeout arrives as `HttpClientConnectionException`, not `HttpClientTimeoutException` | By design on every transport: timeouts are about an established call; failing to connect is a connection error |
 | `HttpClientEncoderException` on every call | The request-body mapper throws — usually a `JsonWriter` for a type without `@Json` |
 | `HttpClientTimeoutException` with no server log | `requestTimeout` fired before the server answered; it covers DNS, connect, write, processing and read |
 | 404 on a URL that looks right | `url` + route `path` are concatenated verbatim — check for a doubled or missing `/`, and enable `telemetry.logging.enabled` with `pathFull = true` to see the real URI |

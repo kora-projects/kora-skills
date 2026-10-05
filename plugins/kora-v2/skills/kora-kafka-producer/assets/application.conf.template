@@ -30,6 +30,8 @@ kafka {
       # tracing.enabled = true. Producer logs and meters stay silent until turned on.
       telemetry {
         logging.enabled = true
+        # Headers listed here are masked in the TRACE record log; keys and values are never logged.
+        # logging.maskHeaders = ["authorization", "cookie", "set-cookie"]
         metrics {
           enabled = true
           driverMetrics = true    # binds Micrometer KafkaClientMetrics to the raw producer

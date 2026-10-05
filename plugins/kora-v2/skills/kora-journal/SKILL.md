@@ -8,7 +8,7 @@ metadata:
 
 # Kora Journal — Continuous Improvement for Kora Skills
 
-> **Kora sub-skill — obey the [kora-v2 meta rules](../../SKILL.md) on every task:** **R0** ground the workspace on Kora 2.0 refs before starting (framework source at tag `2.0.0.RC1` + `kora-examples` at `migration/2.0`; `kora-docs` is 1.x only) · **R1** read this sub-skill before writing code · **R2** Kora 2.0 APIs only — no Spring/Micronaut/Quarkus, no Kora 1.x APIs, no invented annotations or config keys · **R3** journal any incorrect Kora usage. Add comments/Javadoc only if asked.
+> **Kora sub-skill — obey the [kora-v2 meta rules](../../SKILL.md) on every task:** **R0** ground the workspace on Kora 2.0 refs before starting (framework source at tag `2.0.0.RC2` + `kora-examples` at `migration/2.0` + Kora 2.0 docs at koraframework.io/v2, which trail the source; 1.x `kora-docs` pages are never an authority) · **R1** read this sub-skill before writing code · **R2** Kora 2.0 APIs only — no Spring/Micronaut/Quarkus, no Kora 1.x APIs, no invented annotations or config keys · **R3** journal any incorrect Kora usage. Add comments/Javadoc only if asked.
 
 **This skill is tooling, not Kora API documentation.** It is the R3 feedback loop: a CLI that records
 Kora mistakes so the next session does not repeat them.
@@ -336,7 +336,7 @@ add an entry. The vocabulary is fixed and Kora-specific, so `--by-tags` stays pr
 | `migration` | migrating, porting from 1.x, OpenRewrite |
 | `http-server` | `@HttpController`, `@HttpRoute`, `HttpServer*`, interceptor, Undertow, `HttpResponseEntity` |
 | `http-client` | `@HttpClient`, `@ResponseCodeMapper` |
-| `database` | JDBC, repository, `@EntityJdbc`, Cassandra, Flyway, Liquibase, SQL, `inTx` |
+| `database` | JDBC, repository, `@EntityJdbc`, Cassandra, Flyway, Liquibase, SQL, `inTx`, PostgreSQL, `PgRange`, `@PgJson` |
 | `di` | `@KoraApp`, component, submodule, graph, `ValueOf`, `Lifecycle`, `@Conditional`, `@Root` |
 | `aop` | `@Cacheable`, `@CachePut`, `@CacheInvalidate`, aspect, `@Mapping` |
 | `config` | `@ConfigSource`, `@ConfigMapper`, `ConfigValueMapper`, HOCON, `application.conf/.yaml` |
@@ -345,9 +345,9 @@ add an entry. The vocabulary is fixed and Kora-specific, so `--by-tags` stays pr
 | `grpc` | gRPC, protobuf, stub |
 | `auth` | principal, bearer, API key, OAuth, authorization |
 | `json` | JSON, Jackson, serialization |
-| `telemetry` | telemetry, metrics, tracing, Micrometer, OpenTelemetry, Logback |
-| `resilient` | `@CircuitBreakable`, `@Retryable`, `@Timeout`, `@RateLimited`, `@Fallback` |
-| `scheduling` | `@Schedule*`, Quartz, cron |
+| `telemetry` | telemetry, metrics, tracing, Micrometer, OpenTelemetry, Logback, masking, `DataMasker`, `JsonRecordEncoder` |
+| `resilient` | `@CircuitBreakable`, `@Retryable`, `@Timeout`, `@RateLimited`, `@Fallback`, `RetryBudget`, `NonRetryableException`, `NonCircuitableException` |
+| `scheduling` | `@Schedule*`, Quartz, db-scheduler, cron |
 | `validation` | `@Valid`, `@Validate`, violation, constraint |
 | `s3` | `@S3`, `S3Client`, bucket |
 | `test` | `@KoraAppTest`, Testcontainers, JUnit, MockK, Mockito |

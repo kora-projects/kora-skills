@@ -1,0 +1,108 @@
+// @Retryable with a retry budget, a per-retry RetryBudgetFactory and a NonRetryableException (Kora 2.0).
+// Replace `com.example.app.resilience` with your package.
+
+package com.example.app.resilience;
+
+import io.koraframework.common.annotation.Component;
+import io.koraframework.common.annotation.Module;
+import io.koraframework.common.annotation.Tag;
+import io.koraframework.resilient.retry.KoraRetryBudget;
+import io.koraframework.resilient.retry.NonRetryableException;
+import io.koraframework.resilient.retry.Retry;
+import io.koraframework.resilient.retry.RetryBudgetFactory;
+import io.koraframework.resilient.retry.annotation.RetrySpec;
+import io.koraframework.resilient.retry.annotation.Retryable;
+
+// Budget from the `retryBudget` block via the default RetryBudgetFactory.
+@RetrySpec("resilient.retry.inventory")
+public interface InventoryRetry extends Retry {}
+
+// Budget from the tagged RetryBudgetFactory below.
+@RetrySpec("resilient.retry.pricing")
+interface PricingRetry extends Retry {}
+
+@Component
+class StockService {                                                    // NOT final
+
+    private final InventoryApi inventoryApi;
+    private final PricingApi pricingApi;
+
+    StockService(InventoryApi inventoryApi, PricingApi pricingApi) {
+        this.inventoryApi = inventoryApi;
+        this.pricingApi = pricingApi;
+    }
+
+    // A denied budget token ends the loop: the ORIGINAL exception propagates (no RetryExhaustedException)
+    // and resilient.retry.exhausted is tagged resilient.reason=EXHAUSTED_BUDGET.
+    @Retryable(InventoryRetry.class)
+    public int available(String sku) {
+        return inventoryApi.available(sku);
+    }
+
+    @Retryable(PricingRetry.class)
+    public long price(String sku) {
+        return pricingApi.price(sku);
+    }
+}
+
+// Lookup order per retry: a RetryBudgetFactory tagged with the spec class, else the untagged one
+// (DefaultRetryBudgetFactory, or your own untagged component replacing it for every retry).
+// Returning null means "no budget".
+@Module
+interface RetryBudgetModule {
+
+    @Tag(PricingRetry.class)
+    default RetryBudgetFactory pricingRetryBudget() {
+        return (name, config) -> new KoraRetryBudget(0.2, 50, 50, 1.0);
+    }
+}
+
+// Retried by default unless the exception implements the NonRetryableException marker interface.
+// A tagged RetryPredicate or an overridden Retry.isFailure replaces that check.
+final class UnknownSkuException extends RuntimeException implements NonRetryableException {
+    UnknownSkuException(String sku) {
+        super("Unknown SKU: " + sku);
+    }
+}
+
+// ---------------------------------------------------------------- placeholders
+
+interface InventoryApi {
+    int available(String sku);
+}
+
+@Component
+class InventoryApiClient implements InventoryApi {
+    @Override
+    public int available(String sku) {
+        throw new UnknownSkuException(sku);
+    }
+}
+
+interface PricingApi {
+    long price(String sku);
+}
+
+@Component
+class PricingApiClient implements PricingApi {
+    @Override
+    public long price(String sku) {
+        return 0L;
+    }
+}
+
+// Config (HOCON):
+//
+// resilient.retry {
+//   inventory {
+//     delay = "100ms"
+//     attempts = 3
+//     retryBudget {
+//       ratio = 0.1               # tokens deposited per successful call; one retry costs one token
+//       tokensMax = 100           # default 100
+//       tokensInitial = 10        # default 10, <= tokensMax
+//       minTokensPerSecond = 0.5  # default 0.0 — time-based refill
+//     }
+//   }
+//   pricing { delay = "50ms", attempts = 2 }   # budget comes from the tagged factory, no block needed
+// }

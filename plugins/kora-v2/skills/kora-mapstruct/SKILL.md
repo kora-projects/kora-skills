@@ -1,52 +1,55 @@
 ---
 name: kora-mapstruct
-description: "DTO ↔ entity mapping in Kora 2.0. Java: org.mapstruct @Mapper + the MapStruct javac processor. Kotlin: Konvert @Konverter + its KSP processor — kapt is not the 2.0 path. The matching extension ships inside annotation-processors / symbol-processors, finds the generated *Impl and binds it into the graph with no @Component. Use for @Mapper, @Konverter, @Mapping, mapstruct-processor wiring, and the removed mapstruct-extension coordinate."
+description: "DTO ↔ entity mapping in Kora 2.0, chosen by language with no crossover. Java: MapStruct — org.mapstruct @Mapper + mapstruct-processor on annotationProcessor. Kotlin: Konvert — @Konverter interface + the io.mcarle:konvert KSP processor; never MapStruct or kapt in Kotlin, never Konvert in Java. The extension inside annotation-processors / symbol-processors binds the generated *Impl with no @Component. Use for @Mapper, @Konverter, @Mapping, mapper wiring, and the removed mapstruct-extension coordinate."
 license: Apache-2.0
 metadata:
   kora-version: "2.x"
 ---
 
-# kora-mapstruct — MapStruct (Java) and Konvert (Kotlin) mappers as Kora components
+# kora-mapstruct — Java: MapStruct · Kotlin: Konvert
 
-> **Kora sub-skill — obey the [kora-v2 meta rules](../../SKILL.md) on every task:** **R0** ground the workspace on Kora 2.0 refs before starting (framework source at tag `2.0.0.RC1` + `kora-examples` at `migration/2.0`; `kora-docs` is 1.x only) · **R1** read this sub-skill before writing code · **R2** Kora 2.0 APIs only — no Spring/Micronaut/Quarkus, no Kora 1.x APIs, no invented annotations or config keys · **R3** journal any incorrect Kora usage. Add comments/Javadoc only if asked.
+> **Kora sub-skill — obey the [kora-v2 meta rules](../../SKILL.md) on every task:** **R0** ground the workspace on Kora 2.0 refs before starting (framework source at tag `2.0.0.RC2` + `kora-examples` at `migration/2.0` + Kora 2.0 docs at koraframework.io/v2, which trail the source; 1.x `kora-docs` pages are never an authority) · **R1** read this sub-skill before writing code · **R2** Kora 2.0 APIs only — no Spring/Micronaut/Quarkus, no Kora 1.x APIs, no invented annotations or config keys · **R3** journal any incorrect Kora usage. Add comments/Javadoc only if asked.
 
-Kora does not generate mappers. It ships three **extensions** that bind an implementation some
-*other* processor generated, so an annotated mapper interface can be injected like any component.
+## The rule: the language picks the tool
 
-| Extension module | Runs in | Recognises | Binds |
+| Module language | Mapping library | Processor | Kora extension (already inside the aggregate) |
 |---|---|---|---|
-| `mapping/mapstruct-java-extension` | javac annotation processing | `org.mapstruct.@Mapper` on an interface **or class** | the single public constructor of the MapStruct-generated `<Name>Impl` |
-| `mapping/mapstruct-ksp-extension` | KSP | `org.mapstruct.@Mapper` on an interface **or class** | the constructor of `<Name>Impl` — **only if it is already on the classpath**; KSP cannot run MapStruct |
-| `mapping/konvert-ksp-extension` | KSP | `io.mcarle.konvert.api.@Konverter` on an **interface** | the Konvert-generated `object <Name>Impl` as a dependency-free singleton |
+| **Java** | MapStruct (`org.mapstruct`) | `annotationProcessor "org.mapstruct:mapstruct-processor"` | `mapstruct-java-extension` in `io.koraframework:annotation-processors` |
+| **Kotlin** | Konvert (`io.mcarle.konvert`) | `ksp("io.mcarle:konvert")` | `konvert-ksp-extension` in `io.koraframework:symbol-processors` |
 
-**Never `@Component` the mapper.** The extension supplies it, and it is a *last-resort fallback*:
-`GraphBuilder` consults extensions only after declared components and `@Module` methods fail to match
-the dependency claim. `@Component` on a mapper is not an error — it is `@Target(TYPE)`, so it
-compiles, and `KoraAppProcessor.processComponents` then silently skips it because a MapStruct mapper
-is an interface or an abstract class and the loop skips both. It does nothing at all. Delete it: it
-reads as wiring that isn't there.
+There is no crossover in either direction:
 
-## The artifacts
+- **Never MapStruct in Kotlin.** No Kotlin `@Mapper`, no `kotlin("kapt")`, no `kapt(...)` line.
+  MapStruct is a javac annotation processor; Kora's Kotlin processors run in KSP, and KSP does not
+  run javac processors. Konvert *is* a KSP processor, so it runs in the same compilation as Kora's
+  own `symbol-processors` with no extra build wiring. (`symbol-processors` also carries a
+  `mapstruct-ksp-extension`; it is not a supported mapping path — do not build on it.)
+- **Never Konvert in Java.** Konvert generates Kotlin through KSP; a Java module has no KSP.
 
-There is **no `mapstruct-extension` in Kora 2.0.** That single 1.x coordinate split into a javac
-half and a KSP half, and `konvert-ksp-extension` is new in 2.0 alongside them.
+Kora generates no mappers itself. The extension binds an implementation the mapping library
+generated, so the mapper interface is injectable like any component.
 
-You do not declare the extensions either — the aggregate processors already contain them:
+**Never `@Component` the mapper.** The extension supplies it, as a *last-resort fallback*:
+`GraphBuilder` consults extensions only after declared components and `@Module` methods fail to
+match the dependency claim. `@Component` on a mapper is `@Target(TYPE)`, so it compiles, and
+`KoraAppProcessor.processComponents` then silently skips it because the mapper is an interface or
+an abstract class. It does nothing. Delete it: it reads as wiring that isn't there.
 
-- `io.koraframework:annotation-processors` → `mapstruct-java-extension`
-- `io.koraframework:symbol-processors` → `mapstruct-ksp-extension` **and** `konvert-ksp-extension`
+There is **no `mapstruct-extension` in Kora 2.0**, and no extension is ever declared by hand — the
+aggregate processors already contain them. What you declare is the third-party half: the mapping
+library on the **compile** classpath plus its processor. The compile-classpath part is not optional:
+each extension factory looks its annotation type up (`org.mapstruct.Mapper` /
+`io.mcarle.konvert.api.Konverter`) and disables itself when it is absent, silently leaving you with
+"no component found for `FooMapper`".
 
-What you *do* declare is the third-party half: the mapping library on the **compile** classpath plus
-its processor. The compile-classpath part is not optional — each extension factory looks the
-annotation type up (`org.mapstruct.Mapper` / `io.mcarle.konvert.api.Konverter`) and disables itself
-when it is absent, silently leaving you with "no component found for `FooMapper`".
+---
 
-## Quick Start (Java) — MapStruct
+## Java: MapStruct
 
 `gradle.properties`:
 
 ```properties
-koraVersion=2.0.0.RC1
+koraVersion=2.0.0.RC2
 ```
 
 `build.gradle`:
@@ -99,21 +102,43 @@ public final class CarService {
 }
 ```
 
+What the Java extension accepts and binds:
+
+- `@Mapper` on an **interface or an abstract class**; nested mappers are supported
+  (`pkg.Outer.Inner` → `pkg.Outer$InnerImpl`).
+- The generated `<Name>Impl` must have **exactly one public constructor**; its parameters become
+  ordinary graph dependencies. That is how a MapStruct mapper takes collaborators from the graph
+  (`uses` + `injectionStrategy = CONSTRUCTOR` — see the
+  [mapper reference](references/mapstruct-mapper-reference.md#mappers-that-need-dependencies)).
+- `@Tag` on the mapper is honoured: it answers only a claim with the same tag.
+
 **Processor order in the `dependencies` block does not matter.** `KoraAppProcessor` builds the graph
 only when `roundEnv.processingOver()` is true — the last annotation-processing round — by which point
 every `*MapperImpl` from earlier rounds is already in the element table. Kora's own extension test
-registers `KoraAppProcessor` *before* MapStruct's `MappingProcessor` and passes. The
-`kora-java-crud` example happens to list `mapstruct-processor` first; that is convention, not a
-requirement.
+registers `KoraAppProcessor` *before* MapStruct's `MappingProcessor` and passes.
 
-## Quick Start (Kotlin) — Konvert
+### MapStruct version: `1.6.3` vs `1.5.5.Final` — both are real, pick `1.6.3`
+
+| Source | Version |
+|---|---|
+| Kora's version catalog (`mapstruct = "1.6.3"`, used to compile and test `mapstruct-java-extension`) | **`1.6.3`** |
+| `kora-examples` on `migration/2.0` — all four Java examples | `1.5.5.Final` |
+
+`1.5.5.Final` entered those example builds long before the 2.0 work and was never touched by the
+migration. **Recommend `1.6.3`**: it is what Kora's own extension is compiled and tested against.
+Whichever you pick, `org.mapstruct:mapstruct` and `org.mapstruct:mapstruct-processor` must match; a
+split pin fails at generation time with MapStruct's own errors, which mention nothing about Kora.
+
+---
+
+## Kotlin: Konvert
 
 `build.gradle.kts`:
 
 ```kotlin
 plugins {
-    kotlin("jvm") version "2.4.10"
-    id("com.google.devtools.ksp") version "2.3.11"
+    kotlin("jvm") version "2.4.20"
+    id("com.google.devtools.ksp") version "2.3.12"
 }
 
 repositories { mavenCentral() }
@@ -137,52 +162,63 @@ interface PetMapper {
 }
 ```
 
-This is exactly what `kora-examples`' `kora-kotlin-crud` does on `migration/2.0`.
+```kotlin
+@Component
+class PetService(private val mapper: PetMapper)
+```
 
-## Kotlin: kapt is **not** the Kora 2.0 path
+This is exactly what `kora-examples`' `kora-kotlin-crud` does on `migration/2.0`. Kora's catalog pins
+`konvert = "4.5.1"` and the example pins both `io.mcarle:konvert` and `io.mcarle:konvert-api` at
+`4.5.1`. Keep the two on the same version; `kora-bom` does not manage them.
 
-The 1.x advice — "MapStruct on Kotlin needs kapt alongside KSP, pin Kotlin 1.9.10" — is dead. It is
-not merely awkward under Kotlin 2.4.10; it was deliberately removed from the corpus. Evidence:
+### What the Konvert extension accepts — and its limits
 
-1. **The 2.0 migration commit deleted it.** In `kora-examples`, commit *"Migrate all modules to Kora
-   2.0 (#49)"* removed every `kapt(...)`, `kaptKotlin`/`kaptGenerateStubsKotlin` `dependsOn`, and
-   `build/generated/source/kapt/main` `srcDir` line from `kora-kotlin-crud/build.gradle.kts`. Each
-   carried the comment `// KAPT & KSP broken since 1.9.11`.
-2. **`kapt` occurs zero times** anywhere in the migrated corpus — examples, guides and migration
-   scripts alike.
-3. **Konvert replaced it.** The follow-up commit added `ksp("io.mcarle:konvert")` +
-   `implementation("io.mcarle:konvert-api")` and rewrote `PetMapper.kt` as a `@Konverter` interface.
-4. **KSP structurally cannot run MapStruct.** MapStruct ships only a javac processor
-   (`org.mapstruct.ap.MappingProcessor` — the class Kora's *Java* extension test instantiates), and
-   `mapstruct-ksp-extension` contains no code generator at all: it resolves `<Name>Impl` through
-   `resolver.getClassDeclarationByName` and binds its constructor. Its own test never runs MapStruct
-   — it hand-writes `CarMapperImpl.kt` in the test sources. So a `@Mapper` declared in **Kotlin**
-   source has no impl generator in a KSP-only build.
+`KonvertKoraExtension` is deliberately narrower than the MapStruct one:
 
-**So what is `mapstruct-ksp-extension` for?** For a Kotlin `@KoraApp` that injects a MapStruct mapper
-whose `*MapperImpl` **already exists on the compile classpath** — the normal case being a mapper
-declared in a Java module (or a published jar) where javac + `mapstruct-processor` produced the impl.
-It lets a Kotlin graph consume a Java-side MapStruct mapper. It does not make MapStruct work on
-Kotlin sources.
-
-**Rule:** map in Kotlin → Konvert. Need MapStruct specifically → declare the mapper in a Java module.
-
-## MapStruct version: `1.6.3` vs `1.5.5.Final` — both are real, pick `1.6.3`
-
-| Source | Version |
+| Limit | Consequence |
 |---|---|
-| Kora's version catalog (`libs.mapstruct` / `libs.mapstruct.processor`, used to compile and test both MapStruct extensions) | **`1.6.3`** |
-| `kora-examples` on `migration/2.0` — all four Java examples | `1.5.5.Final` |
+| `@Konverter` is recognised on an **interface only** | an abstract class with `@Konverter` is never provided — the claim just fails |
+| Konvert generates a top-level **`object <SimpleName>Impl`**; Kora references that object as the component | there is no constructor, so the mapper is a singleton |
+| The binding has **no dependencies** (empty dependency list) | a `@Konverter` can never receive graph components — no clock, repository, config |
+| The impl is looked up as `<SimpleName>Impl` in the mapper's package, **enclosing type name dropped** | two nested `@Konverter`s with the same simple name in one package collide — rename one |
 
-They genuinely disagree. `1.5.5.Final` entered those builds long before the 2.0 work (commit
-*"Refactored structure and more Kotlin examples (#42)"*) and the migration commit never touched the
-line — it rewrote Kora coordinates only. **Recommend `1.6.3`**: it is the version Kora's own
-extension is compiled and tested against. Whichever you pick, `org.mapstruct:mapstruct` and
-`org.mapstruct:mapstruct-processor` must match; a split pin fails at generation time with
-MapStruct's own errors, which mention nothing about Kora.
+**Needs a graph dependency? Delegate through a `@Component`.** Keep the `@Konverter` for the
+name-matched fields and put everything that needs the graph — generated ids, timestamps, lookups — in
+a regular `@Component` that takes the mapper plus its collaborators:
 
-Konvert has no such disagreement: Kora's catalog pins `io.mcarle:konvert-api` at **`4.5.1`**, and
-`kora-kotlin-crud` pins both `konvert-api` and the `io.mcarle:konvert` processor at `4.5.1`.
+```kotlin
+@Component
+class OrderViewAssembler(
+    private val mapper: OrderMapper,          // the Konvert object, bound by the extension
+    private val customers: CustomerRepository,
+) {
+    fun toView(order: Order): OrderView = OrderView(
+        order = mapper.toDto(order),
+        customerName = customers.findName(order.customerId),
+    )
+}
+```
+
+`@Tag` works as for MapStruct: `@Tag(X::class)` on the `@Konverter` interface, the same tag at the
+injection point. Per-field mapping options are Konvert's own API — see
+<https://mcarleio.github.io/konvert/>; Kora neither adds to nor constrains them.
+
+---
+
+## Asked for MapStruct in Kotlin?
+
+Steer to Konvert and say why, briefly:
+
+1. MapStruct ships only a javac annotation processor (`org.mapstruct.ap.MappingProcessor`). Kora's
+   Kotlin processors are KSP processors, and KSP cannot run a javac processor, so nothing would
+   generate the `*MapperImpl` for a Kotlin `@Mapper`.
+2. The only way to run it would be `kapt` — a second, separate compilation pipeline. `kapt` is not
+   part of the Kora 2.0 toolchain: the migrated Kotlin examples contain no `kapt` at all and map with
+   Konvert.
+3. Konvert gives the same compile-time mapping as one more `ksp(...)` line.
+
+Then write the `@Konverter` version of what they asked for. Do not offer `kapt`, and do not offer a
+Kotlin `@Mapper` "that only needs an existing impl".
 
 ## Decision: which tool
 
@@ -190,7 +226,7 @@ Konvert has no such disagreement: Kora's catalog pins `io.mcarle:konvert-api` at
 |---|---|
 | Java module, 5+ DTO/entity pairs with high field overlap | MapStruct |
 | Kotlin module | Konvert |
-| Kotlin module that must use MapStruct | Declare the mapper in a Java module; inject it via `mapstruct-ksp-extension` |
+| Kotlin mapping that needs graph components | Konvert for the field copy, wrapped by a `@Component` |
 | 1–3 mappers, or significant per-field logic | Hand-written mapping — no processor, no extension |
 
 ## Mapper contracts in 2.0
@@ -199,8 +235,6 @@ Konvert has no such disagreement: Kora's catalog pins `io.mcarle:konvert-api` at
   `suspend` — those are not Kora 2.0 contracts.
 - Java nullability is **JSpecify** (`org.jspecify.annotations.Nullable`), and it is *type-use*:
   `List<@Nullable String>`, `Outer.@Nullable Inner`. Kotlin nullability is the type (`T?`).
-- Crossing the boundary: a generated Java `*MapperImpl` method is a *platform type* to a Kotlin
-  caller. Annotate the Java mapper interface (`@NullMarked` / `@Nullable`) rather than forcing `!!`.
 
 ---
 
@@ -208,16 +242,18 @@ Konvert has no such disagreement: Kora's catalog pins `io.mcarle:konvert-api` at
 
 | Document | Purpose |
 |----------|---------|
-| [`mapstruct-mapper-reference.md`](references/mapstruct-mapper-reference.md) | Verified discovery rules, generated-impl naming, `@Tag`, mappers with dependencies, `@Mapper`/`@Mapping`/`@MappingTarget`/`@Named` |
-| [`mapstruct-config-reference.md`](references/mapstruct-config-reference.md) | Java (MapStruct) and Kotlin (Konvert) build wiring, versions, `componentModel`, troubleshooting the real 2.0 errors |
-| [`mapstruct-expressions-reference.md`](references/mapstruct-expressions-reference.md) | MapStruct `expression`, `defaultValue`, `constant`, `nullValuePropertyMappingStrategy` |
+| [`mapstruct-mapper-reference.md`](references/mapstruct-mapper-reference.md) | Java: discovery rules, generated-impl naming, `@Tag`, mappers with dependencies, `@Mapper`/`@Mapping`/`@MappingTarget`/`@Named` |
+| [`mapstruct-config-reference.md`](references/mapstruct-config-reference.md) | Java: MapStruct build wiring, versions, `componentModel`, `@MapperConfig`, troubleshooting |
+| [`mapstruct-expressions-reference.md`](references/mapstruct-expressions-reference.md) | Java: MapStruct `expression`, `defaultValue`, `constant`, `nullValuePropertyMappingStrategy` |
+| [`konvert-reference.md`](references/konvert-reference.md) | Kotlin: Konvert build wiring, discovery, limits, `@Tag`, delegating through a `@Component`, troubleshooting |
 
 ## What's in `assets/`
 
-- `OrderMapper.java.template` — Java `@Mapper` with renames, ignores, expressions, PATCH update
-- `OrderMapper.kt.template` — Kotlin `@Konverter` equivalent, with the shapes Konvert cannot express
-- `mapstruct.gradle.snippet` — Java (Groovy DSL) MapStruct wiring
-- `mapstruct.gradle.kts.snippet` — Kotlin (Kotlin DSL) Konvert wiring, plus the Java-module MapStruct route
+| Java (MapStruct) | Kotlin (Konvert) |
+|---|---|
+| `OrderMapper.java.template` — `@Mapper` with renames, expressions, PATCH update | `OrderMapper.kt.template` — `@Konverter` plus the `@Component` that adds what Konvert cannot express |
+| `CarMapper.java.template` — `uses` + constructor injection of a graph helper | `CarMapper.kt.template` — `@Konverter` delegated through a `@Component` with a graph helper |
+| `mapstruct.gradle.snippet` — Groovy DSL MapStruct wiring | `konvert.gradle.kts.snippet` — Kotlin DSL Konvert wiring |
 
 ---
 
@@ -225,21 +261,25 @@ Konvert has no such disagreement: Kora's catalog pins `io.mcarle:konvert-api` at
 
 | Symptom | Cause / fix |
 |---|---|
-| `io.koraframework:mapstruct-extension` does not resolve | It does not exist in 2.0. Use nothing — `annotation-processors` / `symbol-processors` already carry the right extension |
-| No component found for `FooMapper` | The mapping library is missing from the **compile** classpath, so the extension factory disabled itself. Add `implementation "org.mapstruct:mapstruct:…"` / `implementation("io.mcarle:konvert-api:…")` |
-| `MapStruct mapper implementation was not generated for FooMapper` | Kora found `@Mapper` but no `FooMapperImpl`. The MapStruct processor is not on `annotationProcessor`, or MapStruct itself errored earlier in the same compile |
-| Same error in a **Kotlin** module | Expected — KSP does not run MapStruct. Switch to Konvert, or move the mapper to a Java module |
-| `Generated class FooMapperImpl must have exactly one public constructor` | A `componentModel` / `injectionStrategy` combination produced several. Pin one strategy, or provide the mapper as a plain `@Component` yourself |
-| `@Component` on the mapper changes nothing | Correct — it is silently skipped (interface / abstract class). The extension is what registers the mapper; remove the annotation |
+| `io.koraframework:mapstruct-extension` does not resolve | It does not exist in 2.0. Declare nothing — `annotation-processors` / `symbol-processors` already carry the right extension |
+| No component found for `FooMapper` | The mapping library is missing from the **compile** classpath, so the extension factory disabled itself. Java: `implementation "org.mapstruct:mapstruct:…"`. Kotlin: `implementation("io.mcarle:konvert-api:…")` |
+| `MapStruct mapper implementation was not generated for FooMapper` (Java) | Kora found `@Mapper` but no `FooMapperImpl`. `mapstruct-processor` is not on `annotationProcessor`, or MapStruct errored earlier in the same compile |
+| A Kotlin `@Mapper` never gets an implementation | MapStruct cannot run under KSP. Rewrite it as a `@Konverter` interface |
+| `Generated Konvert implementation was not found: expected type: pkg.FooMapperImpl` | `ksp("io.mcarle:konvert:…")` is missing, Konvert failed earlier in the same compile, or two nested `@Konverter`s share a simple name |
+| `@Konverter` abstract class is never injected | The extension accepts interfaces only. Make it an interface |
+| A `@Konverter` needs a repository / clock / config | Impossible — the generated `object` has no dependencies. Wrap it in a `@Component` |
+| `Generated class FooMapperImpl must have exactly one public constructor` (Java) | A `componentModel` / `injectionStrategy` combination produced several. Pin one strategy, or provide the mapper as a plain `@Component` yourself |
+| `@Component` on the mapper changes nothing | Correct — it is silently skipped (interface / abstract class). Remove the annotation |
 | A hand-written `@Module` method shadows the mapper | Extensions are the fallback, so your declaration silently wins and the generated `*Impl` is never used. Delete one of the two |
-| Two Konvert mappers with the same simple name in one package | Konvert emits a **top-level** `object <SimpleName>Impl`, dropping any enclosing type name — the two collide. Rename one |
 | Stale `ru.tinkoff.kora` errors from generated mapper code | Old output under `build/`. `./gradlew clean` and rebuild; never edit generated sources |
 
 ---
 
 ## Upstream references
 
-- Kora extensions: <https://github.com/kora-projects/kora/tree/2.0.0.RC1/mapping>
+- Kora extensions: <https://github.com/kora-projects/kora/tree/2.0.0.RC2/mapping>
+  (`mapstruct-java-extension`, `konvert-ksp-extension`)
+- Kora 2.0 docs: <https://koraframework.io/v2/en/documentation/mapstruct/>
 - Working Java example: <https://github.com/kora-projects/kora-examples/tree/migration/2.0/examples/java/kora-java-crud>
 - Working Kotlin (Konvert) example: <https://github.com/kora-projects/kora-examples/tree/migration/2.0/examples/kotlin/kora-kotlin-crud>
 - MapStruct: <https://mapstruct.org/documentation/stable/reference/html/>

@@ -5,8 +5,8 @@ plugins {
     id("application")
     // Kotlin and KSP must match the versions Kora 2.x itself is built with,
     // otherwise the symbol processors fail from the inside with NoSuchMethodError.
-    kotlin("jvm") version "2.4.10"
-    id("com.google.devtools.ksp") version "2.3.11"
+    kotlin("jvm") version "2.4.20"
+    id("com.google.devtools.ksp") version "2.3.12"
 }
 
 repositories {

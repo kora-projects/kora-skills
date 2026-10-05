@@ -102,7 +102,7 @@ Next steps
 3. Dependencies — Kora 2.0 requires JVM 25 and resolves from plain mavenCentral():
 
    // gradle.properties
-   koraVersion=2.0.0.RC1
+   koraVersion=2.0.0.RC2
 
    dependencies {
        koraBom platform("io.koraframework:kora-bom:\$koraVersion")

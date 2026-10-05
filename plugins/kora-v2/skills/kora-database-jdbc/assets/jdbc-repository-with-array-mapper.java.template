@@ -22,9 +22,12 @@ import java.sql.Types;
 import java.util.List;
 
 /**
- * PostgreSQL array column (BIGINT[]) mapped to List<Long>.
+ * Array column (BIGINT[]) mapped to List<Long> by hand-written mappers.
  *
- * Kora has no built-in List<T> column conversion, so both directions need a mapper.
+ * On PostgreSQL prefer io.koraframework:database-jdbc-postgres: `@Pg List<Long>` needs no mapper
+ * code (see jdbc-postgres-repository.java.template). database-jdbc alone has no List<T> column
+ * conversion, so this template is for another database, or for an element type the PostgreSQL
+ * module does not cover — the by-type @Component pattern below is the same either way.
  *
  * SELECTION — this template uses BY-TYPE DISCOVERY rather than @Mapping. Each mapper is a
  * @Component, so the generated code resolves JdbcResultColumnMapper<List<Long>> and

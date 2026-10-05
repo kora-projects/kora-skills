@@ -335,7 +335,7 @@
       ],
       "query": "What Gradle dependencies, processor and application-graph module do I need to start a Kora 2.0 HTTP server in Java?",
       "expected_behavior": [
-        "Adds the BOM as platform(\"io.koraframework:kora-bom:$koraVersion\") with koraVersion = 2.0.0.RC1 from plain mavenCentral()",
+        "Adds the BOM as platform(\"io.koraframework:kora-bom:$koraVersion\") with koraVersion = 2.0.0.RC2 from plain mavenCentral()",
         "Adds annotationProcessor \"io.koraframework:annotation-processors\" (Kotlin: ksp \"io.koraframework:symbol-processors\")",
         "Adds implementation \"io.koraframework:http-server-undertow\" and io.koraframework:json-common for JSON",
         "Extends UndertowPublicHttpServerModule on the @KoraApp interface and notes it also starts the system server on httpServer.system.port",
@@ -377,6 +377,115 @@
       "tags": [
         "request-mapping",
         "advanced"
+      ]
+    },
+    {
+      "id": "kora-http-server-server-header",
+      "skills": [
+        "kora-http-server"
+      ],
+      "query": "A security scan of our Kora 2.0 service flags that responses advertise the server software. Another team says the opposite: their monitoring expects a Server header and none arrives. How do the Server, Date and Connection headers work, and can I send my own Server value from a controller?",
+      "expected_behavior": [
+        "States that the Server header is off by default: httpServer.headerServerNameEnabled defaults to false, and when set to true every response carries Server: Kora",
+        "States that httpServer.headerServerDateEnabled defaults to true (Date on every response) and httpServer.headerKeepAliveEnabled defaults to false",
+        "Explains that the Server value is fixed and a server header set on HttpServerResponse/HttpResponseEntity by a handler or interceptor is dropped by the Undertow transport",
+        "Notes the same keys are valid under httpServer.system"
+      ],
+      "anti_behavior": [
+        "Claims Kora always sends Server: Kora and it cannot be disabled",
+        "Invents a key for a custom server name such as serverName or headerServerName = \"...\"",
+        "Suggests adding the Server header from an interceptor as a working way to set it"
+      ],
+      "tags": [
+        "configuration",
+        "headers",
+        "security"
+      ]
+    },
+    {
+      "id": "kora-http-server-log-masking",
+      "skills": [
+        "kora-http-server"
+      ],
+      "query": "We enabled httpServer.telemetry.logging in Kora 2.0 and set logging.mask = \"<hidden>\" plus maskHeaders = [\"x-api-key\"]. The custom mask text never shows up, Authorization is now logged in clear, and at TRACE the JSON request bodies show user passwords. Fix the config and code.",
+      "expected_behavior": [
+        "Explains that there is no mask config key; the replacement comes from a MaskingStrategy component tagged @Tag(HttpServerTelemetry.class), which replaces the module's default (\"***\")",
+        "Explains that maskHeaders replaces the default [authorization, cookie, set-cookie], so the defaults must be listed again alongside x-api-key",
+        "Explains that bodies are logged only at TRACE and are masked only when a @Tag(HttpServerTelemetry.class) DataMasker for the body format is in the graph, e.g. JsonDataMasker built from MaskingPathRules.builder().mask(\"password\", new MaskingFull()).build()",
+        "Names the format selection by Content-Type: json for */json and *+json, xml for */xml and *+xml, form-urlencoded for application/x-www-form-urlencoded",
+        "Links or defers to the shared masking model in kora-aop-logging instead of inventing HTTP-only masking classes"
+      ],
+      "anti_behavior": [
+        "Keeps telemetry.logging.mask in the config as if it worked",
+        "Claims header names in maskHeaders must be lower case to match",
+        "Claims Kora masks passwords in logged bodies by default",
+        "Uses Spring or Logback-pattern based masking instead of the Kora tagged components"
+      ],
+      "tags": [
+        "telemetry",
+        "logging",
+        "masking",
+        "configuration"
+      ]
+    },
+    {
+      "id": "kora-http-server-cookie-padding",
+      "skills": [
+        "kora-http-server"
+      ],
+      "query": "Our Kora 2.0 controller reads @Cookie(\"session\") String session, and the value is a base64 token ending with ==. Is the padding preserved, and what about a value with = in the middle?",
+      "expected_behavior": [
+        "States that a run of '=' at the end of a cookie value (base64 padding) is kept as part of the value",
+        "States that an '=' followed by more characters still acts as a separator, so values with an inner '=' should be URL-encoded (or base64url without inner '=')"
+      ],
+      "anti_behavior": [
+        "Claims the parser always strips trailing '=' and tells the user to re-pad the token manually",
+        "Invents a config key to change cookie parsing"
+      ],
+      "tags": [
+        "request-mapping",
+        "cookie"
+      ]
+    },
+    {
+      "id": "kora-http-server-no-response-compression",
+      "skills": [
+        "kora-http-server"
+      ],
+      "query": "Our Kora 2.0 /metrics scrape is several megabytes of text and Prometheus sends Accept-Encoding: gzip, but the response is never compressed. How do I turn on gzip for the system server, and for the public API?",
+      "expected_behavior": [
+        "States that neither Undertow server (public or system) wires response compression and that HttpServerConfig, SystemHttpServerConfig and UndertowConfig have no key for it",
+        "Notes that an invented key such as httpServer.system.compression would be ignored silently as an unknown HOCON key",
+        "Recommends compressing at the reverse proxy or ingress"
+      ],
+      "anti_behavior": [
+        "Invents a compression/gzip config key or an Undertow EncodingHandler hook in Kora",
+        "Claims Kora compresses responses by default"
+      ],
+      "tags": [
+        "config",
+        "system-server"
+      ]
+    },
+    {
+      "id": "kora-http-server-metric-tags-and-port-log",
+      "skills": [
+        "kora-http-server"
+      ],
+      "query": "Kora 2.0 HTTP server: how do I confirm which port the public server actually bound, and which tags does the request-duration metric carry so I can build a per-route error-rate panel?",
+      "expected_behavior": [
+        "Points to the startup log line 'HTTP Server <name> (Undertow) started on port <N> in ...' (also a structured port marker)",
+        "Names the timer http.server.request.duration with tags including http.route, http.request.method, http.response.status_code and error.type (plus server.name, server.port, url.scheme, server.address)",
+        "Reminds that httpServer.telemetry.metrics.enabled defaults to false"
+      ],
+      "anti_behavior": [
+        "Claims the server metric tags the route as url.template",
+        "Invents a separate config key to log the bound port"
+      ],
+      "tags": [
+        "telemetry",
+        "metrics",
+        "config"
       ]
     }
   ]

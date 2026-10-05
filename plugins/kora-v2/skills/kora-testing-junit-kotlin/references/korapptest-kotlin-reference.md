@@ -1,7 +1,7 @@
 # `@KoraAppTest` for Kotlin (Kora 2.x)
 
 Verified against the Kora 2.0 sources —
-[`test/test-junit5`](https://github.com/kora-projects/kora/tree/2.0.0.RC1/test/test-junit5)
+[`test/test-junit5`](https://github.com/kora-projects/kora/tree/2.0.0.RC2/test/test-junit5)
 (including its own Kotlin tests under `src/test/kotlin/.../kotlin/mockk`) — and the migrated
 [`kora-kotlin-guide-testing-junit-app`](https://github.com/kora-projects/kora-examples/tree/migration/2.0/guides/kotlin/kora-kotlin-guide-testing-junit-app),
 [`kora-kotlin-guide-testing-integration-app`](https://github.com/kora-projects/kora-examples/tree/migration/2.0/guides/kotlin/kora-kotlin-guide-testing-integration-app)
@@ -241,6 +241,8 @@ guessing.
 | `Cannot inject @TestComponent into field: … Injected fields cannot be static.` / `… cannot be final.` | use `lateinit var` or constructor injection |
 | `Cannot use KoraAppTestConfigModifier with @KoraAppTest constructor injection in: …` | modifier + constructor `@TestComponent`; move injection to fields/method parameters |
 | `Cannot inject mocks through test method parameters with TestInstance.Lifecycle.PER_CLASS.` | see the PER_CLASS restrictions above |
+| `IllegalArgumentException: Graph node belongs to another application graph: node index …` at graph init | a `@Conditional` node in the test graph — `copy()`/`subgraph()` keep its original condition; fixed in `2.0.0.RC2` (kora-projects/kora PR #963) — only `2.0.0.RC1` is affected, no practical workaround on RC1 |
+| `PER_CLASS`: `beforeEach` fails in `resetMocks` with `…because condition failed: <reason>` | the mock reset (MockK or Mockito present) reads every node, including a condition-failed one; `KoraAppGraph.getAll` too. Fixed in `2.0.0.RC2` (kora-projects/kora PR #964) — only `2.0.0.RC1` is affected; on RC1 use `PER_METHOD` |
 | `Cannot inject @TestComponent fields into @Nested class: …` | same |
 | `Cannot use @TestComponent or mock annotations on test method parameters after constructor injection initialized @KoraAppTest.` | pick one initialization origin |
 | `@TestComponent cannot be declared as both component and mock: …` | remove one of the annotations |

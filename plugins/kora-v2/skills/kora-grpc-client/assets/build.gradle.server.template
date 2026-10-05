@@ -3,7 +3,7 @@
 // templates have something to talk to locally.
 //
 // Same version rule as the client: kora-bom constrains io.koraframework:* only, so every
-// io.grpc:* stays on 1.83.1, in main AND test — a mismatched
+// io.grpc:* stays on 1.84.0, in main AND test — a mismatched
 // grpc-inprocess/grpc-netty produces AbstractMethodError: ... 'buildClientTransportServers(List,
 // MetricRecorder)' when the server is built.
 plugins {
@@ -29,7 +29,7 @@ configurations {
 }
 
 dependencies {
-    // gradle.properties: koraVersion=2.0.0.RC1
+    // gradle.properties: koraVersion=2.0.0.RC2
     koraBom platform("io.koraframework:kora-bom:$koraVersion")
     annotationProcessor "io.koraframework:annotation-processors"
 
@@ -37,15 +37,15 @@ dependencies {
     implementation "io.koraframework:config-hocon"
     implementation "io.koraframework:logging-logback"
 
-    implementation "io.grpc:grpc-protobuf:1.83.1"
+    implementation "io.grpc:grpc-protobuf:1.84.0"
     compileOnly "javax.annotation:javax.annotation-api:1.3.2"
 
     // Required for grpcServer.reflectionEnabled = true; the server probes for
     // io.grpc.protobuf.services.ProtoReflectionServiceV1 and silently skips reflection without it.
-    // implementation "io.grpc:grpc-services:1.83.1"
+    // implementation "io.grpc:grpc-services:1.84.0"
 
     testImplementation "io.koraframework:test-junit5"
-    testImplementation "io.grpc:grpc-inprocess:1.83.1"
+    testImplementation "io.grpc:grpc-inprocess:1.84.0"
 }
 
 application {
@@ -55,19 +55,19 @@ application {
 }
 
 protobuf {
-    // protoc 3.25.3 matches the protobuf-java 3.25.9 that io.grpc:grpc-protobuf:1.83.1 brings in
+    // protoc 3.25.3 matches the protobuf-java 3.25.9 that io.grpc:grpc-protobuf:1.84.0 brings in
     // transitively, so the runtime is never older than the generated code and no override is needed.
     // All eight migrated Kora gRPC projects pin this version.
     //
-    // Optional upgrade — protoc 4.35.1 is what Kora itself builds with, and it works, but ONLY as a
+    // Optional upgrade — protoc 4.36.2 is what Kora itself builds with, and it works, but ONLY as a
     // PAIR. protoc 4.x generated code references com.google.protobuf.Generated, which does not exist
     // in protobuf-java 3.25.9, so taking the protoc line without the runtime line fails with
     // "cannot find symbol: class Generated / location: package com.google.protobuf":
-    //     protoc { artifact = "com.google.protobuf:protoc:4.35.1" }
-    //     implementation "com.google.protobuf:protobuf-java:4.35.1"   // must outrank the transitive 3.25.9
+    //     protoc { artifact = "com.google.protobuf:protoc:4.36.2" }
+    //     implementation "com.google.protobuf:protobuf-java:4.36.2"   // must outrank the transitive 3.25.9
     protoc { artifact = "com.google.protobuf:protoc:3.25.3" }
     plugins {
-        grpc { artifact = "io.grpc:protoc-gen-grpc-java:1.83.1" }
+        grpc { artifact = "io.grpc:protoc-gen-grpc-java:1.84.0" }
     }
     generateProtoTasks {
         all()*.plugins { grpc {} }
@@ -95,7 +95,7 @@ test {
 configurations.configureEach {
     resolutionStrategy.eachDependency {
         if (it.requested.group == "io.grpc" && !it.requested.name.contains("kotlin")) {
-            it.useVersion "1.83.1"
+            it.useVersion "1.84.0"
         }
     }
 }

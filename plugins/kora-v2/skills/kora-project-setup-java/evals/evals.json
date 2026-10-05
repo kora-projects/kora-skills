@@ -7,7 +7,7 @@
       "expected_behavior": [
         "Creates build.gradle with the java and application plugins",
         "Imports the BOM via koraBom platform(\"io.koraframework:kora-bom:$koraVersion\") declared once",
-        "Pins koraVersion=2.0.0.RC1 and resolves it from plain mavenCentral()",
+        "Pins koraVersion=2.0.0.RC2 and resolves it from plain mavenCentral()",
         "Adds annotationProcessor \"io.koraframework:annotation-processors\"",
         "Defines an @KoraApp interface as the graph root",
         "Does not version individual io.koraframework:* artifacts",
@@ -64,10 +64,10 @@
       "query": "My build.gradle has annotationProcessor \"ru.tinkoff.kora:annotation-processors\" and implementation \"ru.tinkoff.kora:json-module\" with platform(\"ru.tinkoff.kora:kora-parent:1.2.19\"). Gradle cannot resolve anything. Fix it for Kora 2.0.",
       "expected_behavior": [
         "Replaces the group ru.tinkoff.kora with io.koraframework on every coordinate",
-        "Replaces the kora-parent BOM with io.koraframework:kora-bom at 2.0.0.RC1",
+        "Replaces the kora-parent BOM with io.koraframework:kora-bom at 2.0.0.RC2",
         "Replaces json-module with json-common (json-module does not exist in 2.0)",
         "Keeps the processor artifact name annotation-processors and leaves it unversioned under the BOM",
-        "Does not keep the artifact name kora-parent under the new group: io.koraframework:kora-parent exists on Central only as a 2.0.0.alpha leftover and is not part of the RC1 release",
+        "Does not keep the artifact name kora-parent under the new group: io.koraframework:kora-parent exists on Central only as a 2.0.0.alpha leftover and is not part of the 2.0 releases",
         "Does not invent a 2.0 coordinate for a module that was removed"
       ],
       "tags": ["troubleshooting", "regression", "advanced"]
@@ -80,7 +80,7 @@
         "States that Kora 2.0 artifacts are compiled for JVM 25, so 25 is the floor",
         "Configures the Java toolchain with JavaLanguageVersion.of(25) in build.gradle",
         "Adds the foojay-resolver-convention plugin in settings.gradle",
-        "Notes the Gradle wrapper the reference apps pin (9.5.1)",
+        "Pins the Gradle wrapper at 9.8.0, the version the Kora framework builds with",
         "Does not claim --enable-preview is required for consumers of Kora 2.0"
       ],
       "tags": ["toolchain", "basic"]
@@ -176,6 +176,19 @@
         "Does not claim telemetry is on by default"
       ],
       "tags": ["config", "telemetry", "advanced"]
+    },
+    {
+      "id": "kora-project-setup-java-shadow-service-files",
+      "skills": ["kora-project-setup-java"],
+      "query": "We package our Kora 2.0 service as a fat jar with the com.gradleup.shadow 9 plugin and `shadowJar { mergeServiceFiles() }`. `./gradlew run` works, but `java -jar app-all.jar` dies during Flyway migration with a NullPointerException in DryRunConfigurationExtensionStub.getOrResolveOutputStream. What is wrong?",
+      "expected_behavior": [
+        "Identifies the META-INF/services merge: with Shadow 9.x the default duplicates strategy keeps only the first copy of each service file, so mergeServiceFiles() has nothing to merge",
+        "Explains that Flyway registers plugins via ServiceLoader in both flyway-core and flyway-database-postgresql, so the fat jar loses some of them",
+        "Gives the fix: duplicatesStrategy = DuplicatesStrategy.INCLUDE on shadowJar together with mergeServiceFiles()",
+        "Presents this as an empirically observed packaging behaviour, not a Kora defect, and mentions the distTar layout the reference apps use as the alternative",
+        "Does not suggest downgrading Flyway or disabling the Kora Flyway module"
+      ],
+      "tags": ["build", "packaging", "regression"]
     }
   ]
 }

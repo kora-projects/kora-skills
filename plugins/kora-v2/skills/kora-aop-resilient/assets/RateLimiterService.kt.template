@@ -18,7 +18,7 @@ interface NotificationRateLimiter : RateLimiter
 @Component
 open class NotificationSender(private val gateway: SmsGateway) {
 
-    // Fails fast with RateLimitExceededException once the window's permits are spent —
+    // Fails fast with RateLimitExceededException once no permit is available —
     // callers are never queued or blocked. Wrap with @Retryable (listed ABOVE @RateLimited)
     // if a rejected call should wait and try again instead of surfacing the exception.
     @RateLimited(NotificationRateLimiter::class)
@@ -63,11 +63,13 @@ open class DeferredQueue {
 // Config (HOCON):
 //
 // resilient.ratelimiter.notifications {
-//   limitForPeriod = 100        # REQUIRED — permits per window
-//   limitRefreshPeriod = "1s"   # REQUIRED — window length
+//   limitForPeriod = 100        # REQUIRED — permits per period (the burst size for TOKEN_BUCKET)
+//   limitRefreshPeriod = "1s"   # REQUIRED — the period
+//   type = TOKEN_BUCKET         # optional, default TOKEN_BUCKET; or FIXED_WINDOW
 //   enabled = true              # optional, default true
 // }
 //
-// Fixed window, refilled lazily on the first call after the deadline. Unused permits do not carry
-// over, and the window is not wall-clock aligned — a burst straddling a boundary can briefly pass
-// up to 2 * limitForPeriod calls. This is a per-process limiter with no shared state.
+// TOKEN_BUCKET (GCRA) refills continuously at limitForPeriod / limitRefreshPeriod and allows a burst
+// of up to limitForPeriod after an idle period. FIXED_WINDOW is a quota per window and can pass up to
+// 2 * limitForPeriod calls across a window boundary. Both are per process; for one quota across
+// instances use @RateLimiterDistributedSpec (DistributedResilience template).

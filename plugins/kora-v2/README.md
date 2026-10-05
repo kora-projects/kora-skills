@@ -14,14 +14,14 @@ Kora Framework 2.x development skill package for AI coding agents.
 
 - Compile-time DI with `@KoraApp`, `@Component`, `@Module`, tags, lifecycle, and graph debugging.
 - HTTP server/client, authentication, OpenAPI server/client generation, and spec management.
-- JDBC, Cassandra, Flyway/Liquibase migrations through the unified `kora-database-migration` skill.
+- JDBC (including PostgreSQL arrays, ranges, `interval`, `json`/`jsonb`), Cassandra, Flyway/Liquibase migrations through the unified `kora-database-migration` skill.
 - Kafka producer/consumer flows, gRPC server/client, and SOAP/WSDL client integration.
-- Telemetry with OpenTelemetry tracing, Micrometer metrics, and structured logging.
-- AOP features: caching, resilience, logging, scheduling, and validation.
+- Telemetry with OpenTelemetry tracing, Micrometer metrics, structured and JSON logging, and masking of secrets in telemetry logs.
+- AOP features: caching, resilience (including Redis-backed distributed rate limiting and retry budgets), logging, scheduling (JDK, Quartz, database-backed db-scheduler), and validation.
 - Testing with JUnit 5, `@KoraAppTest`, Testcontainers, and black-box test patterns.
 - Project setup for Java/Kotlin Kora applications.
 
-The package contains **39 domain skills plus one Codex meta-skill**.
+The package contains **40 domain skills plus one Codex meta-skill**.
 
 ## Installation
 
@@ -150,7 +150,7 @@ plugins/kora-v2/
   .codex-plugin/
     plugin.json             # Codex plugin manifest
   references/
-    kora-docs-map.md        # Framework-source and example-app map
+    kora-docs-map.md        # Framework-source, 2.0 docs and example-app map
   skills/
     kora-starter/           # Codex-visible copy of the root meta-skill
     kora-di-compile/
@@ -174,7 +174,7 @@ Codex discover the same high-level routing instructions that live in the root `S
 | Messaging           | `kora-kafka-producer`, `kora-kafka-consumer`                                                                                                                                          |
 | gRPC and SOAP       | `kora-grpc-server`, `kora-grpc-client`, `kora-soap-client`                                                                                                                            |
 | Telemetry           | `kora-telemetry-tracing`, `kora-telemetry-metrics`, `kora-telemetry-logging`                                                                                                          |
-| AOP                 | `kora-aop-caching`, `kora-aop-resilient`, `kora-aop-logging`, `kora-aop-scheduling-jdk`, `kora-aop-scheduling-quartz`, `kora-aop-validation`                                          |
+| AOP                 | `kora-aop-caching`, `kora-aop-resilient`, `kora-aop-logging`, `kora-aop-scheduling-jdk`, `kora-aop-scheduling-quartz`, `kora-aop-scheduling-db`, `kora-aop-validation`                |
 | Testing             | `kora-testing-junit-java`, `kora-testing-junit-kotlin`, `kora-testing-blackbox`                                                                                                       |
 | Tools and learning  | `kora-s3`, `kora-mapstruct`, `kora-journal`, `kora-teacher`                                                                                                                           |
 | Agent compatibility | `kora-starter`                                                                                                                                                                        |
@@ -193,21 +193,24 @@ Codex discover the same high-level routing instructions that live in the root `S
 
 | Component      | Version                                                                                                |
 |----------------|--------------------------------------------------------------------------------------------------------|
-| Kora Framework | 2.x — `2.0.0.RC1` is the release on Maven Central                                                      |
+| Kora Framework | 2.x — targets `2.0.0.RC2` (synced with the `2.0.0.RC2` tag, `master` at `78351e1cf`)                                        |
 | Java           | 25+ (the JDK running Gradle must also be 25+ when `openapi-generator` is on the buildscript classpath) |
-| Kotlin         | 2.4.10 with KSP 2.3.11                                                                                 |
-| Gradle         | 9+ (the Kora 2.0 examples pin wrapper 9.5.1)                                                           |
+| Kotlin         | 2.4.20 with KSP 2.3.12                                                                                 |
+| Gradle         | 9+ (the framework pins wrapper 9.8.0)                                                                  |
 
 ## Sources
 
-There is no Kora 2.0 documentation site yet. `kora-projects.github.io/kora-docs` and the
-`kora-java-template` / `kora-kotlin-template` repositories all still describe Kora **1.x** — they
-must not be used as an API authority for 2.x. The authoritative material is:
+Kora 2.0 is documented at [koraframework.io/v2/en](https://koraframework.io/v2/en/). The docs can
+trail the framework, so the skills verify every key and default against the source: source and tests
+first, then the migrated examples, then the 2.0 docs. `kora-projects.github.io/kora-docs` and the
+`kora-java-template` / `kora-kotlin-template` repositories still describe Kora **1.x** — they must not
+be used as an API authority for 2.x.
 
 | Resource                                 | Link                                                                        |
 |------------------------------------------|-----------------------------------------------------------------------------|
-| Framework source (release)               | https://github.com/kora-projects/kora/tree/2.0.0.RC1                        |
+| Framework source (release)               | https://github.com/kora-projects/kora/tree/2.0.0.RC2                        |
 | Framework source (development)           | https://github.com/kora-projects/kora/tree/master                           |
+| Kora 2.0 documentation                   | https://koraframework.io/v2/en/ (ru: https://koraframework.io/v2/ru/)       |
 | Migrated example applications            | https://github.com/kora-projects/kora-examples/tree/migration/2.0           |
 | 1.x → 2.0 migration corpus               | https://github.com/kora-projects/kora-examples/tree/migration/2.0/migration |
 | Releases                                 | https://github.com/kora-projects/kora/releases                              |

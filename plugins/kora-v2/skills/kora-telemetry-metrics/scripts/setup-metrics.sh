@@ -86,7 +86,7 @@ fi
 
 if grep -q "micrometer-registry-prometheus" "$BUILD_FILE" 2>/dev/null; then
     echo "WARNING: $BUILD_FILE declares io.micrometer:micrometer-registry-prometheus directly."
-    echo "         io.koraframework:micrometer-module already brings it (Micrometer 1.17.0)."
+    echo "         io.koraframework:micrometer-module already brings it (Micrometer 1.17.1)."
     echo "         Remove the explicit dependency to avoid a version clash."
     echo
 fi
@@ -148,7 +148,7 @@ Remaining steps (not automated — these are decisions, not boilerplate):
 
 1. Put the version in gradle.properties:
 
-       koraVersion=2.0.0.RC1
+       koraVersion=2.0.0.RC2
 
 2. Add MetricsModule to your @KoraApp interface:
 

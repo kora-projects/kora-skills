@@ -121,7 +121,7 @@
         "Applies the BOM directly: implementation(platform(\"io.koraframework:kora-bom:${property(\"koraVersion\")}\"))",
         "Gives the processor an explicit version: ksp(\"io.koraframework:symbol-processors:${property(\"koraVersion\")}\")",
         "Declares testImplementation(platform(\"org.junit:junit-bom:${property(\"junitVersion\")}\")) with junitVersion=6.1.3 and testImplementation(\"io.koraframework:test-junit5\")",
-        "Sets koraVersion=2.0.0.RC1 in gradle.properties, resolved from mavenCentral()"
+        "Sets koraVersion=2.0.0.RC2 in gradle.properties, resolved from mavenCentral()"
       ],
       "anti_behavior": [
         "Creates a koraBom configuration and wires it with extendsFrom in a Kotlin build script",
@@ -299,6 +299,21 @@
         "Tells the colleague to run tests only on Linux"
       ],
       "tags": ["build", "regression"]
+    },
+    {
+      "id": "kora-testing-junit-kotlin-conditional-component-graph",
+      "skills": ["kora-testing-junit-kotlin"],
+      "query": "Kotlin, Kora 2.0: after adding `@Component @Conditional(tag = FeatureEnabled::class) class FeatureService` every @KoraAppTest dies at graph init with IllegalArgumentException: Graph node belongs to another application graph (GraphImpl$GraphConditionKey.hashCode). Production startup is fine. How do I fix the test?",
+      "expected_behavior": [
+        "Explains that the extension copy()s the draw (and subgraph()s it for declared roots and mocks), and both keep the original node condition, which reads the original condition node on the derived graph",
+        "States it is fixed in 2.0.0.RC2 (kora-projects/kora PR #963), so the fix is upgrading; on RC1 there is no practical workaround besides keeping @Conditional out of the tested graph",
+        "Mentions that RC2 also contains kora-projects/kora PR #964, so a PER_CLASS class with MockK or Mockito on the classpath no longer fails in beforeEach on a condition-failed node; on a build with #963 but not #964, PER_METHOD avoids it"
+      ],
+      "anti_behavior": [
+        "Blames the KSP setup, kora.app.submodule.enabled or MockK configuration",
+        "Suggests replacing the conditional component in the test with KoraAppTestGraphModifier as a proven fix"
+      ],
+      "tags": ["conditional", "lifecycle", "regression"]
     }
   ]
 }

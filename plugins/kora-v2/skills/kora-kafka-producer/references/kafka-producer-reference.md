@@ -41,8 +41,10 @@ Everything `@KafkaPublisher` generates, every signature the processor accepts, a
 | Telemetry | `io.koraframework.kafka.common.producer.telemetry.*` (+ `.impl.*`) |
 | Serializer contract | `org.apache.kafka.common.serialization.Serializer` (Kafka clients **4.3.1**) |
 
-`KafkaModule` extends `KafkaSerializersModule` and `KafkaDeserializersModule`, so adding it to
-`@KoraApp` brings the standard serializers along.
+`KafkaModule` extends `KafkaPublisherModule` (`io.koraframework.kafka.common.producer`, itself extending
+`KafkaSerializersModule` from `io.koraframework.kafka.common.producer.serializer`) and
+`KafkaListenerModule`, so adding it to `@KoraApp` brings the standard serializers and the default
+publisher telemetry along.
 
 ---
 
@@ -150,7 +152,7 @@ telemetry observation first and your callback second.
 
 Each of these shapes has a dedicated passing test in the framework's own
 `KafkaPublisherTest` (`kafka-annotation-processor`, and its KSP twin in
-`kafka-symbol-processor`) at tag `2.0.0.RC1` — `testReturnVoid`, `testReturnRecordMetadata`,
+`kafka-symbol-processor`) at tag `2.0.0.RC2` — `testReturnVoid`, `testReturnRecordMetadata`,
 `testReturnFuture`, `testReturnStageFuture`, `testReturnCompletableFuture`,
 `testReturnRecordMetadataFuture`, `testReturnRecordMetadataStageFuture`,
 `testReturnRecordMetadataCompletableFuture`:
@@ -298,6 +300,7 @@ graph-resolved `Serializer<T>` itself.
 | Key | Default | Notes |
 |---|---|---|
 | `logging.enabled` | **`false`** | producer start/stop and per-record logs |
+| `logging.maskHeaders` | `["authorization", "cookie", "set-cookie"]` | header names (case-insensitive) masked in the TRACE record log; the list replaces the default |
 | `metrics.enabled` | **`false`** | the meters below |
 | `metrics.driverMetrics` | `false` | binds Micrometer `KafkaClientMetrics` to the raw producer |
 | `metrics.slo` | 1ms…90s histogram buckets | service-level objectives for the duration timer |
@@ -309,16 +312,48 @@ Meters emitted when `metrics.enabled = true`:
 
 | Meter | Type | Key tags |
 |---|---|---|
-| `messaging.client.operation.duration` | timer | `messaging.system`, `messaging.client.id`, `messaging.operation.type`, `messaging.destination.name`, `messaging.destination.partition.id`, `error.type` |
+| `messaging.client.operation.duration` | timer | `messaging.system`, `messaging.client.id`, `messaging.operation.name` (`send`), `messaging.operation.type`, `messaging.destination.name`, `messaging.destination.partition.id`, `error.type` |
 | `messaging.client.sent.messages` | counter | same |
 
-Customisation points (`KafkaModule` declares the factory as `@DefaultComponent`, and injects the two
-`Default*Factory` classes as `@Nullable` dependencies):
+Spans (when `tracing.enabled`): one `SpanKind.PRODUCER` span per record named `send <topic>`
+(OpenTelemetry `<operation> <destination>`; RC1 used `<topic> send`), with `messaging.system`,
+`messaging.operation.name` = `send`, `messaging.operation.type` = `send`, `messaging.destination.name`,
+the three `system.*` attributes and `tracing.attributes`. A transactional publisher adds an INTERNAL
+`producer transaction` span whose `messaging.operation.name` is set to `commit` or `rollback`.
+
+Record logging. `logRecordStart` writes at DEBUG (`topic`, `publisherConfig`) or, when the logger is
+at TRACE, adds `headers` — rendered as `name: value` lines, with every header in
+`logging.maskHeaders` replaced by the `@Tag(KafkaPublisherTelemetry.class) MaskingStrategy`
+(`KafkaPublisherModule` supplies `value -> "***"` as a `@DefaultComponent`). Keys and values are
+**never** logged by the publisher. To change the replacement, register a tagged strategy:
 
 ```java
-// swap the log format
+@Module
+public interface KafkaPublisherMaskingModule {
+
+    @Tag(KafkaPublisherTelemetry.class)
+    default MaskingStrategy kafkaPublisherHeaderMasking() {
+        return new MaskingKeepLast();
+    }
+}
+```
+
+`MaskingStrategy`, `MaskingFull`, `MaskingKeepFirst`, `MaskingKeepLast` live in
+`io.koraframework.logging.common.masking`; the model is documented in
+[kora-aop-logging masking](../../kora-aop-logging/references/logging-masking.md).
+
+Customisation points (`KafkaPublisherModule` declares the factory as `@DefaultComponent`, and injects
+the two `Default*Factory` classes as `@Nullable` dependencies):
+
+```java
+// swap the log format — the constructor takes the header masking strategy
 @Component
-public final class MyPublisherLoggerFactory extends DefaultKafkaPublisherLoggerFactory { … }
+public final class MyPublisherLoggerFactory extends DefaultKafkaPublisherLoggerFactory {
+    public MyPublisherLoggerFactory(@Tag(KafkaPublisherTelemetry.class) MaskingStrategy maskingStrategy) {
+        super(maskingStrategy);
+    }
+    …
+}
 
 // swap the meters
 @Component

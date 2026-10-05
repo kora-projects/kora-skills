@@ -9,7 +9,7 @@ metadata:
 
 # Kora DI Runtime — Container Behaviour
 
-> **Kora sub-skill — obey the [kora-v2 meta rules](../../SKILL.md) on every task:** **R0** ground the workspace on Kora 2.0 refs before starting (framework source at tag `2.0.0.RC1` + `kora-examples` at `migration/2.0`; `kora-docs` is 1.x only) · **R1** read this sub-skill before writing code · **R2** Kora 2.0 APIs only — no Spring/Micronaut/Quarkus, no Kora 1.x APIs, no invented annotations or config keys · **R3** journal any incorrect Kora usage. Add comments/Javadoc only if asked.
+> **Kora sub-skill — obey the [kora-v2 meta rules](../../SKILL.md) on every task:** **R0** ground the workspace on Kora 2.0 refs before starting (framework source at tag `2.0.0.RC2` + `kora-examples` at `migration/2.0` + Kora 2.0 docs at koraframework.io/v2, which trail the source; 1.x `kora-docs` pages are never an authority) · **R1** read this sub-skill before writing code · **R2** Kora 2.0 APIs only — no Spring/Micronaut/Quarkus, no Kora 1.x APIs, no invented annotations or config keys · **R3** journal any incorrect Kora usage. Add comments/Javadoc only if asked.
 
 | | |
 |---|---|
@@ -114,7 +114,9 @@ Ordering guarantees, as implemented in `GraphImpl`:
   it has been released;
 - a component that implements `AutoCloseable` also gets `close()` called on release, after
   `release()`;
-- `KoraApplication.run` installs a JVM shutdown hook (`kora-shutdown`) that performs the release.
+- `KoraApplication.run` installs a JVM shutdown hook (`kora-shutdown`) that performs the release;
+  `run(supplier)` then blocks `main` until that release has finished, while
+  `run(supplier, false)` returns right after init and leaves the release to the hook.
 
 A checked exception out of `init()` is rethrown as
 `IllegalStateException: Lifecycle init failed with checked exception for node …`; a failed init
@@ -258,8 +260,10 @@ The methods are `afterInit` / `beforeRelease` — **not** `init` / `release` —
 before any dependent is created; whatever it returns is what the rest of the graph receives.
 `beforeRelease` runs before that component's `release()`, in reverse interceptor order.
 
-An interceptor is matched by **exact declared type**, not by assignability, and by tag. Declare it
-for a concrete type — a generic `GraphInterceptor<T>` component matches nothing.
+An interceptor is matched by **exact declared type**, not by assignability, and by tag: an untagged
+interceptor sees only untagged components, `@Tag(X.class)` only components tagged `X`, and
+`@Tag(Tag.Any.class)` components of every tag — the same rule under javac and KSP. Declare it for a
+concrete type — a generic `GraphInterceptor<T>` component matches nothing.
 
 > [`references/graph-interceptor-reference.md`](references/graph-interceptor-reference.md)
 
@@ -294,6 +298,7 @@ container does with a condition while it builds the graph is documented here.
 | consumer rebuilt on every config refresh | direct dependency | inject `ValueOf<T>` and call `get()` |
 | `type annotation @Nullable is not expected here` | JSpecify `@Nullable` in a non-type-use position | move it onto the type |
 | `Graph node value was not initialized because condition failed` | a `@Conditional` component was skipped and something still asks for it | fix the condition or the dependency |
+| same message at startup although the consumer declares the dependency `@Nullable` / `T?` | the processors generate a nullable single dependency as `g.get(node)`, which throws for a condition-failed node instead of passing `null` (Java `Optional<T>` goes through the same claim) | fixed in `2.0.0.RC2` (kora-projects/kora PR #960) — only `2.0.0.RC1` is affected — the dependency then receives `null` via the new default `Graph.getNullable`. On RC1, inject `All<T>` (condition-failed members are skipped) or make the consumer `@Conditional` on the same tag |
 | any Kora `Context` parameter | `Context` no longer exists anywhere in Kora 2.0 | delete it |
 
 ---

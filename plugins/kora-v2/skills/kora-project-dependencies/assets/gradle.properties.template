@@ -2,15 +2,15 @@ org.gradle.caching=true
 org.gradle.parallel=true
 #
 # Kora BOM version - every io.koraframework:* artifact inherits this version.
-# 2.0.0.RC1 is published on Maven Central and is the only 2.0.x release there, so plain
+# 2.0.0.RC2 is published on Maven Central, so plain
 # mavenCentral() resolves it. Check https://github.com/kora-projects/kora/releases before
 # moving to a newer one. 2.0.0-SNAPSHOT is the development line and needs the Sonatype
 # snapshot repository as well - do not pin it in a new project.
-koraVersion=2.0.0.RC1
+koraVersion=2.0.0.RC2
 #
-# Kotlin projects only: Kotlin 2.4.10 pairs with KSP 2.3.11
-# kotlinVersion=2.4.10
-# kspVersion=2.3.11
+# Kotlin projects only: Kotlin 2.4.20 pairs with KSP 2.3.12
+# kotlinVersion=2.4.20
+# kspVersion=2.3.12
 #
 # If the Kotlin compiler cannot target the toolchain JDK exactly, warn instead of failing
 # kotlin.jvm.target.validation.mode=warning

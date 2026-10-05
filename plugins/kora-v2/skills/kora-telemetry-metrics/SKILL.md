@@ -1,6 +1,6 @@
 ---
 name: kora-telemetry-metrics
-description: "Kora 2.0 Micrometer metrics — io.koraframework:micrometer-module, MetricsModule (io.koraframework.micrometer.module), PrometheusMeterRegistry + injectable MeterRegistry, PrometheusMeterRegistryInitializer, MetricsScraper, and the /metrics endpoint served by the SYSTEM HTTP server under httpServer.system.metricsPath. Covers the per-component telemetry.metrics { enabled, slo, tags } keys — where enabled defaults to FALSE in 2.0 — the second MeterRegistry gate, the real 2.0 metric names (http.server.request.duration, db.client.operation.duration, cache.operation.duration, messaging.process.duration…), custom Counter/Gauge/Timer/DistributionSummary, and tag cardinality. Use when adding business metrics, wiring Prometheus scraping, or debugging an empty or JVM-only /metrics response."
+description: "Kora 2.0 Micrometer metrics — io.koraframework:micrometer-module, MetricsModule (io.koraframework.micrometer.module), PrometheusMeterRegistry + injectable MeterRegistry, PrometheusMeterRegistryInitializer, MetricsTagsProvider, MetricsScraper, and the /metrics endpoint served by the SYSTEM HTTP server under httpServer.system.metricsPath. Covers the global metrics { enabled, tags } section, the per-component telemetry.metrics { enabled, slo, tags } keys — where enabled defaults to FALSE in 2.0 — the second MeterRegistry gate, the real 2.0 metric names (http.server.request.duration, db.client.operation.duration, cache.operation.duration, messaging.process.duration…), custom Counter/Gauge/Timer/DistributionSummary, and tag cardinality. Use when adding business metrics, wiring Prometheus scraping, or debugging an empty or JVM-only /metrics response."
 license: Apache-2.0
 metadata:
   kora-version: "2.x"
@@ -8,17 +8,17 @@ metadata:
 
 # Kora Telemetry Metrics
 
-> **Kora sub-skill — obey the [kora-v2 meta rules](../../SKILL.md) on every task:** **R0** ground the workspace on Kora 2.0 refs before starting (framework source at tag `2.0.0.RC1` + `kora-examples` at `migration/2.0`; `kora-docs` is 1.x only) · **R1** read this sub-skill before writing code · **R2** Kora 2.0 APIs only — no Spring/Micronaut/Quarkus, no Kora 1.x APIs, no invented annotations or config keys · **R3** journal any incorrect Kora usage. Add comments/Javadoc only if asked.
+> **Kora sub-skill — obey the [kora-v2 meta rules](../../SKILL.md) on every task:** **R0** ground the workspace on Kora 2.0 refs before starting (framework source at tag `2.0.0.RC2` + `kora-examples` at `migration/2.0` + Kora 2.0 docs at koraframework.io/v2, which trail the source; 1.x `kora-docs` pages are never an authority) · **R1** read this sub-skill before writing code · **R2** Kora 2.0 APIs only — no Spring/Micronaut/Quarkus, no Kora 1.x APIs, no invented annotations or config keys · **R3** journal any incorrect Kora usage. Add comments/Javadoc only if asked.
 
 | | |
 |---|---|
-| **Artifact** | `io.koraframework:micrometer-module` (BOM `io.koraframework:kora-bom`, `koraVersion=2.0.0.RC1`) |
+| **Artifact** | `io.koraframework:micrometer-module` (BOM `io.koraframework:kora-bom`, `koraVersion=2.0.0.RC2`) |
 | **Module** | `MetricsModule` — `io.koraframework.micrometer.module` |
-| **Registry** | `io.micrometer.core.instrument.MeterRegistry` — a `PrometheusMeterRegistry`, published as `Wrapped<MeterRegistry>` |
-| **Extension points** | `io.koraframework.micrometer.module.PrometheusMeterRegistryInitializer`, `io.koraframework.telemetry.common.MetricsScraper` |
+| **Registry** | `io.micrometer.core.instrument.MeterRegistry` — a `PrometheusMeterRegistry` (or `NoopMeterRegistry` when `metrics.enabled = false`), published as `Wrapped<MeterRegistry>` |
+| **Extension points** | `io.koraframework.micrometer.module.MetricsTagsProvider`, `io.koraframework.micrometer.module.PrometheusMeterRegistryInitializer`, `io.koraframework.telemetry.common.MetricsScraper` |
 | **Endpoint** | `GET httpServer.system.metricsPath` (default `/metrics`) on the **system** server (default port **8085**) |
-| **Config shape** | `<component>.telemetry.metrics { enabled, slo, tags }` — `io.koraframework.telemetry.common.TelemetryConfig.MetricsConfig` |
-| **Micrometer** | `1.17.0`; Prometheus client `1.8.0` (both come with the module — never add a registry artifact yourself) |
+| **Config shape** | global `metrics { enabled, tags }` — `io.koraframework.micrometer.module.MetricsConfig`; per component `<component>.telemetry.metrics { enabled, slo, tags }` — `io.koraframework.telemetry.common.TelemetryConfig.MetricsConfig` |
+| **Micrometer** | `1.17.1`; Prometheus client `1.9.0` (both come with the module — never add a registry artifact yourself) |
 
 ---
 
@@ -28,9 +28,13 @@ metadata:
 
 | Sub-config | `enabled()` default |
 |---|---|
-| `LoggingConfig` | **`false`** |
-| `MetricsConfig` | **`false`** |
-| `TracingConfig` | `true` — **except** under `httpServer.system`, where `SystemHttpServerTracingConfig` overrides it back to `false` |
+| `TelemetryConfig.LoggingConfig` | **`false`** |
+| `TelemetryConfig.MetricsConfig` | **`false`** |
+| `TelemetryConfig.TracingConfig` | `true` — **except** under `httpServer.system`, where `SystemHttpServerTracingConfig` overrides it back to `false` |
+
+Do not confuse these per-component flags with the **global** `metrics.enabled` key
+(`io.koraframework.micrometer.module.MetricsConfig`, default `true`). The global key is a kill
+switch for the whole registry, not an opt-in: setting it to `true` enables no component metric.
 
 So `http.server.request.duration`, `http.client.request.duration`, `db.client.operation.duration` and
 every other component metric **do not exist** until you switch them on per component:
@@ -65,6 +69,7 @@ var metricEnabled = this.meterRegistry != null && config.metrics().enabled();
 | yes | `false` (default) | **no component metrics** — JVM meters only |
 | no | `false` | no metrics, and `/metrics` answers `# Metric Scraper disabled` |
 | **yes** | **`true`** | metrics recorded |
+| yes, with global `metrics.enabled = false` | any | **nothing** — the registry is `NoopMeterRegistry`, `/metrics` answers 200 with an **empty** body |
 
 The same `meterRegistry != null && config.metrics().enabled()` line appears in every
 `Default*TelemetryFactory` (HTTP client, database, Kafka, cache, gRPC, scheduling, resilient, S3,
@@ -84,13 +89,14 @@ SOAP, JMS). Details and the full config-root table: [metrics-config-reference.md
 | `httpServer.privateApiHttpPort` | **`httpServer.system.port`** (default `8085`) |
 | `httpServer.privateApiHttpMetricsPath` | **`httpServer.system.metricsPath`** (default `/metrics`) |
 | `httpServer.publicApiHttpPort` | **`httpServer.port`** (default `8080`) |
-| `metrics { opentelemetrySpec = "V120" \| "V123" }` | **removed** — no global `metrics` config section exists in 2.0 |
+| `metrics { opentelemetrySpec = "V120" \| "V123" }` | **removed** — the global `metrics` section holds only `enabled` and `tags` |
 | metrics/logging telemetry effectively on | **`enabled` defaults to `false`** — see above |
 | `db { … }` JDBC section | **`jdbc { … }`** |
 | `ru.tinkoff.kora.http.server.common.{Readiness,Liveness}Probe` with `check()`/`Result` | **`io.koraframework.common.readiness.ReadinessProbe`** / **`io.koraframework.common.liveness.LivenessProbe`** with `probe()` returning a nullable `*ProbeFailure` |
 
 The `opentelemetrySpec` switch is gone: `grep -r opentelemetrySpec` over the 2.0 source returns
-nothing, and no module reads a top-level `metrics` config path. 2.0 emits one fixed naming scheme —
+nothing. The top-level `metrics` path is read only by `MetricsModule.metricsConfig(...)`, and
+`MetricsConfig` declares `enabled` and `tags`, nothing else. 2.0 emits one fixed naming scheme —
 the one 1.x called `V123` — and several meter names moved on top of that. Do not carry a 1.x metric
 list into a 2.0 dashboard; see [metrics-reference.md](references/metrics-reference.md).
 
@@ -104,7 +110,7 @@ list into a 2.0 dashboard; see [metrics-reference.md](references/metrics-referen
 `io.micrometer:micrometer-registry-prometheus` yourself only risks a version clash. Versions come
 from the BOM — never pin a `io.koraframework:*` artifact.
 
-Java (`build.gradle`, with `koraVersion=2.0.0.RC1` in `gradle.properties`):
+Java (`build.gradle`, with `koraVersion=2.0.0.RC2` in `gradle.properties`):
 
 ```groovy
 repositories { mavenCentral() }
@@ -252,7 +258,8 @@ public final class MetricsService {
 
 Custom meters need only `MetricsModule` — they are registered directly on the `MeterRegistry` and
 are **not** gated by any `telemetry.metrics.enabled` flag. Those flags govern Kora's own component
-instrumentation.
+instrumentation. The global `metrics.enabled = false` does reach them: the injected registry is then
+`NoopMeterRegistry`, so your meters register and record without error and are never exported.
 
 ### 5. Verify
 
@@ -270,14 +277,14 @@ A 200 alone proves nothing — see [Diagnosing an empty `/metrics`](#diagnosing-
 
 | File | Purpose |
 |------|---------|
-| [references/metrics-config-reference.md](references/metrics-config-reference.md) | The two gates, the complete `telemetry.metrics` key set, per-component config roots, `slo` / `tags`, custom registries |
+| [references/metrics-config-reference.md](references/metrics-config-reference.md) | The global `metrics` section, the two per-component gates, the complete `telemetry.metrics` key set, per-component config roots, `slo` / `tags`, `MetricsTagsProvider`, custom registries |
 | [references/metrics-reference.md](references/metrics-reference.md) | The 2.0 built-in metric catalogue read out of the source that emits it, with tag keys and Prometheus names |
 | [references/custom-metrics-reference.md](references/custom-metrics-reference.md) | Business-metric patterns, meter caching for dynamic tags, full payment example |
 | [references/micrometer-types-reference.md](references/micrometer-types-reference.md) | Counter / Gauge / Timer / DistributionSummary, builder APIs, Prometheus mapping |
 | [references/metrics-cardinality-reference.md](references/metrics-cardinality-reference.md) | Bounded vs unbounded tags, the leak pattern, cardinality checklist |
 | [references/metrics-export-reference.md](references/metrics-export-reference.md) | Pull-only export model, scrape config, forwarding to other backends, `MetricsScraper` |
 | [references/probes-reference.md](references/probes-reference.md) | `LivenessProbe` / `ReadinessProbe` on the same system server — 2.0 API and status codes |
-| `assets/` | Application, build, config, service, Grafana and Prometheus templates (all metrics-enabled) |
+| `assets/` | Application, build, config, service, `MetricsTagsProvider` (`AppMetricsTagsProvider.{java,kt}.template`), Grafana and Prometheus templates (all metrics-enabled) |
 | `scripts/setup-metrics.sh` | Dry-run-by-default helper that prints/appends the 2.0 dependency and config snippets |
 
 ---
@@ -323,13 +330,15 @@ So read the **body**, not the status code:
 | Body | Meaning | Fix |
 |---|---|---|
 | `# Metric Scraper disabled` | No `MetricsScraper` in the graph | Add `MetricsModule` to the `@KoraApp` interface |
+| empty | Global `metrics.enabled = false`, or a non-Prometheus registry without its own `MetricsScraper` | Remove the kill switch / supply a `MetricsScraper` |
 | `kora_up`, `jvm_*`, `process_*` only | Registry is bound, component metrics are off | Set `telemetry.metrics.enabled = true` on each component |
 | `kora_up` + `http_server_*` + … | Working | — |
 
 `MetricsModule` supplies the scraper as a `@DefaultComponent`:
 `prometheusMetricsScraper(MeterRegistry)` returns `prometheus::scrape` for a
-`PrometheusMeterRegistry` and a no-op writer for any other registry — so swapping in a non-Prometheus
-registry without also supplying your own `MetricsScraper` yields an empty (but still 200) body.
+`PrometheusMeterRegistry` and a no-op writer for any other registry. `metrics.enabled = false` makes
+`prometheusMeterRegistry(...)` return `NoopMeterRegistry.INSTANCE` instead of the Prometheus wrapper,
+so it lands in that no-op branch too: an empty (but still 200) body, no `kora_up`, no JVM meters.
 
 ---
 
@@ -345,28 +354,56 @@ and timers gain `_count` / `_sum` / `_bucket` / `_max`.
 | Database | `db.client.operation.duration` | Timer |
 | Kafka consumer | `messaging.process.duration`, `messaging.process.batch.duration`, `messaging.kafka.consumer.lag` | Timer, Timer, Gauge |
 | Kafka publisher | `messaging.client.operation.duration`, `messaging.client.sent.messages` | Timer, Counter |
-| gRPC | `rpc.server.duration`, `rpc.client.duration` | Timer |
-| Cache | `cache.operation.duration`, `cache.ratio` | Timer, Counter |
+| gRPC | `rpc.server.call.duration`, `rpc.client.call.duration` | Timer |
+| Cache | `cache.operation.duration`, `cache.requests` (tag `cache.result` = hit/miss) | Timer, Counter |
 | Scheduling | `scheduling.job.duration` | Timer |
 | Resilience | `resilient.circuitbreaker.*`, `resilient.retry.*`, `resilient.timeout.exhausted`, `resilient.ratelimiter.acquire`, `resilient.fallback.attempts` | Gauge, Counter |
-| S3 / SOAP | `rpc.client.duration` (distinguished by the `rpc.system` tag) | Timer |
+| S3 / SOAP | `rpc.client.call.duration` (distinguished by the `rpc.system.name` tag) | Timer |
+| JMS consumer | `messaging.process.duration` (`messaging.system = jms`) | Timer |
+| Redis (Lettuce) | `db.client.operation.duration` (`db.system.name = redis`), `lettuce.command.firstresponse.duration` | Timer |
 | Framework | `kora.up` (gauge, tag `version`) | Gauge |
 
 Several of these were renamed relative to 1.x (`db.client.request.duration` →
 `db.client.operation.duration`, `cache.duration` → `cache.operation.duration`,
 `messaging.receive/publish.duration` → the `messaging.process.*` / `messaging.client.*` pair,
-`s3.client.duration` → `rpc.client.duration`), and `rpc.*.requests_per_rpc` /
+`s3.client.duration` → `rpc.client.call.duration`), and `rpc.*.requests_per_rpc` /
 `responses_per_rpc` **do not exist in 2.0 at all**. Full tables with tag keys, plus the JVM binder
-list: [metrics-reference.md](references/metrics-reference.md).
+list: [metrics-reference.md](references/metrics-reference.md). 2.0.0.RC2 (#972) also renamed RC1 names:
+`rpc.*.duration` → `rpc.*.call.duration` (tag `rpc.system.name`, status tag `rpc.response.status_code`
+with the gRPC code name), `cache.ratio` → `cache.requests`, cache tags → `cache.origin` /
+`cache.operation` / `cache.result`, resilience tags → `resilient.name` / `resilient.state` / … — fix
+dashboards built on RC1.
 
-**The HTTP server duration timer carries no status-code tag in 2.0.** Its tags are `server.name`,
-`server.port`, `http.request.method`, `http.route`, `url.scheme`, `server.address`, `error.type`.
-A 1.x dashboard filtering on `http_response_status_code=~"5.."` matches nothing — use
-`error_type!=""` instead. (The HTTP **client** timer does carry `http.response.status_code`.)
+**The HTTP server duration timer tags:** `server.name`, `server.port`, `http.request.method`,
+`http.response.status_code`, `http.route`, `url.scheme`, `server.address`, `error.type`. The status
+code is the code of the response actually sent, so a 5xx panel filters on
+`http_response_status_code=~"5.."`; `error_type!=""` separately catches requests that ended in an
+exception. `http.server.active_requests` has no status code — the request is still in flight.
 
 ---
 
 ## Configuration keys
+
+### Global: `metrics`
+
+`MetricsModule.metricsConfig(...)` maps the top-level `metrics` path onto
+`io.koraframework.micrometer.module.MetricsConfig`:
+
+| Key | Type | Default | Effect |
+|---|---|---|---|
+| `enabled` | boolean | `true` | `false` swaps the Prometheus registry for `NoopMeterRegistry` — every meter, component or custom, is discarded |
+| `tags` | map<string,string> | `{}` | common tags stamped on **every** meter in the registry (JVM meters and `kora_up` included) |
+
+```hocon
+metrics {
+  tags {
+    "service" = "order-service"
+    "deployment.environment" = ${?ENV}
+  }
+}
+```
+
+### Per component: `<component>.telemetry.metrics`
 
 `TelemetryConfig.MetricsConfig` declares exactly three settings, and every component inherits them:
 
@@ -399,27 +436,32 @@ the complete table is in [metrics-config-reference.md](references/metrics-config
 
 ## Common tags on every metric
 
-`MetricsModule.prometheusMeterRegistry(All<PrometheusMeterRegistryInitializer> initializers)`
-applies every initializer once, in graph-init order, before the JVM binders run.
-`PrometheusMeterRegistryInitializer extends Function<PrometheusMeterRegistry, PrometheusMeterRegistry>`,
-so it **must return the registry**.
+Two sources feed one global `MeterFilter.commonTags(...)`, installed by the `@DefaultComponent`
+`MetricsModule.commonTagsMeterRegistryInitializer(MetricsConfig, All<MetricsTagsProvider>)`:
+
+1. every `MetricsTagsProvider` component — for values computed at startup;
+2. the static `metrics.tags` map — applied **last**, so on a key conflict **config wins**.
+
+`MetricsTagsProvider` (`io.koraframework.micrometer.module`) has one method,
+`Map<String, String> tags()`. Register any number of them as components; each is called once, during
+graph initialization — a value that changes later is not picked up.
 
 Java:
 
 ```java
 package com.example;
 
-import io.koraframework.common.annotation.Module;
-import io.koraframework.micrometer.module.PrometheusMeterRegistryInitializer;
+import io.koraframework.common.annotation.Component;
+import io.koraframework.micrometer.module.MetricsTagsProvider;
 
-@Module
-public interface CustomMetricsConfig {
+import java.util.Map;
 
-    default PrometheusMeterRegistryInitializer commonTagsInit() {
-        return registry -> {
-            registry.config().commonTags("service", "order-service", "environment", "production");
-            return registry;
-        };
+@Component
+public final class RegionMetricsTagsProvider implements MetricsTagsProvider {
+
+    @Override
+    public Map<String, String> tags() {
+        return Map.of("region", System.getenv().getOrDefault("REGION", "unknown"));
     }
 }
 ```
@@ -429,22 +471,31 @@ Kotlin:
 ```kotlin
 package com.example
 
-import io.koraframework.common.annotation.Module
-import io.koraframework.micrometer.module.PrometheusMeterRegistryInitializer
+import io.koraframework.common.annotation.Component
+import io.koraframework.micrometer.module.MetricsTagsProvider
 
-@Module
-interface CustomMetricsConfig {
+@Component
+class RegionMetricsTagsProvider : MetricsTagsProvider {
 
-    fun commonTagsInit(): PrometheusMeterRegistryInitializer =
-        PrometheusMeterRegistryInitializer { registry ->
-            registry.config().commonTags("service", "order-service", "environment", "production")
-            registry
-        }
+    override fun tags(): Map<String, String> =
+        mapOf("region" to (System.getenv("REGION") ?: "unknown"))
 }
 ```
 
-This is a global alternative to per-component `telemetry.metrics.tags`. Keep the values bounded —
-they multiply onto every series.
+Keep the values bounded — they multiply onto every series.
+
+### `PrometheusMeterRegistryInitializer` — everything else on `registry.config()`
+
+`PrometheusMeterRegistryWrapper.init()` applies every initializer once, in graph order, before the
+JVM binders run. `PrometheusMeterRegistryInitializer extends Function<PrometheusMeterRegistry, PrometheusMeterRegistry>`,
+so it **must return the registry**. Use it for meter filters, deny rules and naming conventions.
+
+**Your own initializer runs next to the built-in common-tags one, not instead of it.** Since
+2.0.0.RC2 (#935) `commonTagsMeterRegistryInitializer` is not a `@DefaultComponent`, so it stays in
+`All<PrometheusMeterRegistryInitializer>` and `metrics.tags` / `MetricsTagsProvider` keep applying.
+Do not re-merge the common tags in your initializer (the RC1 workaround) — that only installs the
+same filter twice. [`assets/CustomMetricsConfig.java.template`](assets/CustomMetricsConfig.java.template)
+/ [`.kt.template`](assets/CustomMetricsConfig.kt.template) add a deny rule only.
 
 ---
 
@@ -513,12 +564,14 @@ See [metrics-export-reference.md](references/metrics-export-reference.md).
 |---|---|---|
 | `/metrics` body is `# Metric Scraper disabled` | No `MetricsScraper` in the graph | Add `MetricsModule` to `@KoraApp extends …` |
 | `/metrics` returns 200 but only `jvm_*` / `kora_up` | `telemetry.metrics.enabled` left at its `false` default | Enable it per component |
+| `/metrics` returns 200 with an empty body | Global `metrics.enabled = false` put `NoopMeterRegistry` in the graph | Remove it; the default is `true` |
+| `metrics.tags` / `MetricsTagsProvider` tags missing from every series | On RC1 only: an app-level `PrometheusMeterRegistryInitializer` displaced the `@DefaultComponent` common-tags initializer (fixed in RC2, #935) | Upgrade to RC2+; on RC2+ check the key is not removed by your own `MeterFilter` |
+| A provider's tag value is ignored | The same key is in `metrics.tags` — config wins | Drop one of them |
 | Config flag set, still nothing | No `MeterRegistry` — `MetricsModule` missing | Both gates must pass |
 | `/metrics` returns 404 on port 8080 | Scraping the public port | Scrape `httpServer.system.port` (default 8085) |
 | `privateApiHttpMetricsPath` / `privateApiHttpPort` have no effect | Unknown 1.x keys, silently ignored | `httpServer.system.metricsPath` / `httpServer.system.port` |
 | `metrics { opentelemetrySpec = … }` has no effect | The key does not exist in 2.0 | Remove it; 2.0 has one fixed naming scheme |
 | `No component found for dependency: MeterRegistry` | Injecting `MeterRegistry` without `MetricsModule` | Add the module |
-| Dashboard 5xx panel is empty | 2.0's server duration timer has no status-code tag | Filter on `error_type!=""` |
 | `hikaricp_*` pool metrics missing | `jdbc.telemetry.metrics.enabled = false` hands Hikari a `NoopMeterRegistry` | Enable JDBC metrics; `driverMetrics` alone is not enough |
 | Memory grows continuously | Unbounded tag (`userId`, `requestId`, raw URL) | Drop it or map to a bounded value |
 | Initializer doesn't compile | `PrometheusMeterRegistryInitializer` must **return** the registry | `return registry;` |

@@ -71,11 +71,11 @@
       "query": "Write the logback.xml for a Kora 2.0 service. I want non-blocking output and I need traceId on every line.",
       "expected_behavior": [
         "Uses io.koraframework.logging.logback.KoraAsyncAppender wrapping a ConsoleAppender, not Logback's stock AsyncAppender",
-        "Uses <encoder class=\"io.koraframework.logging.logback.ConsoleTextRecordEncoder\"/> and explains it is what renders traceId/spanId, Kora MDC and structured arguments",
+        "Uses <encoder class=\"io.koraframework.logging.logback.text.ConsoleTextRecordEncoder\"/> (the text sub-package) and explains it is what renders traceId/spanId, Kora MDC and structured arguments",
         "Explains KoraAsyncAppender is required rather than optional: it is the only thing that produces a KoraLoggingEvent carrying koraMdc() and span()",
         "Notes traceId/spanId come from Span.current().getSpanContext() captured by the appender, so they must not be put into MDC by hand",
         "Sets only the root level in logback.xml and points per-logger levels at logging.levels",
-        "Does not reference ru.tinkoff.kora.logging.logback.* class names",
+        "Does not reference ru.tinkoff.kora.logging.logback.* class names, nor the non-existent io.koraframework.logging.logback.ConsoleTextRecordEncoder",
         "Does not invent bufferSize/flushThreshold elements"
       ],
       "tags": ["logback", "async", "basic"]
@@ -85,10 +85,11 @@
       "skills": ["kora-telemetry-logging"],
       "query": "Tune KoraAsyncAppender so it never drops log events under load. I currently have <discardingThreshold>0</discardingThreshold>.",
       "expected_behavior": [
-        "States that KoraAsyncAppender extends ch.qos.logback.core.AsyncAppenderBase directly, whose isDiscardable() always returns false, so no event is ever discarded by threshold and discardingThreshold is a no-op here",
-        "Explains that the level-based discarding described in the Logback manual belongs to the subclass ch.qos.logback.classic.AsyncAppender, which KoraAsyncAppender does not extend",
-        "Points at the settings that do matter: queueSize (default 256) and neverBlock (default false, so a full queue blocks the logging thread), plus maxFlushTime on shutdown",
-        "Does not fabricate a Kora-specific tuning knob"
+        "States that since 2.0.0.RC2 (#958) KoraAsyncAppender overrides isDiscardable() to return true for TRACE, DEBUG and INFO, so once fewer than discardingThreshold slots remain (default queueSize / 5) those events are dropped while WARN and ERROR still queue",
+        "Keeps <discardingThreshold>0</discardingThreshold> (or kora.logging.config.discarding-threshold=0) because 0 disables level-based dropping, and does not call the setting a no-op",
+        "Points at the settings that do matter: queueSize (Kora default 512) and neverBlock (Kora default true, so a full queue DROPS events), plus maxFlushTime (1000 ms) on shutdown",
+        "To never drop events, sets <neverBlock>false</neverBlock> (blocking the logging thread when full) and sizes queueSize for the burst; may mention the kora.logging.config.never-block / queue-size system properties or KORA_LOGGING_CONFIG_* environment variables, which a logback.xml value overrides",
+        "Does not fabricate settings beyond queueSize, neverBlock, maxFlushTime, discardingThreshold and their kora.logging.config.* properties"
       ],
       "tags": ["async", "advanced"]
     },
@@ -139,14 +140,17 @@
       "skills": ["kora-telemetry-logging"],
       "query": "Emit one JSON object per log line from my Kora 2.0 service for our log aggregator.",
       "expected_behavior": [
-        "States that io.koraframework:logging-logback ships exactly one encoder, ConsoleTextRecordEncoder, and that it emits text — Kora 2.0 has no built-in JSON encoder",
-        "Offers a custom Encoder<ILoggingEvent> as the supported route, reading KoraLoggingEvent.koraMdc() and KoraLoggingEvent.span() for MDC and traceId/spanId, and using the Jackson 3 generator",
-        "Notes ConsoleTextRecordEncoder is final and cannot be subclassed",
-        "Keeps the encoder inside a ConsoleAppender wrapped by KoraAsyncAppender, since that is what produces KoraLoggingEvent",
-        "If a third-party JSON encoder is mentioned, states that none appears in the Kora 2.0 source or the migrated examples, that Kora pins Logback 1.6.2 so compatibility must be checked, and that a Kora-unaware encoder will not emit koraMdc() or the span context",
-        "Does not claim Kora ships a JSON encoder class, and does not present logstash-logback-encoder as a verified Kora 2.0 combination"
+        "Adds implementation \"io.koraframework:logging-logback-json\" (BOM-managed, no version), which depends on logging-logback, and keeps LogbackModule on the @KoraApp",
+        "Explains the zero-config path: with no logback.xml, KoraLogbackConfigurator selects the json LogbackEncoderFactory (priority 100 beats text 0) and installs ConsoleAppender wrapped by KoraAsyncAppender",
+        "Or, when the project keeps a logback.xml, declares <encoder class=\"io.koraframework.logging.logback.json.JsonRecordEncoder\"/> inside a ConsoleAppender wrapped by KoraAsyncAppender, and states that a configuration file always wins over encoder selection",
+        "Describes the record fields: @timestamp (UTC ISO-8601), level, thread, logger, message, traceId/spanId, mdc, data, args, exception",
+        "Does not tell the user to write their own Encoder<ILoggingEvent> or to add logstash-logback-encoder"
       ],
-      "tags": ["json", "advanced"]
+      "tags": ["json", "advanced"],
+      "anti_behavior": [
+        "Claims Kora 2.0 has no JSON encoder",
+        "Offers a hand-written JSON encoder as the supported route"
+      ]
     },
     {
       "id": "kora-telemetry-logging-mask",
@@ -154,7 +158,7 @@
       "query": "I log a Payment record and the card number ends up in the log. Hide it, keeping the last four digits.",
       "expected_behavior": [
         "Uses io.koraframework.logging.common.annotation.Mask on the record component, with MaskingKeepLast as the strategy: @Mask(MaskingKeepLast.class)",
-        "Puts @Mask on the type itself as well, and explains that LoggingAnnotationProcessor only reacts to @Mask on a class or record and generates <Type>MaskingRulesModule supplying MaskingRules<Type>",
+        "Puts @Mask on the type itself as well, and explains that the rules generator reacts only to @Mask on a class or record and produces $<Type>_MaskingRulesModule supplying MaskingRules<Type> — generated by KSP in Kotlin, while in Java the MaskingRules<Type> component is declared by hand",
         "Names the built-in strategies MaskingFull (default, \"***\"), MaskingKeepFirst and MaskingKeepLast, all @DefaultComponents of LoggingModule",
         "Mentions that rules match a bare field name anywhere, a dotted path from the logged root, or a path with a * wildcard segment",
         "Does not invent a masking config key or a @Mask attribute that does not exist (the annotation has only value())"
@@ -169,11 +173,70 @@
         "Identifies two separate defects: the directory still carries the old group name, and reflection-config.json is not a file name native-image reads",
         "States the canonical file names — reflect-config.json, resource-config.json, proxy-config.json, serialization-config.json, jni-config.json, native-image.properties, reachability-metadata.json — and that anything else is ignored with no error and no warning",
         "Renames the directory to the new group, e.g. META-INF/native-image/io.koraframework.example/logback/",
-        "Renames the Kora class entries inside reflect-config.json from ru.tinkoff.kora.logging.logback.* to io.koraframework.logging.logback.* (ConsoleTextRecordEncoder, KoraAsyncAppender) while leaving third-party entries such as ch.qos.logback.core.status.NopStatusListener untouched",
+        "Renames the Kora class entries inside reflect-config.json: ru.tinkoff.kora.logging.logback.ConsoleTextRecordEncoder becomes io.koraframework.logging.logback.text.ConsoleTextRecordEncoder and KoraAsyncAppender becomes io.koraframework.logging.logback.KoraAsyncAppender, while third-party entries such as ch.qos.logback.core.status.NopStatusListener stay untouched",
         "Notes these resource directories are not touched by OpenRewrite or the rename scripts, so the change is manual",
         "Does not advise deleting the metadata because the service also runs on the JVM — the JVM never reads it"
       ],
       "tags": ["native-image", "regression", "advanced"]
+    },
+    {
+      "id": "kora-telemetry-logging-encoder-selection",
+      "skills": ["kora-telemetry-logging"],
+      "query": "My Kora 2.0 service has logging-logback-json and no logback.xml. In production I get JSON, in Gradle tests I get coloured text, and I want plain text on my laptop. How is the format chosen and how do I switch it? I tried logging.encoder = text in application.conf.",
+      "expected_behavior": [
+        "Explains that KoraLogbackConfigurator (a Logback Configurator registered via ServiceLoader in logging-logback) picks one LogbackEncoderFactory when no Logback configuration file exists",
+        "Lists the factories by name and priority: text (0), json (100, from logging-logback-json), pretty (1000 inside a Gradle test worker detected by the org.gradle.test.worker system property, Integer.MIN_VALUE otherwise)",
+        "States the switch is kora.logging.encoder read as a JVM system property first, then as the KORA_LOGGING_ENCODER environment variable — not an application.conf key, because Logback configures itself before the Kora config exists",
+        "Shows -Dkora.logging.encoder=text or KORA_LOGGING_ENCODER=text, and mentions none hands control back to Logback defaults",
+        "Notes that a logback.xml or logback-test.xml, when present, always wins and disables this selection"
+      ],
+      "anti_behavior": [
+        "Invents an application.conf key such as logging.encoder or logging.format",
+        "Tells the user to write a logback.xml to get JSON"
+      ],
+      "tags": ["json", "logback", "config", "advanced"]
+    },
+    {
+      "id": "kora-telemetry-logging-json-mask-field",
+      "skills": ["kora-telemetry-logging"],
+      "query": "Our JSON logs sometimes contain a password field inside structured arguments. Can the Kora JSON encoder hide it, and will that also hide passwords in logged HTTP request bodies?",
+      "expected_behavior": [
+        "Configures <maskField>password</maskField> inside <encoder class=\"io.koraframework.logging.logback.json.JsonRecordEncoder\">, which builds a FieldLoggingEventJsonMasker",
+        "Explains the match is by JSON field name, case-insensitive, at any depth of the record (mdc, args, data), and that an object or array value is replaced as a whole with \"***\"",
+        "States that it does not look inside string values, so an HTTP body logged as a string is not covered; body masking belongs to a DataMasker registered for the transport (links kora-aop-logging/references/logging-masking.md)",
+        "Mentions a custom LoggingEventJsonMasker via <masker class=...>, and that <maskField> is ignored when both are configured"
+      ],
+      "anti_behavior": [
+        "Claims the text encoder supports maskField",
+        "Claims maskField masks the log message text"
+      ],
+      "tags": ["json", "masking", "advanced"]
+    },
+    {
+      "id": "kora-telemetry-logging-mdc-converter-unbound",
+      "skills": ["kora-telemetry-logging"],
+      "query": "I use a pattern layout with %koraMdc (KoraMdcConverter) on a plain synchronous ConsoleAppender. What happens to lines logged during startup, outside any HTTP request?",
+      "expected_behavior": [
+        "States that KoraMdcConverter renders nothing when no Kora MDC scope is bound (MDC.VALUE not bound) and the rest of the line is written normally",
+        "Explains that inside a request/message/job scope it renders the bound MDC as key: <json> pairs, and on a KoraLoggingEvent it uses the snapshot KoraAsyncAppender captured",
+        "Notes the converter must be declared with a Logback conversion rule — logging-logback does not register it automatically"
+      ],
+      "anti_behavior": [
+        "Claims the converter throws NoSuchElementException and drops the line outside a scope"
+      ],
+      "tags": ["mdc", "logback", "regression"]
+    },
+    {
+      "id": "kora-telemetry-logging-marker-converter-empty",
+      "skills": ["kora-telemetry-logging"],
+      "query": "I registered KoraLoggingMarkerConverter as %koraMarker in my Kora 2.0 logback pattern. What does it print for log lines without a StructuredArgument marker, and does it ship in the native-image metadata?",
+      "expected_behavior": [
+        "Says it renders the first StructuredArgument marker as fieldName=<json> and an empty string when the event has no markers or no structured one (2.0.0.RC2, #934; RC1 threw a NullPointerException)",
+        "Notes the converter is not auto-registered: a Logback conversionRule must declare it before the pattern uses it",
+        "Says logging-logback's own reflect-config.json registers KoraLoggingMarkerConverter, KoraMdcConverter and both text encoder factories (ConsoleTextEncoderFactory, ColorConsoleTextEncoderFactory)",
+        "Does not suggest guarding the pattern with %replace or a custom converter to avoid the NPE"
+      ],
+      "tags": ["pattern", "native"]
     }
   ]
 }

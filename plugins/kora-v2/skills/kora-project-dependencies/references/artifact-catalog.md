@@ -3,8 +3,8 @@
 Every artifact Kora 2.0 publishes, by group. This list is exhaustive: if a name is not here, it is
 not published. Do not guess a coordinate — look it up.
 
-It is the set the released `io.koraframework:kora-bom:2.0.0.RC1` constrains — **95 modules**,
-matching the framework's own `settings.gradle` exactly.
+It is the set `io.koraframework:kora-bom:2.0.0.RC2` constrains — **100 modules** (every leaf project
+of the framework's own `settings.gradle` outside `internal/`, plus `kora-bom` itself).
 
 ## Contents
 
@@ -41,8 +41,7 @@ matching the framework's own `settings.gradle` exactly.
 `s3-client-aws` is the trap: it lives outside `experimental/`, so its group is **`io.koraframework`**,
 while `s3-client-kora` right next to it in the docs is **`io.koraframework.experimental`**.
 
-BOM: **`io.koraframework:kora-bom`**. The released version is **`2.0.0.RC1`** (Maven Central,
-2026-08-13) — the only `2.0.x` there. `2.0.0-SNAPSHOT` is the `master` development line and needs the
+BOM: **`io.koraframework:kora-bom`**. The current release is **`2.0.0.RC2`** (Maven Central). `2.0.0-SNAPSHOT` is the `master` development line and needs the
 Sonatype snapshot repository; do not pin it in a new project.
 
 ---
@@ -53,7 +52,7 @@ Sonatype snapshot repository; do not pin it in a new project.
 `repo1.maven.org/maven2/io/koraframework/` is cumulative, so 1.x and alpha leftovers still have
 directories there: `kora-parent`, `cache-redis`, `declarative-logging-annotation-processor`,
 `declarative-logging-symbol-processor`, `scheduling-ksp`, `experimental/s3-client`. **None of them is
-in the 2.0.0.RC1 BOM.**
+in the 2.0.0.RC2 BOM.**
 
 ### Worse: some of them still resolve
 
@@ -68,10 +67,10 @@ module set predates the 2.0 renames.
 koraBom platform("io.koraframework:kora-parent:2.0.0.alpha6")
 
 // Correct
-koraBom platform("io.koraframework:kora-bom:2.0.0.RC1")
+koraBom platform("io.koraframework:kora-bom:2.0.0.RC2")
 ```
 
-`kora-parent` has **no** `2.0.0.RC1` version (that request is a 404), so the failure mode depends
+`kora-parent` has **no** `2.0.0.RC*` version (that request is a 404), so the failure mode depends
 entirely on which version string survived the rename. Treat "it resolved" as no evidence at all —
 check the artifact id, not just the build result.
 
@@ -79,7 +78,7 @@ Two reliable checks:
 
 ```bash
 # What the release actually constrains — the authority behind this file
-curl -s https://repo1.maven.org/maven2/io/koraframework/kora-bom/2.0.0.RC1/kora-bom-2.0.0.RC1.pom
+curl -s https://repo1.maven.org/maven2/io/koraframework/kora-bom/2.0.0.RC2/kora-bom-2.0.0.RC2.pom
 
 # Whether one artifact has a 2.0.x version at all
 curl -s https://repo1.maven.org/maven2/io/koraframework/<artifact>/maven-metadata.xml
@@ -95,7 +94,7 @@ curl -s https://repo1.maven.org/maven2/io/koraframework/<artifact>/maven-metadat
 | `common` | `@KoraApp`, `@Component`, `@Module`, `@Tag`, `@Root`, `@Conditional`, `@FactoryModule`, `@Mapping` (`io.koraframework.common.annotation`) |
 | `application-graph` | `KoraApplication`, `Graph`, `All`, `ValueOf`, `Lifecycle`, `GraphCondition`, `TypeRef` |
 | **`annotation-processors`** | **Java: the one aggregate processor.** Pulls in every `*-annotation-processor` plus `mapstruct-java-extension` |
-| **`symbol-processors`** | **Kotlin: the one aggregate KSP processor.** Pulls in every `*-symbol-processor` plus `mapstruct-ksp-extension` and `konvert-ksp-extension` |
+| **`symbol-processors`** | **Kotlin: the one aggregate KSP processor.** Pulls in every `*-symbol-processor` plus `konvert-ksp-extension` |
 | `annotation-processor-common`, `symbol-processor-common` | Building blocks for writing your own processor |
 | `kora-app-annotation-processor`, `kora-app-symbol-processor` | `@KoraApp` graph generation only |
 | `aop-annotation-processor`, `aop-symbol-processor` | AOP proxy generation only |
@@ -155,11 +154,6 @@ There is no `UndertowHttpServerModule` in 2.0 and no separate auth artifact: ser
 `http-client-async` was removed with no replacement — use `http-client-jdk`, `http-client-ok`, or
 `http-client-apache`.
 
-Transport-integration fixes for `http-client-apache` and `http-client-jdk` landed on `master`
-**after** `2.0.0.RC1`, so they are not in the released artifacts. Both transports are what the
-migrated reference examples use; if you hit transport-level misbehaviour on RC1, that is where it
-was addressed.
-
 ---
 
 ## Database
@@ -171,6 +165,7 @@ was addressed.
 | `database-cassandra` | `CassandraDatabaseModule` | `org.apache.cassandra:java-driver-core` | Driver ships with the module; note the group moved off `com.datastax.oss` |
 | `database-flyway` | `FlywayJdbcDatabaseModule` | `org.flywaydb:flyway-core` only | **The app must add its own dialect artifact** (see below) |
 | `database-liquibase` | `LiquibaseJdbcDatabaseModule` | `org.liquibase:liquibase-core` | |
+| **`database-jdbc-postgres`** | **`PostgresJdbcDatabaseModule`** (extends `JdbcDatabaseModule`) | `database-jdbc`, `json-common`, `org.postgresql:postgresql` | PostgreSQL mappers: `@Pg` arrays / `List<T>` / intervals / `PgRange<T>`, `@PgJson` / `@PgJsonb`. Use it *instead of* `database-jdbc` for PostgreSQL — see [postgres mappers](../../kora-database-jdbc/references/postgres-mappers-reference.md) |
 
 Flyway default `locations` is `db/migration`, so scripts go in `src/main/resources/db/migration/`.
 
@@ -194,13 +189,13 @@ There are no `kafka-producer` / `kafka-consumer` artifacts.
 
 | Artifact | Module interface | Notes |
 |---|---|---|
-| `grpc-server` | `GrpcServerModule` | Brings `grpc-stub` + `grpc-okhttp` at gRPC `1.83.1` |
+| `grpc-server` | `GrpcServerModule` | Brings `grpc-stub` + `grpc-okhttp` at gRPC `1.84.0` |
 | `grpc-client` | `GrpcClientModule` | Same transport family |
 | `soap-client` | `SoapClientModule` | Needs an HTTP client transport module alongside it |
 
 gRPC test transports (`grpc-inprocess`, `grpc-netty`, `grpc-testing`) are the app's own dependencies
 and **must be pinned to the same gRPC version the module brings**. So is `protoc` — pin `3.25.3` to
-match the `protobuf-java:3.25.9` that arrives transitively through `grpc-protobuf`, not the `4.35.1`
+match the `protobuf-java:3.25.9` that arrives transitively through `grpc-protobuf`, not the `4.36.2`
 in Kora's version catalog, which is `compileOnly` inside Kora's own build and never reaches you. See
 [compatibility-matrix.md](compatibility-matrix.md#externally-versioned-dependencies).
 
@@ -217,6 +212,7 @@ in Kora's version catalog, which is `compileOnly` inside Kora's own build and ne
 | `opentelemetry-tracing-exporter-http` | `OpentelemetryHttpExporterModule` | OTLP/HTTP exporter |
 | `logging-common` | — | `@Log`, `@Mdc` and their processors' runtime |
 | `logging-logback` | `LogbackModule` | SLF4J via Logback |
+| **`logging-logback-json`** | — (`LogbackEncoderFactory` SPI) | JSON console encoder. On the classpath it wins the automatic encoder choice; `kora.logging.encoder` (env `KORA_LOGGING_ENCODER`) selects another, a Logback config file bypasses the selection — see [`kora-telemetry-logging`](../../kora-telemetry-logging/SKILL.md) |
 
 **Adding `micrometer-module` is not enough to get metrics.** In 2.0
 `TelemetryConfig.MetricsConfig.enabled()` and `LoggingConfig.enabled()` both default to `false`
@@ -248,9 +244,12 @@ jdbc       { telemetry.metrics.enabled = true }
 | Artifact | Module interface | Annotations |
 |---|---|---|
 | `resilient-kora` | `ResilientModule` | `@CircuitBreakable`, `@Retryable`, `@Timeout`, `@RateLimited`, `@Fallback` — all take a **specification interface**, not a string name |
+| **`resilient-kora-distributed`** | — | Distributed rate limiter / retry budget shared across instances: `@RateLimiterDistributedSpec`, `DistributedRetryBudgetFactory`. Backend-neutral — add a backend module — see [`kora-aop-resilient`](../../kora-aop-resilient/SKILL.md) |
+| **`resilient-kora-distributed-redis-lettuce`** | `LettuceDistributedResilientModule` | Redis backend for the above over Lettuce; pulls `resilient-kora-distributed` + `redis-lettuce` |
 | `scheduling-common` | — | Shared scheduling runtime |
-| `scheduling-jdk` | `SchedulingJdkModule` | `@ScheduleAtFixedRate`, `@ScheduleWithFixedDelay`, `@ScheduleOnce` |
-| `scheduling-quartz` | `QuartzModule` | `@ScheduleWithCron`, `@ScheduleWithTrigger`; brings Quartz |
+| `scheduling-jdk` | `SchedulingJdkModule` | `@ScheduleJdkAtFixedRate`, `@ScheduleJdkWithFixedDelay`, `@ScheduleJdkOnce`, `@ScheduleJdkWithCron` |
+| `scheduling-quartz` | `QuartzModule` | `@ScheduleQuartzWithCron`, `@ScheduleQuartzWithTrigger` (`io.koraframework.scheduling.quartz.annotation`); brings Quartz |
+| **`scheduling-db-scheduler`** | `DbSchedulerModule` | Clustered, DB-persisted jobs on `com.github.kagkarlsson:db-scheduler`: `@ScheduleDbOnce`, `@ScheduleDbWithCron`, `@ScheduleDbWithFixedDelay` (`io.koraframework.scheduling.db.scheduler.annotation`). Needs a `DataSource` in the graph — see [`kora-aop-scheduling-db`](../../kora-aop-scheduling-db/SKILL.md) |
 | `validation-common`, `validation-module` | `ValidationModule` | `@Valid`, `@Validate` and Kora's own constraints |
 
 Resilience in 2.0 carries **no Resilience4j dependency** — the implementations are Kora's own.
@@ -260,19 +259,20 @@ Resilience in 2.0 carries **no Resilience4j dependency** — the implementations
 ## Mapping extensions
 
 These are compile-time extensions, not runtime modules. They are already inside the aggregate
-processors, so a normal service never lists them:
+processors, so a normal service never lists them. **Java maps with MapStruct, Kotlin with Konvert** —
+never the other way round, and never `kapt`:
 
-| Artifact | Inside | You still add |
-|---|---|---|
-| **`mapstruct-java-extension`** | `annotation-processors` | `org.mapstruct:mapstruct` + `annotationProcessor "org.mapstruct:mapstruct-processor"` |
-| **`mapstruct-ksp-extension`** | `symbol-processors` | `org.mapstruct:mapstruct` + the MapStruct processor |
-| **`konvert-ksp-extension`** | `symbol-processors` | `io.mcarle:konvert-api` + `ksp("io.mcarle:konvert")` |
+| Language | Artifact | Inside | You still add |
+|---|---|---|---|
+| Java | **`mapstruct-java-extension`** | `annotation-processors` | `implementation "org.mapstruct:mapstruct"` + `annotationProcessor "org.mapstruct:mapstruct-processor"` |
+| Kotlin | **`konvert-ksp-extension`** | `symbol-processors` | `implementation("io.mcarle:konvert-api")` + `ksp("io.mcarle:konvert")` |
 
+`symbol-processors` also contains `mapstruct-ksp-extension`; it is not a supported mapping path.
 `mapstruct-extension` (the 1.x name) does not exist.
 
 The third-party libraries are yours to version — `kora-bom` does not constrain them. Kora's catalog
 names MapStruct `1.6.3` (what its extension is tested against) while the reference Java examples pin
-`1.5.5.Final`; Konvert is `4.5.1` in both.
+`1.5.5.Final`; Konvert is `4.5.1` in both. See [`kora-mapstruct`](../../kora-mapstruct/SKILL.md).
 
 ---
 
@@ -342,7 +342,7 @@ The `internal/` tree is build-only and never reaches Maven Central: `test-loggin
 | `kora-parent` (BOM) | **`kora-bom`** |
 | `json-module` | **`json-common`** |
 | `cache-redis` | **`cache-redis-lettuce`** (`cache-redis-common` is the transport-neutral half) |
-| `mapstruct-extension` | **`mapstruct-java-extension`** / **`mapstruct-ksp-extension`** |
+| `mapstruct-extension` | nothing to declare — **`mapstruct-java-extension`** is inside `annotation-processors`; Kotlin moves to Konvert |
 | `http-client-async` | **removed** — no replacement; use `http-client-jdk` / `-ok` / `-apache` |
 | `database-r2dbc`, `database-vertx` | **removed** — no replacement, contracts are synchronous |
 | `s3-client-minio` | **removed** — use `s3-client-aws` or `s3-client-kora` |
@@ -351,12 +351,13 @@ The `internal/` tree is build-only and never reaches Maven Central: `test-loggin
 `kora-parent`, `cache-redis`, `declarative-logging-annotation-processor`,
 `declarative-logging-symbol-processor`, `scheduling-ksp` and `experimental/s3-client` still have
 directories on Maven Central, and `kora-parent` / `cache-redis` still **resolve** at
-`2.0.0.alpha5`/`2.0.0.alpha6`. They are pre-release leftovers, absent from the 2.0.0.RC1 BOM — see
+`2.0.0.alpha5`/`2.0.0.alpha6`. They are pre-release leftovers, absent from the 2.0.0.RC2 BOM — see
 [Checking a coordinate](#checking-a-coordinate).
 
 Easy to miss coming from 1.x — these have no 1.x counterpart under the same name:
 `http-client-apache`, `cache-redis-common`, `cache-redis-lettuce`, `redis-lettuce`,
-`konvert-ksp-extension`, `jms`.
+`konvert-ksp-extension`, `jms`, and the 2.0 additions `database-jdbc-postgres`, `scheduling-db-scheduler`,
+`resilient-kora-distributed`, `resilient-kora-distributed-redis-lettuce`, `logging-logback-json`.
 
 ---
 

@@ -3,7 +3,7 @@
 **Purpose:** End-to-end testing of a packaged Kora 2.0 application through its HTTP API.
 
 Everything here is written against Kora **2.0** (`io.koraframework`, BOM `io.koraframework:kora-bom`
-at `2.0.0.RC1`), JDK 25, JUnit 6.1.3 and Testcontainers 1.21.4. See
+at `2.0.0.RC2`), JDK 25, JUnit 6.1.3 and Testcontainers 1.21.4. See
 [SKILL.md](../SKILL.md) for the port model and the dependency block.
 
 ## Contents

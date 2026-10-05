@@ -109,6 +109,7 @@ that adds a header or a body becomes a compile error rather than a silent reshuf
 | `404` | resource absent | `*404ApiResponse()` |
 | `409` | conflict | `*409ApiResponse(...)` or the `default` record |
 | `default` | anything the contract does not enumerate | `*DefaultApiResponse(statusCode, content)` |
+| `4XX` / `5XX` | a whole status class | `*4XXApiResponse(statusCode, content)` |
 
 **A record exists only for a status the contract declares.** Needing `*500ApiResponse` means
 adding `"500"` to that operation's `responses` and regenerating — not casting or throwing.
@@ -215,7 +216,7 @@ In Kotlin, note the framework contracts are `@NullMarked`: the override is
 |---|---|
 | Constraint violation | `@Validate` throws `ViolationException`; `ValidationHttpServerInterceptor` maps it (default `400`) |
 | Unparseable path/query/header value | the generated handler answers `400` before the delegate runs |
-| Authentication failure | the generated `ApiSecurity` interceptor throws `HttpServerResponseException.of(401, "Unauthorized")` |
+| Authentication failure | the generated `ApiSecurity` interceptor throws `HttpServerResponseException.of(401, "Unauthorized")`; a principal missing a required OAuth2 scope gets `403, "Forbidden"` |
 | Anything else the contract cannot express | `throw HttpServerResponseException.of(code, message)` |
 
 `HttpServerResponseException` is
@@ -224,11 +225,20 @@ In Kotlin, note the framework contracts are `@NullMarked`: the override is
 
 ---
 
-## 10. Status-code ranges are not in `2.0.0.RC1`
+## 10. Status-code ranges (`4XX`, `5XX`)
 
-`4XX` / `5XX` range responses for Java and Kotlin, client and server, landed **after** RC1. On
-RC1 declare explicit statuses or one `default` response; a range key in the contract is not
-supported.
+A range record carries the real status as its first component, like `default`, and the mapper
+sends exactly that status:
+
+```java
+return new ${Api}ApiResponses.Create${Entity}ApiResponse.Create${Entity}4XXApiResponse(409, new ErrorResponse("duplicate name"));
+```
+
+```kotlin
+return ${Api}ApiResponses.Create${Entity}ApiResponse.Create${Entity}4XXApiResponse(409, ErrorResponse(message = "duplicate name"))
+```
+
+Nothing checks the code against the range — pass a 4xx to the `4XX` record.
 
 ---
 

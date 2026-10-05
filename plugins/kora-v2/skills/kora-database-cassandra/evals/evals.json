@@ -6,7 +6,7 @@
       "query": "Set up a Kora 2.0 Java Cassandra repository for a User entity (String id, name, email, createdAt) with findById, findAll, insert and deleteById.",
       "expected_behavior": [
         "Adds implementation \"io.koraframework:database-cassandra\" versioned through the io.koraframework:kora-bom platform, plus annotationProcessor \"io.koraframework:annotation-processors\"",
-        "Uses koraVersion 2.0.0.RC1 from plain mavenCentral(), not 2.0.0-SNAPSHOT and not the kora-parent BOM",
+        "Uses koraVersion 2.0.0.RC2 from plain mavenCentral(), not 2.0.0-SNAPSHOT and not the kora-parent BOM",
         "Adds CassandraDatabaseModule (io.koraframework.database.cassandra) to the @KoraApp interface",
         "Declares an interface annotated @Repository (io.koraframework.database.common.annotation.Repository) that extends CassandraRepository",
         "Annotates the DAO record with @EntityCassandra imported from io.koraframework.database.cassandra.annotation, not from io.koraframework.database.cassandra",
@@ -192,6 +192,7 @@
       "query": "Write a Kotlin Cassandra repository for Kora 2.0 with an entity, a custom enum column mapper for both directions, and CRUD methods.",
       "expected_behavior": [
         "Applies the com.google.devtools.ksp plugin and uses ksp(\"io.koraframework:symbol-processors\") — never annotationProcessor or kapt for the Kora processor",
+        "Pins Kotlin 2.4.20 with the KSP plugin 2.3.12 — the versions Kora 2.0.0.RC2 is built with",
         "Declares @Repository interface extending CassandraRepository with plain fun methods returning T?, List<T> and Unit",
         "Uses @field:Column / @field:Id on data class properties and plain Kotlin nullable types instead of any JSpecify annotation",
         "Implements CassandraRowColumnMapper for reads and CassandraParameterColumnMapper for writes, declaring the write mapper's value parameter as T?",

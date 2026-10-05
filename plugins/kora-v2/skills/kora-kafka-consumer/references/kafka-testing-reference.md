@@ -320,9 +320,9 @@ no records sent at all.
 - [Transactions](kafka-transactions-reference.md)
 - [kora-testing-junit-java](../../kora-testing-junit-java/SKILL.md) · [kora-testing-junit-kotlin](../../kora-testing-junit-kotlin/SKILL.md)
 
-**Source:** framework tag `2.0.0.RC1` —
-[test-junit5](https://github.com/kora-projects/kora/tree/2.0.0.RC1/test/test-junit5) ·
-[internal test-kafka](https://github.com/kora-projects/kora/tree/2.0.0.RC1/internal/test-kafka);
+**Source:** framework tag `2.0.0.RC2` —
+[test-junit5](https://github.com/kora-projects/kora/tree/2.0.0.RC2/test/test-junit5) ·
+[internal test-kafka](https://github.com/kora-projects/kora/tree/2.0.0.RC2/internal/test-kafka);
 migrated examples on `migration/2.0` —
 [kora-java-kafka tests](https://github.com/kora-projects/kora-examples/tree/migration/2.0/examples/java/kora-java-kafka/src/test) ·
 [kora-kotlin-kafka tests](https://github.com/kora-projects/kora-examples/tree/migration/2.0/examples/kotlin/kora-kotlin-kafka/src/test)

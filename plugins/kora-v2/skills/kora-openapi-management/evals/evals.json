@@ -5,7 +5,7 @@
       "skills": ["kora-openapi-management"],
       "query": "I have a Kora 2.0 HTTP server in Java. Expose my OpenAPI spec at /api/openapi and an interactive Swagger UI at /api/docs.",
       "expected_behavior": [
-        "Adds implementation \"io.koraframework:openapi-management\" and keeps io.koraframework:http-server-undertow, with versions coming from the io.koraframework:kora-bom platform (koraVersion=2.0.0.RC1) rather than pinned per artifact",
+        "Adds implementation \"io.koraframework:openapi-management\" and keeps io.koraframework:http-server-undertow, with versions coming from the io.koraframework:kora-bom platform (koraVersion=2.0.0.RC2) rather than pinned per artifact",
         "Adds OpenApiManagementModule (io.koraframework.openapi.management.OpenApiManagementModule) to the @KoraApp extends list alongside UndertowPublicHttpServerModule",
         "Places the spec under src/main/resources/openapi/ and lists it in openapi.management.files (plural)",
         "Sets openapi.management.enabled = true, path = \"/api/openapi\", swaggerui.enabled = true and swaggerui.path = \"/api/docs\"",

@@ -8,14 +8,13 @@ runtime bugs that only show up against real data.
 
 Checks specific to Kora 2.0:
   * only java-client / java-server / kotlin-client / kotlin-server generator modes exist
-  * status-code range responses (4XX, 5XX) are not supported in 2.0.0.RC1
+  * status-code range responses (4XX, 5XX) take the real status as the record's first component
   * security scheme names become ApiSecurity.<Tag> markers — the tag is reported so extractors
     can be annotated correctly (ordinal SecurityRequirementTagN is Kora 1.x and never matches)
   * enum wire values that differ from the generated constant names must be parsed with
     fromValue(), never Enum.valueOf()
   * server security schemes are limited to apiKey (header/query/cookie), http basic/bearer,
     oauth2 and openIdConnect
-  * `format: float` is mis-mapped in kotlin mode on 2.0.0.RC1
 
 Usage:
     python3 validate_openapi.py --spec openapi.yaml
@@ -212,10 +211,9 @@ class OpenAPIChecker:
                 self.errors.append("No responses defined for %s — nothing to return" % where)
             for code in responses:
                 if RANGE_CODE.match(str(code)):
-                    self.errors.append(
-                        "%s declares the status-code range '%s'. Range responses are NOT supported "
-                        "in Kora 2.0.0.RC1 (they landed after the release). Declare explicit status "
-                        "codes, or a single 'default' response." % (where, code)
+                    self.notes.append(
+                        "%s declares the status-code range '%s': its record takes the real status as "
+                        "the first component (like 'default'); pass a code inside the range." % (where, code)
                     )
 
             if len(responses) == 1:
@@ -350,18 +348,6 @@ class OpenAPIChecker:
                     )
                 )
 
-    def check_kotlin_float(self):
-        if self.mode is None or not self.mode.startswith("kotlin"):
-            return
-        for where, schema in self.walk_schemas():
-            if schema.get("type") == "number" and schema.get("format") == "float":
-                self.warnings.append(
-                    "%s uses format: float. In 2.0.0.RC1 the Kotlin generator swaps Float and "
-                    "Boolean in its type mapping (fixed after RC1). Use format: double or plain "
-                    "number." % where
-                )
-                return
-
     def check_discriminators(self):
         schemas = ((self.spec.get("components") or {}).get("schemas")) or {}
         for name, schema in schemas.items():
@@ -411,7 +397,6 @@ class OpenAPIChecker:
             self.check_operations,
             self.check_security,
             self.check_enums,
-            self.check_kotlin_float,
             self.check_discriminators,
         ):
             try:

@@ -4,7 +4,8 @@
 
 tracing {
 
-  # enabled = false        # default is TRUE -- unlike logging and metrics. Only ever set false.
+  # enabled = false        # default is TRUE -- unlike <component>.telemetry.{logging,metrics}.enabled.
+                           # Only ever set false: TracerProvider.noop(), exporter and processor become no-ops.
 
   exporter {
     # No default, and nullable. Leave it unset and spans are still created and sampled but
@@ -32,8 +33,10 @@ tracing {
     }
   }
 
-  # OTLP resource attributes. The resource is built from THIS MAP ONLY -- nothing supplies
-  # service.name for you, and without it every trace UI shows the service as unknown.
+  # OTLP resource attributes. The resource is built from every
+  # OpentelemetryTracingAttributesProvider component and then THIS MAP, which wins on a key
+  # conflict. Kora supplies nothing itself -- without service.name every trace UI shows the
+  # service as unknown.
   attributes {
     "service.name" = ${SERVICE_NAME}
     "service.namespace" = "kora"

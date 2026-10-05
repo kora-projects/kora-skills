@@ -40,10 +40,11 @@ grpcClient {
     telemetry {
       // Both default to FALSE in Kora 2.0 — nothing is logged or measured unless set here.
       logging.enabled = true
+      // logging.maskHeaders = ["authorization", "cookie", "set-cookie"]   // the default; a list replaces it
 
       // Metrics additionally need a MeterRegistry in the graph
       // (implementation "io.koraframework:micrometer-module"); without one the flag is accepted
-      // and no rpc.client.duration timer appears.
+      // and no rpc.client.call.duration timer appears.
       // metrics {
       //   enabled = true
       //   slo = [1, 10, 50, 100, 200, 500, 1000, 2000, 5000, 10000, 20000, 30000, 60000, 90000]  // millis

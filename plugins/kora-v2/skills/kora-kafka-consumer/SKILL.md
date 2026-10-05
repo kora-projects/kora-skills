@@ -8,12 +8,12 @@ metadata:
 
 # Kora Kafka Consumer
 
-> **Kora sub-skill — obey the [kora-v2 meta rules](../../SKILL.md) on every task:** **R0** ground the workspace on Kora 2.0 refs before starting (framework source at tag `2.0.0.RC1` + `kora-examples` at `migration/2.0`; `kora-docs` is 1.x only) · **R1** read this sub-skill before writing code · **R2** Kora 2.0 APIs only — no Spring/Micronaut/Quarkus, no Kora 1.x APIs, no invented annotations or config keys · **R3** journal any incorrect Kora usage. Add comments/Javadoc only if asked.
+> **Kora sub-skill — obey the [kora-v2 meta rules](../../SKILL.md) on every task:** **R0** ground the workspace on Kora 2.0 refs before starting (framework source at tag `2.0.0.RC2` + `kora-examples` at `migration/2.0` + Kora 2.0 docs at koraframework.io/v2, which trail the source; 1.x `kora-docs` pages are never an authority) · **R1** read this sub-skill before writing code · **R2** Kora 2.0 APIs only — no Spring/Micronaut/Quarkus, no Kora 1.x APIs, no invented annotations or config keys · **R3** journal any incorrect Kora usage. Add comments/Javadoc only if asked.
 
 | | |
 |---|---|
-| **Artifact** | `io.koraframework:kafka` (BOM `io.koraframework:kora-bom`, version `2.0.0.RC1`) |
-| **Module** | `KafkaModule` — `io.koraframework.kafka.common` (extends `KafkaDeserializersModule` + `KafkaSerializersModule`) |
+| **Artifact** | `io.koraframework:kafka` (BOM `io.koraframework:kora-bom`, version `2.0.0.RC2`) |
+| **Module** | `KafkaModule` — `io.koraframework.kafka.common` (extends `KafkaListenerModule` + `KafkaPublisherModule`, which bring `KafkaDeserializersModule` / `KafkaSerializersModule`) |
 | **Annotation** | `io.koraframework.kafka.common.annotation.KafkaListener` — `String value()` (config path, required), `Class<?> tag()` |
 | **Config type** | `io.koraframework.kafka.common.consumer.KafkaListenerConfig` |
 | **Exceptions** | `io.koraframework.kafka.common.exceptions.{KafkaSkipRecordException, SkippableRecordException, RecordKeyDeserializationException, RecordValueDeserializationException}` |
@@ -45,7 +45,7 @@ in flight, and a failure inside the future never reaches telemetry or the backof
 `suspend` is the one exception worth knowing, and it is a trap rather than a feature: unlike the
 HTTP-server and repository processors, **KSP does not reject a `suspend` listener** — for the
 key/value and batch shapes it wraps your call in `kotlinx.coroutines.runBlocking(Dispatchers.Unconfined)`
-(`KafkaHandlerGenerator.kt:133,236`, with RC1 tests `testProcessValueSuspend` and
+(`KafkaHandlerGenerator.kt`, with framework tests `testProcessValueSuspend` and
 `testProcessRecordsSuspend`). But `kotlinx-coroutines` appears in **no** Kora 2.0 build file, so your
 project must supply it; the coroutine is run to completion on the poll thread, so it buys no
 concurrency; and the single-`ConsumerRecord` shape has no such handling at all, so a `suspend`
@@ -86,7 +86,7 @@ configurations {
 }
 
 dependencies {
-    koraBom platform("io.koraframework:kora-bom:$koraVersion")   // koraVersion=2.0.0.RC1
+    koraBom platform("io.koraframework:kora-bom:$koraVersion")   // koraVersion=2.0.0.RC2
     annotationProcessor "io.koraframework:annotation-processors"
 
     implementation "io.koraframework:kafka"
@@ -173,12 +173,6 @@ constructor**, never as a listener parameter.
 Batch listeners accept **only** `ConsumerRecords` and `Consumer` — a `Headers` or exception parameter
 there fails with `Kafka records listener method has unsupported parameter`.
 
-> **RC1, Kotlin only:** a listener that takes **both** `Headers` **and** a deserialization-exception
-> parameter generates code that does not compile — KSP emits `val headers = record.headers()` inside
-> the generated `try` block and then reads it outside. Java is unaffected, and Kotlin `Headers`
-> *without* an exception parameter is fine. Fixed after RC1 on `master` (`8e1eec9a4`). Until a
-> release carries it, take `ConsumerRecord` and call `record.headers()` yourself.
-
 ```java
 void process(String value)                                             // value only
 void process(String key, String value)                                 // key, value
@@ -217,17 +211,19 @@ The container is chosen by the presence of `group.id` in `driverProperties`:
 | | Subscribe (`group.id` set) | Assign (no `group.id`) |
 |---|---|---|
 | Delivery | partitions split across group members | every instance reads every partition |
-| `topics` | required unless `topicsPattern` is set | **exactly one topic** at RC1 |
-| `topicsPattern` | supported | not supported |
+| `topics` | required unless `topicsPattern` is set | **required**, one or more topics |
+| `topicsPattern` | supported | **rejected** at startup |
 | Offsets | committed (see above) | never committed; `offset` config seeks instead |
 | Rebalance listener | honoured | not used |
 | Consumer lag gauge | not reported | reported |
 
-At RC1 the generated assign container rejects anything but a single topic:
-`@KafkaListener require to specify 1 topic to subscribe when groupId is null, but received: ...`
-(Kotlin fails a bare `require(topics.size == 1)`). A `topicsPattern` without a `group.id` leaves
-`topics` null and hits the same check. Multi-topic assign landed after RC1 on `master`
-(`a0a2b8c1d`) — do not write it against a released version.
+The assign container reads every partition of **every** listed topic (`topics = ["prices", "rates"]`
+is fine) and fails fast in its constructor, so the graph does not start:
+
+- `topicsPattern` set → `@KafkaListener with assign strategy (when group.id is null) does not support topicsPattern, please specify topics instead`
+- `topics` missing or empty → `@KafkaListener with assign strategy (when group.id is null) requires at least one topic to subscribe, but received: ...`
+
+A pattern subscription needs the group rebalance protocol, so it needs a `group.id`.
 
 [Strategies reference](references/kafka-strategies-reference.md).
 
@@ -300,6 +296,7 @@ Deserialization is lazy: `ConsumerRecord.key()`/`value()` throw
 | `allowEmptyRecords` | `false` | call a batch listener with an empty `ConsumerRecords` |
 | `initializationFailTimeout` | `null` | fail startup if the first poll does not happen in time |
 | `telemetry.logging.enabled` | **`false`** | |
+| `telemetry.logging.maskHeaders` | `["authorization", "cookie", "set-cookie"]` | header names (case-insensitive) masked in TRACE record logs |
 | `telemetry.metrics.enabled` | **`false`** | |
 | `telemetry.metrics.driverMetrics` | `false` | bind the Kafka client's own Micrometer metrics |
 | `telemetry.tracing.enabled` | `true` | |
@@ -307,6 +304,35 @@ Deserialization is lazy: `ConsumerRecord.key()`/`value()` throw
 Logging and metrics are **off by default in 2.0**. An example that claims to demonstrate them must
 turn them on explicitly. [Consumer config reference](references/kafka-consumer-reference.md) ·
 [Telemetry reference](references/kafka-telemetry-reference.md).
+
+### Payload logging and masking
+
+With `telemetry.logging.enabled = true` and the listener's logger at **TRACE**, the
+"KafkaListener starting handling record..." line also carries `headers`, `key` and `value`. At DEBUG
+it carries only topic/partition/offset. Headers named in `maskHeaders` go through the
+`@Tag(KafkaConsumerTelemetry.class) MaskingStrategy` (default: `***`). Key and value are rendered by
+`DefaultKafkaConsumerBodyConverter`: when the deserializer is a `JsonKafkaDeserializer` (an `@Json`
+parameter) it uses the `@Tag(KafkaConsumerTelemetry.class) DataMasker` with format `json`, otherwise
+the raw bytes are written as UTF-8. **No such `DataMasker` is registered by default**, so JSON values
+are logged unmasked until you provide one:
+
+```java
+@Module
+public interface KafkaMaskingModule {
+
+    @Tag(KafkaConsumerTelemetry.class)
+    default DataMasker kafkaJsonDataMasker() {
+        return new JsonDataMasker(MaskingPathRules.builder()
+            .mask("password", new MaskingFull())
+            .mask("card.number", new MaskingKeepLast())
+            .build());
+    }
+}
+```
+
+Shared masking model (`MaskingStrategy`, `DataMasker`, `JsonDataMasker`, `MaskingPathRules`):
+[kora-aop-logging masking](../kora-aop-logging/references/logging-masking.md). Kafka specifics:
+[Telemetry reference](references/kafka-telemetry-reference.md#masking).
 
 ---
 
@@ -322,7 +348,9 @@ turn them on explicitly. [Consumer config reference](references/kafka-consumer-r
 | Records lost on crash | `"enable.auto.commit" = true` commits ahead of processing | remove the key so Kora commits after the handler returns |
 | `offset = "5m"` ignored | `group.id` is set → subscribe mode | `offset` only seeks in assign mode; use `auto.offset.reset` with a group |
 | `Group id is required for subscribe container` | subscribe container built without `group.id` | set `group.id` in `driverProperties` |
-| `require to specify 1 topic ... when groupId is null` | assign mode with 0, 2+ topics or a `topicsPattern` | list exactly one topic, or add `group.id` to use subscribe mode |
+| `assign strategy (when group.id is null) does not support topicsPattern` | `topicsPattern` without `group.id` | list the topics, or add `group.id` to use subscribe mode |
+| `assign strategy (when group.id is null) requires at least one topic` | no `group.id` and no `topics` | list the topics, or add `group.id` |
+| JSON record values in TRACE logs are not masked | no `@Tag(KafkaConsumerTelemetry.class) DataMasker` in the graph | register a `json` `DataMasker` with that tag |
 | Consumer restarts in a loop | handler throws on every record | throw `KafkaSkipRecordException`, or handle and return |
 | Rebalance listener never fires | tag mismatch, or assign mode | tag both sides with the same class; assign mode has no rebalance |
 | No metrics / no logs | `telemetry.metrics.enabled` and `telemetry.logging.enabled` default to `false` | enable them per listener |
@@ -362,13 +390,14 @@ python3 scripts/validate_config.py --config src/main/resources/application.conf
 
 ## Source of truth
 
-Kora 2.0 has no documentation site. Any page served under a `/v2/` path is a copy of the 1.x
-content and describes `ru.tinkoff.kora`. Resolve 2.0 questions from:
+Evidence order: framework source and tests > migrated examples > the Kora 2.0 docs
+([koraframework.io/v2/en/documentation/kafka](https://koraframework.io/v2/en/documentation/kafka/)).
+1.x pages (`ru.tinkoff.kora`) are background only. Resolve 2.0 questions from:
 
-- Framework source, tag `2.0.0.RC1`:
-  [kafka](https://github.com/kora-projects/kora/tree/2.0.0.RC1/kafka/kafka) ·
-  [kafka-annotation-processor](https://github.com/kora-projects/kora/tree/2.0.0.RC1/kafka/kafka-annotation-processor) ·
-  [kafka-symbol-processor](https://github.com/kora-projects/kora/tree/2.0.0.RC1/kafka/kafka-symbol-processor)
+- Framework source, tag `2.0.0.RC2`:
+  [kafka](https://github.com/kora-projects/kora/tree/2.0.0.RC2/kafka/kafka) ·
+  [kafka-annotation-processor](https://github.com/kora-projects/kora/tree/2.0.0.RC2/kafka/kafka-annotation-processor) ·
+  [kafka-symbol-processor](https://github.com/kora-projects/kora/tree/2.0.0.RC2/kafka/kafka-symbol-processor)
 - Migrated examples, branch `migration/2.0`:
   [kora-java-kafka](https://github.com/kora-projects/kora-examples/tree/migration/2.0/examples/java/kora-java-kafka) ·
   [kora-kotlin-kafka](https://github.com/kora-projects/kora-examples/tree/migration/2.0/examples/kotlin/kora-kotlin-kafka)

@@ -79,8 +79,11 @@ record WhoAmIApiResponse(String content) { }
 new DeletePetApiResponse.DeletePetDefaultApiResponse(409, new ErrorResponse("conflict"));
 ```
 
-Status-code **ranges** (`4XX`, `5XX`) are not supported in `2.0.0.RC1` — that landed afterwards.
-Declare explicit codes or a single `default`.
+Status-code **ranges** (`4XX`, `5XX`) work the same way: the record takes the real status first.
+
+```java
+new ListPetsApiResponse.ListPets4XXApiResponse(422, new ErrorResponse("invalid filter"));
+```
 
 ## 4. Response headers
 
@@ -283,8 +286,8 @@ ${Tag}ApiResponses.UploadApiResponse upload(
     ${Tag}ApiController.UploadFormParam form) throws Exception;
 ```
 
-Multipart mapping and parsing received fixes **after** `2.0.0.RC1`; the signature shape above is
-unchanged.
+Array form fields are collected part by part (an absent optional array is `null`); boolean form
+values accept only `true` / `false`, anything else answers `400`.
 
 ## 11. Raw and binary bodies
 
@@ -312,7 +315,7 @@ A bare `type: object` with no schema follows `configOptions.rawBodyMode`
         asUuid:     { type: string, format: uuid }              # java.util.UUID
         asUri:      { type: string, format: uri }               # java.net.URI
         asDate:     { type: string, format: date }              # java.time.LocalDate
-        asDateTime: { type: string, format: date-time }         # java.time.OffsetDateTime
+        asDateTime: { type: string, format: date-time }         # java.time.OffsetDateTime, or the typeMappings target
         asBinary:   { type: string, format: binary }            # byte[] / ByteArray
         asInt:      { type: integer, format: int32 }            # int / Int
         asLong:     { type: integer, format: int64 }            # long / Long
@@ -323,8 +326,13 @@ A bare `type: object` with no schema follows `configOptions.rawBodyMode`
         asMap:                                                  # Map<String, String>
           type: object
           additionalProperties: { type: string }
+        asFreeForm:                                             # Map<String, Object> / Map<String, Any>
+          type: object
+          additionalProperties: true
+        asEnumList:                                             # List<Model.AsEnumListEnum>
+          type: array
+          items: { type: string, enum: [a, b] }
 ```
 
-On `2.0.0.RC1` avoid `format: float` in a contract generated for `kotlin-server`: the Kotlin
-type mapping has `Float` and `Boolean` swapped in that release (fixed afterwards). Use
-`format: double` or plain `number`.
+`date-time` switches to `Instant` / `ZonedDateTime` / `LocalDateTime` through the task's
+`typeMappings = ["DateTime": "java.time.Instant"]`.

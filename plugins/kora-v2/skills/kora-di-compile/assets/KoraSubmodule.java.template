@@ -21,7 +21,7 @@ import io.koraframework.common.annotation.KoraSubmodule;
  *   annotationProcessor "io.koraframework:annotation-processors"
  *
  *   // Kotlin (ksp is not covered by the BOM platform, so it needs an explicit version)
- *   ksp("io.koraframework:symbol-processors:2.0.0.RC1")
+ *   ksp("io.koraframework:symbol-processors:2.0.0.RC2")
  * </pre>
  *
  * <p>Use {@code api} (not {@code implementation}) for the Kora modules this interface extends —

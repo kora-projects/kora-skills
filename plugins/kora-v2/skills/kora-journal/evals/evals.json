@@ -36,7 +36,7 @@
         "Declares the entry out of scope because it is 'just a migration detail'",
         "Records ru.tinkoff.kora as a package that still exists in Kora 2.0",
         "Suggests a separate per-version journal store such as ~/.kora-journal-2.0/",
-        "Sends the reader to kora-docs to confirm the 2.0 package names"
+        "Sends the reader to the 1.x site kora-projects.github.io/kora-docs to confirm the 2.0 package names"
       ],
       "tags": ["journal", "add", "migration", "regression-coordinates"]
     },
@@ -107,7 +107,7 @@
         "Applies parameters = \"id\" verbatim because the journal said so",
         "Treats the journal entry as an API authority outranking the framework source",
         "Proposes splitting the store per Kora version so 1.x entries stop appearing",
-        "Confirms the attribute name from kora-docs, which documents 1.x on every branch"
+        "Confirms the attribute name from a docs page instead of the Kora 2.0 source (the 1.x site documents parameters; the 2.0 docs may trail the source)"
       ],
       "tags": ["journal", "search", "migration", "advanced"]
     },

@@ -266,10 +266,10 @@ edit them — they are regenerated on every compile.
 **Renaming the group is not enough — the BOM artifact changed name too.**
 `io.koraframework:kora-parent` still exists in the Maven Central directory
 listing, but only at `2.0.0.alpha5` / `2.0.0.alpha6`; it is an alpha-era leftover
-and is not part of the `2.0.0.RC1` release. A mechanical group rename therefore
-either fails outright (`io.koraframework:kora-parent:2.0.0.RC1` does not exist)
+and is not part of the 2.0 releases. A mechanical group rename therefore
+either fails outright (`io.koraframework:kora-parent:2.0.0.RC2` does not exist)
 or, worse, resolves against an obsolete alpha if someone reaches for the version
-Central offers. The 2.0 BOM is `io.koraframework:kora-bom:2.0.0.RC1`. The same
+Central offers. The 2.0 BOM is `io.koraframework:kora-bom:2.0.0.RC2`. The same
 applies to `io.koraframework:cache-redis` and the other alpha leftovers in that
 listing: presence in the directory is not membership in the release.
 

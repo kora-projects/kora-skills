@@ -43,7 +43,7 @@ fun main() {
 `ApplicationGraphDraw`. `run` then:
 
 1. builds and initialises the graph, logging
-   `Application initialized in {}ms (JVM running for {}s)`;
+   `Application initialized in {}ms (JVM running for {}s)` — wall-clock milliseconds;
 2. on failure logs `Application initializing failed with error` and calls `System.exit(-1)`;
 3. registers a JVM shutdown hook named `kora-shutdown` which releases the graph
    (`Application shutdown...` → `Application released in {}ms`) and only then unblocks the main
@@ -51,6 +51,11 @@ fun main() {
 4. blocks the calling thread until that hook has finished.
 
 There is nothing to await, close or join around `run` — it returns when the application is done.
+
+`run(supplier, keepAlive)` is the explicit form; the one-argument `run` is `run(supplier, true)`.
+With `keepAlive = false` steps 1–3 are identical but step 4 is skipped: `run` returns right after
+initialisation, and the graph is still released by the `kora-shutdown` hook when the JVM exits.
+Use it only when the calling thread has other work to do after startup.
 
 ---
 
@@ -111,12 +116,19 @@ must inspect the type they are producing.
 
 ## 4. Refresh
 
-`refresh(Node<?> fromNode)` rebuilds that node and everything reachable from it:
+`refresh(Node<?> fromNode)` always re-runs the factory of `fromNode`, then walks the nodes after it
+and rebuilds only those whose inputs actually changed:
 
-- affected nodes are recreated and `Lifecycle.init()` runs on the new instances;
-- old instances are released afterwards;
+- a node is recreated only when one of its direct dependencies or interceptors now holds a
+  **different instance** than before (reference comparison); a node whose dependencies all kept
+  their instances keeps its own instance too, `init()` is not called again and it is not released;
+- recreated nodes run `Lifecycle.init()` on the new instance; the old instances are released
+  afterwards;
 - if a factory returns a value `equals` to the previous one, the new value is released immediately
-  and the old node value is kept — a no-op refresh costs nothing;
+  and the old node value is kept — so the change stops propagating there, and a refresh in which
+  nothing changed leaves every existing instance in place;
+- an `equals` that throws does not fail the refresh: it is logged at `WARN`
+  (`Can't compare refreshed object of <class>, treating it as changed`) and the new value wins;
 - consumers that depend through `ValueOf<T>` are **not** rebuilt; they simply observe the new value;
 - when the refresh fails, the partially created objects are released and the previous graph is left
   intact.
@@ -139,8 +151,10 @@ default ConfigWatcher applicationConfigWatcher(RefreshableGraph graph,
 ```
 
 `ConfigWatcher implements Lifecycle`: `init()` starts a virtual thread named `config-reload` that
-polls the config file's modification time and calls `graph.refresh(applicationConfigNode)` when it
-changes; `release()` interrupts it. It does nothing when there is no application config node, and
+polls, once a second, the modification time and symlink target of the config file and of every file
+it includes, and calls `graph.refresh(applicationConfigNode)` only when one of them changed or an
+included file was added or removed; `release()` interrupts it. The watcher itself survives the
+refreshes it triggers — `Node<T>` and `ValueOf<T>` parameters are not refresh dependencies. It does nothing when there is no application config node, and
 watches nothing when the config has no file origin. It is on by default and can be turned off with
 the `KORA_CONFIG_WATCHER_ENABLED` environment variable or the `kora.config.watcher.enabled` system
 property.
@@ -183,6 +197,7 @@ shape.
 | `Lifecycle init failed with checked exception for node <type> at index <n>` | `init()` threw a checked exception |
 | `Graph interceptor failed with checked exception for node <t> and interceptor <i>` | `afterInit`/`beforeRelease` threw a checked exception |
 | `Graph dependency belongs to another application graph` | a `Node` from a different `ApplicationGraphDraw` was passed in |
+| `Graph node belongs to another application graph: node index <n>, type <t>` | a graph was asked for a node of another draw. On a draw built by `copy()`/`subgraph()` — every `@KoraAppTest` — this is a node **condition**: both methods rebind factory node references but keep the original condition, which reads the original condition node. Fixed in `2.0.0.RC2` (kora-projects/kora PR #963) — only `2.0.0.RC1` is affected |
 
 Turn on `DEBUG`/`TRACE` for the `@KoraApp` root class to get per-node creation logging.
 `kora.graph.slowNodeInitThresholdMillis` (default `100`) controls the threshold above which a node's

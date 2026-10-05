@@ -5,7 +5,7 @@
       "skills": ["kora-telemetry-metrics"],
       "query": "Add Micrometer metrics to my Kora 2.0 Java service and expose them for Prometheus scraping.",
       "expected_behavior": [
-        "Adds io.koraframework:micrometer-module and io.koraframework:http-server-undertow with the io.koraframework:kora-bom BOM at koraVersion=2.0.0.RC1 from mavenCentral(), plus annotationProcessor \"io.koraframework:annotation-processors\"",
+        "Adds io.koraframework:micrometer-module and io.koraframework:http-server-undertow with the io.koraframework:kora-bom BOM at koraVersion=2.0.0.RC2 from mavenCentral(), plus annotationProcessor \"io.koraframework:annotation-processors\"",
         "Extends MetricsModule (io.koraframework.micrometer.module) on the @KoraApp interface alongside UndertowPublicHttpServerModule",
         "Sets httpServer.telemetry.metrics.enabled = true in application.conf and explains that TelemetryConfig.MetricsConfig.enabled() defaults to false in Kora 2.0, so without it no http_server_* metric is ever recorded",
         "Configures the scrape endpoint under httpServer.system (system.port, system.metricsPath), not on the public port",
@@ -19,7 +19,7 @@
       "skills": ["kora-telemetry-metrics"],
       "query": "Set up Prometheus metrics in my Kora 2.0 Kotlin service.",
       "expected_behavior": [
-        "Uses ksp(\"io.koraframework:symbol-processors\") rather than an annotation processor, with the io.koraframework:kora-bom platform at koraVersion=2.0.0.RC1",
+        "Uses ksp(\"io.koraframework:symbol-processors\") rather than an annotation processor, with the io.koraframework:kora-bom platform at koraVersion=2.0.0.RC2",
         "Extends MetricsModule and UndertowPublicHttpServerModule on the @KoraApp interface, entry point KoraApplication.run(ApplicationGraph::graph)",
         "Sets httpServer.telemetry.metrics.enabled = true and explains the false default",
         "Injects MeterRegistry through the constructor of a @Component (io.koraframework.common.annotation.Component)",
@@ -35,7 +35,7 @@
         "Identifies the cause immediately: TelemetryConfig.MetricsConfig.enabled() defaults to false in Kora 2.0, so component metrics are off even though the registry is bound",
         "Fixes it with httpServer { telemetry.metrics.enabled = true } and notes the same flag is needed per component (httpClient.<name>, jdbc, grpcServer, scheduling.telemetry, resilient.telemetry, cache/Kafka config paths)",
         "Explains that this fails silently — no warning is logged, the endpoint still answers 200, and JVM meters still appear, which is exactly why it looks like it is working",
-        "Does not suggest that metrics are enabled by default, and does not suggest a global metrics { } config section",
+        "Does not suggest that metrics are enabled by default, and does not offer the global metrics.enabled key as the fix — it already defaults to true and is a kill switch that enables no component metric",
         "Does not recommend adding a separate registry dependency or an external actuator framework"
       ],
       "tags": ["regression", "defaults", "silent-failure"]
@@ -126,10 +126,10 @@
       "skills": ["kora-telemetry-metrics"],
       "query": "Attach common tags (service, environment, version) to every metric in my Kora 2.0 app.",
       "expected_behavior": [
-        "Adds a PrometheusMeterRegistryInitializer (io.koraframework.micrometer.module) as a default method of an io.koraframework.common.annotation.Module interface",
-        "Calls registry.config().commonTags(...) inside the initializer",
-        "Returns the registry, because the type extends Function<PrometheusMeterRegistry, PrometheusMeterRegistry>",
-        "Mentions that MetricsModule collects them with All<PrometheusMeterRegistryInitializer> and applies them before the JVM binders and kora.up are registered",
+        "Puts static common tags in the global metrics.tags map (io.koraframework.micrometer.module.MetricsConfig, top-level config path metrics) and/or a MetricsTagsProvider @Component for values computed at startup",
+        "Explains that MetricsModule's commonTagsMeterRegistryInitializer merges every MetricsTagsProvider with metrics.tags into one MeterFilter.commonTags(...), with metrics.tags applied last so config wins on a key conflict",
+        "Notes the tags land on every meter in the registry, JVM meters and kora_up included, and that the values must stay bounded",
+        "If it shows a custom PrometheusMeterRegistryInitializer, says it runs alongside the common-tags initializer (not a @DefaultComponent since RC2, #935), so it must not re-merge metrics.tags itself, and must return the registry",
         "May contrast it with the per-component telemetry.metrics.tags config key",
         "Does not invent a MeterRegistryCustomizer, @Default annotation or any external customizer type"
       ],
@@ -141,10 +141,9 @@
       "query": "Which metric and labels does Kora 2.0 emit for HTTP server request latency, and how do I query the error rate in Prometheus?",
       "expected_behavior": [
         "Names http.server.request.duration as a Timer registered by DefaultHttpServerMetricsFactory, plus http.server.active_requests as a Gauge",
-        "Lists the real 2.0 tags: server.name, server.port, http.request.method, http.route, url.scheme, server.address, error.type",
-        "States explicitly that there is NO status-code tag on the 2.0 server duration timer, so a query filtering http_response_status_code=~\"5..\" matches nothing",
-        "Writes the error-rate query against error_type!=\"\" on the _count series",
-        "Notes that the HTTP client timer (http.client.request.duration) does carry http.response.status_code",
+        "Lists the real 2.0 tags: server.name, server.port, http.request.method, http.response.status_code, http.route, url.scheme, server.address, error.type",
+        "Writes the 5xx error-rate query against http_response_status_code=~\"5..\" on the _count series, and may add error_type!=\"\" for requests that ended in an exception",
+        "Notes that http.server.active_requests carries no status code, because the request is still in flight",
         "Does not invent http.server.requests, labels named status or route, or the 1.x metrics.opentelemetrySpec switch"
       ],
       "tags": ["builtin", "promql"]
@@ -154,10 +153,10 @@
       "skills": ["kora-telemetry-metrics"],
       "query": "I am porting a Grafana dashboard from Kora 1.x to Kora 2.0. It uses db_client_request_duration, cache_duration, messaging_receive_duration for Kafka and s3_client_duration. Which of these still work?",
       "expected_behavior": [
-        "Says none of the four are correct for Kora 2.0 and gives the current meters: db.client.operation.duration, cache.operation.duration, messaging.process.duration (Kafka consumer), rpc.client.duration with rpc.system = s3-aws or s3",
-        "Notes that messaging.receive.duration does still exist, but for JMS rather than Kafka",
+        "Says none of the four are correct for Kora 2.0 and gives the current meters: db.client.operation.duration, cache.operation.duration, messaging.process.duration (Kafka consumer), rpc.client.call.duration with rpc.system.name = s3",
+        "Notes that messaging.process.duration is shared with the JMS consumer, so the Kafka query filters by messaging_system=\"kafka\"",
         "Flags the database tag renames: db.client.connection.pool.name, db.system.name, db.query.text, db.operation.name",
-        "Warns that the three S3/SOAP flavours share the meter name rpc.client.duration and must be separated by the rpc_system label",
+        "Warns that S3, SOAP and gRPC clients share the meter name rpc.client.call.duration and must be separated by the rpc_system_name label",
         "Mentions that rpc.*.requests_per_rpc and responses_per_rpc no longer exist in 2.0",
         "Tells the user to read the exact exported series names from a running /metrics rather than assuming the suffix"
       ],
@@ -182,7 +181,7 @@
       "skills": ["kora-telemetry-metrics"],
       "query": "How do I switch my Kora metrics to the newer OpenTelemetry naming convention? I currently have metrics { opentelemetrySpec = \"V120\" } in my config.",
       "expected_behavior": [
-        "States that metrics.opentelemetrySpec does not exist in Kora 2.0 and that there is no global metrics { } config section at all — nothing reads that path",
+        "States that metrics.opentelemetrySpec does not exist in Kora 2.0: the global metrics section maps onto io.koraframework.micrometer.module.MetricsConfig, which declares only enabled and tags",
         "Explains that 2.0 emits one fixed naming scheme, corresponding to what 1.x called V123, so the switch has no purpose",
         "Tells the user to delete the key, warning that as an unrecognised HOCON key it is ignored without a warning and gives a false sense that it is doing something",
         "Notes that several meter names changed on top of that scheme, so the 1.x V123 metric list still cannot be reused verbatim",
@@ -242,6 +241,72 @@
         "May note that the failure message is returned in the 503 response body, that a 30 s aggregate cap applies, and that JDBC already ships a readiness probe behind jdbc.readinessProbe (default false)"
       ],
       "tags": ["probes", "kubernetes"]
+    },
+    {
+      "id": "kora-telemetry-metrics-regression-global-kill-switch",
+      "skills": ["kora-telemetry-metrics"],
+      "query": "Our Kora 2.0 service answers 200 on GET :8085/metrics but the body is completely empty — not even kora_up or jvm_* series. httpServer.telemetry.metrics.enabled = true is set, MetricsModule is on the @KoraApp, and the shared base config has metrics { enabled = false }.",
+      "expected_behavior": [
+        "Identifies the global metrics.enabled = false as the cause: MetricsModule.prometheusMeterRegistry returns NoopMeterRegistry.INSTANCE instead of the PrometheusMeterRegistryWrapper",
+        "Explains the empty body: prometheusMetricsScraper only scrapes a PrometheusMeterRegistry and otherwise writes nothing, while MetricsHandler still answers 200",
+        "Notes that with the kill switch no JVM binders, no kora_up and no initializers are applied, and that custom meters on the injected MeterRegistry are silently discarded too",
+        "Fixes it by removing the key or setting metrics.enabled = true (its default), keeping the per-component telemetry.metrics.enabled = true flags",
+        "Distinguishes the global metrics.enabled (default true, kill switch) from <component>.telemetry.metrics.enabled (default false, opt-in)",
+        "Does not diagnose it as a missing MetricsModule ('# Metric Scraper disabled' is a different body)"
+      ],
+      "tags": ["regression", "config", "silent-failure"]
+    },
+    {
+      "id": "kora-telemetry-metrics-tags-provider-kotlin",
+      "skills": ["kora-telemetry-metrics"],
+      "query": "In my Kora 2.0 Kotlin service I want every metric tagged with the region read from the REGION environment variable at startup, plus a static service=order-service tag.",
+      "expected_behavior": [
+        "Implements io.koraframework.micrometer.module.MetricsTagsProvider in a @Component class overriding fun tags(): Map<String, String>",
+        "Puts service = order-service in the global metrics.tags map in application.conf",
+        "States that providers and metrics.tags are merged into one global MeterFilter.commonTags by MetricsModule, config applied last so a key present in both keeps the config value",
+        "Notes that tags() is called once during graph initialization, so a value that changes later is not picked up",
+        "Falls back to a bounded default (e.g. \"unknown\") when REGION is unset rather than tagging with null",
+        "Does not write a PrometheusMeterRegistryInitializer for this, and does not repeat the tag in every <component>.telemetry.metrics.tags block"
+      ],
+      "tags": ["config", "common-tags", "kotlin"]
+    },
+    {
+      "id": "kora-telemetry-metrics-regression-initializer-drops-common-tags",
+      "skills": ["kora-telemetry-metrics"],
+      "query": "I set metrics.tags { service = \"orders\" } in my Kora 2.0.0.RC1 app and it worked. Then I added a @Module with a PrometheusMeterRegistryInitializer that installs a MeterFilter deny rule, and now the service tag is gone from every series. Why, and what do I do on RC2?",
+      "expected_behavior": [
+        "Explains that metrics.tags and MetricsTagsProvider are applied by MetricsModule's commonTagsMeterRegistryInitializer, which was a @DefaultComponent in RC1",
+        "Explains that All<PrometheusMeterRegistryInitializer> leaves a @DefaultComponent candidate out when a non-default candidate of the same type exists, so on RC1 the new initializer silently displaced the built-in one",
+        "Says the fix is upgrading to 2.0.0.RC2, where #935 made the common-tags initializer a regular component, so the custom initializer keeps only its deny rule and must not re-merge the tags (that installs the filter twice)",
+        "Does not claim the deny filter itself removed the tag or that metrics.tags is ignored in general"
+      ],
+      "tags": ["regression", "common-tags", "graph"]
+    },
+    {
+      "id": "kora-telemetry-metrics-caffeine-cache-meters",
+      "skills": ["kora-telemetry-metrics"],
+      "query": "Which metrics does a Kora 2.0 Caffeine @Cache publish when I turn its metrics on, and do I need a workaround for duplicate meter registration?",
+      "expected_behavior": [
+        "Says metrics come on with telemetry.metrics.enabled = true under the @Cache config path, with MetricsModule on the graph",
+        "Says Kora's own cache.operation.duration / cache.requests meters are not emitted for Caffeine (only Redis caches record them)",
+        "Adds Micrometer's CaffeineCacheMetrics binder meters — cache.gets, cache.puts, cache.evictions, cache.eviction.weight, cache.size — registered once over a recordStats() cache, named by the @Cache config path",
+        "States that no workaround is needed: the cache is instrumented through the binder only",
+        "Does not suggest a custom CaffeineStatsCounter, disabling the binder, or catching IllegalArgumentException at startup"
+      ],
+      "tags": ["builtin", "cache"]
+    },
+    {
+      "id": "kora-telemetry-metrics-rc2-renames",
+      "skills": ["kora-telemetry-metrics"],
+      "query": "After upgrading Kora 2.0.0.RC1 to RC2 my Grafana panels on rpc_server_duration_seconds_count, cache_ratio_total{type=\"hit\"} and resilient_circuitbreaker_state{name=\"payments\"} are empty. What changed?",
+      "expected_behavior": [
+        "Says RC2 (#972) renamed the meters: rpc.server.duration / rpc.client.duration -> rpc.server.call.duration / rpc.client.call.duration, cache.ratio -> cache.requests",
+        "Gives the new tags: rpc.system -> rpc.system.name, rpc.grpc.status_code -> rpc.response.status_code carrying the gRPC status code name (OK, UNAVAILABLE) instead of the number; cache type -> cache.result, origin/operation -> cache.origin/cache.operation",
+        "Says every resilience tag is now resilient.-prefixed: resilient_circuitbreaker_state{resilient_name=\"payments\"}",
+        "Mentions that the Lettuce completion timer is now db.client.operation.duration with db_system_name=\"redis\" and the JMS consumer timer is messaging.process.duration",
+        "Does not suggest a config switch to restore the old names; none exists"
+      ],
+      "tags": ["builtin", "migration", "regression"]
     }
   ]
 }

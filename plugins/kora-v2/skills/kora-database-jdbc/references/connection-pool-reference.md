@@ -129,8 +129,10 @@ Wire `micrometer-module` (and an exporter) into `@KoraApp` for the registry itse
 
 ## Settings Kora does not expose
 
-Anything without a first-class key goes through `dsProperties`, which reaches Hikari as
-`dataSourceProperties` and from there to the driver:
+Two different escape hatches, for two different targets.
+
+**Driver properties → `dsProperties`.** `JdbcDatabaseConfig.toHikariConfig` passes the map to
+`HikariConfig.setDataSourceProperties(...)`, so it reaches the **JDBC driver**, not the pool:
 
 ```hocon
 jdbc.dsProperties {
@@ -139,12 +141,34 @@ jdbc.dsProperties {
 }
 ```
 
-For Hikari-level settings that are not driver properties, contribute a
-`Configurer<HikariConfig>` component (`io.koraframework.common.Configurer`). The factory module
-takes it as an optional, tag-matched dependency, so an untagged `@Component` configures the primary
-pool and a `@Tag(OtherDatabase.class)` one configures a second pool declared through a tagged
-`@FactoryModule`. `JdbcDataSource` fixes `autoCommit = true` and `registerMbeans = false` before the
-configurer runs — leave `autoCommit` alone, transaction handling depends on it.
+A Hikari pool setting placed there — `keepaliveTime`, for example — is handed to the driver as an
+unknown connection property and does nothing for the pool, without an error.
+
+**Pool settings → `Configurer<HikariConfig>`.** For Hikari settings `JdbcDatabaseConfig` has no key
+for (`keepaliveTime` and the like), contribute a `Configurer<HikariConfig>` component
+(`io.koraframework.common.Configurer`). `JdbcDatabaseFactoryModule.jdbcDataSource(...)` takes it as
+`@Tag(Tag.Factory.class) @Nullable Configurer<HikariConfig>`, and `Tag.Factory` resolves to the tag
+of the enclosing `@FactoryModule` method. The default `JdbcDatabaseModule.jdbcDatabase()` factory is
+untagged, so an **untagged** configurer — a `@Component` or a plain module method — configures the
+primary `jdbc` pool, and a `@Tag(OtherDatabase.class)` one configures a second pool declared through
+a `@Tag(OtherDatabase.class) @FactoryModule`:
+
+```java
+@KoraApp
+public interface Application extends HoconConfigModule, JdbcDatabaseModule {
+
+    default Configurer<HikariConfig> hikariConfigurer() {
+        return hikari -> {
+            hikari.setKeepaliveTime(Duration.ofMinutes(2).toMillis());
+            return hikari;   // the returned config is the one used
+        };
+    }
+}
+```
+
+The configurer runs last, after every first-class key has been applied, so it can also override
+them. `JdbcDataSource` fixes `autoCommit = true` and `registerMbeans = false` before it runs — leave
+`autoCommit` alone, transaction handling depends on it.
 
 Do not build a `HikariDataSource` by hand. `JdbcDataSource` owns pool lifecycle, telemetry, the
 readiness probe and the scoped connection that makes `inTx` work.
@@ -165,6 +189,7 @@ readiness probe and the scoped connection that makes `inTx` work.
 | Possible-leak stack traces | connection held too long | look for `acquireConnection()` without try-with-resources, or a long transaction |
 | Startup stalls, then `Connection is not available, request timed out`, before any query runs | `maxPoolSize = 1` with in-app Flyway, which needs two connections | raise `maxPoolSize` to at least 2, or migrate out of process |
 | Connections dropped by a proxy | `maxLifetime` above the proxy's limit | lower `maxLifetime` |
+| `keepaliveTime` (or another Hikari pool setting) in `jdbc.dsProperties` has no effect | `dsProperties` are driver properties (`HikariConfig.setDataSourceProperties`), not pool settings | set it in a `Configurer<HikariConfig>` component — see [Settings Kora does not expose](#settings-kora-does-not-expose) |
 
 ---
 

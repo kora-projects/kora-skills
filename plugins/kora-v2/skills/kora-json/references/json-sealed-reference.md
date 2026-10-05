@@ -1,6 +1,6 @@
 # Sealed Hierarchies for Polymorphic JSON (Kora 2.x)
 
-Verified against the Kora 2.0 sources — [`json/json-common`](https://github.com/kora-projects/kora/tree/2.0.0.RC1/json/json-common),
+Verified against the Kora 2.0 sources — [`json/json-common`](https://github.com/kora-projects/kora/tree/2.0.0.RC2/json/json-common),
 `SealedInterfaceReaderGenerator` / `SealedInterfaceWriterGenerator`, and the `SealedTest`
 suites of `json-annotation-processor` and `json-symbol-processor`.
 
@@ -145,7 +145,9 @@ public sealed interface TestInterface { … }
 { "@type": "Impl2", "value": 42 } → Impl2
 ```
 
-Without `defaultValue`, a document with no discriminator fails to read.
+Without `defaultValue`, a document with no discriminator fails to read with
+`Failed to read json <Type>: missing required discriminator field "<field>", expected one of [<values>] (at <pointer>)`.
+`defaultValue` covers only an **absent** field — an unknown value still fails (below).
 
 ---
 
@@ -391,7 +393,17 @@ discriminator written by the sealed writer plus your own field.
 ### Discriminator value mismatch
 
 The value in the JSON must match a `@JsonDiscriminatorValue` entry exactly (case included),
-or the subtype's simple name when the annotation is absent. There is no fuzzy matching.
+or the subtype's simple name when the annotation is absent. There is no fuzzy matching. A
+mismatch fails with a `StreamReadException` that lists what would have been accepted:
+
+```
+Failed to read json Payment: unknown discriminator value "wire" for field "type", expected one of [CARD, CASH] (at …)
+```
+
+A discriminator that is not a string (a number, an object) fails with
+`Failed to read json: expected a string discriminator value for field "type", but got … (at …)`,
+and a sealed value that is not a JSON object with
+`Failed to read json: expected an object to read discriminator field "type", but got … (at …)`.
 
 ### Non-sealed supertype
 

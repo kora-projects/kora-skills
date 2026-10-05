@@ -1,0 +1,26 @@
+package ${package}
+
+import io.koraframework.common.annotation.Component
+import io.koraframework.micrometer.module.MetricsTagsProvider
+
+/**
+ * Common tags computed at startup (Kora 2.0).
+ *
+ * MetricsModule collects every MetricsTagsProvider with All<MetricsTagsProvider>, merges their
+ * tags with metrics.tags from application.conf and installs the result as one global
+ * MeterFilter.commonTags(...) -- every meter in the registry gets them, JVM meters and kora.up
+ * included. On a key conflict metrics.tags wins.
+ *
+ * tags() is called once while the graph is built; later changes are not picked up. Keep the
+ * values bounded -- they multiply onto every time series.
+ */
+@Component
+class AppMetricsTagsProvider : MetricsTagsProvider {
+
+    private val tags: Map<String, String> = mapOf(
+        "region" to (System.getenv("REGION") ?: "unknown"),
+        "app.version" to (javaClass.`package`.implementationVersion ?: "unknown"),
+    )
+
+    override fun tags(): Map<String, String> = tags
+}

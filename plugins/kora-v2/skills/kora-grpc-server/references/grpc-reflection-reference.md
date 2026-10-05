@@ -1,6 +1,6 @@
 # gRPC Server Reflection Reference — Kora 2.0
 
-**Framework source (authority):** [`GrpcServerFactoryModule`](https://github.com/kora-projects/kora/blob/2.0.0.RC1/grpc/grpc-server/src/main/java/io/koraframework/grpc/server/GrpcServerFactoryModule.java) · [`GrpcServerConfig`](https://github.com/kora-projects/kora/blob/2.0.0.RC1/grpc/grpc-server/src/main/java/io/koraframework/grpc/server/GrpcServerConfig.java)
+**Framework source (authority):** [`GrpcServerFactoryModule`](https://github.com/kora-projects/kora/blob/2.0.0.RC2/grpc/grpc-server/src/main/java/io/koraframework/grpc/server/GrpcServerFactoryModule.java) · [`GrpcServerConfig`](https://github.com/kora-projects/kora/blob/2.0.0.RC2/grpc/grpc-server/src/main/java/io/koraframework/grpc/server/GrpcServerConfig.java)
 **Migrated example:** [`kora-java-guide-grpc-server-advanced-app`](https://github.com/kora-projects/kora-examples/tree/migration/2.0/guides/java/kora-java-guide-grpc-server-advanced-app) (`reflectionEnabled = true`)
 
 ## Contents
@@ -47,16 +47,16 @@ work".
 ===! `Java`
 
 ```groovy
-implementation "io.grpc:grpc-services:1.83.1"
+implementation "io.grpc:grpc-services:1.84.0"
 ```
 
 === `Kotlin`
 
 ```kotlin
-implementation("io.grpc:grpc-services:1.83.1")
+implementation("io.grpc:grpc-services:1.84.0")
 ```
 
-The version must be **`1.83.1`**, matching the `grpc-core` that arrives with
+The version must be **`1.84.0`**, matching the `grpc-core` that arrives with
 `io.koraframework:grpc-server`. `kora-bom` does not manage `io.grpc:*`, so nothing pins this for you
 — see [grpc-server-reference.md](grpc-server-reference.md) §2.
 
@@ -148,9 +148,9 @@ schema itself is information.
 
 | Symptom | Cause | Fix |
 |---|---|---|
-| `grpcurl list` → `UNIMPLEMENTED` | `grpc-services` absent (flag silently ignored) or `reflectionEnabled` not set | add `io.grpc:grpc-services:1.83.1` **and** set the flag |
+| `grpcurl list` → `UNIMPLEMENTED` | `grpc-services` absent (flag silently ignored) or `reflectionEnabled` not set | add `io.grpc:grpc-services:1.84.0` **and** set the flag |
 | Reflection works, one service missing | that handler is not collected | untagged `@Component` extending `*Grpc.*ImplBase` |
 | `Failed to dial target host` | wrong port, or TLS expected | default port is `8090`; drop/add `-plaintext` |
 | Service name not found | addressed with the `java_package` | use the `.proto` `package` |
 | Only some clients discover the service | an old client that speaks only `v1alpha` | Kora registers `ProtoReflectionServiceV1`; upgrade the client |
-| `AbstractMethodError` after adding `grpc-services` | it was pinned below `1.83.1` | pin `1.83.1` |
+| `AbstractMethodError` after adding `grpc-services` | it was pinned below `1.84.0` | pin `1.84.0` |

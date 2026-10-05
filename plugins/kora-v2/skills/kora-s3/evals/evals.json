@@ -164,12 +164,41 @@
       "query": "Write an integration test for my Kora 2.0 @S3.Client against a real S3-compatible server.",
       "expected_behavior": [
         "Uses @KoraAppTest(Application.class) with io.koraframework:test-junit5 and injects the @S3.Client interface with @TestComponent",
-        "Runs MinIO as the S3-compatible server in a Testcontainer and feeds its URI and credentials into the graph via KoraAppTestConfigModifier / KoraConfigModification",
+        "Runs a real S3-compatible server in a Testcontainer — MinIO via testcontainers-extensions-minio as in the migrated examples, or RustFS / SeaweedFS / LocalStack in a GenericContainer as in the framework's own suite — and feeds its URI and credentials into the graph via KoraAppTestConfigModifier / KoraConfigModification",
+        "If LocalStack is used, pins an image that starts without an auth token (localstack/localstack:4.14.0), creates the bucket (e.g. awslocal s3 mb) and notes it does not validate credentials",
         "Reads the body with try-with-resources over both GetObjectResult and body().asInputStream(), or asserts on a byte[] return",
         "Asserts the missing-object case with S3ClientNoSuchKeyException from a non-nullable method",
         "Does not treat MinIO as a Kora module or reference s3-client-minio, and does not mock the S3 protocol by hand where a container is available"
       ],
       "tags": ["s3", "testing", "intermediate"]
+    },
+    {
+      "id": "kora-s3-strict-server-compatibility",
+      "skills": ["kora-s3"],
+      "query": "We are moving our Kora 2.0 service from MinIO to SeaweedFS. Some object keys contain spaces, '+' and Cyrillic characters, we batch-delete with S3Client#deleteObjects and read the ETag from @S3.Head. Will s3-client-kora work there, or do we need the AWS SDK?",
+      "expected_behavior": [
+        "States that io.koraframework.experimental:s3-client-kora works against strict S3-compatible servers: the framework's own test suite runs on RustFS, SeaweedFS and LocalStack, not on a lenient server only",
+        "Explains that object keys and list parameters (prefix, delimiter, startAfter, continuationToken) are percent-encoded per SigV4 and the raw path is signed, so spaces, '+', '%', '*' and non-ASCII keys work",
+        "Explains that deleteObjects posts ?delete to the bucket root and that HeadObjectResult.headers() carries the response headers, so etag(), versionId() and lastModified() are populated",
+        "Keeps addressStyle = PATH (the default) for a self-hosted server without wildcard DNS",
+        "Does not claim the declarative client is MinIO-only, does not require switching to the AWS SDK for these operations, and does not suggest pre-encoding keys by hand"
+      ],
+      "tags": ["s3", "compatibility", "regression"]
+    },
+    {
+      "id": "kora-s3-metrics-names",
+      "skills": ["kora-s3"],
+      "query": "We run both the declarative @S3.Client (s3-client-kora) and the AWS SDK wrapper (s3-client-aws) in one Kora 2.0 service. What metric do they emit, and how do I chart them separately in Prometheus?",
+      "expected_behavior": [
+        "Names the timer rpc.client.call.duration for both modules, with rpc.system.name=s3",
+        "Explains both modules share the metric and rpc.system.name value, so series are separated by system.config / system.name.simple / system.name.canonical",
+        "Notes telemetry.metrics.enabled defaults to false and must be turned on per client"
+      ],
+      "anti_behavior": [
+        "Uses rpc.client.duration or the rpc.system tag",
+        "Claims the AWS wrapper is tagged rpc.system=s3-aws"
+      ],
+      "tags": ["s3", "telemetry", "metrics"]
     }
   ]
 }

@@ -1,7 +1,7 @@
 // Kora 2.0 tracing dependencies (Gradle Groovy DSL).
 //
-// gradle.properties:  koraVersion=2.0.0.RC1
-// repositories:       mavenCentral() -- 2.0.0.RC1 is a normal release, no snapshot repo needed.
+// gradle.properties:  koraVersion=2.0.0.RC2
+// repositories:       mavenCentral() -- 2.0.0.RC2 is a normal release, no snapshot repo needed.
 // Every io.koraframework:* artifact is versioned by the BOM; never pin one yourself.
 
 configurations {

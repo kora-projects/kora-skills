@@ -56,7 +56,7 @@ One meter, a Micrometer `Timer`:
 
 | | |
 |---|---|
-| Name | **`rpc.client.duration`** |
+| Name | **`rpc.client.call.duration`** (2.0.0.RC1: `rpc.client.duration`, renamed in RC2 by #972) |
 | Type | `Timer`, recorded in nanoseconds, with `serviceLevelObjectives(slo)` |
 | Recorded | Once per call, in `SoapClientObservation.end()` — success, fault and exception alike |
 
@@ -64,14 +64,14 @@ Tags, in the order the implementation adds them:
 
 | Tag | Source | Value when absent |
 |---|---|---|
-| `rpc.system` | constant | `soap` |
+| `rpc.system.name` | constant | `soap` |
 | `rpc.service` | `@WebService` name | — |
 | `rpc.method` | `@WebMethod.operationName` or the Java method name | — |
 | `server.address` | host of `soapClient.<Service>.url` | — |
 | `server.port` | explicit port, else `80`/`443` by scheme | — |
 | `http.response.status_code` | HTTP status | `-1` when the call never got a response |
 | `error.type` | thrown exception's canonical name; if the call ended in a SOAP fault with a detail, the **detail class's** canonical name | `""` |
-| `fault.code` | `SoapFault.getFaultcode().toString()` | `""` |
+| `soap.fault.code` | `SoapFault.getFaultcode().toString()` | `""` |
 | `system.config` | the config path, e.g. `soapClient.SimpleService` | — |
 | `system.name.simple` | interface simple name, e.g. `SimpleService` | — |
 | `system.name.canonical` | interface FQN | — |
@@ -83,9 +83,9 @@ is no `soap_service` / `soap_method` / `status` tag; those were the 1.x names.
 Useful queries (Prometheus naming applies `_` for `.` and appends the unit):
 
 ```promql
-sum(rate(rpc_client_duration_seconds_count{rpc_system="soap"}[5m])) by (rpc_service, rpc_method)
-sum(rate(rpc_client_duration_seconds_count{rpc_system="soap", error_type!=""}[5m])) by (rpc_service, error_type)
-histogram_quantile(0.99, sum(rate(rpc_client_duration_seconds_bucket{rpc_system="soap"}[5m])) by (le, rpc_method))
+sum(rate(rpc_client_call_duration_seconds_count{rpc_system_name="soap"}[5m])) by (rpc_service, rpc_method)
+sum(rate(rpc_client_call_duration_seconds_count{rpc_system_name="soap", error_type!=""}[5m])) by (rpc_service, error_type)
+histogram_quantile(0.99, sum(rate(rpc_client_call_duration_seconds_bucket{rpc_system_name="soap"}[5m])) by (le, rpc_method))
 ```
 
 ---
@@ -98,14 +98,14 @@ histogram_quantile(0.99, sum(rate(rpc_client_duration_seconds_bucket{rpc_system=
 | Kind | `SpanKind.CLIENT` |
 | Parent | `io.opentelemetry.context.Context.current()` |
 
-Attributes set at span start: `rpc.service`, `rpc.method`, `rpc.system=soap`, `system.config`,
+Attributes set at span start: `rpc.service`, `rpc.method`, `rpc.system.name=soap`, `system.config`,
 `system.name.simple`, `system.name.canonical`, `server.address`, and `server.port` when it resolves
 (a URL with no port and an unknown scheme leaves it unset). Then, as the call proceeds:
 
 | Event | Effect on the span |
 |---|---|
 | HTTP response received | `http.response.status_code` |
-| SOAP fault | status `ERROR`, `fault.code`, `fault.actor` |
+| SOAP fault | status `ERROR`, `soap.fault.code`, `soap.fault.actor` |
 | Exception | `recordException(e)`, `error.type` = canonical class name, status `ERROR` |
 | Clean finish | status `OK` |
 
@@ -249,8 +249,8 @@ public interface SoapClientObservation extends Observation {
 
 - [ ] `telemetry.metrics.enabled = true` per client — the 2.0 default is `false`
 - [ ] `MetricsModule` in the `@KoraApp` when metrics are wanted; `OpentelemetryTracingModule` plus an exporter for spans
-- [ ] Dashboards query `rpc_client_duration_*` with `rpc_system="soap"`, not `kora_soap_client_*`
-- [ ] Alerts filter on `error_type != ""` / `fault_code != ""`, not on a `status` tag
+- [ ] Dashboards query `rpc_client_call_duration_*` with `rpc_system_name="soap"`, not `kora_soap_client_*` (nor the RC1 `rpc_client_duration_*`)
+- [ ] Alerts filter on `error_type != ""` / `soap_fault_code != ""`, not on a `status` tag
 - [ ] `logging.levels`, not `logging.level`
 - [ ] Envelope bodies need `TRACE` on `<interface FQN>.request` / `.response`
 - [ ] Payload masking implemented before turning `TRACE` on in an environment with real data

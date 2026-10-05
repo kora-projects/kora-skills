@@ -62,7 +62,7 @@ httpServer {
 
 ```groovy
 dependencies {
-    koraBom platform("io.koraframework:kora-bom:$koraVersion")   // koraVersion=2.0.0.RC1
+    koraBom platform("io.koraframework:kora-bom:$koraVersion")   // koraVersion=2.0.0.RC2
     annotationProcessor "io.koraframework:annotation-processors"
 
     implementation "io.koraframework:micrometer-module"
@@ -70,8 +70,8 @@ dependencies {
 }
 ```
 
-`micrometer-module` pulls `io.micrometer:micrometer-registry-prometheus` (`1.17.0`) and the
-`io.prometheus:prometheus-metrics-*` stack (`1.8.0`) transitively. Adding either yourself only
+`micrometer-module` pulls `io.micrometer:micrometer-registry-prometheus` (`1.17.1`) and the
+`io.prometheus:prometheus-metrics-*` stack (`1.9.0`) transitively. Adding either yourself only
 risks a version clash.
 
 ---
@@ -96,12 +96,12 @@ if (registry == null) {
 return HttpServerResponse.of(200, HttpBodyOutput.of("text/plain", registry::scrape));
 ```
 
-So **a 200 from `/metrics` proves nothing.** Three distinct outcomes share one status code:
+So **a 200 from `/metrics` proves nothing.** Four distinct outcomes share one status code:
 
 | Body | Meaning |
 |---|---|
 | `# Metric Scraper disabled` | No `MetricsScraper` in the graph — `MetricsModule` is missing |
-| empty | A `MetricsScraper` exists but writes nothing — a non-Prometheus registry hit `MetricsModule`'s no-op branch |
+| empty | A `MetricsScraper` exists but writes nothing — the registry is not a `PrometheusMeterRegistry`: global `metrics.enabled = false` (`NoopMeterRegistry`) or a replacement registry without its own scraper |
 | `kora_up`, `jvm_*`, `process_*` and nothing else | Registry bound, but every component's `telemetry.metrics.enabled` is still `false` |
 | `kora_up` + `http_server_*` + `db_*` + … | Working |
 
@@ -243,12 +243,12 @@ implementation. See [metrics-config-reference.md](metrics-config-reference.md#co
 |---|---|---|
 | Body is `# Metric Scraper disabled` | No `MetricsScraper` in the graph | Add `MetricsModule` to `@KoraApp extends …` |
 | Body has only `jvm_*` / `kora_up` | `telemetry.metrics.enabled` left at `false` | Enable it per component |
-| Body is empty | A non-Prometheus registry replaced the default without a matching `MetricsScraper` | Supply a `MetricsScraper` |
+| Body is empty | Global `metrics.enabled = false`, or a non-Prometheus registry replaced the default without a matching `MetricsScraper` | Remove the kill switch / supply a `MetricsScraper` |
 | 404 on port 8080 | Scraping the public server | Scrape `httpServer.system.port` |
 | `privateApiHttpMetricsPath` ignored | Removed 1.x key, silently unrecognised | `httpServer.system.metricsPath` |
 | Agent cannot reach the endpoint | System port not published/reachable | Expose `httpServer.system.port` to the scraper's network |
-| Missing common tags | No `PrometheusMeterRegistryInitializer` registered, or it did not return the registry | See [common tags](metrics-config-reference.md#common-tags) |
-| Duplicate/clashing Prometheus classes | A hand-added `micrometer-registry-prometheus` at a different version | Remove it; the BOM pins `1.17.0` transitively |
+| Missing common tags | `metrics.tags` / `MetricsTagsProvider` not set, a `MeterFilter` of your own removes the key, or (RC1 only, fixed by #935) an app-level `PrometheusMeterRegistryInitializer` displaced the common-tags initializer | See [common tags](metrics-config-reference.md#common-tags) |
+| Duplicate/clashing Prometheus classes | A hand-added `micrometer-registry-prometheus` at a different version | Remove it; the BOM pins `1.17.1` transitively |
 
 ---
 

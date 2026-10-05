@@ -8,7 +8,7 @@ plugins {
 
 repositories {
     mavenCentral()
-    // io.koraframework:kora-bom:2.0.0.RC1 is on Maven Central; nothing else is needed.
+    // io.koraframework:kora-bom:2.0.0.RC2 is on Maven Central; nothing else is needed.
     // Only the 2.0.0-SNAPSHOT development line also needs:
     // maven { url = "https://central.sonatype.com/repository/maven-snapshots" }
 }
@@ -54,9 +54,10 @@ dependencies {
 
     // Database (JDBC). Config section is `jdbc`. Transactions are part of database-jdbc.
     implementation "io.koraframework:database-jdbc"
-    implementation "org.postgresql:postgresql:42.7.7"   // JDBC driver (external version)
+    implementation "org.postgresql:postgresql:42.7.13"   // JDBC driver (external version)
+    // implementation "io.koraframework:database-jdbc-postgres" // instead of the two lines above: PG mappers + driver
     // implementation "io.koraframework:database-flyway"
-    // implementation "org.flywaydb:flyway-database-postgresql:13.1.0"  // dialect - flyway ships core only
+    // implementation "org.flywaydb:flyway-database-postgresql:13.9.0"  // dialect - flyway ships core only
     // implementation "io.koraframework:database-liquibase"
     // implementation "io.koraframework:database-cassandra"
 
@@ -66,14 +67,17 @@ dependencies {
 
     // Telemetry. Metrics are OFF by default - enable per component in the config.
     implementation "io.koraframework:micrometer-module"
+    // implementation "io.koraframework:logging-logback-json" // JSON console logs
     // implementation "io.koraframework:opentelemetry-tracing-exporter-grpc"
     // implementation "io.koraframework:opentelemetry-tracing-exporter-http"
 
     // AOP
     // implementation "io.koraframework:resilient-kora"    // @CircuitBreakable, @Retryable, @Timeout, @RateLimited, @Fallback
+    // implementation "io.koraframework:resilient-kora-distributed-redis-lettuce" // distributed rate limiter / retry budget on Redis
     // implementation "io.koraframework:validation-module" // @Valid, @Validate
-    // implementation "io.koraframework:scheduling-jdk"    // @ScheduleAtFixedRate, @ScheduleWithFixedDelay, @ScheduleOnce
-    // implementation "io.koraframework:scheduling-quartz" // @ScheduleWithCron, @ScheduleWithTrigger
+    // implementation "io.koraframework:scheduling-jdk"    // @ScheduleJdkAtFixedRate, @ScheduleJdkWithFixedDelay, @ScheduleJdkOnce, @ScheduleJdkWithCron
+    // implementation "io.koraframework:scheduling-quartz" // @ScheduleQuartzWithCron, @ScheduleQuartzWithTrigger
+    // implementation "io.koraframework:scheduling-db-scheduler" // clustered DB-persisted jobs (db-scheduler)
     // implementation "io.koraframework:cache-caffeine"    // in-process cache
     // implementation "io.koraframework:cache-redis-lettuce" // distributed cache (cache-redis-common alone has no client)
 
@@ -91,8 +95,8 @@ dependencies {
     // Testing. test-junit5 declares Mockito/MockK compileOnly - bring your own.
     testAnnotationProcessor "io.koraframework:annotation-processors"
     testImplementation "io.koraframework:test-junit5"
-    // testImplementation "org.mockito:mockito-core:5.23.0"
-    // testImplementation "org.testcontainers:junit-jupiter:1.21.4"
+    // testImplementation "org.mockito:mockito-core:5.24.0"
+    // testImplementation "org.testcontainers:testcontainers-junit-jupiter:2.0.5"
 }
 
 application {

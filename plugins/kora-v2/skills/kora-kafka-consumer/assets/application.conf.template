@@ -76,6 +76,9 @@ kafka {
         # Both default to false in Kora 2.0. logging.enabled also gates the container's own
         # lifecycle log lines, so a listener with it off is completely silent.
         logging.enabled = true
+        # At TRACE the record log adds headers, key and value. Headers listed here are masked;
+        # JSON values are masked only by a @Tag(KafkaConsumerTelemetry.class) DataMasker component.
+        # logging.maskHeaders = ["authorization", "cookie", "set-cookie"]
 
         metrics {
           enabled = true
@@ -98,7 +101,7 @@ kafka {
 
     # ------------------------------------------------------------------
     # Assign strategy — no group.id, every instance reads every partition.
-    # At 2.0.0.RC1 this accepts EXACTLY ONE topic and no topicsPattern.
+    # Takes one or more topics; topicsPattern is rejected at startup.
     # Nothing is ever committed; `offset` decides where each start begins.
     # ------------------------------------------------------------------
     # ${listenerNameLower}Broadcast {

@@ -259,8 +259,8 @@ Nothing is committed during shutdown. A handler interrupted at `shutdownWait` is
 - [Telemetry](kafka-telemetry-reference.md)
 - [Transactions](kafka-transactions-reference.md)
 
-**Source:** framework tag `2.0.0.RC1` —
-[exceptions](https://github.com/kora-projects/kora/tree/2.0.0.RC1/kafka/kafka/src/main/java/io/koraframework/kafka/common/exceptions) ·
-[RecordHandler](https://github.com/kora-projects/kora/blob/2.0.0.RC1/kafka/kafka/src/main/java/io/koraframework/kafka/common/consumer/containers/handlers/impl/RecordHandler.java);
+**Source:** framework tag `2.0.0.RC2` —
+[exceptions](https://github.com/kora-projects/kora/tree/2.0.0.RC2/kafka/kafka/src/main/java/io/koraframework/kafka/common/exceptions) ·
+[RecordHandler](https://github.com/kora-projects/kora/blob/2.0.0.RC2/kafka/kafka/src/main/java/io/koraframework/kafka/common/consumer/containers/handlers/impl/RecordHandler.java);
 migrated examples on `migration/2.0` —
 [kora-java-kafka](https://github.com/kora-projects/kora-examples/tree/migration/2.0/examples/java/kora-java-kafka)

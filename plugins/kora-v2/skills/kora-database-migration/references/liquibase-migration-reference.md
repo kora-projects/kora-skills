@@ -4,7 +4,7 @@ Kora 2.0 module `io.koraframework.database.liquibase.LiquibaseJdbcDatabaseModule
 `io.koraframework:database-liquibase`, config type `LiquibaseConfig`, config section `liquibase`.
 Requires `io.koraframework:database-jdbc` and `JdbcDatabaseModule` on the `@KoraApp` interface.
 
-Bundled third-party version: **`org.liquibase:liquibase-core` 5.0.3**.
+Bundled third-party version: **`org.liquibase:liquibase-core` 5.0.4**.
 
 Liquibase is the alternative to Flyway when you need declarative rollback or already maintain a
 Liquibase changelog. The formatted-SQL changelog keeps native SQL while still supporting rollback,
@@ -27,7 +27,7 @@ contexts, and labels.
 
 ## Dependencies
 
-Unlike Flyway, Liquibase needs **no per-database artifact**. `org.liquibase:liquibase-core` 5.0.3 is
+Unlike Flyway, Liquibase needs **no per-database artifact**. `org.liquibase:liquibase-core` 5.0.4 is
 an aggregate that pulls in `liquibase-standard` — which carries the implementations for PostgreSQL,
 MySQL/MariaDB, Oracle, SQL Server, H2 and the rest — plus `liquibase-cli` and `liquibase-snowflake`.
 The framework's own `LiquibaseJdbcDataSourceInterceptorTest` migrates a real PostgreSQL container
@@ -35,7 +35,7 @@ with `liquibase-core` alone.
 
 ```groovy
 dependencies {
-    koraBom platform("io.koraframework:kora-bom:$koraVersion")   // koraVersion=2.0.0.RC1
+    koraBom platform("io.koraframework:kora-bom:$koraVersion")   // koraVersion=2.0.0.RC2
     annotationProcessor "io.koraframework:annotation-processors"
 
     implementation "io.koraframework:database-jdbc"
@@ -249,7 +249,7 @@ ALTER TABLE audit_log ADD COLUMN created_at TIMESTAMP DEFAULT NOW();
 ```
 
 The Kora interceptor only ever runs `update()`. Rollback is invoked **out-of-process** through the
-Liquibase CLI, the `org.liquibase.gradle` plugin (`3.1.0`), or the `liquibase/liquibase:5.0.3`
+Liquibase CLI, the `org.liquibase.gradle` plugin (`3.1.0`), or the `liquibase/liquibase:5.0.4`
 container:
 
 ```bash

@@ -10,7 +10,7 @@ switches**, both verified in the framework source.
 - [Config paths per component](#config-paths-per-component)
 - [Logger names per component](#logger-names-per-component)
 - [Level ladders](#level-ladders)
-- [HTTP masking and body-size options](#http-masking-and-body-size-options)
+- [Masking and body-size options](#masking-and-body-size-options)
 - [Recipes](#recipes)
 
 ## The two switches
@@ -155,27 +155,35 @@ the response record needs `INFO` (not `WARN`) and errors go through a separate `
 | Component | `TRACE` | `DEBUG` | `INFO` | `WARN` |
 |---|---|---|---|---|
 | JDBC / Cassandra query | + the `sql` text | "Executing query" / "Query executed" with `pool`, `operation`, `queryId`, `processingTime` | — | "Query failed" with `exceptionType` |
-| Kafka listener | poll start, per-record details of the whole batch | record start / record end, batch received | poll end | poll or record failure |
+| Kafka listener | poll start, per-record details of the whole batch, + record headers (masked), key and value | record start / record end, batch received | poll end | poll or record failure |
 | Kafka publisher | transaction offsets | record start, tx commit / rollback / end | record published | publish or tx failure |
 | gRPC server | + request/response message bodies | + headers | request and successful response | failed response |
 | Scheduling job | — | job start | job finished | job failed |
 | Cache | operation start and completion, with `retrieved` / `missed` counts | nothing on its own — the completion record is written `atTrace()`/`atDebug()` but is gated by `isTraceEnabled()` | — | operation failed |
 | Retry | retry loop start | retry attempts with delay | — | retries exhausted |
 
-## HTTP masking and body-size options
+## Masking and body-size options
 
 `HttpServerTelemetryConfig.HttpServerLoggingConfig` (and the matching client config) adds these
 next to `enabled`:
 
 | Key | Default | Meaning |
 |---|---|---|
-| `stacktrace` | `true` | Attach the exception stack trace to the failed-response record |
-| `maskHeaders` | `["authorization", "cookie", "set-cookie"]` | Header names replaced with `mask` (matched case-insensitively) |
-| `maskQueries` | `[]` | Query parameter names replaced with `mask` |
-| `mask` | `"***"` | Replacement string |
+| `stacktrace` | `true` | Attach the exception stack trace to the failed-response record (server) |
+| `maskHeaders` | `["authorization", "cookie", "set-cookie"]` | Header names whose values are masked (matched case-insensitively) |
+| `maskQueries` | `[]` | Query parameter names whose values are masked |
 | `pathFull` | unset (`@Nullable Boolean`) | Force the full path into `operation`; unset means "full path only at `TRACE`" |
 | `maxRequestBodyLogSize` | `2 MiB` | Cap on the logged request body |
 | `maxResponseBodyLogSize` | `2 MiB` | Cap on the logged response body |
+
+gRPC server/client and Kafka listener/publisher logging configs carry `maskHeaders` with the same
+default. There is **no `mask` key**: the replacement comes from a `MaskingStrategy` component
+tagged with the transport's telemetry class (`@Tag(HttpServerTelemetry.class)`,
+`@Tag(HttpClientTelemetry.class)`, …), whose default writes `***`. HTTP bodies and Kafka consumer
+keys/values are masked only when a `DataMasker` component with the same tag is registered — none is
+by default. The shared model, the tag table and examples are in the canonical
+[logging-masking.md](../../kora-aop-logging/references/logging-masking.md); transport specifics are
+in each transport skill.
 
 ```hocon
 httpServer.telemetry.logging {

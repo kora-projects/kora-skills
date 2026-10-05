@@ -1,6 +1,6 @@
 ---
 name: kora-project-setup-kotlin
-description: "Scaffold a new Kotlin Kora 2.x service (Gradle Kotlin DSL) — KSP io.koraframework:symbol-processors, the io.koraframework:kora-bom platform, @KoraApp + generated ApplicationGraph, Kotlin 2.4.10 / KSP 2.3.11, JDK 25 toolchain, Gradle wrapper. Use when starting a Kotlin Kora project, wiring build.gradle.kts or KSP, or fixing \"ApplicationGraph unresolved\" and KspTask no longer resolving. For Java see kora-project-setup-java."
+description: "Scaffold a new Kotlin Kora 2.x service (Gradle Kotlin DSL) — KSP io.koraframework:symbol-processors, the io.koraframework:kora-bom platform, @KoraApp + generated ApplicationGraph, Kotlin 2.4.20 / KSP 2.3.12, JDK 25 toolchain, Gradle wrapper. Use when starting a Kotlin Kora project, wiring build.gradle.kts or KSP, or fixing \"ApplicationGraph unresolved\" and KspTask no longer resolving. For Java see kora-project-setup-java."
 license: Apache-2.0
 metadata:
   kora-version: "2.x"
@@ -8,7 +8,7 @@ metadata:
 
 # Kora Project Setup — Kotlin
 
-> **Kora sub-skill — obey the [kora-v2 meta rules](../../SKILL.md) on every task:** **R0** ground the workspace on Kora 2.0 refs before starting (framework source at tag `2.0.0.RC1` + `kora-examples` at `migration/2.0`; `kora-docs` is 1.x only) · **R1** read this sub-skill before writing code · **R2** Kora 2.0 APIs only — no Spring/Micronaut/Quarkus, no Kora 1.x APIs, no invented annotations or config keys · **R3** journal any incorrect Kora usage. Add comments/Javadoc only if asked.
+> **Kora sub-skill — obey the [kora-v2 meta rules](../../SKILL.md) on every task:** **R0** ground the workspace on Kora 2.0 refs before starting (framework source at tag `2.0.0.RC2` + `kora-examples` at `migration/2.0` + Kora 2.0 docs at koraframework.io/v2, which trail the source; 1.x `kora-docs` pages are never an authority) · **R1** read this sub-skill before writing code · **R2** Kora 2.0 APIs only — no Spring/Micronaut/Quarkus, no Kora 1.x APIs, no invented annotations or config keys · **R3** journal any incorrect Kora usage. Add comments/Javadoc only if asked.
 
 Scaffold a runnable Kotlin Kora 2.x service: Gradle Kotlin DSL build, KSP symbol
 processors, the `io.koraframework:kora-bom` platform, and a `@KoraApp` interface
@@ -18,13 +18,13 @@ that plugs in Kora capabilities by extending `*Module` interfaces.
 
 | What | Value | Why this exact value |
 |---|---|---|
-| Kora | `2.0.0.RC1` (property `koraVersion`) | the released `2.0.x` of `io.koraframework:kora-bom` on Maven Central; resolves from plain `mavenCentral()` |
+| Kora | `2.0.0.RC2` (property `koraVersion`) | the current `2.0.x` release of `io.koraframework:kora-bom` on Maven Central; resolves from plain `mavenCentral()` |
 | groupId | `io.koraframework` | was `ru.tinkoff.kora` in 1.x |
 | BOM | `io.koraframework:kora-bom` | was `ru.tinkoff.kora:kora-parent` |
-| Kotlin | `2.4.10` | the version Kora 2.0 itself is built with |
-| KSP | `2.3.11` | ditto — see [version drift](#version-drift-is-not-cosmetic) |
+| Kotlin | `2.4.20` | the version Kora 2.0 itself is built with |
+| KSP | `2.3.12` | ditto — see [version drift](#version-drift-is-not-cosmetic) |
 | JVM toolchain | `25` | bytecode floor of Kora 2.0 artifacts; see [JDK](#jdk-choice) |
-| Gradle wrapper | `9.5.1` | |
+| Gradle wrapper | `9.8.0` | the version the framework itself builds with |
 | JUnit | `6.1.3` (property `junitVersion`) | |
 
 Never version individual `io.koraframework:*` artifacts — the BOM aligns them.
@@ -34,12 +34,12 @@ against their own classpath and so carry an explicit `${property("koraVersion")}
 `2.0.0-SNAPSHOT` is the `master` development line, not a version to put in a new
 project: it resolves only from
 `https://central.sonatype.com/repository/maven-snapshots` or after a local
-`publishToMavenLocal`. A new service pins `2.0.0.RC1` and needs nothing but
+`publishToMavenLocal`. A new service pins `2.0.0.RC2` and needs nothing but
 `mavenCentral()`.
 
 ### Version drift is not cosmetic
 
-Kotlin `2.4.10` and KSP `2.3.11` are the versions Kora 2.0 itself is built with.
+Kotlin `2.4.20` and KSP `2.3.12` are the versions Kora 2.0 itself is built with.
 The symbol processors are compiled against that exact KSP API and embed
 `kotlin-compiler-embeddable` of that Kotlin line. Drifting either one does not
 produce a clean "incompatible version" message — it produces
@@ -100,7 +100,7 @@ rootProject.name = "kora-example"
 ### 2. gradle.properties
 
 ```properties
-koraVersion=2.0.0.RC1
+koraVersion=2.0.0.RC2
 junitVersion=6.1.3
 
 org.gradle.java.installations.auto-detect=true
@@ -128,8 +128,8 @@ import org.gradle.jvm.toolchain.JvmVendorSpec
 
 plugins {
     id("application")
-    kotlin("jvm") version "2.4.10"
-    id("com.google.devtools.ksp") version "2.3.11"
+    kotlin("jvm") version "2.4.20"
+    id("com.google.devtools.ksp") version "2.3.12"
 }
 
 repositories {
@@ -310,7 +310,7 @@ both servers bind 8080 describes a pre-release build, not Kora 2.0.
     <statusListener class="ch.qos.logback.core.status.NopStatusListener"/>
 
     <appender name="STDOUT" class="ch.qos.logback.core.ConsoleAppender">
-        <encoder class="io.koraframework.logging.logback.ConsoleTextRecordEncoder"/>
+        <encoder class="io.koraframework.logging.logback.text.ConsoleTextRecordEncoder"/>
     </appender>
 
     <appender name="ASYNC" class="io.koraframework.logging.logback.KoraAsyncAppender">
@@ -333,8 +333,10 @@ Full file: [`assets/logback.xml.template`](assets/logback.xml.template)
 ```properties
 distributionBase=GRADLE_USER_HOME
 distributionPath=wrapper/dists
-distributionUrl=https\://services.gradle.org/distributions/gradle-9.5.1-bin.zip
+distributionUrl=https\://services.gradle.org/distributions/gradle-9.8.0-bin.zip
 networkTimeout=10000
+retries=0
+retryBackOffMs=500
 validateDistributionUrl=true
 zipStoreBase=GRADLE_USER_HOME
 zipStorePath=wrapper/dists
@@ -429,6 +431,7 @@ Regressions that compile, or that fail with a message pointing somewhere else.
 | `Dispatchers.IO` / `runBlocking` around Kora I/O | nothing — calls block a virtual thread | pure overhead |
 | `@field:Nullable` on Kotlin properties | `val name: String?` | invalid annotation target under Kotlin 2.4 |
 | `kapt` for Kora | KSP | Kora ships no Kotlin `kapt` processor |
+| MapStruct `@Mapper` via `kapt` | Konvert `@Konverter` via `ksp("io.mcarle:konvert")` | MapStruct is Java-only in 2.0; see [`kora-mapstruct`](../kora-mapstruct/SKILL.md) |
 
 **First build after a package rename must be clean and uncached.** Generator
 tasks (OpenAPI, protobuf) do not delete their previous output and the build

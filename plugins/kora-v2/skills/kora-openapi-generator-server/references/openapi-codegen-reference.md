@@ -1,7 +1,7 @@
 # OpenAPI Codegen Reference (Server) — Kora 2.x
 
-Everything here is taken from the `io.koraframework:openapi-generator` sources at
-`2.0.0.RC1` and from the migrated `kora-examples` server examples and guides.
+Everything here is taken from the `io.koraframework:openapi-generator` sources and tests for
+`2.0.0.RC2` and from the migrated `kora-examples` server examples and guides.
 
 ## Contents
 
@@ -34,17 +34,17 @@ consequence is that **custom Mustache template overrides no longer change genera
 
 ## 2. Two versions, two places
 
-| What | Where the consumer sets it | Value in the 2.0 corpus |
+| What | Where the consumer sets it | Value |
 |---|---|---|
-| `org.openapi.generator` **Gradle plugin** | `plugins { id "org.openapi.generator" version "…" }` | split across the corpus: **9 Java build files pin `7.23.0`**, **7 Kotlin build files pin `7.24.0`** |
-| `io.koraframework:openapi-generator` — the **Kora generator** | `buildscript { dependencies { classpath("io.koraframework:openapi-generator:$koraVersion") } }` | `$koraVersion` = `2.0.0.RC1` |
-| `org.openapitools:openapi-generator` — the upstream **library** the Kora generator compiles against | not set by the consumer; transitive | `7.24.0` (framework version catalog), and the value written to `.openapi-generator/VERSION` |
+| `org.openapi.generator` **Gradle plugin** | `plugins { id "org.openapi.generator" version "…" }` | use `7.25.0`; the migrated examples still pin `7.23.0` (Java) / `7.24.0` (Kotlin) |
+| `io.koraframework:openapi-generator` — the **Kora generator** | `buildscript { dependencies { classpath("io.koraframework:openapi-generator:$koraVersion") } }` | `$koraVersion` = `2.0.0.RC2` |
+| `org.openapitools:openapi-generator` — the upstream **library** the Kora generator compiles against | not set by the consumer; transitive | `7.25.0` (framework version catalog) |
 
 They are three different things. Bumping the plugin does not bump the Kora generator, and the
-Kora generator's own upstream dependency is fixed by `$koraVersion`. `7.24.0` is the plugin
+Kora generator's own upstream dependency is fixed by `$koraVersion`. `7.25.0` is the plugin
 version aligned with what the generator was built against.
 
-Related third-party pins from the same catalog: `swagger-core 2.2.53`, `swagger-parser 2.1.46`.
+Related third-party pins from the same catalog: `swagger-core 2.2.55`, `swagger-parser 2.1.48`.
 
 ## 3. Build wiring
 
@@ -63,7 +63,7 @@ Related third-party pins from the same catalog: `swagger-core 2.2.53`, `swagger-
     plugins {
         id "java"
         id "application"
-        id "org.openapi.generator" version "7.24.0"
+        id "org.openapi.generator" version "7.25.0"
     }
 
     java {
@@ -104,9 +104,9 @@ Related third-party pins from the same catalog: `swagger-core 2.2.53`, `swagger-
 
     plugins {
         id("application")
-        kotlin("jvm") version "2.4.10"
-        id("com.google.devtools.ksp") version "2.3.11"
-        id("org.openapi.generator") version "7.24.0"
+        kotlin("jvm") version "2.4.20"
+        id("com.google.devtools.ksp") version "2.3.12"
+        id("org.openapi.generator") version "7.25.0"
     }
 
     kotlin {
@@ -231,7 +231,7 @@ were 1.x-era names. Values are passed as strings by the Gradle plugin.
 |---|---|---|---|
 | `mode` | String | `java-client` | **Set it.** One of the four values in section 5. |
 | `enableServerValidation` | Boolean | `false` | Emits Kora validation annotations on models and controller parameters and `@Validate` on controller methods. Requires `io.koraframework:validation-module` + `ValidationModule`. |
-| `enableServerValidationInterceptor` | Boolean | `true` | Adds `@InterceptWith(ValidationHttpServerInterceptor.class)` next to `@Validate`. Set `false` when you map `ViolationException` yourself. Only read when `enableServerValidation` is on. |
+| `enableServerValidationInterceptor` | Boolean | `true` | Adds `@InterceptWith(ValidationHttpServerInterceptor.class)` next to `@Validate`. Set `false` when you map `ViolationException` yourself. Only has an effect when `enableServerValidation` is on. |
 | `requestInDelegateParams` | Boolean | `false` | Adds `HttpServerRequest _serverRequest` as the **first** parameter of every controller and delegate method. |
 | `delegateMethodBodyMode` | String | `none` | `none` → abstract delegate methods. `throwException` → `default` methods that `throw new UnsupportedOperationException("Not yet implemented")` (Kotlin: `TODO()`), plus a generated `*ApiModule` supplying an anonymous delegate. The 1.x spelling `throw-exception` is rejected. |
 | `prefixPath` | String | `""` | Value of the generated `@HttpController`. See the caveat below. |
@@ -258,13 +258,13 @@ default `""` produces a bare `@HttpController()`.
 | `filterWithModels` | Boolean | `false` | With `openapiNormalizer` `FILTER`, also prunes models no surviving operation references. |
 | `rawBodyMode` | String | `BYTES` | Type used for a bare-object (`type: object` with no schema) body: `BYTES` → `byte[]`; `BODY` → `HttpBodyInput`/`HttpBodyOutput`; `OBJECT` → `Object` routed through JSON. |
 | `useSecurityDeclarationOrder` | Boolean | `false` | Keeps the OpenAPI declaration order of security requirements when deriving `ApiSecurity` tag names, instead of normalising them. |
-| `forceIncludeOptional` | Boolean | `false` | Parsed, but no generator consumes it at `2.0.0.RC1` — it has no effect. JSON inclusion is decided by the model rules in [Models Reference](openapi-models-reference.md). |
+| `forceIncludeOptional` | Boolean | `false` | Parsed, but no generator consumes it — it has no effect. JSON inclusion is decided by the model rules in [Models Reference](openapi-models-reference.md). |
 
 ### Client-only options
 
 `authAsMethodArgument`, `primaryAuth`, `clientConfig`, `clientConfigPrefix`,
-`securityConfigPrefix`, `tags`. They are parsed in every mode but only consumed by the client
-generators — see the `kora-openapi-generator-client` skill.
+`securityConfigPrefix`, `tags`, `clientResponseMode`. They are parsed in every mode but only
+consumed by the client generators — see the `kora-openapi-generator-client` skill.
 
 ## 7. `openapiNormalizer`
 

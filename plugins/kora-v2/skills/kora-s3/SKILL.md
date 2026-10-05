@@ -1,6 +1,6 @@
 ---
 name: kora-s3
-description: "S3 object storage in Kora 2.0 — two independent artifacts: the declarative client io.koraframework.experimental:s3-client-kora (@S3.Client, @S3.Bucket, @S3.Get/@S3.Head/@S3.List/@S3.Put/@S3.Delete returning GetObjectResult/HeadObjectResult/ListBucketResult) and the AWS SDK wrapper io.koraframework:s3-client-aws, which hands software.amazon.awssdk.services.s3.S3Client to the graph. Both need a Kora HTTP client module. Use when adding S3-compatible storage (AWS S3, MinIO, Ceph) to a Kora service, porting a Kora 1.x @S3.Client, or debugging \"package S3 does not exist\", \"S3 operation has no bucket source\", or \"S3Client wasn't found in graph\"."
+description: "S3 object storage in Kora 2.0 — two independent artifacts: the declarative client io.koraframework.experimental:s3-client-kora (@S3.Client, @S3.Bucket, @S3.Get/@S3.Head/@S3.List/@S3.Put/@S3.Delete returning GetObjectResult/HeadObjectResult/ListBucketResult) and the AWS SDK wrapper io.koraframework:s3-client-aws, which hands software.amazon.awssdk.services.s3.S3Client to the graph. Both need a Kora HTTP client module. Use when adding S3-compatible storage (AWS S3, RustFS, SeaweedFS, LocalStack, MinIO, Ceph) to a Kora service, porting a Kora 1.x @S3.Client, or debugging \"package S3 does not exist\", \"S3 operation has no bucket source\", or \"S3Client wasn't found in graph\"."
 license: Apache-2.0
 metadata:
   kora-version: "2.x"
@@ -8,16 +8,16 @@ metadata:
 
 # Kora S3
 
-> **Kora sub-skill — obey the [kora-v2 meta rules](../../SKILL.md) on every task:** **R0** ground the workspace on Kora 2.0 refs before starting (framework source at tag `2.0.0.RC1` + `kora-examples` at `migration/2.0`; `kora-docs` is 1.x only) · **R1** read this sub-skill before writing code · **R2** Kora 2.0 APIs only — no Spring/Micronaut/Quarkus, no Kora 1.x APIs, no invented annotations or config keys · **R3** journal any incorrect Kora usage. Add comments/Javadoc only if asked.
+> **Kora sub-skill — obey the [kora-v2 meta rules](../../SKILL.md) on every task:** **R0** ground the workspace on Kora 2.0 refs before starting (framework source at tag `2.0.0.RC2` + `kora-examples` at `migration/2.0` + Kora 2.0 docs at koraframework.io/v2, which trail the source; 1.x `kora-docs` pages are never an authority) · **R1** read this sub-skill before writing code · **R2** Kora 2.0 APIs only — no Spring/Micronaut/Quarkus, no Kora 1.x APIs, no invented annotations or config keys · **R3** journal any incorrect Kora usage. Add comments/Javadoc only if asked.
 
 | | |
 |---|---|
 | **Declarative client** | `io.koraframework.experimental:s3-client-kora` — `@S3` annotations, `S3Client`, models. **Note the `.experimental` group.** |
 | **AWS SDK wrapper** | `io.koraframework:s3-client-aws` — `AwsS3ClientModule`, config, telemetry. Publishes `software.amazon.awssdk.services.s3.S3Client`. **Not** under `experimental`. |
-| **BOM** | `io.koraframework:kora-bom` (`koraVersion=2.0.0.RC1`, plain `mavenCentral()`) |
+| **BOM** | `io.koraframework:kora-bom` (`koraVersion=2.0.0.RC2`, plain `mavenCentral()`) |
 | **Processor** | `annotationProcessor "io.koraframework:annotation-processors"` (Java) · `ksp("io.koraframework:symbol-processors")` (Kotlin) — both aggregates already contain the S3 processor |
 | **Prerequisite** | A Kora HTTP client module — `http-client-ok`, `http-client-jdk` or `http-client-apache`. Required by **both** artifacts. |
-| **AWS SDK** | `software.amazon.awssdk:s3` `2.52.1`, pulled transitively by `s3-client-aws` |
+| **AWS SDK** | `software.amazon.awssdk:s3` `2.55.10`, pulled transitively by `s3-client-aws` |
 
 S3 is the most heavily redesigned area in Kora 2.0. Nearly every 1.x shape is gone: there is no
 `s3-client-minio` artifact, no `S3KoraClient`, no `S3Body`, no `S3Object`, no batch delete on the
@@ -60,10 +60,11 @@ dependencies {
 ```
 
 **`s3-client-minio` does not exist in Kora 2.0.** It is absent from the framework's
-`settings.gradle` and there is no such directory in the source tree. MinIO remains an excellent
-S3-compatible **server** for local development and tests — see [§7](#7-testing) — but there is no
-Kora module built on the MinIO SDK any more. The replacement for the 1.x MinIO client is
-`s3-client-kora`, which speaks S3 over Kora's own HTTP client.
+`settings.gradle` and there is no such directory in the source tree. MinIO is still a usable
+S3-compatible **server** — like AWS S3, RustFS, SeaweedFS, LocalStack or Ceph (see
+[§5](#s3-compatible-servers) and [§7](#7-testing)) — but there is no Kora module built on the MinIO
+SDK any more. The replacement for the 1.x MinIO client is `s3-client-kora`, which speaks S3 over
+Kora's own HTTP client.
 
 > **"Transport" means a Kora HTTP client module, not the other S3 artifact.** Both
 > `S3FactoryModule` and `AwsS3ClientFactoryModule` inject `io.koraframework.http.client.common.HttpClient`;
@@ -425,13 +426,37 @@ Full key lists in [references/s3-client-kora.md](references/s3-client-kora.md) a
 ```hocon
 s3client.uploads.telemetry {
   logging.enabled = true      # DEBUG on the @S3.Client interface's own logger
-  metrics.enabled = true      # rpc.client.duration, rpc.system=s3
+  metrics.enabled = true      # rpc.client.call.duration, rpc.system.name=s3
 }
 ```
 
-Both modules emit the timer **`rpc.client.duration`**, distinguished by the `rpc.system` tag:
-`s3` for the declarative client, `s3-aws` for the SDK wrapper. Other tags: `rpc.method`,
-`aws.s3.bucket`, `error.type`, `system.config`, `system.name.simple`, `system.name.canonical`.
+Both modules emit the timer **`rpc.client.call.duration`** with `rpc.system.name=s3` — the same
+value for the declarative client and the SDK wrapper. Other tags: `rpc.method`, `aws.s3.bucket`,
+`error.type`, `system.config`, `system.name.simple`, `system.name.canonical`; tell clients apart by
+`system.config` / `system.name.*`.
+
+### S3-compatible servers
+
+The declarative client signs every request itself with AWS Signature V4 and is verified by the
+framework's own suite against **RustFS, SeaweedFS and LocalStack 4.14.0** (it does not rely on a
+lenient server). What that guarantees on a strict server:
+
+- Object keys and `ListObjectsArgs` values (`prefix`, `delimiter`, `startAfter`,
+  `continuationToken`) are percent-encoded per SigV4 and the raw path is signed, so keys with
+  spaces, `+`, `%`, `*` or non-ASCII characters work.
+- Every header the client sends is signed (including multipart checksum headers and headers from
+  `*Args`).
+- `S3Client#deleteObjects` posts `?delete` to the bucket root; the per-key result keeps
+  `VersionId` and keys containing XML entities.
+- `HeadObjectResult.headers()` carries the response headers, so `etag()`, `versionId()` and
+  `lastModified()` are populated.
+- `putObject` / `uploadPart` with `(data, off, len)` hash and send exactly that slice; a
+  `ContentWriter` put honours `PutObjectArgs` (including its content type).
+
+Server-specific notes: keep `addressStyle = PATH` (the default) unless the server has wildcard DNS
+for virtual-hosted buckets; LocalStack Community accepts any credentials (`test`/`test`), so it
+cannot test authorization failures; `localstack/localstack:4.14.0` is the last image that starts
+without `LOCALSTACK_AUTH_TOKEN`.
 
 ---
 
@@ -458,8 +483,10 @@ handler — see [kora-http-server](../kora-http-server/SKILL.md).
 
 ## 7. Testing
 
-MinIO in a Testcontainer is the standard S3-compatible server for tests; it is the **server**,
-not a Kora module.
+Test against a real S3-compatible **server** in a Testcontainer — it is the server, not a Kora
+module. The migrated examples use MinIO through `testcontainers-extensions-minio`, shown below; the
+framework's own suite uses RustFS, SeaweedFS and LocalStack in a plain `GenericContainer` (see the
+LocalStack variant after the example), because MinIO no longer publishes reliable images.
 
 ```groovy
 testImplementation "io.koraframework:test-junit5"
@@ -504,8 +531,33 @@ class S3FileClientTest implements KoraAppTestConfigModifier {
 }
 ```
 
-Keep `addressStyle = PATH` (the default) against MinIO and Ceph — virtual-hosted style needs
-wildcard DNS those servers usually do not have.
+Same wiring with LocalStack in a plain `GenericContainer` (`org.testcontainers:testcontainers`),
+as the framework's `LocalStackS3ClientTest` does — create the bucket with `awslocal`:
+
+```java
+static GenericContainer<?> localstack = new GenericContainer<>(DockerImageName.parse("localstack/localstack:4.14.0"))
+        .withEnv("SERVICES", "s3")
+        .withExposedPorts(4566)
+        .waitingFor(Wait.forHttp("/_localstack/health").forPort(4566).forStatusCode(200));
+
+@BeforeAll
+static void startS3() throws Exception {
+    localstack.start();
+    localstack.execInContainer("awslocal", "s3", "mb", "s3://uploads");
+}
+
+@Override
+public KoraConfigModification config() {
+    return KoraConfigModification
+            .ofSystemProperty("S3_URL", "http://" + localstack.getHost() + ":" + localstack.getMappedPort(4566))
+            .withSystemProperty("S3_ACCESS_KEY", "test")
+            .withSystemProperty("S3_SECRET_KEY", "test")
+            .withSystemProperty("S3_BUCKET", "uploads");
+}
+```
+
+Keep `addressStyle = PATH` (the default) against self-hosted servers (RustFS, SeaweedFS,
+LocalStack, MinIO, Ceph) — virtual-hosted style needs wildcard DNS they usually do not have.
 
 ---
 
@@ -533,7 +585,7 @@ wildcard DNS those servers usually do not have.
 | `S3AsyncClient`, `@Tag(MultipartUpload.class)` async client | **removed** with the reactive model — contracts are synchronous on virtual threads |
 | `s3client.aws.checksumValidationEnabled` | `checksumCalculationRequest` / `checksumValidationResponse` |
 | `s3client.aws.upload { bufferSize, partSize }` | no `upload` section on the SDK wrapper; the declarative client has `upload { partSize, chunkSize, singlePartUploadLimit }` |
-| Metrics `s3.client.duration` / `s3.kora.client.duration` | `rpc.client.duration`, tag `rpc.system` = `s3` or `s3-aws` |
+| Metrics `s3.client.duration` / `s3.kora.client.duration` | `rpc.client.call.duration`, tag `rpc.system.name=s3` |
 
 `Context` is gone from the whole framework — remove any `Context` parameter or `Context.current()`
 call from S3 code paths.
@@ -546,7 +598,8 @@ call from S3 code paths.
 |---|---|
 | `package S3 does not exist` / `package io.koraframework.s3.client.kora.annotation does not exist` | `s3-client-aws` on the classpath but not `s3-client-kora`. The `@S3` annotations live only in `io.koraframework.experimental:s3-client-kora`. |
 | `Could not find io.koraframework:s3-client-kora` | Wrong group — the declarative client is `io.koraframework.experimental`. Conversely `s3-client-aws` is plain `io.koraframework`, **not** `.experimental`. |
-| `Could not find …:s3-client-minio` | The artifact does not exist in 2.0. Use `s3-client-kora`; keep MinIO as the test server. |
+| `Could not find …:s3-client-minio` | The artifact does not exist in 2.0. Use `s3-client-kora`; a MinIO server keeps working with it. |
+| `SignatureDoesNotMatch` / unsigned-header errors from a self-hosted S3 server | Not expected from `s3-client-kora` (SigV4 encoding and header signing are verified against RustFS, SeaweedFS, LocalStack). Check `region`, credentials, clock skew and `addressStyle`, and any proxy that rewrites the path or headers. |
 | `S3 operation '…' has no bucket source.` | No `@S3.Bucket` on the interface, the method or a parameter. The client config no longer supplies a bucket. |
 | `Config expected value, but got null at path 'ROOT.…endpoint'` | Declarative client config uses `endpoint`; `url` is the SDK wrapper's key. |
 | `Config expected value, but got null at path 'ROOT.…credentials.accessKey'` | Flat `accessKey`/`secretKey` from 1.x. They are nested under `credentials`, unless every method takes an `S3Credentials` parameter. |
@@ -589,15 +642,16 @@ call from S3 code paths.
 
 ## Source of truth
 
-Version-aligned authorities for Kora 2.0. The published documentation site describes Kora 1.x
-(`ru.tinkoff.kora`) on every branch, including pages served under a `/v2/` path — its `s3.md`
-documents the removed 1.x client, so never answer a 2.0 S3 question from it.
+Evidence order: framework source and tests > migrated examples > the Kora 2.0 docs
+([koraframework.io/v2/en/documentation/s3-client](https://koraframework.io/v2/en/documentation/s3-client/)).
+The 1.x pages (`ru.tinkoff.kora`) document the removed 1.x client — background only.
 
-- Framework source, tag `2.0.0.RC1`:
-  [experimental/s3-client-kora](https://github.com/kora-projects/kora/tree/2.0.0.RC1/experimental/s3-client-kora) ·
-  [s3/s3-client-aws](https://github.com/kora-projects/kora/tree/2.0.0.RC1/s3/s3-client-aws) ·
-  [s3-client-annotation-processor](https://github.com/kora-projects/kora/tree/2.0.0.RC1/experimental/s3-client-annotation-processor) ·
-  [s3-client-symbol-processor](https://github.com/kora-projects/kora/tree/2.0.0.RC1/experimental/s3-client-symbol-processor)
+- Framework source, tag `2.0.0.RC2`:
+  [experimental/s3-client-kora](https://github.com/kora-projects/kora/tree/2.0.0.RC2/experimental/s3-client-kora) ·
+  [s3/s3-client-aws](https://github.com/kora-projects/kora/tree/2.0.0.RC2/s3/s3-client-aws) ·
+  [s3-client-annotation-processor](https://github.com/kora-projects/kora/tree/2.0.0.RC2/experimental/s3-client-annotation-processor) ·
+  [s3-client-symbol-processor](https://github.com/kora-projects/kora/tree/2.0.0.RC2/experimental/s3-client-symbol-processor) ·
+  framework S3 server suite: [RustFS / SeaweedFS / LocalStack tests](https://github.com/kora-projects/kora/tree/2.0.0.RC2/experimental/s3-client-kora/src/test/java/io/koraframework/s3/client)
 - Migrated guide apps, branch `migration/2.0` (both artifacts in one service):
   [kora-java-guide-s3-app](https://github.com/kora-projects/kora-examples/tree/migration/2.0/guides/java/kora-java-guide-s3-app) ·
   [kora-kotlin-guide-s3-app](https://github.com/kora-projects/kora-examples/tree/migration/2.0/guides/kotlin/kora-kotlin-guide-s3-app)
@@ -608,4 +662,5 @@ documents the removed 1.x client, so never answer a 2.0 S3 question from it.
   [kora-kotlin-s3-client-aws](https://github.com/kora-projects/kora-examples/tree/migration/2.0/examples/kotlin/kora-kotlin-s3-client-aws)
 - Third-party: [AWS SDK for Java 2.x — S3](https://docs.aws.amazon.com/sdk-for-java/latest/developer-guide/examples-s3.html) ·
   [Amazon S3 API reference](https://docs.aws.amazon.com/AmazonS3/latest/API/Welcome.html) ·
+  [LocalStack S3](https://docs.localstack.cloud/aws/services/s3/) ·
   [MinIO server docs](https://min.io/docs/minio/container/index.html)

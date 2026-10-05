@@ -1,6 +1,6 @@
 ---
 name: kora-openapi-generator-server
-description: "Generate a Kora 2.x HTTP server from an OpenAPI 3.x contract with the `kora` generator (io.koraframework:openapi-generator, modes java-server / kotlin-server). Emits *ApiController (@Component + @HttpController), a *ApiDelegate interface you implement, sealed *ApiResponses with one record per status code, *ApiServerResponseMappers, model records/data classes and an ApiSecurity @Module for securitySchemes. Use for contract-first servers, enableServerValidation, HttpServerPrincipalExtractor wiring, enum fromValue parsing, or \"delegate not found\" / phantom-package build errors."
+description: "Generate a Kora 2.x HTTP server from an OpenAPI 3.x contract with the `kora` generator (io.koraframework:openapi-generator, modes java-server / kotlin-server). Emits *ApiController (@Component + @HttpController), a *ApiDelegate interface you implement, sealed *ApiResponses with one record per status code, *ApiServerResponseMappers, model records/data classes and an ApiSecurity @Module for securitySchemes (401 unauthenticated, 403 missing OAuth scope). Use for contract-first servers, enableServerValidation, HttpServerPrincipalExtractor wiring, 4XX/5XX range responses, enum fromValue parsing, or \"delegate not found\" / phantom-package build errors."
 license: Apache-2.0
 metadata:
   kora-version: "2.x"
@@ -8,9 +8,9 @@ metadata:
 
 # Kora OpenAPI Generator — HTTP Server
 
-> **Kora sub-skill — obey the [kora-v2 meta rules](../../SKILL.md) on every task:** **R0** ground the workspace on Kora 2.0 refs before starting (framework source at tag `2.0.0.RC1` + `kora-examples` at `migration/2.0`; `kora-docs` is 1.x only) · **R1** read this sub-skill before writing code · **R2** Kora 2.0 APIs only — no Spring/Micronaut/Quarkus, no Kora 1.x APIs, no invented annotations or config keys · **R3** journal any incorrect Kora usage. Add comments/Javadoc only if asked.
+> **Kora sub-skill — obey the [kora-v2 meta rules](../../SKILL.md) on every task:** **R0** ground the workspace on Kora 2.0 refs before starting (framework source at tag `2.0.0.RC2` + `kora-examples` at `migration/2.0` + Kora 2.0 docs at koraframework.io/v2, which trail the source; 1.x `kora-docs` pages are never an authority) · **R1** read this sub-skill before writing code · **R2** Kora 2.0 APIs only — no Spring/Micronaut/Quarkus, no Kora 1.x APIs, no invented annotations or config keys · **R3** journal any incorrect Kora usage. Add comments/Javadoc only if asked.
 
-**Version:** Kora 2.0 (`io.koraframework`, `2.0.0.RC1` on Maven Central) | **Java:** 25 | **Kotlin:** 2.4 + KSP | **Gradle:** 9+
+**Version:** Kora 2.0 (`io.koraframework`, `2.0.0.RC2`) | **Java:** 25 | **Kotlin:** 2.4.20 + KSP 2.3.12 | **Gradle:** 9.8.0
 
 The `kora` generator turns an OpenAPI 3.x contract into the whole transport layer of a Kora
 HTTP server. You implement exactly one thing: the generated `*ApiDelegate` interface, as a
@@ -81,26 +81,25 @@ JVM setting), not in the toolchain block. This is the single most common setup f
 
 ### 1. `gradle.properties`
 
-`2.0.0.RC1` is the Kora 2.0 release on Maven Central and resolves from plain `mavenCentral()`.
+`2.0.0.RC2` is the Kora 2.0 release and resolves from plain `mavenCentral()`.
 `2.0.0-SNAPSHOT` is the development line; it needs
 `https://central.sonatype.com/repository/maven-snapshots` and does not belong in a new project.
 
 ```properties
-koraVersion=2.0.0.RC1
+koraVersion=2.0.0.RC2
 ```
 
 ### 2. Build wiring
 
 Two independent versions are in play here — do not conflate them:
 
-| What | Where it is set | Value in the 2.0 examples |
+| What | Where it is set | Value |
 |---|---|---|
-| **OpenAPI Generator Gradle plugin** (`org.openapi.generator`) | `plugins { }` block | `7.23.0` in all 9 Java build files, `7.24.0` in all 7 Kotlin ones |
-| **Kora `kora` generator** (`io.koraframework:openapi-generator`) | `buildscript { dependencies { classpath … } }` | `$koraVersion` = `2.0.0.RC1` |
+| **OpenAPI Generator Gradle plugin** (`org.openapi.generator`) | `plugins { }` block | `7.25.0` (the migrated examples still pin `7.23.0` in the Java build files, `7.24.0` in the Kotlin ones) |
+| **Kora `kora` generator** (`io.koraframework:openapi-generator`) | `buildscript { dependencies { classpath … } }` | `$koraVersion` = `2.0.0.RC2` |
 
-The Kora generator is built against `org.openapitools:openapi-generator` **7.24.0** (framework
-version catalog), and that is the version stamped into `.openapi-generator/VERSION` in the
-output, so `7.24.0` is the aligned plugin choice.
+The Kora generator is built against `org.openapitools:openapi-generator` **7.25.0** (framework
+version catalog), so `7.25.0` is the aligned plugin choice.
 
 ===! ":fontawesome-brands-java: `Java`"
 
@@ -117,7 +116,7 @@ output, so `7.24.0` is the aligned plugin choice.
     plugins {
         id "java"
         id "application"
-        id "org.openapi.generator" version "7.24.0"
+        id "org.openapi.generator" version "7.25.0"
     }
 
     java {
@@ -160,9 +159,9 @@ output, so `7.24.0` is the aligned plugin choice.
 
     plugins {
         id("application")
-        kotlin("jvm") version "2.4.10"
-        id("com.google.devtools.ksp") version "2.3.11"
-        id("org.openapi.generator") version "7.24.0"
+        kotlin("jvm") version "2.4.20"
+        id("com.google.devtools.ksp") version "2.3.12"
+        id("org.openapi.generator") version "7.25.0"
     }
 
     kotlin {
@@ -403,8 +402,11 @@ generation, and it is why the annotation processor / KSP dependency is mandatory
 | `'…' overrides nothing` (Kotlin) | Kora contracts are `@NullMarked`; an optional parameter is `T?` in the generated interface and must be `T?` in the override. |
 | Enum lookup fails on valid data | `Enum.valueOf` / `values()` scan instead of `fromValue`. |
 | Principal extractor never called, every request 401 | The extractor's `@Tag` does not match a generated `ApiSecurity` marker. |
+| OAuth2 route answers 403 for a valid token | The extractor returned a principal, but its `scopes()` lack a scope the operation requires. 401 means no principal at all. |
+| `4XX` / `5XX` response record needs a status argument | A range response becomes `<Op>4XXApiResponse(int statusCode, …)` (like `default`); pass the concrete status you send. |
 | `Multiple components match` for the delegate | `delegateMethodBodyMode` generated a default delegate **and** you wrote a `@Component` one. Pick one. |
 | Validation annotations absent | `enableServerValidation: "true"` plus `io.koraframework:validation-module` and `ValidationModule` in `@KoraApp`. |
+| `Invalid OpenAPI numeric validation schema. Schema dataType: BigDecimal`; a `pattern` or item `@Valid` silently missing; `0` rejected by a `double` with only `maximum` | Generator defects up to 2.0.0.RC1, fixed on master by kora-projects/kora PR #965 — workarounds in the [Validation Reference](references/openapi-validation-reference.md#3-constraint-mapping). |
 | Two generator tasks overwrite each other | Give every task its own `outputDir`. |
 | Kotlin `unresolved reference` to generated types | KSP **and** `compileKotlin` must both `dependsOn` the generate task. |
 
@@ -428,10 +430,10 @@ Related skills: [`kora-http-server`](../kora-http-server/SKILL.md),
 [`kora-json`](../kora-json/SKILL.md),
 [`kora-aop-validation`](../kora-aop-validation/SKILL.md).
 
-Upstream: [kora @ `2.0.0.RC1`](https://github.com/kora-projects/kora/tree/2.0.0.RC1),
+Upstream: [kora @ `2.0.0.RC2`](https://github.com/kora-projects/kora/tree/2.0.0.RC2),
 [kora-examples @ `migration/2.0`](https://github.com/kora-projects/kora-examples/tree/migration/2.0),
 [OpenAPI Generator Gradle plugin](https://openapi-generator.tech/docs/plugins#gradle).
-There is no Kora 2.0 documentation site — `kora-docs` documents 1.x only.
+Kora 2.0 docs: [koraframework.io/v2/en](https://koraframework.io/v2/en/) — they trail the source; verify keys and defaults there.
 
 ## Assets
 

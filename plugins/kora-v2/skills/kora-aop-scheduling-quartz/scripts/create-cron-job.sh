@@ -2,9 +2,9 @@
 # Generate one Kora 2.0 Quartz cron job class plus its config entry.
 #
 # Emits io.koraframework.* imports and the 2.0 config layout:
-#   annotations  io.koraframework.scheduling.quartz.{ScheduleWithCron,DisallowConcurrentExecution}
+#   annotations  io.koraframework.scheduling.quartz.annotation.{ScheduleQuartzWithCron,DisallowConcurrentExecution}
 #   component    io.koraframework.common.annotation.Component
-#   config       jobs.<name>.cron  (referenced by @ScheduleWithCron(config = "jobs.<name>"))
+#   config       jobs.<name>.cron  (referenced by @ScheduleQuartzWithCron(config = "jobs.<name>"))
 
 set -euo pipefail
 
@@ -17,7 +17,7 @@ Options:
   -l, --lang LANG        java (default) or kotlin
   -p, --package PKG      Package for the job class (default: com.example.app.jobs)
   -r, --root DIR         Project root (default: . if ./src/main exists, else ..)
-      --config-driven    Use @ScheduleWithCron(config = "jobs.<name>") instead of an
+      --config-driven    Use @ScheduleQuartzWithCron(config = "jobs.<name>") instead of an
                          inline expression, so the cron can change without recompiling
   -h, --help             Show this help
 
@@ -65,8 +65,8 @@ case "$LANG_KIND" in
     *) echo "Error: --lang must be 'java' or 'kotlin', got '$LANG_KIND'" >&2; exit 2 ;;
 esac
 
-# Quartz accepts 6 or 7 fields — reject the 5-field Unix form early. The JDK scheduler
-# (io.koraframework.scheduling.jdk.annotation.ScheduleWithCron) is the one that takes 5 fields.
+# Quartz accepts 6 or 7 fields — reject the 5-field Unix form early (the Kora processor would
+# reject it at compile time anyway). The JDK scheduler's @ScheduleJdkWithCron takes 5 fields.
 read -ra CRON_FIELDS <<< "$CRON_EXPR"
 if [ "${#CRON_FIELDS[@]}" -lt 6 ] || [ "${#CRON_FIELDS[@]}" -gt 7 ]; then
     echo "Error: Quartz cron needs 6 or 7 fields, got ${#CRON_FIELDS[@]}: '$CRON_EXPR'" >&2
@@ -79,7 +79,7 @@ if [ -z "$PROJECT_ROOT" ]; then
 fi
 
 CLASS_NAME="${JOB_NAME}Job"
-# jobs.<lower-camel name> — the config node referenced by @ScheduleWithCron(config = ...)
+# jobs.<lower-camel name> — the config node referenced by @ScheduleQuartzWithCron(config = ...)
 JOB_KEY="$(printf '%s' "${JOB_NAME:0:1}" | tr '[:upper:]' '[:lower:]')${JOB_NAME:1}"
 PKG_PATH="${PKG//.//}"
 
@@ -92,10 +92,10 @@ else
 fi
 
 if [ "$CONFIG_DRIVEN" -eq 1 ]; then
-    SCHEDULE_ANNOTATION="@ScheduleWithCron(config = \"jobs.$JOB_KEY\")"
+    SCHEDULE_ANNOTATION="@ScheduleQuartzWithCron(config = \"jobs.$JOB_KEY\")"
     SCHEDULE_NOTE="cron read from jobs.$JOB_KEY in application.conf"
 else
-    SCHEDULE_ANNOTATION="@ScheduleWithCron(\"$CRON_EXPR\")"
+    SCHEDULE_ANNOTATION="@ScheduleQuartzWithCron(\"$CRON_EXPR\")"
     SCHEDULE_NOTE="cron: $CRON_EXPR"
 fi
 
@@ -104,8 +104,8 @@ if [ "$LANG_KIND" = "kotlin" ]; then
 package $PKG
 
 import io.koraframework.common.annotation.Component
-import io.koraframework.scheduling.quartz.DisallowConcurrentExecution
-import io.koraframework.scheduling.quartz.ScheduleWithCron
+import io.koraframework.scheduling.quartz.annotation.DisallowConcurrentExecution
+import io.koraframework.scheduling.quartz.annotation.ScheduleQuartzWithCron
 import org.slf4j.LoggerFactory
 
 /**
@@ -122,8 +122,8 @@ class $CLASS_NAME {
     $SCHEDULE_ANNOTATION
     fun execute() {
         log.info("Executing $JOB_NAME")
-        // TODO implement. Shutdown never interrupts a Quartz worker: bound long work
-        // with a deadline so scheduling.quartz.waitForJobComplete (default true) terminates.
+        // TODO implement. On shutdown a run still going after scheduling.quartz.shutdownWait
+        // (default 30s) is interrupted: bound long work and stop when Thread.currentThread().isInterrupted.
     }
 
     private companion object {
@@ -137,8 +137,8 @@ else
 package $PKG;
 
 import io.koraframework.common.annotation.Component;
-import io.koraframework.scheduling.quartz.DisallowConcurrentExecution;
-import io.koraframework.scheduling.quartz.ScheduleWithCron;
+import io.koraframework.scheduling.quartz.annotation.DisallowConcurrentExecution;
+import io.koraframework.scheduling.quartz.annotation.ScheduleQuartzWithCron;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -157,8 +157,8 @@ public final class $CLASS_NAME {
     $SCHEDULE_ANNOTATION
     void execute() {
         log.info("Executing $JOB_NAME");
-        // TODO implement. Shutdown never interrupts a Quartz worker: bound long work
-        // with a deadline so scheduling.quartz.waitForJobComplete (default true) terminates.
+        // TODO implement. On shutdown a run still going after scheduling.quartz.shutdownWait
+        // (default 30s) is interrupted: bound long work and stop when Thread.currentThread().isInterrupted().
     }
 }
 EOF
@@ -210,7 +210,7 @@ echo "Created $CLASS_NAME ($SCHEDULE_NOTE)"
 echo "  1. Make sure QuartzModule is on your @KoraApp interface"
 if [ "$CONFIG_DRIVEN" -eq 0 ]; then
     echo "  2. The jobs.$JOB_KEY config entry is unused until you switch the annotation to"
-    echo "     @ScheduleWithCron(config = \"jobs.$JOB_KEY\") (or re-run with --config-driven)"
+    echo "     @ScheduleQuartzWithCron(config = \"jobs.$JOB_KEY\") (or re-run with --config-driven)"
 else
     echo "  2. jobs.$JOB_KEY.cron drives the schedule; the entry is required at graph build"
 fi

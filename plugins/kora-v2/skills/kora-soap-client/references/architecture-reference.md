@@ -352,9 +352,8 @@ processor — it needs no reference to a `$`-prefixed generated type.
 The migrated Kora examples also list `io.koraframework:json-common`; SOAP does not need it — add it
 only if the service handles JSON as well.
 
-The Java SOAP example uses `http-client-apache` and the Kotlin one `http-client-ok`. Note that the
-Apache and JDK transports received integration corrections **after** `2.0.0.RC1` (they are on
-`master`, not in the release); `http-client-ok` is unchanged between the tag and `master`.
+The Java SOAP example uses `http-client-apache` and the Kotlin one `http-client-ok`; any of the
+three transports works.
 
 ### 7.2 The `wsdl2java` block
 

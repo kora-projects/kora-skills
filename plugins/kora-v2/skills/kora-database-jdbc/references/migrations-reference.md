@@ -37,11 +37,11 @@ credentials and pool — do not repeat them under `flyway` / `liquibase`.
 ```groovy
 implementation "io.koraframework:database-flyway"
 // database-flyway ships flyway-core only; the dialect artifact is the application's job
-implementation "org.flywaydb:flyway-database-postgresql:13.3.0"
+implementation "org.flywaydb:flyway-database-postgresql:13.9.0"
 ```
 
 Without the dialect artifact, Flyway 10+ fails at startup with `Unsupported Database: PostgreSQL`.
-Kora's catalog pins Flyway `13.3.0`; keep `flyway-core` and the dialect on the same version.
+Kora's catalog pins Flyway `13.9.0`; keep `flyway-core` and the dialect on the same version.
 
 **The pool needs at least two connections.** Flyway uses one connection for the migration and a
 second for schema management, so `jdbc.maxPoolSize = 1` starves the interceptor during graph
@@ -97,7 +97,7 @@ liquibase {
 ```
 
 `LiquibaseJdbcDatabaseModule` wires `new LiquibaseFactoryModule("liquibase")`. Kora's catalog pins
-Liquibase `5.0.3`.
+Liquibase `5.0.4`.
 
 ---
 
@@ -151,7 +151,7 @@ used by the migrated examples apply Flyway migrations per test method against a 
 | `ru.tinkoff.kora:database-flyway` / `-liquibase` | `io.koraframework:database-flyway` / `-liquibase` |
 | `ru.tinkoff.kora.database.flyway.FlywayJdbcDatabaseModule` | `io.koraframework.database.flyway.FlywayJdbcDatabaseModule` |
 | The datasource the interceptor wraps was configured under `db { }` | it is configured under **`jdbc { }`** |
-| — | Flyway `13.3.0` needs a separate dialect artifact (`flyway-database-postgresql`) |
+| — | Flyway `13.9.0` needs a separate dialect artifact (`flyway-database-postgresql`) |
 
 The `flyway` and `liquibase` section names themselves did not change.
 

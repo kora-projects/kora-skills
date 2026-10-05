@@ -138,7 +138,7 @@ cat <<NEXT
 
 Next steps
 ----------
-1. Dependencies (koraVersion=2.0.0.RC1 from mavenCentral()):
+1. Dependencies (koraVersion=2.0.0.RC2 from mavenCentral()):
 
      koraBom platform("io.koraframework:kora-bom:\$koraVersion")
      annotationProcessor "io.koraframework:annotation-processors"   # Kotlin: ksp "io.koraframework:symbol-processors"
@@ -162,7 +162,7 @@ if [ "$SCHEME" = "oauth2" ] || [ "$SCHEME" = "all" ]; then
              OAuth2AuthModule { … }
 
 3. Configure. maskHeaders REPLACES the default ["authorization","set-cookie","cookie"] rather than
-   extending it, and is matched lower-cased, so restate the defaults whenever you set it:
+   extending it, so restate the defaults whenever you set it:
 
      oauth2 {
        clientId     = "my-service-client"

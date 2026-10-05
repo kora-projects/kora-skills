@@ -1,11 +1,11 @@
 # Mockito / Mockito-Kotlin with `@KoraAppTest` (Kora 2.x)
 
 Verified against
-[`GraphMockitoMock`](https://github.com/kora-projects/kora/blob/2.0.0.RC1/test/test-junit5/src/main/java/io/koraframework/test/extension/junit5/GraphMockitoMock.java),
-[`GraphMockitoSpy`](https://github.com/kora-projects/kora/blob/2.0.0.RC1/test/test-junit5/src/main/java/io/koraframework/test/extension/junit5/GraphMockitoSpy.java),
-[`MockitoStrictness`](https://github.com/kora-projects/kora/blob/2.0.0.RC1/test/test-junit5/src/main/java/io/koraframework/test/extension/junit5/mockito/MockitoStrictness.java),
+[`GraphMockitoMock`](https://github.com/kora-projects/kora/blob/2.0.0.RC2/test/test-junit5/src/main/java/io/koraframework/test/extension/junit5/GraphMockitoMock.java),
+[`GraphMockitoSpy`](https://github.com/kora-projects/kora/blob/2.0.0.RC2/test/test-junit5/src/main/java/io/koraframework/test/extension/junit5/GraphMockitoSpy.java),
+[`MockitoStrictness`](https://github.com/kora-projects/kora/blob/2.0.0.RC2/test/test-junit5/src/main/java/io/koraframework/test/extension/junit5/mockito/MockitoStrictness.java),
 `MockitoUnusedStubbingReporter`, the version catalog
-[`gradle/libs.versions.toml`](https://github.com/kora-projects/kora/blob/2.0.0.RC1/gradle/libs.versions.toml),
+[`gradle/libs.versions.toml`](https://github.com/kora-projects/kora/blob/2.0.0.RC2/gradle/libs.versions.toml),
 and the migrated
 [`kora-kotlin-guide-testing-junit-app`](https://github.com/kora-projects/kora-examples/tree/migration/2.0/guides/kotlin/kora-kotlin-guide-testing-junit-app)
 and
@@ -31,8 +31,8 @@ on the classpath; keep one per module anyway.
 ## Dependencies and the mockito-core pin
 
 ```kotlin
-// Mockito alone — what the Kotlin JUnit guide app uses
-testImplementation("org.mockito:mockito-core:5.23.0")
+// Mockito alone, as in the Kotlin JUnit guide app
+testImplementation("org.mockito:mockito-core:5.24.0")
 ```
 
 ```kotlin
@@ -44,7 +44,7 @@ testImplementation("org.mockito.kotlin:mockito-kotlin:5.4.0")
 
 | Source | `mockito-core` | `mockito-kotlin` |
 |---|---|---|
-| Kora 2.0 version catalog | `5.23.0` | `6.3.0` |
+| Kora 2.0 version catalog | `5.24.0` | `6.4.0` |
 | `kora-kotlin-guide-testing-junit-app` (no Kotlin helpers) | `5.23.0` | — |
 | `kora-kotlin-crud-submodule`, `kora-kotlin-camunda-*` | `5.18.0` (explicit pin) | `5.4.0` |
 

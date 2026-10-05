@@ -5,8 +5,9 @@ see <https://mapstruct.org/documentation/stable/reference/html/>. Kora contribut
 constrains nothing in it; it only binds the generated implementation
 (see [`mapstruct-mapper-reference.md`](mapstruct-mapper-reference.md)).
 
-In a Kotlin Kora 2.0 module there is no MapStruct — mapping goes through Konvert, whose per-field
-options are documented at <https://mcarleio.github.io/konvert/>. `expression = "java(…)"` in
+In a Kotlin Kora 2.0 module there is no MapStruct — mapping goes through Konvert
+([`konvert-reference.md`](konvert-reference.md)), whose per-field options are documented at
+<https://mcarleio.github.io/konvert/>. `expression = "java(…)"` in
 particular embeds **Java** source into the generated implementation and has no Kotlin analogue.
 
 ## Contents

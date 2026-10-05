@@ -1,6 +1,6 @@
 ---
 name: kora-aop-resilient
-description: "Kora 2.x resilience aspects (io.koraframework:resilient-kora) — @CircuitBreakable, @Retryable, @Timeout, @RateLimited, @Fallback. In 2.0 every aspect takes a typed spec interface (@CircuitBreakerSpec/@RetrySpec/@TimeoutSpec/@RateLimiterSpec on an interface extending CircuitBreaker/Retry/Timeouter/RateLimiter) instead of a string name. Use when adding fault tolerance to outbound HTTP/gRPC/DB calls, wiring resilient.* config (countBased.windowSize, failureRateThreshold, attempts, delay, duration, limitForPeriod), binding a CircuitBreakerPredicate/RetryPredicate by @Tag, or porting Kora 1.x @CircuitBreaker(\"name\")/@Retry(\"name\") string annotations."
+description: "Kora 2.x resilience aspects (io.koraframework:resilient-kora) — @CircuitBreakable, @Retryable, @Timeout, @RateLimited, @Fallback. In 2.0 every aspect takes a typed spec interface (@CircuitBreakerSpec/@RetrySpec/@TimeoutSpec/@RateLimiterSpec on an interface extending CircuitBreaker/Retry/Timeouter/RateLimiter) instead of a string name. Use when adding fault tolerance to outbound HTTP/gRPC/DB calls, wiring resilient.* config (countBased.windowSize, failureRateThreshold, attempts, delay, duration, limitForPeriod, TOKEN_BUCKET/FIXED_WINDOW), binding a CircuitBreakerPredicate/RetryPredicate/RetryBudgetFactory by @Tag, excluding exceptions via NonRetryableException/NonCircuitableException, Redis-shared limits (@RateLimiterDistributedSpec, DistributedRetryBudgetFactory), or porting Kora 1.x @CircuitBreaker(\"name\")/@Retry(\"name\") string annotations."
 license: Apache-2.0
 metadata:
   kora-version: "2.x"
@@ -8,11 +8,11 @@ metadata:
 
 # Kora AOP Resilient
 
-> **Kora sub-skill — obey the [kora-v2 meta rules](../../SKILL.md) on every task:** **R0** ground the workspace on Kora 2.0 refs before starting (framework source at tag `2.0.0.RC1` + `kora-examples` at `migration/2.0`; `kora-docs` is 1.x only) · **R1** read this sub-skill before writing code · **R2** Kora 2.0 APIs only — no Spring/Micronaut/Quarkus, no Kora 1.x APIs, no invented annotations or config keys · **R3** journal any incorrect Kora usage. Add comments/Javadoc only if asked.
+> **Kora sub-skill — obey the [kora-v2 meta rules](../../SKILL.md) on every task:** **R0** ground the workspace on Kora 2.0 refs before starting (framework source at tag `2.0.0.RC2` + `kora-examples` at `migration/2.0` + Kora 2.0 docs at koraframework.io/v2, which trail the source; 1.x `kora-docs` pages are never an authority) · **R1** read this sub-skill before writing code · **R2** Kora 2.0 APIs only — no Spring/Micronaut/Quarkus, no Kora 1.x APIs, no invented annotations or config keys · **R3** journal any incorrect Kora usage. Add comments/Javadoc only if asked.
 
 | | |
 |---|---|
-| **Artifact** | `io.koraframework:resilient-kora` (BOM `io.koraframework:kora-bom`, `koraVersion=2.0.0.RC1`) |
+| **Artifact** | `io.koraframework:resilient-kora` (BOM `io.koraframework:kora-bom`, `koraVersion=2.0.0.RC2`) |
 | **Processor** | Java `annotationProcessor "io.koraframework:annotation-processors"` · Kotlin `ksp "io.koraframework:symbol-processors"` |
 | **Graph module** | `io.koraframework.resilient.ResilientModule` |
 | **Generated** | `$<Class>__AopProxy` (the aspect) · `$<Spec>_Impl` + `$<Spec>_Module` (the spec) |
@@ -68,7 +68,7 @@ Leaving the string form in place is a hard failure, not a warning:
 
 ```groovy
 dependencies {
-    koraBom platform("io.koraframework:kora-bom:$koraVersion")   // koraVersion=2.0.0.RC1
+    koraBom platform("io.koraframework:kora-bom:$koraVersion")   // koraVersion=2.0.0.RC2
     annotationProcessor "io.koraframework:annotation-processors" // mandatory: generates the AOP proxies + spec modules
 
     implementation "io.koraframework:resilient-kora"
@@ -139,6 +139,7 @@ resilient {
   }
   retry.payment   { delay = "100ms", attempts = 3, delayStep = "100ms" }
   timeout.payment { duration = "5s" }
+  ratelimiter.notifications { limitForPeriod = 100, limitRefreshPeriod = "1s" }   # type = TOKEN_BUCKET by default
 }
 ```
 
@@ -165,6 +166,42 @@ All five target **methods only**. All exceptions extend
 `@Timeout` kept its 1.x name but changed its attribute type from `String` to
 `Class<? extends Timeouter>`. `@Fallback` **lost its `value` attribute** — `method` is the only one
 left. `@RateLimited` is new in 2.0.
+
+`@RateLimited` also accepts a spec annotated `@RateLimiterDistributedSpec` (artifact
+`resilient-kora-distributed-redis-lettuce`): same `RateLimiter` contract, state in Redis, one quota
+across all instances — see [distributed-reference.md](references/distributed-reference.md).
+
+### Rate limiter algorithm
+
+The local limiter defaults to `type = TOKEN_BUCKET` (GCRA: continuous refill at
+`limitForPeriod / limitRefreshPeriod`, burst of up to `limitForPeriod`). `type = FIXED_WINDOW` is a
+quota per window and lets up to `2 * limitForPeriod` through across a window boundary. Both reject
+immediately with `RateLimitExceededException`; neither blocks.
+
+### Exceptions that do not count
+
+Implement a marker interface on your own exception instead of writing a predicate:
+
+| Marker interface | Effect under the default predicate |
+|---|---|
+| `io.koraframework.resilient.retry.NonRetryableException` | never retried — propagates on the first throw, no `RetryExhaustedException` |
+| `io.koraframework.resilient.circuitbreaker.NonCircuitableException` | propagates, but is counted as neither failure nor success by the breaker |
+
+```java
+public final class ValidationException extends RuntimeException
+        implements NonRetryableException, NonCircuitableException { … }
+```
+
+A tagged `RetryPredicate` / `CircuitBreakerPredicate` or an overridden `isFailure` on the spec
+replaces the default and with it the marker check.
+
+### Retry budget
+
+A `retryBudget` block on a retry section caps retries to a share of successful calls. The budget
+comes from a `RetryBudgetFactory`: one tagged `@Tag(<RetrySpec>.class)` wins for that retry, else the
+untagged one (`DefaultRetryBudgetFactory`, or your own replacing it globally).
+`DistributedRetryBudgetFactory` shares the budget across instances through Redis. See
+[retry-reference.md](references/retry-reference.md#retry-budget).
 
 ---
 
@@ -237,10 +274,11 @@ outright on a required key.
 
 | Reference | Description |
 |---|---|
-| [circuit-breaker-reference.md](references/circuit-breaker-reference.md) | `@CircuitBreakable`, the four window implementations, state machine, `CircuitBreakerPredicate` via `@Tag` |
-| [retry-reference.md](references/retry-reference.md) | `@Retryable`, linear vs exponential backoff, jitter, retry budget, `RetryPredicate` |
+| [circuit-breaker-reference.md](references/circuit-breaker-reference.md) | `@CircuitBreakable`, the four window implementations, state machine, `CircuitBreakerPredicate` via `@Tag`, `NonCircuitableException` |
+| [retry-reference.md](references/retry-reference.md) | `@Retryable`, linear vs exponential backoff, jitter, `RetryBudget` / `RetryBudgetFactory`, `RetryPredicate`, `NonRetryableException` |
 | [timeout-reference.md](references/timeout-reference.md) | `@Timeout`, virtual-thread execution and interruption, per-attempt vs overall |
-| [rate-limiter-reference.md](references/rate-limiter-reference.md) | `@RateLimited` — new in 2.0; fixed-window permits |
+| [rate-limiter-reference.md](references/rate-limiter-reference.md) | `@RateLimited` — new in 2.0; `TOKEN_BUCKET` (default) vs `FIXED_WINDOW` |
+| [distributed-reference.md](references/distributed-reference.md) | `@RateLimiterDistributedSpec`, `DistributedRetryBudgetFactory`, `LettuceDistributedResilientModule`, Redis keys and failure modes |
 | [fallback-reference.md](references/fallback-reference.md) | `@Fallback`, method-reference syntax, `@Fallback.Reason` |
 | [resilience-config-reference.md](references/resilience-config-reference.md) | Complete `resilient.*` key set, telemetry, imperative use, testing |
 
@@ -253,7 +291,9 @@ outright on a required key.
 | `CircuitBreakerService.{java,kt}.template` | `@CircuitBreakable` + a tagged `CircuitBreakerPredicate` |
 | `RetryService.{java,kt}.template` | `@Retryable` + a tagged `RetryPredicate` |
 | `TimeoutService.{java,kt}.template` | `@Timeout`, per-attempt and overall |
-| `RateLimiterService.{java,kt}.template` | `@RateLimited` |
+| `RateLimiterService.{java,kt}.template` | `@RateLimited`, `TOKEN_BUCKET` / `FIXED_WINDOW` config |
+| `RetryBudgetService.{java,kt}.template` | `retryBudget` block, a tagged `RetryBudgetFactory`, a `NonRetryableException` |
+| `DistributedResilience.{java,kt}.template` | `@RateLimiterDistributedSpec` + `LettuceDistributedResilientModule` + tagged `DistributedRetryBudgetFactory` |
 | `FallbackService.{java,kt}.template` | `@Fallback` with and without `@Fallback.Reason` |
 
 ---
@@ -272,6 +312,9 @@ outright on a required key.
 | Two circuit breakers never open | Two spec interfaces on the same config path = two independent instances. Share one spec. |
 | Predicate never runs | The `@Component` needs `@Tag(<Spec>.class)`; an untagged `CircuitBreakerPredicate` is not picked up. `failurePredicateName` no longer exists. |
 | No `resilient.*` metrics or logs | Resilient telemetry is **off by default** (logging, metrics *and* tracing). Enable it explicitly. |
+| Limiter lets `2 * limitForPeriod` through at a boundary | `type = FIXED_WINDOW`; the default `TOKEN_BUCKET` does not. |
+| Rate limit or retry budget is per instance | Local specs are per JVM. Use `@RateLimiterDistributedSpec` / `DistributedRetryBudgetFactory`. |
+| Business error retried or trips the breaker | Implement `NonRetryableException` / `NonCircuitableException` on it. |
 
 ---
 
@@ -308,6 +351,12 @@ resilient.telemetry {
 
 logging.levels."io.koraframework.resilient" = "DEBUG"
 ```
+
+### Inspect live state
+
+Circuit breakers, retries, retry states, retry budgets and rate limiters implement `toString()` with
+their current state (breaker state and counters, available permits, available budget tokens). Inject
+the spec interface and log it; the format is for humans, not for parsing.
 
 ---
 

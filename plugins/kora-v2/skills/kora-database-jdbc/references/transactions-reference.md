@@ -204,9 +204,38 @@ public long createOrder(Order order) {
   post-commit action because transaction is not active; register it inside a transactional
   repository/service method"*.
 
+Actions belong to the outer transaction: a nested `inTx` joins it, so what it registers runs only
+when the outer one commits or rolls back.
+
 Post-rollback actions run inside the rollback handling; anything they throw is attached to the
 original exception as a suppressed exception. Post-commit actions run after `commit()` and after
-auto-commit is restored — a failure there does **not** undo the commit.
+auto-commit is restored — a failure there does **not** undo the commit, but it **does** propagate
+out of `inTx`: the caller sees an exception for work that is already committed (an HTTP endpoint
+answers 500 and the client retries). Catch inside the action whatever the caller must not see:
+
+```java
+ctx.afterCommit(connection -> {
+    try {
+        cache.put(id, value);
+    } catch (RuntimeException e) {
+        log.warn("cache write-through failed for {}", id, e);
+    }
+});
+```
+
+On `2.0.0.RC1` three more defects apply (fixed in `2.0.0.RC2`, kora-projects/kora PR #967 — only RC1 is affected):
+
+1. The first post-commit action that throws skips the remaining ones; a post-rollback action
+   throwing a `RuntimeException` (not an `SQLException`) skips the remaining rollback actions.
+2. Actions are never cleared from the `ConnectionContext`, so inside one `withConnection` /
+   `withContext` scope every later `inTx` runs them again: the `afterCommit` of a rolled-back
+   transaction fires when the next one commits, the `afterRollback` of a committed one fires when
+   the next one rolls back.
+3. An `afterCommit` action that opens another `inTx` re-runs itself until `StackOverflowError`.
+
+On RC1: catch inside every action, keep to one `inTx` per `withConnection` scope when it
+registers actions, and run follow-up transactional work after `inTx` returns rather than from an
+action.
 
 Use post-commit for notifications, event publishing and cache invalidation; post-rollback for
 alerting and cleanup.
@@ -355,7 +384,9 @@ and run task.
 | `IllegalStateException: Cannot add JDBC post-commit action…` | registered outside an active transaction | move the registration inside `inTx` |
 | Writes outside the lambda are not rolled back | they ran in their own auto-commit statement | move every related call into one `inTx` |
 | `FOR UPDATE` does not block a concurrent writer | the query ran outside a transaction | call it inside `inTx` |
-| Post-commit action ran but the data is missing | the action was registered on a *nested* `inTx` that joined an outer transaction that later rolled back | register post-commit work where the outer boundary is |
+| Caller gets an exception although the data is committed | a post-commit action threw; the error propagates out of `inTx` | catch inside the action |
+| `afterCommit` fired for a transaction that rolled back, or `afterRollback` for one that committed | on RC1 (fixed in RC2 by kora-projects/kora PR #967) actions stay in the context, and a later `inTx` in the same `withConnection` scope ran them | one `inTx` per `withConnection` scope when it registers actions |
+| `StackOverflowError` through `JdbcExecutor.doInTx` | on RC1 (fixed in RC2 by kora-projects/kora PR #967) an `afterCommit` action that opens another `inTx` re-runs itself | run the follow-up after `inTx` returns |
 | Long transaction exhausts the pool | remote calls inside `inTx` | keep external I/O outside the transaction |
 
 ---

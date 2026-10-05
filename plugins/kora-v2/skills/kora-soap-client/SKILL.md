@@ -8,9 +8,9 @@ metadata:
 
 # Kora SOAP Client — compile-time clients from WSDL
 
-> **Kora sub-skill — obey the [kora-v2 meta rules](../../SKILL.md) on every task:** **R0** ground the workspace on Kora 2.0 refs before starting (framework source at tag `2.0.0.RC1` + `kora-examples` at `migration/2.0`; `kora-docs` is 1.x only) · **R1** read this sub-skill before writing code · **R2** Kora 2.0 APIs only — no Spring/Micronaut/Quarkus, no Kora 1.x APIs, no invented annotations or config keys · **R3** journal any incorrect Kora usage. Add comments/Javadoc only if asked.
+> **Kora sub-skill — obey the [kora-v2 meta rules](../../SKILL.md) on every task:** **R0** ground the workspace on Kora 2.0 refs before starting (framework source at tag `2.0.0.RC2` + `kora-examples` at `migration/2.0` + Kora 2.0 docs at koraframework.io/v2, which trail the source; 1.x `kora-docs` pages are never an authority) · **R1** read this sub-skill before writing code · **R2** Kora 2.0 APIs only — no Spring/Micronaut/Quarkus, no Kora 1.x APIs, no invented annotations or config keys · **R3** journal any incorrect Kora usage. Add comments/Javadoc only if asked.
 
-**Version:** Kora 2.0 (`io.koraframework`, `2.0.0.RC1` on Maven Central) | **Java:** 25 | **Kotlin:** 2.4 + KSP | **Gradle:** 9+ | **JAX-WS:** jakarta only
+**Version:** Kora 2.0 (`io.koraframework`, `2.0.0.RC2` on Maven Central) | **Java:** 25 | **Kotlin:** 2.4 + KSP | **Gradle:** 9+ | **JAX-WS:** jakarta only
 
 Kora consumes SOAP services through **compile-time generated clients**. There are two generators in
 the chain and they are easy to confuse:
@@ -43,7 +43,7 @@ the Kora 1.x documentation specified for `ru.tinkoff.kora:soap-client`.
 | Envelope processor wired by **replacing** the generated client factory with your own `@Module` method | the generated module **injects** it: declare a `@Tag(Iface.class) Function<SoapEnvelope, SoapEnvelope>` component and nothing else |
 | `SoapClientLogger.SoapClientLoggerBodyMapper` `@DefaultComponent` for masking logged bodies | **removed** — subclass `DefaultSoapClientLoggerFactory` instead ([telemetry reference](references/telemetry-reference.md)) |
 | `telemetry.metrics.enabled` defaults to `true` | **defaults to `false`** — nothing is reported until you switch it on |
-| Metrics `kora.soap.client.*` (counter + `DistributionSummary`) | one Timer **`rpc.client.duration`** with OpenTelemetry semconv tags |
+| Metrics `kora.soap.client.*` (counter + `DistributionSummary`) | one Timer **`rpc.client.call.duration`** with OpenTelemetry semconv tags |
 | `implementation("…:soap-client") { exclude group: "jakarta.xml" … }` | **drop every exclude** — 2.0 `soap-client` declares the jakarta/JAXB stack itself as `api` at pinned versions |
 | `annotationProcessor "…:soap-client-annotation-processor"` listed separately | already inside `io.koraframework:annotation-processors` (KSP: `symbol-processors`) |
 | `logging.level { … }` | **`logging.levels { … }`** |
@@ -80,11 +80,11 @@ the Kora 1.x documentation specified for `ru.tinkoff.kora:soap-client`.
 
 ### 1. `gradle.properties`
 
-`2.0.0.RC1` is the Kora 2.0 release on Maven Central. `2.0.0-SNAPSHOT` is the `master` development
+`2.0.0.RC2` is the Kora 2.0 release on Maven Central. `2.0.0-SNAPSHOT` is the `master` development
 line and needs the snapshot repository — do not put it in a new project.
 
 ```properties
-koraVersion=2.0.0.RC1
+koraVersion=2.0.0.RC2
 ```
 
 ### 2. Build file
@@ -267,7 +267,7 @@ Full signatures, the request/response mapping, RPC `Holder` out-parameters and M
 | `telemetry.logging.enabled` | no | **`false`** | |
 | `telemetry.metrics.enabled` | no | **`false`** | |
 | `telemetry.metrics.slo` | no | `TelemetryConfig.MetricsConfig.DEFAULT_SLO` | Timer SLO buckets |
-| `telemetry.metrics.tags` | no | `{}` | Extra tags on `rpc.client.duration` |
+| `telemetry.metrics.tags` | no | `{}` | Extra tags on `rpc.client.call.duration` |
 | `telemetry.tracing.enabled` | no | **`true`** | |
 | `telemetry.tracing.attributes` | no | `{}` | Extra span attributes |
 
@@ -298,8 +298,8 @@ wrapping an `HttpClientConnectionException` / `HttpClientTimeoutException` — t
 
 | Signal | Shape |
 |---|---|
-| Metric | Timer **`rpc.client.duration`**, tags `rpc.system=soap`, `rpc.service`, `rpc.method`, `server.address`, `server.port`, `http.response.status_code`, `error.type`, `fault.code`, `system.config`, `system.name.simple`, `system.name.canonical` |
-| Span | `SOAP <service> <method>`, `SpanKind.CLIENT`, attributes `rpc.*`, `server.*`, `http.response.status_code`, plus `fault.code` / `fault.actor` on a fault |
+| Metric | Timer **`rpc.client.call.duration`**, tags `rpc.system.name=soap`, `rpc.service`, `rpc.method`, `server.address`, `server.port`, `http.response.status_code`, `error.type`, `soap.fault.code`, `system.config`, `system.name.simple`, `system.name.canonical` |
+| Span | `SOAP <service> <method>`, `SpanKind.CLIENT`, attributes `rpc.*`, `server.*`, `http.response.status_code`, plus `soap.fault.code` / `soap.fault.actor` on a fault |
 | Logs | Loggers `<interface FQN>.request` and `<interface FQN>.response`. Envelope bodies are logged **only at `TRACE`** |
 
 **→ [telemetry-reference.md](references/telemetry-reference.md)**
@@ -371,7 +371,7 @@ package — both hide the real problem.
 |---|---|
 | [architecture-reference.md](references/architecture-reference.md) | Codegen chain, generated signatures, request/response mapping, RPC `Holder`, MTOM/XOP, Gradle wiring, testing |
 | [error-handling-reference.md](references/error-handling-reference.md) | Exception hierarchy, typed `@WebFault` faults, `SoapFault` API, transport failures, resilience |
-| [telemetry-reference.md](references/telemetry-reference.md) | `rpc.client.duration` tags, span shape, logger names and levels, body masking, custom factories |
+| [telemetry-reference.md](references/telemetry-reference.md) | `rpc.client.call.duration` tags, span shape, logger names and levels, body masking, custom factories |
 
 | Asset | Description |
 |---|---|

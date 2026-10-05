@@ -1,7 +1,7 @@
 // Kora 2.0 — Konvert mapper (Kotlin).
 //
-// Kotlin's mapping path in Kora 2.0 is Konvert, not MapStruct: MapStruct ships only a javac
-// annotation processor and KSP cannot run it. `konvert-ksp-extension` (already inside
+// Kotlin's mapping path in Kora 2.0 is Konvert, never MapStruct: MapStruct is a javac annotation
+// processor and Kora's Kotlin processors run in KSP. `konvert-ksp-extension` (already inside
 // `io.koraframework:symbol-processors`) finds this @Konverter interface, looks up the
 // Konvert-generated `object OrderMapperImpl`, and binds it into the graph as a singleton.
 // Inject `OrderMapper` by constructor. No @Component.
@@ -38,15 +38,16 @@ interface OrderMapper {
 // API (@Konvert, @Mapping and friends): https://mcarleio.github.io/konvert/
 //
 // The extension binds the generated object with an EMPTY dependency list, so a @Konverter mapper
-// can never take graph dependencies. Anything that needs a clock, an ID generator, a config value
-// or a repository belongs in a normal @Component instead:
+// can never take graph dependencies. Generated identifiers, timestamps, PATCH-style updates onto a
+// `val` data class, and anything that needs a component belong in a regular @Component that
+// delegates to the mapper:
 
 @Component
-class OrderFactory {
+class OrderAssembler(
+    private val mapper: OrderMapper,
+) {
 
-    // Shapes Konvert's name matching cannot express — generated identifiers, timestamps,
-    // and PATCH-style in-place updates onto a `val` data class — stay hand-written.
-    // This is plain synchronous Kotlin; Kora 2.0 has no suspend or reactive contracts.
+    // Plain synchronous Kotlin; Kora 2.0 has no suspend or reactive contracts.
     fun newOrder(dto: CreateOrderDto): Order = Order(
         id = UUID.randomUUID(),
         createdAt = OffsetDateTime.now(),
@@ -54,18 +55,19 @@ class OrderFactory {
         customerId = dto.customerId,
         lines = dto.lines,
     )
+
+    fun toDto(order: Order): OrderDto = mapper.toDto(order)
 }
 
-// Usage — the mapper is an ordinary constructor dependency:
+// Usage — the assembler is an ordinary constructor dependency:
 //
 //   @Component
 //   class OrdersService(
-//       private val mapper: OrderMapper,
-//       private val factory: OrderFactory,
+//       private val assembler: OrderAssembler,
 //       private val repo: OrderRepository,
 //   ) {
 //       fun create(body: CreateOrderDto): OrderDto {
-//           val saved = repo.save(factory.newOrder(body))
-//           return mapper.toDto(saved)
+//           val saved = repo.save(assembler.newOrder(body))
+//           return assembler.toDto(saved)
 //       }
 //   }

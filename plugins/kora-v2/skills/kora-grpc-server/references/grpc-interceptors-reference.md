@@ -1,6 +1,6 @@
 # gRPC Interceptors Reference — Kora 2.0
 
-**Framework source (authority):** [`GrpcServerFactoryModule`](https://github.com/kora-projects/kora/blob/2.0.0.RC1/grpc/grpc-server/src/main/java/io/koraframework/grpc/server/GrpcServerFactoryModule.java) · [`DynamicServerInterceptor`](https://github.com/kora-projects/kora/blob/2.0.0.RC1/grpc/grpc-server/src/main/java/io/koraframework/grpc/server/interceptor/DynamicServerInterceptor.java) · [`TelemetryInterceptor`](https://github.com/kora-projects/kora/blob/2.0.0.RC1/grpc/grpc-server/src/main/java/io/koraframework/grpc/server/interceptor/TelemetryInterceptor.java)
+**Framework source (authority):** [`GrpcServerFactoryModule`](https://github.com/kora-projects/kora/blob/2.0.0.RC2/grpc/grpc-server/src/main/java/io/koraframework/grpc/server/GrpcServerFactoryModule.java) · [`DynamicServerInterceptor`](https://github.com/kora-projects/kora/blob/2.0.0.RC2/grpc/grpc-server/src/main/java/io/koraframework/grpc/server/interceptor/DynamicServerInterceptor.java) · [`TelemetryInterceptor`](https://github.com/kora-projects/kora/blob/2.0.0.RC2/grpc/grpc-server/src/main/java/io/koraframework/grpc/server/interceptor/TelemetryInterceptor.java)
 **Migrated examples:** [`MyServerInterceptor.java`](https://github.com/kora-projects/kora-examples/blob/migration/2.0/examples/java/kora-java-grpc-server/src/main/java/io/koraframework/example/grpc/server/MyServerInterceptor.java) · [`UserStreamingAuthInterceptor.java`](https://github.com/kora-projects/kora-examples/blob/migration/2.0/guides/java/kora-java-guide-grpc-server-advanced-app/src/main/java/io/koraframework/guide/grpcserver/advanced/grpc/UserStreamingAuthInterceptor.java)
 
 ## Contents
@@ -368,7 +368,7 @@ call is being *set up*, which is rarely where handler bugs live.
 
 | Do not write | Because |
 |---|---|
-| A metrics interceptor | `TelemetryInterceptor` already records `rpc.server.duration` with `rpc.service` / `rpc.method` / `rpc.grpc.status_code` tags — set `grpcServer.telemetry.metrics.enabled = true` |
+| A metrics interceptor | `TelemetryInterceptor` already records `rpc.server.call.duration` with `rpc.service` / `rpc.method` / `rpc.response.status_code` / `error.type` tags — set `grpcServer.telemetry.metrics.enabled = true` |
 | A request/response logging interceptor | the module already logs to `…GrpcServer.request` / `.response` — set `grpcServer.telemetry.logging.enabled = true`, and `TRACE` on those loggers adds bodies |
 | A tracing/trace-id interceptor | the module extracts and injects W3C trace context and opens a `SERVER` span per call |
 | An MDC-population interceptor | `VirtualThreadExecutorTransportFilter` binds `MDC.VALUE` as a `ScopedValue` around each call |

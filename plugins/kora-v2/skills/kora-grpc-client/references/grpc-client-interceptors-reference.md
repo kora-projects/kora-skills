@@ -45,7 +45,7 @@ Consequences:
 - Kora's own two interceptors are always appended, whether or not you contribute any. They are not
   components and cannot be removed or reordered from the graph.
 - `GrpcClientConfigInterceptor` is what applies `grpcClient.<Service>.timeout` as a call deadline;
-  `GrpcClientTelemetryInterceptor` is what produces the `rpc.client.duration` metric, the spans and
+  `GrpcClientTelemetryInterceptor` is what produces the `rpc.client.call.duration` metric, the spans and
   the request/response logs.
 
 ---

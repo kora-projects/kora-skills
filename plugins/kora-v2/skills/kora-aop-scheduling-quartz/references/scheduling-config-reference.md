@@ -9,11 +9,12 @@ timers and the JDK cron see [kora-aop-scheduling-jdk](../../kora-aop-scheduling-
 - [Module setup](#module-setup)
 - [Quartz properties](#quartz-properties)
 - [Per-job configuration](#per-job-configuration)
+- [Time zone](#time-zone)
 - [Telemetry](#telemetry)
 - [Shutdown](#shutdown)
 - [Persistence (JDBC JobStore)](#persistence-jdbc-jobstore)
 - [Clustering](#clustering)
-- [Keys removed in 2.0](#keys-removed-in-20)
+- [Keys removed or renamed](#keys-removed-or-renamed)
 - [See also](#see-also)
 
 ---
@@ -26,7 +27,9 @@ consumed by this module.
 | Key | Type | Default | Read by |
 |---|---|---|---|
 | `scheduling.quartz.properties` | object of `org.quartz.*` strings | Quartz jar defaults | `QuartzModule.quartzProperties` |
-| `scheduling.quartz.waitForJobComplete` | boolean | **`true`** | `SchedulingQuartzConfig` |
+| `scheduling.quartz.shutdownWait` | duration | **`30s`** | `QuartzConfig` |
+| `scheduling.quartz.compareStartTime` | boolean | `false` | `QuartzConfig` |
+| `scheduling.quartz.cleanupOrphanedJobs` | boolean | `false` | `QuartzConfig` |
 | `scheduling.telemetry.logging.enabled` | boolean | **`false`** | `SchedulingModule.schedulingTelemetryConfig` |
 | `scheduling.telemetry.metrics.enabled` | boolean | **`false`** | same |
 | `scheduling.telemetry.metrics.slo` | duration array | 14 buckets, 1 ms … 90 s | same |
@@ -34,6 +37,7 @@ consumed by this module.
 | `scheduling.telemetry.tracing.enabled` | boolean | **`true`** | same |
 | `scheduling.telemetry.tracing.attributes` | object | `{}` | same |
 | `<job config path>.cron` | string | annotation `value()` when present | generated `*CronConfig` |
+| `<job config path>.enabled` | boolean | `true` | generated `*CronConfig` (`SchedulingJobConfig.enabled()`) |
 | `<job config path>.telemetry.*` | object | falls back to `scheduling.telemetry` | generated `*CronConfig` |
 
 Unknown keys anywhere in this tree are ignored without a warning. A typo therefore looks like a
@@ -54,7 +58,7 @@ public interface Application extends
 
 ```groovy
 dependencies {
-    koraBom platform("io.koraframework:kora-bom:$koraVersion")   // koraVersion=2.0.0.RC1
+    koraBom platform("io.koraframework:kora-bom:$koraVersion")   // koraVersion=2.0.0.RC2
     annotationProcessor "io.koraframework:annotation-processors" // Kotlin: ksp "io.koraframework:symbol-processors"
 
     implementation "io.koraframework:scheduling-quartz"
@@ -124,15 +128,18 @@ Effective defaults inherited from the Quartz jar at 2.5.2:
 
 ## Per-job configuration
 
-`@ScheduleWithCron(config = "<path>")` generates a `@ConfigMapper` interface extending
+`@ScheduleQuartzWithCron(config = "<path>")` generates a `@ConfigMapper` interface extending
 `SchedulingJobConfig`, bound to `<path>`. The node may be a **string** or an **object**.
 
 ```java
-@ScheduleWithCron(config = "jobs.nightly")
+@ScheduleQuartzWithCron(config = "jobs.nightly")
 void nightlyReport() { }
 
-@ScheduleWithCron(config = "jobs.hourly")
+@ScheduleQuartzWithCron(config = "jobs.hourly")
 void hourlyCheck() { }
+
+@ScheduleQuartzWithCron(value = "0 */15 * * * ?", config = "jobs.sync")
+void sync() { }
 ```
 
 ```hocon
@@ -140,9 +147,10 @@ jobs {
   # string form — cron only
   nightly = "0 0 3 * * ?"
 
-  # object form — cron plus per-job telemetry
+  # object form — cron, on/off switch and per-job telemetry
   hourly {
     cron = "0 0 * * * ?"
+    enabled = true
     telemetry {
       logging.enabled = true
       metrics.enabled = true
@@ -150,6 +158,9 @@ jobs {
       tracing.enabled = false
     }
   }
+
+  # switch a job off without a rebuild; the annotation value stays the cron default
+  sync.enabled = false
 }
 ```
 
@@ -158,6 +169,7 @@ jobs:
   nightly: "0 0 3 * * ?"
   hourly:
     cron: "0 0 * * * ?"
+    enabled: true
     telemetry:
       logging:
         enabled: true
@@ -167,17 +179,50 @@ jobs:
           component: "billing"
       tracing:
         enabled: false
+  sync:
+    enabled: false
 ```
 
 - If the annotation also carries `value`, that expression is the fallback used when the node is
-  absent; a present node always wins.
+  absent; a present node always wins. An object node without `cron` also falls back to `value`.
 - If the annotation carries no `value`, the node is required — an absent one raises
-  `ConfigValueException` during graph build.
+  `ConfigValueException` during graph build, and an object node must contain `cron`.
+- A cron from config is validated at graph init: `IllegalArgumentException: Invalid CRON
+  expression '…' for Quartz job '<Class>#<method>': …` with the expected field layout.
+- **`enabled = false`** builds the job with no triggers. The registrar still registers the job,
+  logs `Quartz Job '<job class>' has no triggers and is not scheduled` at INFO, and unschedules
+  any trigger a persistent job store still holds for it. The string form cannot carry `enabled`;
+  use the object form.
 - Every field under `telemetry` is nullable and falls back to `scheduling.telemetry`; an omitted
   `telemetry` block is fine.
-- **Per-job telemetry is only available through `config`.** Jobs declared with an inline cron or
-  with `@ScheduleWithTrigger` get the global `scheduling.telemetry` settings; the generated code
-  passes `null` for the per-job config in those branches.
+- **Per-job telemetry and `enabled` are only available through `config`.** Jobs declared with an
+  inline cron or with `@ScheduleQuartzWithTrigger` get the global `scheduling.telemetry` settings;
+  the generated code passes `null` for the per-job config in those branches.
+
+---
+
+## Time zone
+
+Cron triggers run in the JVM default zone unless the graph has a `ZoneId` tagged with
+`io.koraframework.scheduling.common.SchedulingModule`:
+
+```java
+@Tag(SchedulingModule.class)
+default ZoneId schedulingZone() {
+    return ZoneId.of("Europe/Moscow");
+}
+```
+
+```kotlin
+@Tag(SchedulingModule::class)
+fun schedulingZone(): ZoneId = ZoneId.of("Europe/Moscow")
+```
+
+The parameter is `@Nullable` on every generated cron factory, so leaving it out is fine. It is one
+component for all three Kora schedulers, not a Quartz-only setting. The zone is part of the
+persisted-trigger comparison: changing it reschedules stored cron triggers at the next start.
+Triggers you build yourself for `@ScheduleQuartzWithTrigger` are not touched — set their zone on
+the `CronScheduleBuilder` yourself.
 
 ---
 
@@ -207,11 +252,12 @@ One Micrometer **`Timer`** named **`scheduling.job.duration`**, recorded once pe
 
 | Tag | Value |
 |---|---|
+| `scheduling.system` | `quartz` (`jdk` / `dbscheduler` for the other schedulers) |
 | `code.function.name` | `<fully.qualified.Class>#<method>` |
 | `system.name.simple` | `<SimpleClass>#<method>` |
 | `system.name.canonical` | `<fully.qualified.Class>#<method>` |
 | `error.type` | canonical exception class name, or `""` on success |
-| `system.config` | the `config` path — only present for `@ScheduleWithCron(config = "…")` |
+| `system.config` | the `config` path — only present for `@ScheduleQuartzWithCron(config = "…")` |
 | … | everything in `scheduling.telemetry.metrics.tags` (or the per-job override) |
 
 Buckets come from `metrics.slo`; the default array is 1, 10, 50, 100, 200, 500, 1000, 2000,
@@ -222,9 +268,10 @@ registry the telemetry degrades to a no-op.
 
 ### Tracing
 
-Span name `scheduling <fully.qualified.Class>#<method>`, with attributes
-`code.function.name`, `system.name.simple`, `system.name.canonical`, optionally `system.config`,
-plus everything in `tracing.attributes`. Requires an OpenTelemetry `Tracer` in the graph.
+Span name `scheduling <fully.qualified.Class>#<method>`, with attributes `scheduling.system`
+(`quartz`), `code.function.name`, `system.name.simple`, `system.name.canonical`, optionally
+`system.config`, plus everything in `tracing.attributes`. Requires an OpenTelemetry `Tracer` in
+the graph.
 
 ### Logging
 
@@ -234,8 +281,8 @@ plus everything in `tracing.attributes`. Requires an OpenTelemetry `Tracer` in t
 | success | INFO | `Scheduled Job execution completed` |
 | failure | WARN | `Scheduled Job execution failed with error` |
 
-Key-values: `jobClass`, `jobMethod`, `duration` (ms), plus `jobConfigPath` when the job uses
-`config`, plus `exceptionType` / `exceptionMessage` on failure.
+Key-values: `schedulerType` (`quartz`), `jobClass`, `jobMethod`, `duration` (ms), plus
+`jobConfigPath` when the job uses `config`, plus `exceptionType` / `exceptionMessage` on failure.
 
 The **logger name is `<fully.qualified.Class>#<method>`**. Logback splits the hierarchy on `.`,
 so `Foo#nightly` is one segment: a `logging.levels` entry for the class alone does not match it.
@@ -248,22 +295,39 @@ logging.levels {
 }
 ```
 
+### Custom telemetry factory
+
+`SchedulingTelemetryFactory.get` takes the scheduler type first:
+`get(String schedulerType, @Nullable String jobConfigPath, @Nullable JobTelemetryConfig
+jobTelemetryConfig, Class<?> jobClass, String jobMethod)`. A factory written against the RC1-era
+four-argument signature no longer compiles.
+
 ---
 
 ## Shutdown
 
 | Key | Type | Default |
 |---|---|---|
-| `scheduling.quartz.waitForJobComplete` | boolean | **`true`** |
+| `scheduling.quartz.shutdownWait` | duration | **`30s`** |
 
-`KoraQuartzScheduler.release()` calls `Scheduler.shutdown(waitForJobComplete)`.
+`KoraQuartzScheduler.release()`:
 
-- `true` — `release()` blocks until running jobs finish.
-- `false` — `release()` returns immediately. It does **not** cancel or interrupt anything; the
-  non-daemon Quartz worker keeps running.
+1. `scheduler.standby()` — no new firings;
+2. waits up to `shutdownWait` for running jobs;
+3. interrupts the threads of jobs still running (`KoraQuartzJob` is an
+   `org.quartz.InterruptableJob`) and logs `KoraQuartzScheduler interrupting jobs [...] still
+   running after <shutdownWait>` at WARN;
+4. waits up to `shutdownWait` again, then logs `KoraQuartzScheduler stopped while jobs [...] are
+   still running after interruption` at WARN if any are left;
+5. `scheduler.shutdown(false)`.
 
-Neither value interrupts a running job. See
-[graceful-shutdown-reference.md](graceful-shutdown-reference.md).
+| Value | Effect |
+|---|---|
+| `30s` (default) | up to ~60 s in total for a job that ignores the interrupt |
+| `0s` | interrupts running jobs immediately |
+| `365d` | effectively waits for completion — keep the platform grace period (Kubernetes `terminationGracePeriodSeconds`) at least as long |
+
+See [graceful-shutdown-reference.md](graceful-shutdown-reference.md).
 
 ---
 
@@ -312,6 +376,35 @@ scheduling.quartz.properties {
 Only with a persistent store does `@PersistJobDataAfterExecution` mean anything: with the
 default `RAMJobStore` the `JobDataMap` lives in memory and dies with the process.
 
+### What Kora stores, and when it reschedules
+
+- Jobs are stored under the group **`kora`**, named by the generated job class's canonical name
+  (`kora.com.example.$Reports_nightly_Job`). A job of a known class still in the `DEFAULT` group
+  — how Kora 1.x and RC1 stored it — is deleted there with its triggers and re-registered under
+  `kora` at start.
+- A persisted trigger is **kept as is** at restart unless its schedule (cron expression, simple
+  repeat interval/count), end time or cron time zone changed. Quartz sets the start time of a
+  trigger built without `startAt()` to the moment it is built, so comparing it would reschedule
+  every trigger on every start, losing misfire handling for firings missed while the service was
+  down and shifting simple-trigger phases.
+
+| Key | Default | Turn it on when |
+|---|---|---|
+| `scheduling.quartz.compareStartTime` | `false` | every trigger uses a fixed `startAt()` and changing it must reschedule the trigger |
+| `scheduling.quartz.cleanupOrphanedJobs` | `false` | the store belongs to one application and deployments never run two versions at once |
+
+`cleanupOrphanedJobs` runs **before** the scheduler starts and removes Kora jobs (group `kora`,
+plus `DEFAULT`-group jobs named like generated `$Type_method_Job` classes) that the starting
+instance does not know, with their triggers; jobs you added to the `Scheduler` yourself are kept.
+It is the cure for `JobPersistenceException: Couldn't retrieve job because a required class was
+not found` after a job class is deleted or renamed. It is **unsafe** when:
+
+- several applications share the Quartz tables under the same scheduler name
+  (`kora-quartz-scheduler` by default) — each removes the others' jobs;
+- instances of different versions run at once, e.g. a rolling deployment — an old instance
+  starting after a new one removes the jobs the new version added, and they return only after a
+  new instance restarts.
+
 ---
 
 ## Clustering
@@ -342,18 +435,23 @@ Constraints that follow from how Kora registers jobs (`KoraQuartzJobRegistrar` /
   a job class it does not itself carry.
 - **The registrar is the source of truth for triggers.** At every `init()` and `graphRefreshed()`
   it re-adds each job durably and reconciles its triggers against the compiled/config state,
-  unscheduling any others. Trigger rows edited directly in `QRTZ_TRIGGERS` are reverted.
+  unscheduling any others. A trigger row edited directly in `QRTZ_TRIGGERS` is replaced when its
+  schedule, end time or zone no longer matches.
+- **Trigger identities must be unique** across all jobs; a duplicate fails startup with
+  `IllegalStateException: Quartz trigger '…' is declared more than once, by jobs '…' and '…'`.
 - Jobs are keyed by the generated job class's canonical name, so renaming a job class or its
-  method orphans the old rows in the job store; clean them up yourself.
+  method orphans the old rows in the job store — see `cleanupOrphanedJobs` above, with its
+  rolling-deploy caveat.
 
 ---
 
-## Keys removed in 2.0
+## Keys removed or renamed
 
-| Kora 1.x | Kora 2.0 | Failure mode |
+| Old key | Now | Failure mode |
 |---|---|---|
-| `quartz { "org.quartz.*" = … }` (root) | `scheduling.quartz.properties { … }` | silent — Quartz starts on its own defaults |
-| `scheduling.waitForJobComplete` | `scheduling.quartz.waitForJobComplete` (default now `true`) | silent — shutdown behaviour reverts to the default |
+| `quartz { "org.quartz.*" = … }` (Kora 1.x root) | `scheduling.quartz.properties { … }` | silent — Quartz starts on its own defaults |
+| `scheduling.waitForJobComplete` (Kora 1.x) | `scheduling.quartz.shutdownWait` | silent — the 30 s default applies |
+| `scheduling.quartz.waitForJobComplete` (RC1 / earlier 2.0 snapshots) | `scheduling.quartz.shutdownWait` | silent — the 30 s default applies; jobs are now interrupted after it |
 | `ru.tinkoff.kora:scheduling-quartz` | `io.koraframework:scheduling-quartz` | dependency resolution failure |
 | `ru.tinkoff.kora:kora-parent` | `io.koraframework:kora-bom` | dependency resolution failure |
 

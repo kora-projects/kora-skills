@@ -318,7 +318,7 @@ the class file, so Kotlin types the result `String?` and
 `val token: String = provider.getToken(request)` fails with
 `initializer type mismatch: expected 'String', actual 'String?'`. Handle it with `?:`, not `!!`.
 
-(At RC1, `http-client-common` carries `@NullMarked` on `module-info.java` and has no
+(`http-client-common` carries `@NullMarked` on `module-info.java` and has no
 `package-info.java`, so with the jar on the classpath Kotlin sees *parameters* as platform types —
 `request: HttpClientRequest` and `request: HttpClientRequest?` are both accepted. The per-member
 `@Nullable` on the return value is honoured either way.)

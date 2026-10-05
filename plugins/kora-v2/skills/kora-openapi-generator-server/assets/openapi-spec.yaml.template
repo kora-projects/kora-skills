@@ -6,8 +6,8 @@
 #
 # Every construct here is exercised by the delegate templates in this directory.
 #
-# NOTE for 2.0.0.RC1: status-code RANGE responses ("4XX", "5XX") are NOT supported — that
-# landed after RC1. Declare explicit codes, or a single `default` response, as done below.
+# Status-code RANGE responses ("4XX", "5XX") are supported too: their records take the real
+# status as the first component, like `default`. This contract uses explicit codes.
 openapi: 3.0.3
 
 info:

@@ -38,7 +38,7 @@ kafka.consumer.orders {
 }
 ```
 
-- Multiple topics are fine, and `topicsPattern` works here.
+- Multiple topics are fine, and `topicsPattern` works here (it is the only mode that accepts it).
 - A `ConsumerAwareRebalanceListener` tagged with the listener's tag is wired into
   `subscribe(...)` and receives revoke / assign / lost callbacks.
 - Offsets are committed — by Kora, by the driver, or by you. See the
@@ -54,12 +54,12 @@ Scale by adding instances (or `threads`), up to the partition count. Beyond that
 
 ## Assign (no `group.id`)
 
-Every instance assigns itself **all** partitions of the topic and reads everything. This is the
-broadcast / local-cache shape.
+Every instance assigns itself **all** partitions of every listed topic and reads everything. This is
+the broadcast / local-cache shape.
 
 ```hocon
 kafka.consumer.price-cache {
-  topics = ["prices"]
+  topics = ["prices", "rates"]
   offset = "earliest"
   partitionRefreshInterval = 1m
   driverProperties {
@@ -68,20 +68,24 @@ kafka.consumer.price-cache {
 }
 ```
 
-- **RC1 accepts exactly one topic.** The generated container method checks
-  `config.topics() == null || config.topics().size() != 1` and throws
-  `@KafkaListener require to specify 1 topic to subscribe when groupId is null, but received: ...`.
-  In Kotlin it is a bare `require(topics.size == 1)`. Multi-topic assign landed after RC1 on
-  `master` (`a0a2b8c1d`, #844) and is not in a released version.
-- `topicsPattern` cannot be used: with no `group.id` and no `topics`, the same "1 topic" check
-  fires. (On `master` it is rejected with a dedicated message.)
+- **`topics` takes one or more topics.** The container reads `config.topics()` itself and tracks
+  offsets per `TopicPartition`, so partition numbers of different topics never collide.
+- **Validated in the constructor, fail-fast.** `KafkaAssignConsumerContainer` throws
+  `IllegalArgumentException` while the graph is built, so the application does not start:
+  - `topicsPattern` set → `@KafkaListener with assign strategy (when group.id is null) does not support topicsPattern, please specify topics instead`
+    (a pattern needs the group rebalance protocol to resolve matches);
+  - `topics` null or empty → `@KafkaListener with assign strategy (when group.id is null) requires at least one topic to subscribe, but received: ...`.
+- The constructor is `(listenerConfig, listenerImpl, KafkaListenerConfig, keyDeserializer,
+  valueDeserializer, telemetry, handler)` — there is no topic argument; the generated
+  `<Listener>Module` calls it for you. Code that constructed the container by hand with a topic
+  argument no longer compiles.
 - **Nothing is ever committed.** The container calls `handler.handle(observation, records, consumer,
   false)` — `commitAllowed = false` — so neither Kora nor a `Consumer` parameter can commit
   meaningfully. Position is in-memory only and resets on restart to whatever `offset` says.
 - `offset` decides the start position (`earliest` / `latest` / a `Duration` rewind via
   `offsetsForTimes`).
-- Partitions are re-read every `partitionRefreshInterval` with a throwaway consumer so that new
-  partitions are picked up; a change triggers a re-assign and re-seek to the last in-memory offset.
+- Partitions of every listed topic are re-read every `partitionRefreshInterval` with a throwaway
+  consumer so that new partitions are picked up; a change triggers a re-assign and re-seek to the last in-memory offset.
 - The **consumer lag gauge** (`messaging.kafka.consumer.lag`) is reported only here — the subscribe
   container never calls `reportLag`.
 - No rebalance listener: there is no group, so `ConsumerAwareRebalanceListener` is not consulted.
@@ -94,7 +98,7 @@ kafka.consumer.price-cache {
 |---|---|---|
 | Trigger | `group.id` set | `group.id` absent |
 | Delivery | one member per record | every instance gets every record |
-| Topics | many, or a pattern | exactly one at RC1, no pattern |
+| Topics | many, or a pattern | one or more, no pattern |
 | Offsets | committed | never committed |
 | `offset` config key | ignored | authoritative |
 | `auto.offset.reset` | authoritative for a new group | irrelevant |
@@ -122,8 +126,8 @@ sections; they do not need assign mode.
 
 | Symptom | Cause | Fix |
 |---|---|---|
-| `require to specify 1 topic ... when groupId is null` | assign mode with 0 or 2+ topics, or a `topicsPattern` | list one topic, or add `group.id` |
-| Kotlin `IllegalArgumentException` with no message at startup | the same check, from `require(topics.size == 1)` | as above |
+| `assign strategy (when group.id is null) does not support topicsPattern` | `topicsPattern` without `group.id` | list the topics explicitly, or add `group.id` |
+| `assign strategy (when group.id is null) requires at least one topic` | no `group.id`, `topics` missing or empty | list the topics, or add `group.id` |
 | Every instance processes every record | `group.id` missing — you are in assign mode without meaning to be | add `group.id` |
 | Records replayed on every restart | assign mode with `offset = "earliest"` | switch to subscribe, or accept the replay and make handlers idempotent |
 | `consumer.commitSync()` appears to do nothing | assign mode: `commitAllowed = false` | commits are meaningless without a group |
@@ -139,6 +143,6 @@ sections; they do not need assign mode.
 - [Rebalance](kafka-rebalance-reference.md)
 - [Telemetry](kafka-telemetry-reference.md)
 
-**Source:** framework tag `2.0.0.RC1` —
-[KafkaSubscribeConsumerContainer](https://github.com/kora-projects/kora/blob/2.0.0.RC1/kafka/kafka/src/main/java/io/koraframework/kafka/common/consumer/containers/KafkaSubscribeConsumerContainer.java) ·
-[KafkaAssignConsumerContainer](https://github.com/kora-projects/kora/blob/2.0.0.RC1/kafka/kafka/src/main/java/io/koraframework/kafka/common/consumer/containers/KafkaAssignConsumerContainer.java)
+**Source:** framework tag `2.0.0.RC2` —
+[KafkaSubscribeConsumerContainer](https://github.com/kora-projects/kora/blob/2.0.0.RC2/kafka/kafka/src/main/java/io/koraframework/kafka/common/consumer/containers/KafkaSubscribeConsumerContainer.java) ·
+[KafkaAssignConsumerContainer](https://github.com/kora-projects/kora/blob/2.0.0.RC2/kafka/kafka/src/main/java/io/koraframework/kafka/common/consumer/containers/KafkaAssignConsumerContainer.java)

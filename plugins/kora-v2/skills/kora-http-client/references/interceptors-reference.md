@@ -1,7 +1,7 @@
 # HTTP Client Interceptors Reference (Kora 2.x)
 
 Reference for [kora-http-client](../SKILL.md). Verified against the framework source at tag
-**`2.0.0.RC1`** — `http-client-common` is byte-identical between RC1 and `master`.
+**`2.0.0.RC2`**.
 
 ## Contents
 
@@ -242,7 +242,8 @@ public interface SomeApiClient {
 transport, and responses unwind in reverse. Identical in the Java processor and in KSP.
 
 Because telemetry is innermost, a header added by an interceptor **is** visible in the request log
-(and is masked by `telemetry.logging.maskHeaders`, which covers `authorization` by default).
+(and is masked by `telemetry.logging.maskHeaders`, which covers `authorization` by default — see
+[transports-reference → Log masking](transports-reference.md#log-masking)).
 
 ---
 
@@ -321,9 +322,10 @@ public class BasicAuthHttpClientInterceptor implements HttpClientInterceptor {
 }
 ```
 
-Sets `authorization: Basic <base64(user:password)>`. `BasicAuthHttpClientTokenProvider` returns
-`null` when either credential is `null`, and a `null` token means the request passes through
-**unmodified** — a silent no-auth call rather than an error.
+Sets `authorization: Basic <base64(user:password)>`, with `user:password` encoded as UTF-8.
+`BasicAuthHttpClientTokenProvider` returns `null` when either credential is `null`, and a `null` or
+blank token means the request passes through **unmodified** — a silent no-auth call rather than an
+error.
 
 ```java
 @Module
@@ -350,13 +352,16 @@ public interface SomeApiClient { }
 ```java
 public final class ApiKeyHttpClientInterceptor implements HttpClientInterceptor {
     public enum ApiKeyLocation { HEADER, QUERY, COOKIE }
+    public ApiKeyHttpClientInterceptor(ApiKeyLocation location, String parameterName, HttpClientTokenProvider tokenProvider);
     public ApiKeyHttpClientInterceptor(ApiKeyLocation location, String parameterName, String secret);
 }
 ```
 
-`HEADER` adds `parameterName: secret`, `QUERY` appends `?parameterName=secret`, `COOKIE` adds a
-`Cookie` header. The secret is `Objects.requireNonNull` — a missing key fails at construction, i.e.
-at graph build, not at the first call.
+`HEADER` adds `parameterName: secret`, `QUERY` appends `?parameterName=secret`, `COOKIE` appends
+`parameterName=secret` to the request's existing `Cookie` header (or creates it). The value is read
+per request; the `HttpClientTokenProvider` form rotates keys without rebuilding the interceptor.
+Like Basic and Bearer, a `null` or blank value **skips** the parameter and sends the request
+unauthenticated — a missing key is not caught at graph build, so test the header's presence.
 
 ```java
 @Module
@@ -383,7 +388,8 @@ public class BearerAuthHttpClientInterceptor implements HttpClientInterceptor {
 }
 ```
 
-Sets `authorization: Bearer <token>`; a `null` token again passes the request through unmodified.
+Sets `authorization: Bearer <token>`; a `null` or blank token again passes the request through
+unmodified.
 
 The token provider is synchronous in 2.0:
 
@@ -472,7 +478,7 @@ No `Context`, no `CompletionStage`, no `runBlocking`.
 | `'processRequest' overrides nothing` (Kotlin) | The chain is now the **first** parameter: `processRequest(chain: HttpClientInterceptor.InterceptChain, request: HttpClientRequest)` |
 | `processRequest` will not compile in Java | Drop the `Context` parameter and return `HttpClientResponse`, not `CompletionStage` |
 | Header change has no effect | `request.toBuilder().header(…).build()` and pass the **new** request to `chain.process` |
-| Auth silently missing, no error | `BasicAuth`/`BearerAuth` pass the request through unchanged when the token provider returns `null` |
+| Auth silently missing, no error | `BasicAuth`/`BearerAuth`/`ApiKey` interceptors pass the request through unchanged when the token (or key) is `null` or blank |
 | Interceptor runs but the body is empty downstream | The body was consumed in the interceptor — use `getFullContentIfAvailable()` or do not read it |
 | Wrong `@InterceptWith` import | `io.koraframework.http.common.annotation.InterceptWith` — the same one the server uses |
 | Two interceptors of the same class, one config wins | Give each a distinct `@Tag` and select it with `@InterceptWith(value = X.class, tag = Y.class)` |

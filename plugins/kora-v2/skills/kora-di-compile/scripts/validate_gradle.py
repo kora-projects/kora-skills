@@ -44,7 +44,7 @@ REMOVED_ARTIFACTS = {
     "database-r2dbc": "removed in 2.0 — repositories are synchronous JDBC",
     "database-vertx": "removed in 2.0 — repositories are synchronous JDBC",
     "s3-client-minio": "removed in 2.0 — use s3-client-aws or experimental s3-client-kora",
-    "mapstruct-extension": "renamed to mapstruct-java-extension / mapstruct-ksp-extension",
+    "mapstruct-extension": "renamed to mapstruct-java-extension (Java); Kotlin maps with Konvert (konvert-ksp-extension)",
 }
 
 

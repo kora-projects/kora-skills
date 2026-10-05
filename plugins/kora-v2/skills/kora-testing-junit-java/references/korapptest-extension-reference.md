@@ -1,7 +1,7 @@
 # KoraAppTest Extension Reference
 
 The full public surface of `io.koraframework:test-junit5` for Java, as it exists at Kora
-`2.0.0.RC1`. Nothing under `test/` changed between the tag and `master`.
+`2.0.0.RC2`.
 
 ## Contents
 
@@ -433,7 +433,10 @@ Each of these produces an `ExtensionConfigurationException` with a message that 
 |---|---|---|
 | `Cannot find generated Kora application graph` | The test `@KoraApp` was never processed | Add `testAnnotationProcessor "io.koraframework:annotation-processors"`; check `-proc:none` is not set on `compileTestJava` |
 | `No matching component was found in the application graph` | Node pruned, or the parent app's submodule is missing | Inject something that depends on it, mark it `@Root`, list it in `components`/`modules`; for a `TestApplication` add `-Akora.app.submodule.enabled=true` to the production module |
+| `No matching component…` for `JsonReader<Dto>` | `@TestComponent` selects existing nodes only; `JsonReader<T>` exists only where the app reads `T` | Parse the JSON in the test, or assert on the raw body |
 | `Expected one matching graph component, but found N` | Several matching nodes | Add `@Tag` at the injection point |
+| `IllegalArgumentException: Graph node belongs to another application graph` (`GraphImpl$GraphConditionKey.hashCode`) at graph init | A `@Conditional` node in the test graph: `copy()`/`subgraph()` keep the original node condition | Fixed in `2.0.0.RC2` (kora-projects/kora PR #963) — only `2.0.0.RC1` is affected; no practical workaround besides keeping `@Conditional` out of the tested graph |
+| `PER_CLASS` test fails in `beforeEach` with `…because condition failed: <reason>` | `resetMocks` (Mockito or MockK present) reads every node, including a condition-failed one; `KoraAppGraph.getAll` likewise | Fixed in `2.0.0.RC2` (kora-projects/kora PR #964) — only `2.0.0.RC1` is affected; on RC1 use `PER_METHOD` |
 | `Entries in @KoraAppTest(modules = ...) must be interfaces` | A class was listed | List the `@Module` interface instead |
 | `Cannot use KoraAppTestConfigModifier with @KoraAppTest constructor injection` | Constructor injection | Use field or test-method injection |
 | `Application config source is ambiguous` | `config.file` and `config.resource` both set | One of `ofString` / `ofResourceFile` per class |

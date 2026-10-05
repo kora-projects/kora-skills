@@ -282,11 +282,11 @@ var interceptedChannel = ClientInterceptors.intercept(channel,
         new LoggingInterceptor());
 ```
 
-`io.grpc:grpc-inprocess` **must be the same version as the rest of gRPC** (`1.83.1`); a stale pin
+`io.grpc:grpc-inprocess` **must be the same version as the rest of gRPC** (`1.84.0`); a stale pin
 produces `AbstractMethodError: … buildClientTransportServers(List, MetricRecorder)` at server build
 time, an error that names nothing related to versions.
 
-Add `testImplementation "io.grpc:grpc-inprocess:1.83.1"`.
+Add `testImplementation "io.grpc:grpc-inprocess:1.84.0"`.
 
 ---
 

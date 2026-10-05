@@ -309,8 +309,9 @@ guard on `isValid()` before treating a trace id as meaningful — outside a trac
 tracing disabled, you get `Span.getInvalid()` and an all-zero trace id.
 
 This is also how log correlation works, with no configuration: `KoraAsyncAppender` captures
-`Span.current().getSpanContext()` on every event and `ConsoleTextRecordEncoder` prints
-`traceId=<id>` whenever that span context is valid.
+`Span.current().getSpanContext()` on every event; the text encoder prints `traceId=<id> spanId=<id>`
+and the JSON encoder writes `traceId` / `spanId` fields whenever that span context is valid (see
+[kora-telemetry-logging](../../kora-telemetry-logging/SKILL.md)).
 
 For the framework's own observation of the current unit of work there is
 `io.koraframework.common.telemetry.Observation`, bound alongside the span

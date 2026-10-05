@@ -111,8 +111,8 @@ Four consequences worth internalizing:
    the same round, so your `@KoraApp` interface must **not** extend it.
 2. **You never write the interceptor.** You supply exactly one thing: the extractor, under the right
    tag, with the right type arguments.
-3. **Rejection is `null`**, and the built-in failure response is always `401 Unauthorized` — the
-   generator emits no `403` anywhere.
+3. **Rejection is `null`**, and the built-in failure response is `401 Unauthorized`. The only
+   generated `403 Forbidden` is the oauth2 scope check below.
 4. **The principal reaches the handler through `Principal.with(...)`**, a `ScopedValue` binding that
    lives exactly as long as `chain.process(request)`.
 
@@ -158,9 +158,9 @@ credential after the scheme prefix". It is not.
 | `apiKey`, `in: header` | `request.headers().getFirst("<name>")` | the raw header value |
 | `apiKey`, `in: query` | first value of `request.queryParams().get("<name>")` | the raw query value |
 | `apiKey`, `in: cookie` | the matching cookie's `value()` | the raw cookie value |
-| `http` / `bearer` | `request.headers().getFirst("Authorization")` | **the whole header**, e.g. `Bearer eyJhbGci…` |
-| `http` / `basic` | `request.headers().getFirst("Authorization")` | **the whole header**, e.g. `Basic dXNlcjpwYXNz` |
-| `oauth2`, `openIdConnect` | `request.headers().getFirst("Authorization")` | **the whole header** |
+| `http` / `bearer` | `request.headers().getFirst("authorization")` | **the whole header**, e.g. `Bearer eyJhbGci…` |
+| `http` / `basic` | `request.headers().getFirst("authorization")` | **the whole header**, e.g. `Basic dXNlcjpwYXNz` |
+| `oauth2`, `openIdConnect` | `request.headers().getFirst("authorization")` | **the whole header** |
 
 So a bearer extractor must strip the prefix itself:
 
@@ -276,6 +276,7 @@ For `oauth2` / `openIdConnect` the generated parameter is
 operation's scopes itself:
 
 ```java
+var forbidden = false;
 var OAuth = this.OAuth_.extract(request, oAuthHeader);
 if (OAuth != null) {
   if (OAuth.scopes().contains("pets:read")) {
@@ -283,16 +284,23 @@ if (OAuth != null) {
       return Principal.with(OAuth, () -> chain.process(request));
     }
   }
+  forbidden = true;
 }
 
+if (forbidden) {
+  throw HttpServerResponseException.of(403, "Forbidden");
+}
 throw HttpServerResponseException.of(401, "Unauthorized");
 ```
 
 - Required scopes are ANDed, and the check is a plain `scopes().contains(...)` on the exact strings
   from the contract.
-- **A missing scope produces `401`, not `403`.** If your API must answer `403` there, do the check
-  yourself against `Principal.current()` in the delegate and throw
-  `HttpServerResponseException.of(403, …)`.
+- **A missing scope produces `403 Forbidden`; no principal at all produces `401`.** With several
+  OR alternatives, a later alternative that authenticates still wins; `403` is thrown only when none
+  did and at least one extractor returned a principal whose scopes fell short. An operation that
+  also allows anonymous access never answers `403` — it falls through to the handler.
+- Rules the contract cannot express (roles, ownership) stay in the delegate: check
+  `Principal.current()` and throw `HttpServerResponseException.of(403, …)`.
 - One extractor per scheme, no matter how many scope combinations the contract uses.
 
 ```java
@@ -394,8 +402,8 @@ Capture the principal into a local before handing work to another thread.
 
 ## Shaping the 401 response
 
-The generated interceptor throws `HttpServerResponseException.of(401, "Unauthorized")`, which is a
-plaintext body. Two ways to change it:
+The generated interceptor throws `HttpServerResponseException.of(401, "Unauthorized")` (and
+`of(403, "Forbidden")` for a failed scope check), both plaintext bodies. Two ways to change them:
 
 - **Per scheme** — throw your own `HttpServerResponseException` from the extractor instead of
   returning `null`. It implements `HttpServerResponse`, so Undertow sends it verbatim. This

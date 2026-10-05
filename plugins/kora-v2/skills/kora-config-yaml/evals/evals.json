@@ -8,7 +8,7 @@
       "query": "Set up YAML-based configuration in my Java Kora service with an application.yaml holding app name and version, and bind it to a type-safe interface.",
       "expected_behavior": [
         "Adds implementation \"io.koraframework:config-yaml\" and annotationProcessor \"io.koraframework:annotation-processors\", with versions constrained by the platform(\"io.koraframework:kora-bom:$koraVersion\") BOM rather than pinned per artifact",
-        "Uses the published release koraVersion=2.0.0.RC1 from plain mavenCentral(), not 2.0.0-SNAPSHOT (which would also require the Maven snapshots repository) and not a 2.0.0.alphaN build",
+        "Uses the published release koraVersion=2.0.0.RC2 from plain mavenCentral(), not 2.0.0-SNAPSHOT (which would also require the Maven snapshots repository) and not a 2.0.0.alphaN build",
         "Adds io.koraframework.config.yaml.YamlConfigModule to the @KoraApp interface",
         "Creates src/main/resources/application.yaml with a nested app section",
         "Defines a @ConfigSource(\"app\") interface with name() and version(), importing io.koraframework.config.common.annotation.ConfigSource",
@@ -29,7 +29,7 @@
       ],
       "query": "Same thing in Kotlin: read app.name, an optional app.description and app.retries defaulting to 3 from application.yaml in my Kora Kotlin service.",
       "expected_behavior": [
-        "Uses ksp(\"io.koraframework:symbol-processors:$koraVersion\") rather than an annotationProcessor, plus implementation(\"io.koraframework:config-yaml\") under the io.koraframework:kora-bom platform at koraVersion=2.0.0.RC1",
+        "Uses ksp(\"io.koraframework:symbol-processors:$koraVersion\") rather than an annotationProcessor, plus implementation(\"io.koraframework:config-yaml\") under the io.koraframework:kora-bom platform at koraVersion=2.0.0.RC2",
         "Declares @ConfigSource(\"app\") on a Kotlin interface with fun name(): String",
         "Expresses the optional value as a nullable return type fun description(): String? and never with a Java @Nullable annotation",
         "Expresses the default with a non-abstract member, e.g. fun retries(): Int = 3",

@@ -658,12 +658,12 @@ backend.
 - [SKILL.md](../SKILL.md) — overview and quick start
 - [kora-config-hocon](../../kora-config-hocon/SKILL.md) — HOCON format (default for new services)
 - [kora-di-compile](../../kora-di-compile/SKILL.md) — how config components join the graph
-- Module source: <https://github.com/kora-projects/kora/tree/2.0.0.RC1/config/config-yaml>
-- Shared binding/mapping/substitution: <https://github.com/kora-projects/kora/tree/2.0.0.RC1/config/config-common>
+- Module source: <https://github.com/kora-projects/kora/tree/2.0.0.RC2/config/config-yaml>
+- Shared binding/mapping/substitution: <https://github.com/kora-projects/kora/tree/2.0.0.RC2/config/config-common>
 - Migrated examples, branch `migration/2.0` (**not** the repository default branch, which is 1.x):
   <https://github.com/kora-projects/kora-examples/tree/migration/2.0/examples/java/kora-java-config-yaml>
 
-> **No Kora 2.0 documentation exists upstream yet.** The docs site and the `kora-docs` repository —
-> `docs/v2` included — are still the 1.x text: `ru.tinkoff.kora` packages, `@ConfigValueExtractor`,
-> and integrations 2.0 removed. Treat them as 1.x background only; the source links above are the
-> authority for every statement in this reference.
+> The Kora 2.0 documentation ([Configuration](https://koraframework.io/v2/en/documentation/config/))
+> explains concepts but can trail the framework; the source links above are the authority for every
+> statement in this reference. The 1.x pages (`ru.tinkoff.kora` packages, `@ConfigValueExtractor`)
+> are background only.

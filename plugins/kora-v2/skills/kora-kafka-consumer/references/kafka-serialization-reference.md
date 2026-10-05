@@ -141,8 +141,8 @@ void process(ConsumerRecord<@Tag(KeyTag.class) String, @Tag(OrderEvent.class) Or
 Asserted by `KafkaListenerRecordTest#testProcessRecordWithTag` and
 `KafkaListenerKeyAndValueTest#testProcessKeyAndValueWithTag`.
 
-`JsonReader.read(byte[])` returns `@Nullable` and, at `2.0.0.RC1`, declares no checked exception —
-a `try { ... } catch (IOException e)` around it is a compile error
+`JsonReader.read(byte[])` returns `@Nullable` and declares only the unchecked
+`tools.jackson.core.JacksonException` — a `try { ... } catch (IOException e)` around it is a compile error
 (`exception IOException is never thrown in body of corresponding try statement`).
 
 ---
@@ -222,7 +222,7 @@ Kotlin 2.4.
 - [kora-json skill](../../kora-json/SKILL.md)
 - [Producer serialization](../../kora-kafka-producer/references/kafka-serialization-reference.md)
 
-**Source:** framework tag `2.0.0.RC1` —
-[KafkaDeserializersModule](https://github.com/kora-projects/kora/blob/2.0.0.RC1/kafka/kafka/src/main/java/io/koraframework/kafka/common/KafkaDeserializersModule.java) ·
-[JsonKafkaDeserializer](https://github.com/kora-projects/kora/blob/2.0.0.RC1/kafka/kafka/src/main/java/io/koraframework/kafka/common/consumer/deserializer/JsonKafkaDeserializer.java) ·
-[ConsumerRecordWrapper](https://github.com/kora-projects/kora/blob/2.0.0.RC1/kafka/kafka/src/main/java/io/koraframework/kafka/common/consumer/containers/ConsumerRecordWrapper.java)
+**Source:** framework tag `2.0.0.RC2` —
+[KafkaDeserializersModule](https://github.com/kora-projects/kora/blob/2.0.0.RC2/kafka/kafka/src/main/java/io/koraframework/kafka/common/consumer/deserializer/KafkaDeserializersModule.java) ·
+[JsonKafkaDeserializer](https://github.com/kora-projects/kora/blob/2.0.0.RC2/kafka/kafka/src/main/java/io/koraframework/kafka/common/consumer/deserializer/JsonKafkaDeserializer.java) ·
+[ConsumerRecordWrapper](https://github.com/kora-projects/kora/blob/2.0.0.RC2/kafka/kafka/src/main/java/io/koraframework/kafka/common/consumer/containers/ConsumerRecordWrapper.java)

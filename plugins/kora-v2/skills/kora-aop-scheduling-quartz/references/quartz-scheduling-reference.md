@@ -2,7 +2,7 @@
 
 **Artifact:** `io.koraframework:scheduling-quartz`
 **Module:** `io.koraframework.scheduling.quartz.QuartzModule` (extends `io.koraframework.scheduling.common.SchedulingModule`)
-**Annotation package:** `io.koraframework.scheduling.quartz` — flat, no `.annotation` segment
+**Annotation package:** `io.koraframework.scheduling.quartz.annotation`
 **Quartz:** `org.quartz-scheduler:quartz:2.5.2`
 
 ## Contents
@@ -15,6 +15,8 @@
 - [Thread model](#thread-model)
 - [Error propagation](#error-propagation)
 - [Cron expression reference](#cron-expression-reference)
+- [Scheduled method on a `@Conditional` component](#scheduled-method-on-a-conditional-component)
+- [Migrating from RC1 / earlier 2.0 snapshots](#migrating-from-rc1--earlier-20-snapshots)
 - [Migrating from Kora 1.x](#migrating-from-kora-1x)
 - [See also](#see-also)
 
@@ -27,7 +29,7 @@
 | Component | Notes |
 |---|---|
 | `@Tag(QuartzModule.class) Properties` | merged Quartz properties, read from `scheduling.quartz.properties` |
-| `SchedulingQuartzConfig` | read from `scheduling.quartz` |
+| `QuartzConfig` | read from `scheduling.quartz` — `shutdownWait`, `cleanupOrphanedJobs`, `compareStartTime` |
 | `KoraQuartzJobFactory` | resolves `KoraQuartzJob` instances out of the graph by class |
 | `@Root KoraQuartzScheduler` | `Wrapped<org.quartz.Scheduler>` + `Lifecycle`; starts/stops the scheduler |
 | `@Root KoraQuartzJobRegistrar` | `Lifecycle` + `RefreshListener`; registers jobs and triggers |
@@ -47,10 +49,12 @@ a [JDBC JobStore](scheduling-config-reference.md#persistence-jdbc-jobstore).
 
 ## Annotations
 
-### `@ScheduleWithCron`
+All four are in `io.koraframework.scheduling.quartz.annotation`.
+
+### `@ScheduleQuartzWithCron`
 
 ```java
-public @interface ScheduleWithCron {
+public @interface ScheduleQuartzWithCron {
     String value() default "";      // cron expression
     String identity() default "";   // Quartz TriggerBuilder.withIdentity(...)
     String config() default "";     // config path holding the cron
@@ -61,38 +65,47 @@ public @interface ScheduleWithCron {
 @Component
 public final class Reports {
 
-    @ScheduleWithCron("0 0 3 * * ?")
+    @ScheduleQuartzWithCron("0 0 3 * * ?")
     void nightly() { }
 
-    @ScheduleWithCron(value = "0 0 * * * ?", identity = "hourly-check")
+    @ScheduleQuartzWithCron(value = "0 0 * * * ?", identity = "hourly-check")
     void hourly() { }
 
-    @ScheduleWithCron(config = "jobs.weekly")
+    @ScheduleQuartzWithCron(config = "jobs.weekly")
     void weekly() { }
 }
 ```
 
 `identity` defaults to `<fully.qualified.Class>#<method>`. Two jobs that both leave `identity`
-empty never collide, because the default already carries the class and method.
+empty never collide, because the default already carries the class and method. Two jobs with the
+**same explicit** identity fail startup in `KoraQuartzJobRegistrar`:
+
+```
+IllegalStateException: Quartz trigger 'DEFAULT.hourly-check' is declared more than once, by jobs
+'com.example.$Reports_hourly_Job' and 'com.example.$Audit_hourly_Job'; trigger identities must be
+unique, set a unique identity in @ScheduleQuartzWithCron(identity = ...) or in TriggerBuilder.withIdentity(...)
+```
+
+The same check covers triggers supplied through `@ScheduleQuartzWithTrigger`.
 
 **`value` / `config` interaction**, exactly as the generator builds it:
 
 | `value` | `config` | Behaviour |
 |---|---|---|
-| set | empty | cron is baked into the generated trigger |
-| empty | empty | Java: compile error *"Quartz `@ScheduleWithCron` on '…' has no cron source"*. **Kotlin: no compile error** — the KSP generator has no such guard and emits `cronSchedule("")`, which blows up at graph init instead |
+| set | empty | cron is baked into the generated trigger; the literal is validated at compile time |
+| empty | empty | Java: compile error *"Quartz @ScheduleQuartzWithCron on '…' has no cron source."*. **Kotlin: no compile error** — the KSP generator has no such guard and emits `cronSchedule("", …)`, which fails at graph init with `IllegalArgumentException: Invalid CRON expression '' for Quartz job '…'` |
 | set | set | config node wins; when the node is absent the `value` is used |
 | empty | set | config node is **required** — an absent one throws `ConfigValueException` during graph build |
 
-The config node may be a bare string or an object with a `cron` field; see
+The config node may be a bare string or an object with `cron`, `enabled` and `telemetry`; see
 [per-job configuration](scheduling-config-reference.md#per-job-configuration).
 
-### `@ScheduleWithTrigger`
+### `@ScheduleQuartzWithTrigger`
 
 ```java
 @Target(ElementType.METHOD)
 @Retention(RetentionPolicy.CLASS)
-public @interface ScheduleWithTrigger {
+public @interface ScheduleQuartzWithTrigger {
     Class<?> value();               // tag selecting the org.quartz.Trigger
 }
 ```
@@ -119,7 +132,7 @@ public interface Application extends QuartzModule {
 @Component
 public final class RapidCheckJob {
 
-    @ScheduleWithTrigger(RapidCheckJob.class)
+    @ScheduleQuartzWithTrigger(RapidCheckJob.class)
     void checkStatus() { }
 }
 ```
@@ -128,30 +141,31 @@ public final class RapidCheckJob {
 @Component
 class RapidCheckJob {
 
-    @ScheduleWithTrigger(RapidCheckJob::class)
+    @ScheduleQuartzWithTrigger(RapidCheckJob::class)
     fun checkStatus() { }
 }
 ```
 
 A missing trigger is a normal DI failure ("no component found" for the tagged `Trigger`), not a
 silent no-op. The tag class is arbitrary — tagging with the job class is only a convention that
-keeps the two ends readable.
+keeps the two ends readable. `@ScheduleQuartzWithTrigger` has no `config`, so it has no per-job
+`enabled` switch and no per-job telemetry.
 
 A `KoraQuartzJob` can carry several triggers (`KoraQuartzJob.getTriggers()` returns a list), but
-the generated code always builds a single-trigger job; multiple triggers per method are not
-expressible through the annotations.
+the generated code always builds a single-trigger job (or none, when a config-declared cron job is
+disabled); multiple triggers per method are not expressible through the annotations.
 
 ### `@DisallowConcurrentExecution` and `@PersistJobDataAfterExecution`
 
-Both are **Kora's own** annotations in `io.koraframework.scheduling.quartz`, `@Target(METHOD)`,
-`@Retention(RUNTIME)`. They carry no attributes. The generator also honours the Quartz originals
-— but the placement rules differ and are not interchangeable:
+Both are **Kora's own** annotations in `io.koraframework.scheduling.quartz.annotation`,
+`@Target(METHOD)`, `@Retention(RUNTIME)`. They carry no attributes. The generator also honours the
+Quartz originals — but the placement rules differ and are not interchangeable:
 
 | Annotation | Where the generator looks |
 |---|---|
-| `io.koraframework.scheduling.quartz.DisallowConcurrentExecution` | on the **method** |
+| `io.koraframework.scheduling.quartz.annotation.DisallowConcurrentExecution` | on the **method** |
 | `org.quartz.DisallowConcurrentExecution` | on the **class** |
-| `io.koraframework.scheduling.quartz.PersistJobDataAfterExecution` | on the **method** |
+| `io.koraframework.scheduling.quartz.annotation.PersistJobDataAfterExecution` | on the **method** |
 | `org.quartz.PersistJobDataAfterExecution` | on the **class** |
 
 Either form results in the corresponding `org.quartz.*` annotation being placed on the generated
@@ -164,7 +178,7 @@ rather than a silently ignored annotation.
 public final class HourlyJob {
 
     @DisallowConcurrentExecution                 // Kora's, on the method
-    @ScheduleWithCron("0 0 * * * ?")
+    @ScheduleQuartzWithCron("0 0 * * * ?")
     void hourly() { }
 }
 ```
@@ -174,7 +188,7 @@ public final class HourlyJob {
 @Component
 public final class AllJobsSerial {
 
-    @ScheduleWithCron("0 0 * * * ?")
+    @ScheduleQuartzWithCron("0 0 * * * ?")
     void hourly() { }
 }
 ```
@@ -195,19 +209,33 @@ Per annotated class, in the class's own package:
 |---|---|
 | `$<Class>_SchedulingModule` | `@Module` interface, one factory method per scheduled method |
 | `$<Class>_<method>_Job` | `public final class … extends KoraQuartzJob` |
-| a `*CronConfig` interface | only for `@ScheduleWithCron(config = "…")`; `@ConfigMapper`, extends `SchedulingJobConfig` |
+| a `*CronConfig` interface | only for `@ScheduleQuartzWithCron(config = "…")`; `@ConfigMapper`, extends `SchedulingJobConfig` |
 
-The factory method takes `SchedulingTelemetryFactory`, your component, and — for
-`@ScheduleWithTrigger` — the tagged `org.quartz.Trigger`. `KoraQuartzJobRegistrar` then
-registers each job as a durable Quartz `JobDetail` identified by the **generated job class's
-canonical name**, and reconciles triggers: triggers already stored for that job are compared
-(cron expression, start/end time, simple-trigger repeat count and interval) and are replaced or
-unscheduled to match the current set. This also runs on `graphRefreshed()`.
+The factory method takes `SchedulingTelemetryFactory`, your component **directly** (not
+`ValueOf`), an optional `@Tag(SchedulingModule.class) ZoneId` for cron jobs, the generated
+config for `config` jobs and — for `@ScheduleQuartzWithTrigger` — the tagged `org.quartz.Trigger`.
+A config-declared cron job whose `enabled` is `false` is built with an empty trigger list.
+
+`KoraQuartzJobRegistrar` then registers each job as a durable Quartz `JobDetail` with the key
+**`kora.<generated job class canonical name>`** (group `KoraQuartzJobRegistrar.JOB_GROUP` =
+`kora`), and reconciles triggers: triggers already stored for that job are compared and replaced
+only when they differ, and stored triggers the job no longer declares are unscheduled. This also
+runs on `graphRefreshed()`. Two triggers compare equal when they have the same class and end time
+and — cron — the same expression and time zone, or — simple — the same repeat count and
+interval; the start time is compared only with `scheduling.quartz.compareStartTime = true`. Other
+trigger types are compared on class and end time only.
 
 Consequences worth knowing:
 
-- Trigger edits made directly in a persistent job store are reverted for Kora-generated jobs at
-  the next startup or graph refresh.
+- A persisted trigger survives a restart untouched unless its schedule, end time or time zone
+  changed, so Quartz's misfire handling applies to firings missed while the service was down.
+- Trigger edits made directly in a persistent job store for a schedule Kora also declares are
+  reverted at the next startup or graph refresh when they differ from the compiled/config state.
+- A job of a known class still sitting in the `DEFAULT` group (Kora 1.x or RC1) is deleted there
+  with its triggers and re-registered under `kora`: `Quartz Job '…' moved from the DEFAULT group
+  to the kora group`.
+- A job with no triggers stays registered and logs `Quartz Job '…' has no triggers and is not
+  scheduled` at INFO.
 - `KoraQuartzJobFactory` maps job classes to graph instances and falls back to Quartz's
   `PropertySettingJobFactory` for unknown classes. Generated job classes have only a three-arg
   constructor, so a node cannot instantiate a job class it does not itself carry — in a cluster
@@ -229,7 +257,7 @@ public final class StatefulJob {
 
     @PersistJobDataAfterExecution
     @DisallowConcurrentExecution
-    @ScheduleWithCron("0 */10 * * * ?")
+    @ScheduleQuartzWithCron("0 */10 * * * ?")
     void process(JobExecutionContext ctx) {
         var data = ctx.getJobDetail().getJobDataMap();
         int cursor = data.getInt("cursor");
@@ -262,9 +290,10 @@ Useful accessors: `ctx.getFireTime()`, `ctx.getScheduledFireTime()`,
 - No `Mono`, `Flux` or `CompletionStage` — they are not Kora 2.0 contracts anywhere.
 - No `Context`: the type was removed from the framework. Fire-time data comes from
   `JobExecutionContext`; correlation data from the Kora `MDC` that `KoraQuartzJob` installs.
-- Only member functions. KSP rejects a top-level or local function: *"`@ScheduleWithTrigger` can
-  be applied only to member functions."*
-- The enclosing class must be a graph component; the generated module takes it as a dependency.
+- Only member functions. KSP rejects a top-level or local function with *"`@ScheduleQuartzWithTrigger`
+  can be applied only to member functions."* (the annotation's simple name is substituted).
+- The enclosing class must be a graph component; the generated factory takes it as a direct
+  dependency.
 - The class does **not** need to be non-`final` / `open`. The generated job calls the method on a
   held reference rather than subclassing it — the migrated Java example is
   `public final class TriggerScheduler`, and Kora's own KSP tests compile a plain Kotlin `class`.
@@ -286,10 +315,10 @@ by default `org.quartz.simpl.SimpleThreadPool` with `threadCount = 10` and `thre
 - `threadCount` caps concurrent executions across every Quartz job in the application. Fewer
   threads than simultaneously-due jobs means delayed firings and misfires.
 
-`KoraQuartzJob.execute` is `final`. It binds, per execution: a fresh Kora
-`io.koraframework.logging.common.MDC`, a root OpenTelemetry context, and the scheduling
-`Observation` — so `@Log`-style MDC keys, tracing and the scheduling telemetry all work inside
-the body despite the foreign thread.
+`KoraQuartzJob.execute` is `final`. It records the executing thread (so `interrupt()` can reach
+it on shutdown) and binds, per execution: a fresh Kora `io.koraframework.logging.common.MDC`, a
+root OpenTelemetry context, and the scheduling `Observation` — so `@Log`-style MDC keys, tracing
+and the scheduling telemetry all work inside the body despite the foreign thread.
 
 ---
 
@@ -316,7 +345,7 @@ failed with error"* with `exceptionType` and `exceptionMessage` — when
 Catch inside the method when the failure should not surface as a Quartz job failure:
 
 ```java
-@ScheduleWithCron("0 0 * * * ?")
+@ScheduleQuartzWithCron("0 0 * * * ?")
 void hourly() {
     try {
         doWork();
@@ -334,28 +363,47 @@ configuration"*.
 
 ## Cron expression reference
 
-Quartz's own parser (`CronScheduleBuilder.cronSchedule`), documented on
-`@ScheduleWithCron`:
+Quartz's own parser (`org.quartz.CronExpression`, built by `QuartzCronUtils.cronSchedule`),
+documented on `@ScheduleQuartzWithCron`:
 
 ```
 ┌───────────── second (0-59)
 │ ┌───────────── minute (0-59)
 │ │ ┌───────────── hour (0-23)
-│ │ │ ┌───────────── day of month (1-31)
+│ │ │ ┌───────────── day of month (1-31, L, W or ?)
 │ │ │ │ ┌───────────── month (1-12 or JAN-DEC)
-│ │ │ │ │ ┌───────────── day of week (1-7 or SUN-SAT)
-│ │ │ │ │ │ ┌───────────── year (optional, 1970-2099)
+│ │ │ │ │ ┌───────────── day of week (1-7 or SUN-SAT, 1 is Sunday, L, # or ?)
+│ │ │ │ │ │ ┌───────────── year (optional)
 │ │ │ │ │ │ │
 * * * ? * * *
 ```
 
-Six or seven fields. Day-of-month and day-of-week are mutually exclusive — one of the two must
-be `?`. There is no time-zone attribute on the annotation; Quartz uses the JVM default zone, so
-set `-Duser.timezone=…` or `TZ` explicitly if the schedule is timezone-sensitive.
+Six or seven fields. Day-of-month and day-of-week are mutually exclusive — exactly one of the two
+must be `?`.
 
-> The JDK scheduler's `io.koraframework.scheduling.jdk.annotation.ScheduleWithCron` uses Kora's
-> own `CronExpression` and accepts **five**, six or seven fields. A 5-field expression that
-> works there is rejected by Quartz.
+> The JDK scheduler's `@ScheduleJdkWithCron` uses Kora's own `CronExpression` and accepts
+> **five**, six or seven fields; the DB scheduler's `@ScheduleDbWithCron` takes exactly six with
+> `1` = Monday. A 5-field expression that works on the JDK scheduler is rejected by Quartz.
+
+### Validation
+
+| Where the cron comes from | When it is checked | Error |
+|---|---|---|
+| annotation `value` | compile time (Java processor and KSP) | `Invalid CRON expression '<expr>' in @ScheduleQuartzWithCron on '<Class>#<method>()': <reason>.` + field layout + examples + *"See the Javadoc of @ScheduleQuartzWithCron for details."* |
+| config node (`cron`) | graph init, `QuartzCronUtils.cronSchedule` | `IllegalArgumentException: Invalid CRON expression '<expr>' for Quartz job '<Class>#<method>': <Quartz message>` + the same layout |
+
+The compile-time check is deliberately incomplete: it reports only errors Quartz would also
+reject (field count, ranges, reversed ranges, steps, `?` placement — e.g. *"'?' must be used in
+exactly one of the day-of-month and day-of-week fields"* for `0 0 12 * * *`) and lets everything
+it does not model through to Quartz at startup.
+
+### Time zone
+
+There is no time-zone attribute on the annotation. `QuartzCronUtils` sets the expression's zone
+from an optional `@Tag(io.koraframework.scheduling.common.SchedulingModule.class) ZoneId`
+component; without one the JVM default zone is used. The component applies to every cron job of
+every Kora scheduler in the application. Changing it reschedules persisted cron triggers at the
+next start (the zone is part of the trigger comparison).
 
 ### Special characters
 
@@ -388,19 +436,52 @@ set `-Duser.timezone=…` or `TZ` explicitly if the schedule is timezone-sensiti
 
 ---
 
+## Scheduled method on a `@Conditional` component
+
+The generated job factory takes the component directly and carries no condition. When the
+component's `@Conditional` fails, the job node still asks for it and **graph initialisation
+fails** with `IllegalStateException: Graph node value was not initialized because condition
+failed: <reason>`. Fixed in `2.0.0.RC2` (kora-projects/kora PR #962): the generated job component
+carries the `@Conditional` of its class and drops out with it. Only `2.0.0.RC1` is affected.
+
+On RC1, keep the scheduled method on an unconditional component. If it has to reach the
+conditional one, inject `All<T>` (condition-failed members are skipped) and return when it is
+empty; on RC1 a `@Nullable T` dependency hits a separate bug, kora-projects/kora PR #960.
+
+---
+
+## Migrating from RC1 / earlier 2.0 snapshots
+
+| RC1 / earlier snapshot | Now |
+|---|---|
+| `io.koraframework.scheduling.quartz.ScheduleWithCron` | `io.koraframework.scheduling.quartz.annotation.ScheduleQuartzWithCron` |
+| `io.koraframework.scheduling.quartz.ScheduleWithTrigger` | `io.koraframework.scheduling.quartz.annotation.ScheduleQuartzWithTrigger` |
+| `io.koraframework.scheduling.quartz.DisallowConcurrentExecution` | `io.koraframework.scheduling.quartz.annotation.DisallowConcurrentExecution` |
+| `io.koraframework.scheduling.quartz.PersistJobDataAfterExecution` | `io.koraframework.scheduling.quartz.annotation.PersistJobDataAfterExecution` |
+| `SchedulingQuartzConfig.waitForJobComplete()` | `QuartzConfig.shutdownWait()` — see [graceful-shutdown-reference.md](graceful-shutdown-reference.md) |
+| job key `DEFAULT.<job class>` | `kora.<job class>`, moved automatically |
+| every persisted trigger rescheduled at start (new start time) | rescheduled only on a real schedule/end-time/zone change; `compareStartTime` |
+| cron always in the JVM default zone | `@Tag(SchedulingModule.class) ZoneId` |
+| cron errors at graph init only | literal checked at compile time |
+| no per-job switch | `<config path>.enabled = false` |
+
+---
+
 ## Migrating from Kora 1.x
 
 | 1.x | 2.0 |
 |---|---|
-| `ru.tinkoff.kora.scheduling.quartz.*` | `io.koraframework.scheduling.quartz.*` |
+| `ru.tinkoff.kora.scheduling.quartz.*` | `io.koraframework.scheduling.quartz.annotation.*` (annotations), `io.koraframework.scheduling.quartz.*` (module, runtime) |
 | `ru.tinkoff.kora:scheduling-quartz` | `io.koraframework:scheduling-quartz` |
 | `ru.tinkoff.kora:kora-parent` BOM | `io.koraframework:kora-bom` |
-| `@ScheduleWithTrigger(@Tag(MyJob.class))` | **`@ScheduleWithTrigger(MyJob.class)`** |
-| `@ScheduleWithTrigger(Tag(MyJob::class))` | **`@ScheduleWithTrigger(MyJob::class)`** |
+| `@ScheduleWithCron(...)` | **`@ScheduleQuartzWithCron(...)`** |
+| `@ScheduleWithTrigger(@Tag(MyJob.class))` | **`@ScheduleQuartzWithTrigger(MyJob.class)`** |
+| `@ScheduleWithTrigger(Tag(MyJob::class))` | **`@ScheduleQuartzWithTrigger(MyJob::class)`** |
 | root `quartz { "org.quartz.*" }` | `scheduling.quartz.properties { "org.quartz.*" }` |
-| `scheduling.waitForJobComplete` | `scheduling.quartz.waitForJobComplete` (default flipped to `true`) |
+| `scheduling.waitForJobComplete` | `scheduling.quartz.shutdownWait` (duration, default `30s`) |
+| jobs in the Quartz `DEFAULT` group | group `kora`; moved automatically at start |
 | `ru.tinkoff.kora.common.Component` / `Tag` | `io.koraframework.common.annotation.Component` / `Tag` |
-| `Thread.currentThread().isInterrupted()` shutdown checks | dead code — see [graceful-shutdown-reference.md](graceful-shutdown-reference.md) |
+| `Thread.currentThread().isInterrupted()` shutdown checks | work — the job is interrupted once `shutdownWait` elapses, see [graceful-shutdown-reference.md](graceful-shutdown-reference.md) |
 | `suspend fun` scheduled method | rejected by KSP; make it a plain function |
 
 The nested-`@Tag` form is a hard compile error in 2.0 —
@@ -414,4 +495,5 @@ The nested-`@Tag` form is a hard compile error in 2.0 —
 - [scheduling-config-reference.md](scheduling-config-reference.md) — config keys, telemetry, JDBC JobStore, clustering
 - [graceful-shutdown-reference.md](graceful-shutdown-reference.md) — shutdown semantics
 - [kora-aop-scheduling-jdk](../../kora-aop-scheduling-jdk/SKILL.md) — the JDK scheduler
+- [kora-aop-scheduling-db](../../kora-aop-scheduling-db/SKILL.md) — cluster-wide jobs on db-scheduler, without Quartz
 - [Quartz cron trigger tutorial](https://www.quartz-scheduler.org/documentation/quartz-2.3.0/tutorials/crontrigger.html) — upstream cron grammar

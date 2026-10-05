@@ -187,7 +187,7 @@
         "States plainly that database-r2dbc and database-vertx do not exist in Kora 2.0 — they were removed, and there is no reactive database module to migrate to",
         "Explains the 2.0 execution model: contracts are synchronous and blocking JDBC runs on virtual threads, so a reactive driver is not the lever it used to be",
         "Recommends staying on database-jdbc and sizing the Hikari pool as the real concurrency limit",
-        "Does not invent a replacement artifact, suggest wrapping repositories in CompletableFuture/Mono to simulate reactivity, or point at kora-docs pages for r2dbc/vertx (those document 1.x)"
+        "Does not invent a replacement artifact, suggest wrapping repositories in CompletableFuture/Mono to simulate reactivity, or point at 1.x kora-docs pages for r2dbc/vertx (the 2.0 docs have no such module)"
       ],
       "tags": [
         "migration",
@@ -310,13 +310,13 @@
       ],
       "query": "How do I persist a nested record into a PostgreSQL jsonb column with Kora 2.0 JDBC?",
       "expected_behavior": [
-        "Annotates the field and the payload type with @Json from io.koraframework.json.common.annotation",
-        "Declares a small @Module with generic @Json-tagged JdbcParameterColumnMapper<T> / JdbcResultColumnMapper<T> factories depending on JsonWriter<T> / JsonReader<T>",
-        "Explains that the @Json tag is what keeps the generic factory from matching every unsupported column type in the graph",
-        "Casts the parameter in SQL, e.g. VALUES (:entity.id, :entity.value::jsonb)",
-        "Wires io.koraframework.json.common.JsonModule (artifact json-common) into the @KoraApp graph",
-        "Uses writer.toString(value) and reader.read(value) — the *Unchecked variants were removed in 2.0 and the plain methods no longer throw checked exceptions",
-        "Does not use Jackson ObjectMapper directly or reference JsonCommonModule / the json-module artifact"
+        "Adds io.koraframework:database-jdbc-postgres and extends PostgresJdbcDatabaseModule on the @KoraApp in place of JdbcDatabaseModule (it extends JdbcDatabaseModule)",
+        "Tags the entity field with @PgJsonb from io.koraframework.database.jdbc.postgres.annotation (@PgJson for a json column) and annotates the payload type with @Json from io.koraframework.json.common.annotation",
+        "Keeps only the PostgreSQL tag on the field — @Json goes on the payload type, not next to @PgJsonb on the field",
+        "Wires io.koraframework.json.common.JsonModule so the JsonReader/JsonWriter for the payload are in the graph",
+        "Writes the INSERT without a ::jsonb cast, because the parameter is sent as a jsonb-typed PGobject",
+        "Explains that @PgJsonb vs @PgJson only changes the sent parameter type, and that jsonb operators such as @> need a @PgJsonb parameter",
+        "Does not hand-write a generic @Json-tagged JdbcParameterColumnMapper/JdbcResultColumnMapper module when database-jdbc-postgres is available, does not use Jackson ObjectMapper directly, and does not reference JsonCommonModule / the json-module artifact"
       ],
       "tags": [
         "mappers",
@@ -378,6 +378,158 @@
       "tags": [
         "testing",
         "advanced"
+      ]
+    },
+    {
+      "id": "kora-database-jdbc-postgres-any-list",
+      "skills": [
+        "kora-database-jdbc"
+      ],
+      "query": "Java, Kora 2.0, PostgreSQL. I need a repository method that loads all orders whose id is in a List<Long> I get from the caller, and one that deletes by a Set<UUID>. WHERE id IN (:ids) does not work. How do I do this?",
+      "expected_behavior": [
+        "Adds implementation \"io.koraframework:database-jdbc-postgres\" (version from kora-bom 2.0.0.RC2) and notes it brings database-jdbc and the org.postgresql:postgresql driver",
+        "Replaces JdbcDatabaseModule with io.koraframework.database.jdbc.postgres.PostgresJdbcDatabaseModule on the @KoraApp",
+        "Writes WHERE id = ANY(:ids) and binds the whole collection as one array parameter",
+        "Tags the parameters @Pg (io.koraframework.database.jdbc.postgres.annotation.Pg): @Pg List<Long> ids and @Pg Set<UUID> ids",
+        "States that collection parameters accept List, Set or Collection while results are always List",
+        "States that the mappers are tagged, so without @Pg the build fails with No component found for dependency: JdbcParameterColumnMapper<List<Long>>",
+        "Does not expand the list into IN (?, ?, ...) by string concatenation and does not hand-write a List<Long> JdbcParameterColumnMapper"
+      ],
+      "tags": [
+        "postgres",
+        "mappers",
+        "repository"
+      ]
+    },
+    {
+      "id": "kora-database-jdbc-postgres-kotlin",
+      "skills": [
+        "kora-database-jdbc"
+      ],
+      "query": "Kotlin, Kora 2.0, PostgreSQL. My data class has tags: List<String> (varchar[]), scores: LongArray (bigint[]) and ttl: Duration (interval). How do I map these with KSP?",
+      "expected_behavior": [
+        "Uses database-jdbc-postgres with PostgresJdbcDatabaseModule and ksp(\"io.koraframework:symbol-processors\")",
+        "Annotates the properties @Pg without a use-site target (@Pg val tags: List<String>, @Pg val scores: LongArray, @Pg val ttl: Duration?), keeping @field:Id for the key",
+        "Explains that LongArray maps to the long[] mapper and cannot read an array containing NULL elements — List<Long?> is used for nullable elements",
+        "Explains that @Pg Duration rejects an interval with years or months on read and points at @Pg Period for calendar intervals",
+        "Keeps the repository synchronous (no suspend) and does not use kapt"
+      ],
+      "tags": [
+        "postgres",
+        "kotlin",
+        "mappers"
+      ]
+    },
+    {
+      "id": "kora-database-jdbc-postgres-range-interval",
+      "skills": [
+        "kora-database-jdbc"
+      ],
+      "query": "Kora 2.0 JDBC on PostgreSQL: a booking table has a tstzrange column 'during' and a subscription table has an interval column 'billing_cycle' holding values like '1 month'. How do I map them and query bookings overlapping a window?",
+      "expected_behavior": [
+        "Maps the range column to PgRange<OffsetDateTime> from io.koraframework.database.jdbc.postgres, with no tag",
+        "Builds values with PgRange.closedOpen / closed / open / openClosed / empty, and treats a null bound as unbounded",
+        "Queries with WHERE during && :window taking a PgRange<OffsetDateTime> parameter",
+        "Maps billing_cycle to @Pg Period, because Duration rejects intervals with months",
+        "Warns that PostgreSQL canonicalises discrete ranges to [) and tstzrange bounds come back in the session time zone, so a read value can differ from the written one",
+        "Does not write a custom PGobject mapper for the range or the interval"
+      ],
+      "tags": [
+        "postgres",
+        "mappers",
+        "entity"
+      ]
+    },
+    {
+      "id": "kora-database-jdbc-postgres-json-nullable",
+      "skills": [
+        "kora-database-jdbc"
+      ],
+      "query": "In a Kora 2.0 PostgreSQL entity I need a jsonb column where 'no value' (SQL NULL) and an explicit JSON null are different states. Is there support for that?",
+      "expected_behavior": [
+        "Uses JsonNullable<T> from io.koraframework.json.common on a field tagged @PgJsonb (or @PgJson)",
+        "States the mapping: JsonNullable.undefined() <-> SQL NULL, JsonNullable.nullValue() <-> JSON literal null, JsonNullable.of(value) <-> the serialised value",
+        "Declares the field non-null, because SQL NULL reads as undefined() rather than a null reference",
+        "Requires database-jdbc-postgres with PostgresJdbcDatabaseModule and JsonModule, and a @Json payload type",
+        "Does not model the two states with an extra boolean column or a hand-written mapper"
+      ],
+      "tags": [
+        "postgres",
+        "json",
+        "mappers"
+      ]
+    },
+    {
+      "id": "kora-database-jdbc-kotlin-snake-case",
+      "skills": [
+        "kora-database-jdbc"
+      ],
+      "query": "Kotlin Kora 2.0 JDBC entity: data class Job(@field:Id val id: UUID, val executorUuid: UUID, val createdAt: LocalDateTime). Do I need @Column on the camelCase properties for %{return#selects} to hit executor_uuid and created_at?",
+      "expected_behavior": [
+        "Answers no: KSP converts property names with the same snake_case converter as the Java processor, so executorUuid -> executor_uuid and createdAt -> created_at",
+        "Gives HTTPClient -> http_client as the acronym behaviour of the converter",
+        "Reserves @field:Column for names the converter does not produce, joins with aliases, or legacy schemas",
+        "Does not recommend blanket @Column on every Kotlin property as a workaround"
+      ],
+      "tags": [
+        "kotlin",
+        "entity",
+        "naming"
+      ]
+    },
+    {
+      "id": "kora-database-jdbc-byte-array-return-npe",
+      "skills": [
+        "kora-database-jdbc"
+      ],
+      "query": "Kora 2.0 Java: I added `@Query(\"SELECT payload FROM blobs WHERE batch_id = :batchId\") List<byte[]> findPayloads(long batchId);` to my JdbcRepository and now javac fails with NullPointerException: Cannot invoke \"javax.lang.model.element.Element.getAnnotationMirrors()\" because \"element\" is null, with JdbcTypesExtension.getDependencyGenerator in the trace. Did I break something in my code?",
+      "expected_behavior": [
+        "Identifies the byte[] / List<byte[]> return type as the trigger: the Java JDBC extension resolves JdbcResultSetMapper<byte[]> and looks for @EntityJdbc on the element of an array type, which is null",
+        "States it is a processor defect fixed in 2.0.0.RC2 (kora-projects/kora PR #959), only 2.0.0.RC1 is affected, not a mistake in the repository code, and that KSP is not affected",
+        "Gives the workaround for builds without the fix: a single-column @EntityJdbc record such as record Payload(byte[] data) and a List<Payload> return type",
+        "Does not suggest a hand-written JdbcResultColumnMapper<byte[]> as the fix, because JdbcMapperModule already ships JdbcRowMapper<byte[]> and the crash happens inside the extension before it is used"
+      ],
+      "tags": [
+        "repository",
+        "regression",
+        "processor"
+      ]
+    },
+    {
+      "id": "kora-database-jdbc-hikari-keepalive-configurer",
+      "skills": [
+        "kora-database-jdbc"
+      ],
+      "query": "Kora 2.0: our PostgreSQL connections get cut by a firewall after idle periods, so I added `jdbc.dsProperties { keepaliveTime = \"120000\" }` to application.conf. Nothing changed. How do I set Hikari's keepaliveTime in Kora?",
+      "expected_behavior": [
+        "Explains that jdbc.dsProperties is passed to HikariConfig.setDataSourceProperties, i.e. JDBC driver properties, so a Hikari pool setting there reaches the driver and does nothing for the pool",
+        "Notes JdbcDatabaseConfig has no keepaliveTime key and sets it through a Configurer<HikariConfig> component (io.koraframework.common.Configurer) that calls hikari.setKeepaliveTime(...) and returns the config",
+        "Explains the wiring: JdbcDatabaseFactoryModule.jdbcDataSource takes @Tag(Tag.Factory.class) @Nullable Configurer<HikariConfig>, the default jdbc factory module is untagged, so an untagged module method or @Component configures the primary pool",
+        "Warns not to change autoCommit in the configurer",
+        "Does not keep keepaliveTime in dsProperties, invent a jdbc.keepaliveTime / jdbc.hikari.* config key, or build a HikariDataSource by hand"
+      ],
+      "tags": [
+        "config",
+        "hikari",
+        "regression"
+      ]
+    },
+    {
+      "id": "kora-database-jdbc-post-commit-action-failure",
+      "skills": [
+        "kora-database-jdbc"
+      ],
+      "query": "Kora 2.0: in a money transfer I register ctx.afterCommit(c -> { cache.put(...); metrics.record(...); }) inside executor().inTx(ctx -> ...). Sometimes metrics.record throws, and then the HTTP client gets a 500 although the transfer is in the database. In tests I also saw afterCommit run for a transaction that rolled back when I ran two inTx inside one withConnection. What is going on and how do I write this safely?",
+      "expected_behavior": [
+        "Explains that post-commit actions run after commit() and a failure there does not undo the commit but propagates out of inTx, so the caller sees an error for committed work",
+        "Fixes it by catching inside the afterCommit action (try/catch with logging) rather than around inTx",
+        "Explains that on 2.0.0.RC1 (fixed in RC2 by kora-projects/kora PR #967) the actions are never cleared from the ConnectionContext, so a later inTx in the same withConnection scope re-runs them, and the first throwing post-commit action skips the remaining ones",
+        "Recommends one inTx per withConnection scope when it registers actions, and running follow-up transactional work after inTx returns instead of from an action (an afterCommit that opens inTx recurses until StackOverflowError before the fix)",
+        "Does not invent a Spring-style TransactionSynchronization, @TransactionalEventListener or a Kora config key to change this behaviour"
+      ],
+      "tags": [
+        "transactions",
+        "regression"
       ]
     }
   ]

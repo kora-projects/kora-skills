@@ -125,8 +125,8 @@ form to be patched into**. It has to be redesigned. Three honest answers, in the
   `Context` inside the framework — worth showing, because it is the honest answer to "so where did
   the ambient state go?".
 
-Kora's own `Principal` is the readable example (`io.koraframework.common.Principal`, verified at tag
-`2.0.0.RC1`):
+Kora's own `Principal` is the readable example (`io.koraframework.common.Principal`, verified at
+`2.0.0.RC2`):
 
 ```java
 public interface Principal {
@@ -170,19 +170,19 @@ an explicit parameter is better than either.
 |---|---|---|
 | Group | `ru.tinkoff.kora` | **`io.koraframework`** |
 | BOM | `ru.tinkoff.kora:kora-parent` | **`io.koraframework:kora-bom`** |
-| Version | 1.x | **`2.0.0.RC1`** — the only 2.0 release on Maven Central, published from plain `mavenCentral()` |
+| Version | 1.x | **`2.0.0.RC2`**, published to plain `mavenCentral()` |
 | Java | 17 / 21 | **25 minimum** (artifacts are class-file 69) |
-| Kotlin / KSP | 1.9.x | **2.4.10 / 2.3.11** |
-| Gradle | 8.x | **9.5.1** in the examples |
+| Kotlin / KSP | 1.9.x | **2.4.20 / 2.3.12** |
+| Gradle | 8.x | **9.8.0** (the framework's wrapper) |
 | DI annotations | `ru.tinkoff.kora.common.annotation` | **`io.koraframework.common.annotation`** |
 | Every framework package | `ru.tinkoff.kora.*` | `io.koraframework.*` |
 
 `2.0.0-SNAPSHOT` is the `master` development line, not something to put in a learner's first
 project — it needs the snapshot repository (`https://central.sonatype.com/repository/maven-snapshots`)
-or a local `publishToMavenLocal`. Teach `2.0.0.RC1`.
+or a local `publishToMavenLocal`. Teach `2.0.0.RC2`.
 
 Artifacts left over in the `io/koraframework/` listing on Maven Central from the alpha era —
-`kora-parent`, `cache-redis`, `scheduling-ksp` and a few others — are **not** constrained by the RC1
+`kora-parent`, `cache-redis`, `scheduling-ksp` and a few others — are **not** constrained by the 2.0
 BOM. If a learner's dependency resolves to one of them, the build file is wrong.
 
 New in 2.0 and worth introducing once the basics land: `@Conditional` (with `GraphCondition`) and
@@ -229,7 +229,9 @@ Concise map. Each has a domain sub-skill with the full treatment; the point here
 | `@Cacheable(parameters = "id")` | `@Cacheable(args = "id")` | [`kora-aop-caching`](../../kora-aop-caching/SKILL.md) |
 | `@CacheInvalidate(invalidateAll = true)` | `@CacheInvalidateAll(X.class)` | " |
 | `toStringUnchecked`, `readUnchecked` | `toString`, `read` — and they no longer declare checked exceptions | [`kora-json`](../../kora-json/SKILL.md) |
-| `@ScheduleWithTrigger(@Tag(MyJob.class))` | `@ScheduleWithTrigger(MyJob.class)` | [`kora-aop-scheduling-quartz`](../../kora-aop-scheduling-quartz/SKILL.md) |
+| `@ScheduleAtFixedRate`, `@ScheduleWithFixedDelay`, `@ScheduleOnce` | `@ScheduleJdkAtFixedRate`, `@ScheduleJdkWithFixedDelay`, `@ScheduleJdkOnce` — same `jdk.annotation` package | [`kora-aop-scheduling-jdk`](../../kora-aop-scheduling-jdk/SKILL.md) |
+| Quartz `@ScheduleWithCron` | `@ScheduleQuartzWithCron`, package `scheduling.quartz.annotation` | [`kora-aop-scheduling-quartz`](../../kora-aop-scheduling-quartz/SKILL.md) |
+| `@ScheduleWithTrigger(@Tag(MyJob.class))` | `@ScheduleQuartzWithTrigger(MyJob.class)` | " |
 | `openapi.management.file` | `files` (a list) | [`kora-openapi-management`](../../kora-openapi-management/SKILL.md) |
 
 Two of these change **meaning** rather than spelling, so a mechanical rename is actively dangerous:
@@ -296,18 +298,19 @@ successful build. That single sentence is the most valuable thing this reference
 
 ## 8. Where to look things up
 
-There is **no Kora 2.0 documentation site.** `kora-docs` describes 1.x on every branch it has,
-including `feature/kora-2.0` — whose `docs/v2` directory is a byte-identical copy of the 1.x pages,
-mentioning `ru.tinkoff.kora` in 134 files and `io.koraframework` in none, and still shipping pages
-for `database-r2dbc` and `database-vertx`. It is usable as 1.x conceptual background and as nothing
-else.
+Kora 2.0 has its own documentation at <https://koraframework.io/v2/en/> (ru: `/v2/ru/`), built from
+the `kora-docs` branch `feature/kora-2.0`, `mkdocs/docs/v2/`. It is written for `io.koraframework`
+and is the right first read for a concept. It trails the framework, though, so a key, default or
+signature a learner will depend on is checked in the source. The 1.x site
+(`kora-projects.github.io/kora-docs`, `docs/v1`) is 1.x conceptual background and nothing else.
 
 | Question | Where the answer is |
 |---|---|
-| Does this API exist, and what is its signature? | framework source at tag `2.0.0.RC1` — <https://github.com/kora-projects/kora/tree/2.0.0.RC1> |
+| What is this feature for, and how is it meant to be used? | Kora 2.0 docs — <https://koraframework.io/v2/en/> |
+| Does this API exist, and what is its signature? | framework source at tag `2.0.0.RC2` — <https://github.com/kora-projects/kora/tree/2.0.0.RC2> |
 | How is this wired in a working application? | <https://github.com/kora-projects/kora-examples/tree/migration/2.0> — the **code and build files**, not the per-app README, which still links to the 1.x site |
 | What did Kora generate for my code? | your own `build/generated/sources/annotationProcessor/` (Java) or `build/generated/ksp/` (Kotlin) |
 | What is the vetted pattern for domain X? | the domain sub-skill in this package |
 
-Both checkouts are placed on disk by **R0** in the [meta-skill](../../../SKILL.md), as
-`.kora-agent/kora-source-2.0/` and `.kora-agent/kora-examples-2.0/`.
+All three are placed on disk by **R0** in the [meta-skill](../../../SKILL.md), as
+`.kora-agent/kora-source-2.0/`, `.kora-agent/kora-examples-2.0/` and `.kora-agent/kora-docs-2.0/`.

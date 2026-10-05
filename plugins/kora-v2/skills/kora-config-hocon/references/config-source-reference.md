@@ -457,7 +457,7 @@ Config annotations are processed at compile time, in the module that declares th
 module that declares `@ConfigMapper` / `@ConfigSource` types must apply the processor itself:
 
 ```groovy
-// Java library module (koraVersion=2.0.0.RC1 in gradle.properties, resolved from mavenCentral())
+// Java library module (koraVersion=2.0.0.RC2 in gradle.properties, resolved from mavenCentral())
 configurations {
     koraBom
     annotationProcessor.extendsFrom(koraBom)

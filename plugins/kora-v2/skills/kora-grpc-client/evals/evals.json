@@ -35,7 +35,7 @@
       "expected_behavior": [
         "States the artifact is io.koraframework:grpc-client",
         "States the module interface is io.koraframework.grpc.client.GrpcClientModule",
-        "Mentions the BOM change ru.tinkoff.kora:kora-parent -> io.koraframework:kora-bom at 2.0.0.RC1 from mavenCentral()",
+        "Mentions the BOM change ru.tinkoff.kora:kora-parent -> io.koraframework:kora-bom at 2.0.0.RC2 from mavenCentral()",
         "States that DI annotations moved to io.koraframework.common.annotation",
         "Confirms what did NOT change: stubs still inject by type untagged, interceptors are still scoped with @Tag(<Service>Grpc.class), the config section is still grpcClient.<protoServiceName>"
       ],
@@ -133,10 +133,10 @@
       "query": "Set up the Gradle build for a Java Kora 2.0 gRPC client, including protobuf code generation.",
       "expected_behavior": [
         "Applies the com.google.protobuf Gradle plugin at 0.10.0 and configures protoc plus protoc-gen-grpc-java",
-        "Pins the BOM with platform(\"io.koraframework:kora-bom:$koraVersion\") where koraVersion=2.0.0.RC1, without versioning individual io.koraframework artifacts",
+        "Pins the BOM with platform(\"io.koraframework:kora-bom:$koraVersion\") where koraVersion=2.0.0.RC2, without versioning individual io.koraframework artifacts",
         "Adds annotationProcessor \"io.koraframework:annotation-processors\"",
-        "Declares io.koraframework:grpc-client and io.grpc:grpc-protobuf:1.83.1",
-        "Pins protoc to 3.25.3 and protoc-gen-grpc-java to 1.83.1",
+        "Declares io.koraframework:grpc-client and io.grpc:grpc-protobuf:1.84.0",
+        "Pins protoc to 3.25.3 and protoc-gen-grpc-java to 1.84.0",
         "Leaves protobuf-java to resolve transitively from grpc-protobuf (3.25.9) rather than pinning it",
         "Adds compileOnly javax.annotation:javax.annotation-api for javax.annotation.Generated in the generated stubs",
         "Adds build/generated/source/proto/main/{grpc,java} to sourceSets.main.java",
@@ -144,8 +144,8 @@
       ],
       "anti_behavior": [
         "Uses ru.tinkoff.kora:kora-parent or ru.tinkoff.kora:annotation-processors",
-        "Pins io.grpc artifacts to 1.74.0 or any version other than 1.83.1",
-        "Bumps protoc to 4.35.1 WITHOUT also declaring com.google.protobuf:protobuf-java:4.35.1",
+        "Pins io.grpc artifacts to 1.74.0 or any version other than 1.84.0",
+        "Bumps protoc to 4.36.2 WITHOUT also declaring com.google.protobuf:protobuf-java:4.36.2",
         "Assumes kora-bom manages gRPC or protobuf versions",
         "Sets the toolchain below Java 25"
       ],
@@ -162,10 +162,10 @@
       ],
       "query": "Set up build.gradle.kts for a Kotlin Kora 2.0 gRPC client with protobuf generation.",
       "expected_behavior": [
-        "Applies org.jetbrains.kotlin.jvm 2.4.10, com.google.devtools.ksp 2.3.11 and com.google.protobuf 0.10.0",
-        "Adds ksp(\"io.koraframework:symbol-processors:...\") and the kora-bom platform at 2.0.0.RC1",
+        "Applies org.jetbrains.kotlin.jvm 2.4.20, com.google.devtools.ksp 2.3.12 and com.google.protobuf 0.10.0",
+        "Adds ksp(\"io.koraframework:symbol-processors:...\") and the kora-bom platform at 2.0.0.RC2",
         "Registers the generated proto dirs on sourceSets.main.java, not on kotlin.srcDir, because protoc-gen-grpc-java emits Java",
-        "Pins protoc 3.25.3, protoc-gen-grpc-java 1.83.1 and io.grpc:grpc-protobuf 1.83.1",
+        "Pins protoc 3.25.3, protoc-gen-grpc-java 1.84.0 and io.grpc:grpc-protobuf 1.84.0",
         "Leaves protobuf-java transitive rather than pinning it",
         "Sets the jvmToolchain to 25",
         "Points mainClass at <package>.ApplicationKt"
@@ -173,9 +173,9 @@
       "anti_behavior": [
         "Puts the generated gRPC sources on kotlin.srcDir only",
         "Uses ru.tinkoff.kora:symbol-processors",
-        "Bumps protoc to 4.35.1 without also pinning protobuf-java:4.35.1",
+        "Bumps protoc to 4.36.2 without also pinning protobuf-java:4.36.2",
         "Adds grpc-kotlin-stub without being asked and presents coroutine stubs as the Kora default",
-        "Pins Kotlin or KSP to versions inconsistent with 2.4.10 / 2.3.11"
+        "Pins Kotlin or KSP to versions inconsistent with 2.4.20 / 2.3.12"
       ],
       "tags": [
         "gradle",
@@ -193,7 +193,7 @@
         "Identifies this as a gRPC version mismatch, not a Kora bug",
         "Explains that the test transport (io.grpc:grpc-inprocess or grpc-netty) is pinned to a different version than the grpc-core arriving with io.koraframework:grpc-client",
         "Says kora-bom constrains io.koraframework artifacts only, so gRPC versions are the application's responsibility",
-        "Aligns every io.grpc artifact on 1.83.1 across main and test source sets",
+        "Aligns every io.grpc artifact on 1.84.0 across main and test source sets",
         "Optionally suggests a resolutionStrategy.eachDependency rule to make the alignment enforceable"
       ],
       "anti_behavior": [
@@ -264,7 +264,7 @@
       "skills": [
         "kora-grpc-client"
       ],
-      "query": "Our Kora 2.0 gRPC client produces no rpc.client.duration metric and no request logs, although the service is definitely making calls. Config only sets grpcClient.UserService.url.",
+      "query": "Our Kora 2.0 gRPC client produces no rpc.client.call.duration metric and no request logs, although the service is definitely making calls. Config only sets grpcClient.UserService.url.",
       "expected_behavior": [
         "States that telemetry.logging.enabled and telemetry.metrics.enabled default to false in Kora 2.0",
         "Enables them explicitly under grpcClient.UserService.telemetry",
@@ -275,7 +275,7 @@
       "anti_behavior": [
         "Claims metrics or logging are on by default",
         "Suggests a global telemetry switch outside the grpcClient section as the fix",
-        "Invents a metric name other than rpc.client.duration",
+        "Invents a metric name other than rpc.client.call.duration (rpc.client.duration is the pre-RC2 name)",
         "Says the logger is named after the Java stub class"
       ],
       "tags": [
@@ -319,7 +319,7 @@
         "Clarifies that a generated suspend fun on such a stub is grpc-kotlin's code, not a Kora contract — Kora provides no coroutine scope to call it from",
         "States that Kora 2.0 contracts are synchronous on virtual threads",
         "Says no migrated Kora example uses coroutine stubs; both Kotlin examples use the Java *BlockingStub / *Stub with StreamObserver",
-        "Recommends the Java stubs, and notes grpc-kotlin 1.5.0 plus protoc-gen-grpc-kotlin must be added and kept aligned with grpc-java 1.83.1 if coroutine stubs are used anyway"
+        "Recommends the Java stubs, and notes grpc-kotlin 1.5.0 plus protoc-gen-grpc-kotlin must be added and kept aligned with grpc-java 1.84.0 if coroutine stubs are used anyway"
       ],
       "anti_behavior": [
         "Claims Kora 2.0 supports suspend gRPC client contracts",
@@ -459,11 +459,11 @@
       "skills": [
         "kora-grpc-client"
       ],
-      "query": "I bumped protoc to 4.35.1 in my Kora 2.0 gRPC client build to match Kora's own version catalog, and now compilation fails with 'cannot find symbol: class Generated / location: package com.google.protobuf'. The gRPC versions are untouched at 1.83.1.",
+      "query": "I bumped protoc to 4.36.2 in my Kora 2.0 gRPC client build to match Kora's own version catalog, and now compilation fails with 'cannot find symbol: class Generated / location: package com.google.protobuf'. The gRPC versions are untouched at 1.84.0.",
       "expected_behavior": [
         "Identifies that protoc 4.x generated code references com.google.protobuf.Generated, which does not exist in the protobuf-java the build actually resolves",
-        "States that io.grpc:grpc-protobuf:1.83.1 declares protobuf-java 3.25.9 transitively, so the runtime is still on the 3.25 line",
-        "Offers the two correct recipes: revert to protoc 3.25.3 (matches the transitive runtime, needs no override), or keep 4.35.1 AND add implementation com.google.protobuf:protobuf-java:4.35.1 so it outranks 3.25.9",
+        "States that io.grpc:grpc-protobuf:1.84.0 declares protobuf-java 3.25.9 transitively, so the runtime is still on the 3.25 line",
+        "Offers the two correct recipes: revert to protoc 3.25.3 (matches the transitive runtime, needs no override), or keep 4.36.2 AND add implementation com.google.protobuf:protobuf-java:4.36.2 so it outranks 3.25.9",
         "Notes that protoc and protobuf-java must move together — bumping one alone is the bug",
         "Notes that kora-bom does not manage protobuf versions"
       ],
@@ -477,6 +477,29 @@
         "gradle",
         "troubleshooting",
         "regression-versions"
+      ]
+    },
+    {
+      "id": "kora-grpc-client-log-masking",
+      "skills": [
+        "kora-grpc-client"
+      ],
+      "query": "My Kora 2.0 gRPC client adds an x-api-key metadata header in a ClientInterceptor. With grpcClient.PaymentService.telemetry.logging.enabled = true and the request logger at DEBUG the key is printed. How do I mask it, and can I show only the last 4 characters?",
+      "expected_behavior": [
+        "Sets grpcClient.PaymentService.telemetry.logging.maskHeaders = [\"authorization\", \"cookie\", \"set-cookie\", \"x-api-key\"], explaining that the list replaces the default",
+        "Provides a @Tag(GrpcClientTelemetry.class) MaskingStrategy component returning new MaskingKeepLast(\"***\", 4) to keep the last four characters, noting it replaces the default *** strategy for all gRPC clients",
+        "States that metadata is logged only at DEBUG on the <full proto service name>.request logger and that the client logs no message bodies",
+        "States that there is no mask config key"
+      ],
+      "anti_behavior": [
+        "Invents a per-client strategy key or a mask config key",
+        "Claims header names must be listed in upper case or exactly as the interceptor spelled them",
+        "Suggests removing the header in the interceptor to keep it out of the logs"
+      ],
+      "tags": [
+        "telemetry",
+        "logging",
+        "masking"
       ]
     }
   ]

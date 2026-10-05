@@ -363,8 +363,8 @@ kafka {
         "bootstrap.servers" = "localhost:9092"
         "bootstrap.servers" = ${?KAFKA_BOOTSTRAP}
 
-        # group.id present => subscribe strategy. Remove it for the assign strategy, which at
-        # 2.0.0.RC1 requires exactly one topic and never commits offsets.
+        # group.id present => subscribe strategy. Remove it for the assign strategy, which
+        # requires topics (no topicsPattern) and never commits offsets.
         "group.id" = "{{GROUP_ID}}"
 
         # Where a brand-new consumer group starts. The Kora `offset` key applies to assign mode only.

@@ -1,6 +1,6 @@
 # gRPC Server Reference — Kora 2.0
 
-**Framework source (authority):** [`grpc/grpc-server` @ `2.0.0.RC1`](https://github.com/kora-projects/kora/tree/2.0.0.RC1/grpc/grpc-server)
+**Framework source (authority):** [`grpc/grpc-server` @ `2.0.0.RC2`](https://github.com/kora-projects/kora/tree/2.0.0.RC2/grpc/grpc-server)
 **Migrated examples:** [`kora-java-grpc-server`](https://github.com/kora-projects/kora-examples/tree/migration/2.0/examples/java/kora-java-grpc-server) · [`kora-kotlin-grpc-server`](https://github.com/kora-projects/kora-examples/tree/migration/2.0/examples/kotlin/kora-kotlin-grpc-server) · [`kora-java-guide-grpc-server-advanced-app`](https://github.com/kora-projects/kora-examples/tree/migration/2.0/guides/java/kora-java-guide-grpc-server-advanced-app)
 
 ## Contents
@@ -62,18 +62,18 @@ Because `GrpcServer` is `@Root`, nothing has to depend on it for the server to s
 
 ## 2. Dependencies and the version matrix
 
-`io.koraframework:grpc-server:2.0.0.RC1` declares exactly these dependencies (from its published
-POM):
+`io.koraframework:grpc-server:2.0.0.RC2` declares exactly these dependencies (its
+`build.gradle` at that tag):
 
 | Coordinate | Version |
 |---|---|
 | `org.jspecify:jspecify` | `1.0.1` |
-| `io.koraframework:logging-common` | `2.0.0.RC1` |
-| `io.koraframework:telemetry-common` | `2.0.0.RC1` |
-| `io.grpc:grpc-okhttp` | `1.83.1` |
-| `io.grpc:grpc-stub` | `1.83.1` |
+| `io.koraframework:logging-common` | `2.0.0.RC2` |
+| `io.koraframework:telemetry-common` | `2.0.0.RC2` |
+| `io.grpc:grpc-okhttp` | `1.84.0` |
+| `io.grpc:grpc-stub` | `1.84.0` |
 
-`grpc-okhttp:1.83.1` in turn brings `grpc-api`, `grpc-util` and `grpc-core` at `1.83.1`.
+`grpc-okhttp:1.84.0` in turn brings `grpc-api`, `grpc-util` and `grpc-core` at `1.84.0`.
 
 **`kora-bom` constrains only `io.koraframework:*` artifacts.** It contains no third-party
 constraints at all, so nothing under `io.grpc` or `com.google.protobuf` is managed for you.
@@ -82,31 +82,31 @@ constraints at all, so nothing under `io.grpc` or `com.google.protobuf` is manag
 
 | Coordinate | Version | Who provides it |
 |---|---|---|
-| `io.grpc:grpc-okhttp`, `grpc-stub`, `grpc-core`, `grpc-api`, `grpc-util` | `1.83.1` | transitive via `io.koraframework:grpc-server` |
-| `io.grpc:grpc-protobuf` | `1.83.1` | **you**, `implementation` |
-| `io.grpc:grpc-services` (reflection) | `1.83.1` | **you**, `implementation`, optional |
-| `io.grpc:protoc-gen-grpc-java` | `1.83.1` | **you**, protobuf plugin |
-| `io.grpc:grpc-netty` / `grpc-inprocess` / `grpc-testing` | `1.83.1` | **you**, `testImplementation`, when a test needs a client transport |
-| `com.google.protobuf:protobuf-java` | `3.25.9` | transitive via `grpc-protobuf:1.83.1` |
+| `io.grpc:grpc-okhttp`, `grpc-stub`, `grpc-core`, `grpc-api`, `grpc-util` | `1.84.0` | transitive via `io.koraframework:grpc-server` |
+| `io.grpc:grpc-protobuf` | `1.84.0` | **you**, `implementation` |
+| `io.grpc:grpc-services` (reflection) | `1.84.0` | **you**, `implementation`, optional |
+| `io.grpc:protoc-gen-grpc-java` | `1.84.0` | **you**, protobuf plugin |
+| `io.grpc:grpc-netty` / `grpc-inprocess` / `grpc-testing` | `1.84.0` | **you**, `testImplementation`, when a test needs a client transport |
+| `com.google.protobuf:protobuf-java` | `3.25.9` | transitive via `grpc-protobuf:1.84.0` |
 | `com.google.protobuf:protoc` | `3.25.3` | **you**, protobuf plugin |
 | `com.google.protobuf` Gradle plugin | `0.10.0` | **you**, `plugins { }` |
 | `javax.annotation:javax.annotation-api` | `1.3.2` | **you**, `compileOnly` — the generated stubs reference `@javax.annotation.Generated` |
 
-The framework's own [`gradle/libs.versions.toml`](https://github.com/kora-projects/kora/blob/2.0.0.RC1/gradle/libs.versions.toml)
-lists `grpc-java = "1.83.1"`, `grpc-kotlin = "1.5.0"`, `protobuf-java`/`protobuf-protoc` `4.35.1`
+The framework's own [`gradle/libs.versions.toml`](https://github.com/kora-projects/kora/blob/2.0.0.RC2/gradle/libs.versions.toml)
+lists `grpc-java = "1.84.0"`, `grpc-kotlin = "1.5.0"`, `protobuf-java`/`protobuf-protoc` `4.36.2`
 and the protobuf plugin at `0.10.0`. `grpc-kotlin = 1.5.0` is consumed by
 `grpc-client-symbol-processor` to inject `*CoroutineStub` client stubs — it plays no part in the
 server.
 
 ### ⚑ A catalog entry is what the framework pins for itself, not what a consumer can copy
 
-The `4.35.1` protobuf entries are the clearest example, and the distinction generalises to every
+The `4.36.2` protobuf entries are the clearest example, and the distinction generalises to every
 third-party version in that file.
 
 Kora's `grpc/grpc-server/build.gradle` declares `compileOnly libs.protobuf.java` and
-`testImplementation libs.protobuf.java` — an **explicit** `protobuf-java:4.35.1` that outranks the
+`testImplementation libs.protobuf.java` — an **explicit** `protobuf-java:4.36.2` that outranks the
 `3.25.9` arriving transitively through `grpc-protobuf`. Inside Kora's build the two halves travel
-together, so `protoc:4.35.1` is correct there.
+together, so `protoc:4.36.2` is correct there.
 
 A consumer who copies only the protoc line inherits `protobuf-java:3.25.9` and a build that does not
 compile. The 4.x recipe is correct **only while both halves stay together**; the 3.25.3 recipe needs
@@ -119,7 +119,7 @@ authority for your project — `libs.versions.toml` is not.
 ### Failure 1 — a stale `io.grpc:*` pin
 
 An `io.grpc` artifact left at an older version (`1.74.0` is the common Kora 1.x carry-over) still
-resolves `grpc-core` up to `1.83.1` through Gradle's highest-wins rule, while the stale module keeps
+resolves `grpc-core` up to `1.84.0` through Gradle's highest-wins rule, while the stale module keeps
 its own older classes. The server then fails at **runtime**, not at compile time:
 
 ```
@@ -134,11 +134,11 @@ The message names neither the offending artifact nor the version, so audit the w
 ./gradlew dependencies --configuration testRuntimeClasspath | grep 'io.grpc'
 ```
 
-Every line must read `1.83.1`.
+Every line must read `1.84.0`.
 
 ### Failure 2 — protoc newer than the protobuf runtime
 
-`grpc-protobuf:1.83.1` brings `protobuf-java:3.25.9`. protoc 4.x gencode annotates every generated
+`grpc-protobuf:1.84.0` brings `protobuf-java:3.25.9`. protoc 4.x gencode annotates every generated
 type with `@com.google.protobuf.Generated` and opens each one with
 
 ```java
@@ -157,7 +157,7 @@ error: cannot find symbol
 ```
 
 Verified by generating the same `.proto` twice and compiling both against `protobuf-java:3.25.9`:
-protoc `3.25.3` gencode compiles clean, protoc `4.35.1` gencode does not. If a 4.x `protobuf-java`
+protoc `3.25.3` gencode compiles clean, protoc `4.36.2` gencode does not. If a 4.x `protobuf-java`
 is on the compile classpath but a 3.x one wins at runtime, the mismatch instead surfaces on the
 first `newBuilder()` as `NoClassDefFoundError: com/google/protobuf/RuntimeVersion`.
 
@@ -169,8 +169,8 @@ protobuf { protoc { artifact = "com.google.protobuf:protoc:3.25.3" } }
 // protobuf-java 3.25.9 arrives transitively; nothing else to do
 
 // B — protobuf 4.x, both halves pinned
-implementation "com.google.protobuf:protobuf-java:4.35.1"
-protobuf { protoc { artifact = "com.google.protobuf:protoc:4.35.1" } }
+implementation "com.google.protobuf:protobuf-java:4.36.2"
+protobuf { protoc { artifact = "com.google.protobuf:protoc:4.36.2" } }
 ```
 
 Never mix: protoc 4.x with the transitive 3.25.9 runtime is failure 2; protoc 3.x with an explicit
@@ -188,7 +188,7 @@ plugins {
 protobuf {
     protoc { artifact = "com.google.protobuf:protoc:3.25.3" }
     plugins {
-        grpc { artifact = "io.grpc:protoc-gen-grpc-java:1.83.1" }
+        grpc { artifact = "io.grpc:protoc-gen-grpc-java:1.84.0" }
     }
     generateProtoTasks {
         all()*.plugins { grpc {} }
@@ -217,7 +217,7 @@ plugins {
 protobuf {
     protoc { artifact = "com.google.protobuf:protoc:3.25.3" }
     plugins {
-        id("grpc") { artifact = "io.grpc:protoc-gen-grpc-java:1.83.1" }
+        id("grpc") { artifact = "io.grpc:protoc-gen-grpc-java:1.84.0" }
     }
     generateProtoTasks {
         all().forEach { task -> task.plugins { id("grpc") } }
@@ -375,7 +375,7 @@ telemetry, the virtual-thread executor. Prefer 7.1/7.2.
 
 | Phase | Behaviour |
 |---|---|
-| `init()` | builds and starts the server; logs `gRPC Server started in …` |
+| `init()` | builds and starts the server; logs `gRPC Server started on port <port> in …` (the bound port, also as a `port` structured marker) |
 | bind failure | `IllegalStateException: gRPC server failed to start on port 'N': port is already in use; stop the other process or configure a different port` |
 | readiness | `INIT` → `"GRPC Server init"`, `RUN` → ready, `SHUTDOWN` → `"GRPC Server shutdown"` |
 | `release()` | `shutdown()`, then waits `shutdownWait` (default `30s`); on timeout logs a warning and calls `shutdownNow()` |
@@ -391,7 +391,7 @@ if (config.reflectionEnabled() && isClassPresent("io.grpc.protobuf.services.Prot
 }
 ```
 
-Both halves are required: the flag **and** `io.grpc:grpc-services:1.83.1` on the classpath. When the
+Both halves are required: the flag **and** `io.grpc:grpc-services:1.84.0` on the classpath. When the
 class is missing the flag is ignored with no warning. Kora registers the **v1** reflection service
 (`ProtoReflectionServiceV1`), not `v1alpha`.
 See [grpc-reflection-reference.md](grpc-reflection-reference.md).
@@ -401,7 +401,7 @@ See [grpc-reflection-reference.md](grpc-reflection-reference.md).
 `grpc-server` ships its own reachability metadata at
 `META-INF/native-image/io.koraframework/grpc-server/reflect-config.json`. The file name is
 load-bearing: GraalVM reads `reflect-config.json` and silently ignores `reflection-config.json`.
-The file shipped at `2.0.0.RC1` carries the correct name, so this module needs nothing from you —
+The file shipped at `2.0.0.RC2` carries the correct name, so this module needs nothing from you —
 but the trap is real, so check your **own** `META-INF/native-image/` directories for the misspelling:
 
 ```bash
@@ -415,8 +415,8 @@ RPC.
 
 | Symptom | Cause | Fix |
 |---|---|---|
-| `AbstractMethodError … buildClientTransportServers(List, MetricRecorder)` | mixed `io.grpc` versions | pin every `io.grpc:*` to `1.83.1`, main and test |
-| `cannot find symbol: class Generated` / `class RuntimeVersion` | protoc 4.x gencode, protobuf-java 3.25.9 on the classpath | `protoc:3.25.3`, or pin `protobuf-java:4.35.1` too |
+| `AbstractMethodError … buildClientTransportServers(List, MetricRecorder)` | mixed `io.grpc` versions | pin every `io.grpc:*` to `1.84.0`, main and test |
+| `cannot find symbol: class Generated` / `class RuntimeVersion` | protoc 4.x gencode, protobuf-java 3.25.9 on the classpath | `protoc:3.25.3`, or pin `protobuf-java:4.36.2` too |
 | RPC answers `UNIMPLEMENTED` | handler not collected | untagged `@Component`, extends `*Grpc.*ImplBase` |
 | Interceptor never runs | tagged component | remove the `@Tag(...)` |
 | `port is already in use` | port taken | change `grpcServer.port` |

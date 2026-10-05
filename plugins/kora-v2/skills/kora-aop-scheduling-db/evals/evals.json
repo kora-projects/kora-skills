@@ -1,0 +1,240 @@
+{
+  "evals": [
+    {
+      "id": "kora-aop-scheduling-db-setup-java",
+      "skills": ["kora-aop-scheduling-db"],
+      "query": "Java Kora 2 service, PostgreSQL, 3 replicas. Add a job that purges expired sessions every night at 02:00 and runs on only one replica.",
+      "expected_behavior": [
+        "Adds io.koraframework:scheduling-db-scheduler and io.koraframework:database-jdbc (versions from the io.koraframework:kora-bom 2.0.0.RC2 BOM), a PostgreSQL driver, and annotationProcessor \"io.koraframework:annotation-processors\"",
+        "Extends JdbcDatabaseModule and DbSchedulerModule on the @KoraApp interface, noting that DbSchedulerModule's KoraDbScheduler is @Root so no extra starter component is needed",
+        "Uses @ScheduleDbWithCron(\"0 0 2 * * *\") from io.koraframework.scheduling.db.scheduler.annotation on a no-argument method of a @Component, ideally with an explicit stable name",
+        "Creates the table kora_scheduling_db_scheduler_jobs (the default scheduling.dbScheduler.tableName) by copying db/kora/scheduling-db-scheduler/schema/postgresql.sql into the application's own Flyway migration, or by including the bundled Liquibase changelog",
+        "Does not use @ScheduleJdkWithCron or @ScheduleQuartzWithCron, does not add a ShedLock/Spring dependency, and does not invent a cluster flag"
+      ],
+      "anti_behavior": [
+        "Adds a @Root component injecting DbSchedulerWrapper or KoraDbScheduler as if the scheduler would otherwise be pruned",
+        "Uses the earlier snapshot annotation @ScheduleWithCron from io.koraframework.scheduling.db.scheduler.annotation"
+      ],
+      "tags": ["scheduling", "db-scheduler", "java", "setup"]
+    },
+    {
+      "id": "kora-aop-scheduling-db-jobs-never-run",
+      "skills": ["kora-aop-scheduling-db"],
+      "query": "I added DbSchedulerModule and a @ScheduleDbWithFixedDelay job to my Kora 2 app. It compiles and starts and logs 'KoraDbScheduler started', but the job never runs. The log also has 'Unexpected error while executing OnStartup tasks. Continuing.' Why?",
+      "expected_behavior": [
+        "Identifies a missing or misnamed scheduler table: db-scheduler logs the startup-task failure and carries on, so the job's execution is never created",
+        "Checks that the table matches scheduling.dbScheduler.tableName, default kora_scheduling_db_scheduler_jobs, and that a table created for an earlier snapshot (kora_scheduling_db_jobs or scheduled_tasks) is not being looked for under the new name",
+        "Fixes the table via a migration copied from db/kora/scheduling-db-scheduler/schema/<db>.sql (or tableInitialize = true for dev) and restarts so the startup tasks are registered",
+        "Also checks the job is not disabled by enabled = false or a \"-\" cron in its config"
+      ],
+      "anti_behavior": [
+        "Diagnoses that nothing roots the scheduler and adds a @Root starter component — KoraDbScheduler is @Root since kora-projects/kora PR #922, and the log already shows it started",
+        "Blames final/non-open classes or suggests reflection/Spring-style component scanning"
+      ],
+      "tags": ["scheduling", "db-scheduler", "silent-failure"]
+    },
+    {
+      "id": "kora-aop-scheduling-db-config-keys",
+      "skills": ["kora-aop-scheduling-db"],
+      "query": "Show me the Kora 2 DB scheduler configuration: how many jobs run in parallel per instance, polling, table name, table creation and shutdown.",
+      "expected_behavior": [
+        "Uses the config path scheduling.dbScheduler (not scheduling.db or scheduling.dbscheduler)",
+        "Lists executionParallelism (default 10), tableName (default kora_scheduling_db_scheduler_jobs), tableInitialize (default false), shutdownWait (default 30s), polling.strategy (FETCH default, or LOCK_AND_FETCH), polling.prefetchMode (DEFAULT, BOUNDED, BUFFERED) and polling.interval (default 10s)",
+        "Explains executionParallelism is both db-scheduler's thread count and the limit of Kora's virtual-thread executor (threads named kora-db-scheduler-N)",
+        "Explains BOUNDED = 0.5/1.0 and BUFFERED = 0.75/2.0 lower/upper fraction-of-threads, DEFAULT keeps db-scheduler's own ratios",
+        "Mentions Configurer<SchedulerBuilder> for settings not exposed by the config"
+      ],
+      "anti_behavior": [
+        "Writes initializeTable (the stale name from the RC1 module README and Javadoc) instead of tableInitialize",
+        "Invents keys such as scheduling.dbScheduler.enabled, threads or heartbeatInterval"
+      ],
+      "tags": ["scheduling", "db-scheduler", "config"]
+    },
+    {
+      "id": "kora-aop-scheduling-db-initialize-table-ignored",
+      "skills": ["kora-aop-scheduling-db"],
+      "query": "Our Kora 2 test profile has scheduling.dbScheduler.initializeTable = true, copied from the DbSchedulerConfig Javadoc, but the scheduler table is never created and the DB jobs never run. What is wrong?",
+      "expected_behavior": [
+        "States that the key read by DbSchedulerConfig is tableInitialize (method tableInitialize()), and that initializeTable, the name in the RC1 module README and Javadoc example, is stale (corrected in 2.0.0.RC2 by kora-projects/kora PR #966)",
+        "Explains an unknown HOCON key is ignored without a warning, so the table is simply not created",
+        "Fixes it with scheduling.dbScheduler.tableInitialize = true and notes it probes `select 1 from <tableName> where 1 = 0` and then runs the bundled script for the detected database",
+        "Recommends a real migration rather than tableInitialize for production"
+      ],
+      "anti_behavior": [
+        "Keeps initializeTable and looks for a different cause",
+        "Claims the key name changed in a published Kora release note"
+      ],
+      "tags": ["scheduling", "db-scheduler", "config", "silent-failure"]
+    },
+    {
+      "id": "kora-aop-scheduling-db-flyway-bundled-schema",
+      "skills": ["kora-aop-scheduling-db"],
+      "query": "Kora 2 DB scheduler with Flyway on PostgreSQL. How do I create the scheduler table? Can I just add the module's bundled migrations to my Flyway locations?",
+      "expected_behavior": [
+        "Explains the module ships plain scripts under db/kora/scheduling-db-scheduler/schema/<db>.sql, not versioned Flyway migrations, so a Flyway location over them finds nothing",
+        "Recommends copying db/kora/scheduling-db-scheduler/schema/postgresql.sql into the application's own migration folder under the next free version, e.g. V42__create_kora_scheduling_db_scheduler_jobs.sql",
+        "States the script creates kora_scheduling_db_scheduler_jobs with constraint and index names prefixed by the table name, matching the default tableName",
+        "Mentions the Liquibase alternative: include db/kora/scheduling-db-scheduler/liquibase/changelog.yaml, which marks itself ran when the table exists"
+      ],
+      "anti_behavior": [
+        "Adds classpath:db/kora/scheduling-db-scheduler or classpath:db/scheduling-db/flyway/postgresql as a Flyway location",
+        "Expects a bundled V1__create_scheduled_tasks.sql or tells the user to set tableName = \"scheduled_tasks\""
+      ],
+      "tags": ["scheduling", "db-scheduler", "migration"]
+    },
+    {
+      "id": "kora-aop-scheduling-db-kotlin-once",
+      "skills": ["kora-aop-scheduling-db"],
+      "query": "Kotlin Kora 2: I need a one-time job that runs 5 minutes after deploy on only one of my pods. Can I use the DB scheduler's one-shot annotation, and what happens on the next deploy or if it fails?",
+      "expected_behavior": [
+        "Uses @ScheduleDbOnce(delay = 5, unit = ChronoUnit.MINUTES, name = \"...\") from io.koraframework.scheduling.db.scheduler.annotation on a no-argument, non-suspend member function of a @Component class, with ksp(\"io.koraframework:symbol-processors\")",
+        "Explains it is scheduled on startup only if no execution is pending, so concurrent pod starts create one execution and one pod runs it",
+        "States that after it runs the row is removed, so a later restart or deploy schedules it again — it is once per startup wave, not once ever",
+        "States that a failure removes the execution without retry",
+        "Mentions that enabled = false under its config path keeps it from being scheduled"
+      ],
+      "anti_behavior": [
+        "Uses @ScheduleOnce from io.koraframework.scheduling.db.scheduler.annotation (the earlier snapshot name)",
+        "Adds a @Root starter component depending on DbSchedulerWrapper"
+      ],
+      "tags": ["scheduling", "db-scheduler", "kotlin"]
+    },
+    {
+      "id": "kora-aop-scheduling-db-task-name-stability",
+      "skills": ["kora-aop-scheduling-db"],
+      "query": "After I moved my Kora DB-scheduled job class com.acme.jobs.CleanupJob to com.acme.sessions.CleanupJob, the job ran immediately on deploy and there is an old row left in the scheduler table. Can I fix the name in application.conf? Explain.",
+      "expected_behavior": [
+        "Explains the default task name is CanonicalClassName#method (com.acme.jobs.CleanupJob#run) and it is the job's persistent identity in the table, so moving the class to another package changed it",
+        "Explains the move created a new task (new row, initialDelay/first cron time applied again) and left the old row as an unresolved execution that db-scheduler logs and eventually deletes",
+        "States the name comes from the annotation name attribute only — a config name key no longer exists and is ignored — so the fix is name = \"com.acme.jobs.CleanupJob#run\" (or another stable explicit name) on the annotation",
+        "Mentions the 350-character limit on the name, checked at compile time"
+      ],
+      "anti_behavior": [
+        "Sets scheduling.jobs.<job>.name in config to restore the name",
+        "Says the default name is SimpleClassName#method",
+        "Suggests deleting the whole table as the fix"
+      ],
+      "tags": ["scheduling", "db-scheduler", "pitfall"]
+    },
+    {
+      "id": "kora-aop-scheduling-db-snapshot-upgrade",
+      "skills": ["kora-aop-scheduling-db"],
+      "query": "We used the Kora 2.0 snapshot DB scheduler with @ScheduleWithCron and @ScheduleWithFixedDelay from io.koraframework.scheduling.db.scheduler.annotation, a DbSchedulerStarter that injects DbSchedulerWrapper, and the kora_scheduling_db_jobs table. Moving to the current master build nothing compiles. What do we change, and how do we keep the existing job state?",
+      "expected_behavior": [
+        "Renames the annotations to @ScheduleDbWithCron, @ScheduleDbWithFixedDelay and @ScheduleDbOnce in the same package",
+        "Replaces DbSchedulerWrapper with KoraDbScheduler (including @Tag(KoraDbScheduler.class) on a custom DataSource) and deletes the starter component, because KoraDbScheduler is @Root now",
+        "Keeps the existing table with scheduling.dbScheduler.tableName = \"kora_scheduling_db_jobs\" (the new default is kora_scheduling_db_scheduler_jobs), or migrates the rows",
+        "Pins name = \"SimpleClassName#method\" on every job that relied on the old default name, since the default is now CanonicalClassName#method and would create new rows",
+        "Renames initializeTable to tableInitialize and drops any config name keys"
+      ],
+      "anti_behavior": [
+        "Keeps @ScheduleWithCron from the db.scheduler.annotation package or the JDK/Quartz annotation as a replacement",
+        "Leaves job names on the new default and claims the state carries over"
+      ],
+      "tags": ["scheduling", "db-scheduler", "migration"]
+    },
+    {
+      "id": "kora-aop-scheduling-db-duplicate-name",
+      "skills": ["kora-aop-scheduling-db"],
+      "query": "My Kora 2 app fails at startup with IllegalStateException: Database scheduled jobs 'com.acme.a.Sync#run' and 'com.acme.b.Refresh#run' have the same name 'sync'. What does it mean?",
+      "expected_behavior": [
+        "Explains KoraDbScheduler.init() checks job names before building the db-scheduler Scheduler and fails when two jobs resolve to the same task name",
+        "Identifies that both annotations set name = \"sync\" and recommends a unique explicit name per job",
+        "Notes the name is the job's key in the scheduler table, so pick the one that should keep the existing row"
+      ],
+      "anti_behavior": [
+        "Recommends renaming via a config name key",
+        "Blames a Configurer<SchedulerBuilder> calling startTasks for this message"
+      ],
+      "tags": ["scheduling", "db-scheduler", "pitfall"]
+    },
+    {
+      "id": "kora-aop-scheduling-db-conditional-component",
+      "skills": ["kora-aop-scheduling-db"],
+      "query": "I put @ScheduleDbWithFixedDelay on a method of a @Conditional(FeatureXCondition.class) component in Kora 2. With the feature off, nothing is logged, but the scheduler table shows the job and consecutive_failures keeps growing. Why?",
+      "expected_behavior": [
+        "Explains the generated @Root job factory does not carry the @Conditional of the class, so the task is registered and scheduled even when the condition fails",
+        "States each run calls ValueOf.get() on the condition-failed component and fails with IllegalStateException: Graph node value was not initialized because condition failed: <reason>, which is rethrown and rescheduled",
+        "Explains nothing is logged because job telemetry logging is off by default",
+        "Says it is fixed in 2.0.0.RC2 (kora-projects/kora PR #962), only 2.0.0.RC1 is affected, and on RC1 moves the scheduled method to an unconditional component that injects All<T> and returns when it is empty"
+      ],
+      "anti_behavior": [
+        "Injects the conditional component as @Nullable in the unconditional job class without mentioning PR #960",
+        "Claims the job is silently not generated for a conditional class"
+      ],
+      "tags": ["scheduling", "db-scheduler", "conditional", "silent-failure"]
+    },
+    {
+      "id": "kora-aop-scheduling-db-noop-telemetry-identity",
+      "skills": ["kora-aop-scheduling-db"],
+      "query": "Kora 2 DB scheduler fails at startup with \"Database scheduled jobs 'java.lang.Void#noop' and 'java.lang.Void#noop' have the same name 'report'\". Which jobs are these?",
+      "expected_behavior": [
+        "Explains that with job logging and metrics off (the 2.0 defaults) and no tracing (no Tracer component or tracing disabled), DefaultSchedulingTelemetryFactory returns the shared NoopSchedulingTelemetry.INSTANCE whose class is Void and method noop, and KoraDbJob.toString() reads it",
+        "Says it is fixed in 2.0.0.RC2 (kora-projects/kora PR #961) and only 2.0.0.RC1 is affected",
+        "Gives the workarounds: enable scheduling.telemetry.logging.enabled (or the job's <config>.telemetry.logging.enabled), or search the code for name = \"report\"",
+        "Fixes the actual problem by giving the two jobs distinct names"
+      ],
+      "anti_behavior": [
+        "Claims java.lang.Void is a real job class registered by the application"
+      ],
+      "tags": ["scheduling", "db-scheduler", "telemetry", "pitfall"]
+    },
+    {
+      "id": "kora-aop-scheduling-db-shutdown",
+      "skills": ["kora-aop-scheduling-db"],
+      "query": "How does a long-running Kora DB-scheduler job behave on SIGTERM? Could it lose its database connection mid-run?",
+      "expected_behavior": [
+        "Explains KoraDbScheduler.release() calls db-scheduler Scheduler.stop(): polling stops, running executions get scheduling.dbScheduler.shutdownWait, then their virtual threads are interrupted and it waits up to another shutdownWait",
+        "Explains KoraDbScheduler depends on the jobs and the DataSource, so it is released before them and a draining job keeps its connection pool",
+        "Recommends bounding the job body and honouring interruption, and making work idempotent because an interrupted or dead execution may run again",
+        "Does not claim the job is never interrupted and does not reference scheduling.jdk.shutdownWait for this module"
+      ],
+      "tags": ["scheduling", "db-scheduler", "shutdown"]
+    },
+    {
+      "id": "kora-aop-scheduling-db-negative-jdk-for-cluster",
+      "skills": ["kora-aop-scheduling-db", "kora-aop-scheduling-jdk"],
+      "query": "We run 5 replicas of a Kora 2 service. I put @ScheduleJdkWithFixedDelay(delay = 10, unit = ChronoUnit.MINUTES) on our invoice-sending job and customers got 5 copies. Fix it.",
+      "expected_behavior": [
+        "Explains that the JDK scheduler is in-process and stateless, so every replica runs every job",
+        "Moves the job to scheduling-db-scheduler: DbSchedulerModule, @ScheduleDbWithFixedDelay from io.koraframework.scheduling.db.scheduler.annotation with a stable name, and the scheduler table",
+        "Notes the DB module has no fixed-rate annotation, so fixed delay or cron is used",
+        "Recommends making the invoice sending idempotent, since dead executions are revived on another replica",
+        "Does not propose a hand-written database lock or leader election around the JDK job, and does not keep the JDK annotation"
+      ],
+      "tags": ["scheduling", "db-scheduler", "routing", "negative"]
+    },
+    {
+      "id": "kora-aop-scheduling-db-negative-quartz-cron",
+      "skills": ["kora-aop-scheduling-db"],
+      "query": "Kora 2 DB scheduler: I copied @ScheduleDbWithCron(\"0 0 3 1 JAN ? 2027\") from our Quartz job onto a method and the build fails. Why, and what should I use?",
+      "expected_behavior": [
+        "Explains the processor validates the cron literal at compile time against db-scheduler's Spring-style six-field format (seconds first, no year field) and reports Invalid CRON expression ... in @ScheduleDbWithCron on '<class>#<method>()'",
+        "States that the 7-field expression with a year field is valid for Quartz and for Kora's JDK CronExpression but not for the DB scheduler",
+        "Rewrites the expression in six-field form, or routes to kora-aop-scheduling-quartz when exact Quartz cron semantics are required",
+        "Warns that numeric day-of-week counts from Monday in the DB scheduler (1 = MON), unlike Quartz and JDK where 1 = SUN, and recommends day names",
+        "Mentions that the value \"-\" or enabled = false disables a DB cron job"
+      ],
+      "anti_behavior": [
+        "Claims the DB module uses Kora's JDK CronExpression or Quartz CronExpression",
+        "Says the error only appears at application startup"
+      ],
+      "tags": ["scheduling", "db-scheduler", "cron", "negative"]
+    },
+    {
+      "id": "kora-aop-scheduling-db-cron-time-zone",
+      "skills": ["kora-aop-scheduling-db"],
+      "query": "Our Kora 2 pods run in UTC but the nightly @ScheduleDbWithCron(\"0 0 2 * * *\") job must fire at 02:00 Moscow time. How?",
+      "expected_behavior": [
+        "Declares a ZoneId component tagged @Tag(SchedulingModule.class) (io.koraframework.scheduling.common.SchedulingModule) returning ZoneId.of(\"Europe/Moscow\"), e.g. as a default method on the @KoraApp interface",
+        "Explains cron jobs fall back to the JVM default time zone without that component, and that the same component applies to JDK and Quartz cron jobs",
+        "Keeps the expression in the Spring six-field form"
+      ],
+      "anti_behavior": [
+        "Invents a zone or timeZone attribute on @ScheduleDbWithCron or a scheduling.dbScheduler.zone key",
+        "Tells the user to change the JVM -Duser.timezone as the only option"
+      ],
+      "tags": ["scheduling", "db-scheduler", "cron"]
+    }
+  ]
+}

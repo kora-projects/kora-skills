@@ -92,7 +92,7 @@ jdbc {
 | `leakDetectionThreshold` | duration | `0s` | log a stack trace when a connection is held this long; `0s` disables |
 | `initializationFailTimeout` | duration | **`null`** | when set, the pool opens and validates one connection at startup within this budget; when absent the check is **skipped entirely** |
 | `readinessProbe` | boolean | `false` | include this pool in the readiness probe |
-| `dsProperties` | object | `{}` | passed verbatim to Hikari `dataSourceProperties` |
+| `dsProperties` | object | `{}` | passed verbatim to Hikari `dataSourceProperties` — JDBC driver properties, not pool settings |
 | `telemetry.*` | object | see below | logging / metrics / tracing |
 
 `initializationFailTimeout` deserves attention when porting: it has **no default**. Leave it out and
@@ -104,8 +104,11 @@ IllegalStateException: JdbcDataSource pool 'kora' failed to start due to: …;
 check database availability, credentials, JDBC URL, and driver configuration
 ```
 
-Kora does **not** expose every Hikari knob as a first-class key — anything else goes through
-`dsProperties`, and a `Configurer<HikariConfig>` component can post-process the built config.
+Kora does **not** expose every Hikari knob as a first-class key. JDBC **driver** properties go
+through `dsProperties` (Hikari `dataSourceProperties`); Hikari **pool** settings without a key, such
+as `keepaliveTime`, go through a `Configurer<HikariConfig>` component — in `dsProperties` they reach
+the driver and do nothing. See
+[connection-pool-reference.md](connection-pool-reference.md#settings-kora-does-not-expose).
 
 ---
 
@@ -178,6 +181,9 @@ implementation "com.oracle.database.jdbc:ojdbc11:23.7.0.25.01" // jdbc:oracle:th
 The Kora build tests against PostgreSQL `42.7.13`; the migrated example applications pin `42.7.7`
 and the guides pin `42.7.3`. Any recent `42.7.x` works — pick the newest patch your organisation
 allows. MySQL and Oracle versions are your choice; Kora constrains neither through the BOM.
+
+`io.koraframework:database-jdbc-postgres` is the exception: it declares `org.postgresql:postgresql`
+(`42.7.13`) as an `api` dependency, so a service on that module needs no separate driver line.
 
 `JdbcDataSource` derives the telemetry "database" label from the URL scheme
 (`jdbc:postgresql:…` → `postgresql`), so a malformed `jdbcUrl` fails during construction rather

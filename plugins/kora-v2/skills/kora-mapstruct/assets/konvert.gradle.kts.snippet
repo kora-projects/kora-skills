@@ -1,0 +1,51 @@
+// Kora 2.0 — Konvert wiring for a KOTLIN module (Kotlin DSL).
+//
+// Kotlin maps with Konvert, never with MapStruct: MapStruct is a javac annotation processor and
+// Kora's Kotlin processors run in KSP. Konvert is a KSP processor, so no kapt plugin is involved.
+//
+// `konvert-ksp-extension` is already an api dependency of `io.koraframework:symbol-processors`.
+// Never declare it by hand.
+
+// gradle.properties:
+//   koraVersion=2.0.0.RC2
+
+plugins {
+    kotlin("jvm") version "2.4.20"
+    id("com.google.devtools.ksp") version "2.3.12"
+}
+
+repositories {
+    mavenCentral()
+}
+
+kotlin {
+    jvmToolchain {
+        languageVersion.set(JavaLanguageVersion.of(25))
+        vendor.set(JvmVendorSpec.ADOPTIUM)
+    }
+}
+
+dependencies {
+    // Kotlin puts the BOM straight on implementation — no koraBom configuration, no extendsFrom.
+    implementation(platform("io.koraframework:kora-bom:${property("koraVersion")}"))
+
+    // The BOM is not applied to the ksp configuration, so this one line carries a version.
+    ksp("io.koraframework:symbol-processors:${property("koraVersion")}")
+
+    // Konvert's KSP processor — generates `object <Name>Impl`.
+    ksp("io.mcarle:konvert:4.5.1")
+
+    // @Konverter on the COMPILE classpath is mandatory: Kora's extension factory resolves
+    // io.mcarle.konvert.api.Konverter and disables itself when the type is absent.
+    implementation("io.mcarle:konvert-api:4.5.1")
+
+    kspTest("io.koraframework:symbol-processors:${property("koraVersion")}")
+}
+
+// kora-bom constrains io.koraframework:* only. 4.5.1 is Kora's own catalog version for Konvert;
+// keep io.mcarle:konvert and io.mcarle:konvert-api on the same version.
+
+// If a code generator must run before KSP (OpenAPI, protobuf), order it explicitly:
+// tasks.matching { it.name.startsWith("ksp") }.configureEach {
+//     dependsOn(openApiGenerateHttpServer)
+// }

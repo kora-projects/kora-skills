@@ -32,9 +32,9 @@ ${imports}
  *
  * <p>Kora 2.0 runs on Jackson 3 ({@code tools.jackson.core}). Name and value are written as
  * two calls — {@code writeName("x")} then {@code writeString(...)}; strings are read with
- * {@code getString()} / {@code getValueAsString()}, not {@code getText()}. Neither
- * {@code read} nor {@code write} declares a checked exception — in 2.0.0.RC1 they declare no
- * {@code throws} clause at all — so never wrap a call in {@code try/catch (IOException)}.</p>
+ * {@code getString()} / {@code getValueAsString()}, not {@code getText()}. {@code read} and
+ * {@code write} declare only the unchecked {@code JacksonException}, so never wrap a call in
+ * {@code try/catch (IOException)}.</p>
  */
 @Module
 public interface ${mapper_module_name} {
@@ -51,7 +51,8 @@ public interface ${mapper_module_name} {
             case VALUE_NULL -> null;
             case VALUE_STRING -> ${default_value};
             default -> throw new StreamReadException(parser,
-                "Expecting VALUE_STRING token for ${type_name}, got " + parser.currentToken());
+                "Failed to read json ${type_name}: expected a string, but got " + parser.currentToken()
+                    + " (at " + parser.streamReadContext().pathAsPointer() + ")");
         };
     }
 

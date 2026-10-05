@@ -34,7 +34,7 @@ import io.koraframework.test.extension.junit5.TestComponent;
  *     testImplementation      "io.koraframework:test-junit5"
  *     testImplementation      "io.koraframework:database-jdbc"
  *     testImplementation      "io.koraframework:database-flyway"
- *     testImplementation      "org.flywaydb:flyway-database-postgresql:13.1.0" // dialect is mandatory
+ *     testImplementation      "org.flywaydb:flyway-database-postgresql:13.9.0" // dialect is mandatory
  *     testImplementation      "org.testcontainers:junit-jupiter:1.21.4"
  *     testImplementation      "org.testcontainers:postgresql:1.21.4"
  *   On Testcontainers 2.x the module is named org.testcontainers:testcontainers-postgresql.

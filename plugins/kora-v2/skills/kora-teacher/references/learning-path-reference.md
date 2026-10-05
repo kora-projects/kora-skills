@@ -1,8 +1,8 @@
 # Kora 2.0 learning path — complete reference
 
 **Framework:** Kora 2.0, group `io.koraframework`, BOM `io.koraframework:kora-bom`, version
-`2.0.0.RC1` from `mavenCentral()` | **Java:** 25 (hard floor) | **Kotlin:** 2.4.10 + KSP 2.3.11 |
-**Gradle:** 9.5.1
+`2.0.0.RC2` | **Java:** 25 (hard floor) | **Kotlin:** 2.4.20 + KSP 2.3.12 |
+**Gradle:** 9.8.0
 
 Every stop below names a companion application from `kora-examples` at branch `migration/2.0`,
 grounded on disk by **R0** as `.kora-agent/kora-examples-2.0/`. The learner compiles, runs and
@@ -23,7 +23,7 @@ languages.
 |---|---|---|
 | JDK on the path | `java -version` | **25 or newer**, for Java *and* Kotlin learners |
 | JDK running Gradle | `./gradlew -version` (look at "Launcher JVM") | **25 or newer** |
-| Gradle | `./gradlew -version` | 9.x — the examples pin the 9.5.1 wrapper |
+| Gradle | `./gradlew -version` | 9.x — the framework pins the 9.8.0 wrapper |
 
 Java 25 is not a recommendation. Kora 2.0 artifacts are compiled to class-file major version 69;
 an older JVM cannot load them at all. And the toolchain block alone is not enough: the
@@ -334,10 +334,19 @@ Pick from these; none is a prerequisite for another.
 | gRPC | `…-grpc-server-app`, `…-grpc-server-advanced-app`, `…-grpc-client-app`, `…-grpc-client-advanced-app` | [`kora-grpc-server`](../../kora-grpc-server/SKILL.md) · [`kora-grpc-client`](../../kora-grpc-client/SKILL.md) |
 | Cassandra | `…-database-cassandra-app` | [`kora-database-cassandra`](../../kora-database-cassandra/SKILL.md) |
 | S3 | `…-s3-app` | [`kora-s3`](../../kora-s3/SKILL.md) |
+| PostgreSQL types (arrays, ranges, `interval`, `jsonb`) | — | [`kora-database-jdbc`](../../kora-database-jdbc/references/postgres-mappers-reference.md) |
+| Scheduling — in-process, Quartz, database-backed cluster jobs | — | [`kora-aop-scheduling-jdk`](../../kora-aop-scheduling-jdk/SKILL.md) · [`kora-aop-scheduling-quartz`](../../kora-aop-scheduling-quartz/SKILL.md) · [`kora-aop-scheduling-db`](../../kora-aop-scheduling-db/SKILL.md) |
+| Distributed rate limiting and retry budgets on Redis | — | [`kora-aop-resilient`](../../kora-aop-resilient/SKILL.md) |
+| JSON logs, masking secrets in telemetry logs | — | [`kora-telemetry-logging`](../../kora-telemetry-logging/SKILL.md) · [`kora-aop-logging`](../../kora-aop-logging/SKILL.md) |
+| DTO mapping — MapStruct (Java), Konvert (Kotlin) | `examples/java/kora-java-crud`, `examples/kotlin/kora-kotlin-crud` | [`kora-mapstruct`](../../kora-mapstruct/SKILL.md) |
 
 **Topics with no guide app — use the plain examples, and say so.** There is no
 `kora-java-guide-scheduling-app`; do not invent one. Use `examples/java/kora-java-scheduling-jdk`
-and `examples/java/kora-java-scheduling-quartz`. Likewise `examples/java/kora-java-soap-client`,
+and `examples/java/kora-java-scheduling-quartz` — written against `2.0.0.RC1`, so they still use the
+annotation names that Kora PR #952 renamed (`@ScheduleAtFixedRate` → `@ScheduleJdkAtFixedRate`,
+Quartz `@ScheduleWithCron` → `@ScheduleQuartzWithCron`); teach the new names. The database-backed scheduler, the PostgreSQL
+module, distributed resilience and the JSON log encoder have no example app at all — teach them from
+the domain sub-skill and the framework tests. Likewise `examples/java/kora-java-soap-client`,
 `examples/java/kora-java-telemetry`, `examples/java/kora-java-cache-caffeine`,
 `examples/java/kora-java-cache-redis`.
 
@@ -451,8 +460,8 @@ Never by editing the generated files.
 The curriculum is identical; four things differ and each has bitten a learner.
 
 1. **The processor is KSP**, not `annotationProcessor`:
-   `ksp("io.koraframework:symbol-processors")`, plugin `com.google.devtools.ksp` version `2.3.11`
-   with Kotlin `2.4.10`. Mismatched Kotlin/KSP versions produce processor failures that look like
+   `ksp("io.koraframework:symbol-processors")`, plugin `com.google.devtools.ksp` version `2.3.12`
+   with Kotlin `2.4.20`. Mismatched Kotlin/KSP versions produce processor failures that look like
    framework bugs.
 2. **Aspects need `open`.** An AOP-annotated Kotlin class and method must be `open`, or the aspect
    is silently not generated — no error, just no behaviour.

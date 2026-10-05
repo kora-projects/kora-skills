@@ -2,7 +2,7 @@
 <!--
   src/main/resources/logback.xml — the shape used by every migrated Kora 2.0 example app.
 
-  ConsoleTextRecordEncoder is what renders traceId/spanId, Kora MDC entries and structured
+  io.koraframework.logging.logback.text.ConsoleTextRecordEncoder is what renders traceId/spanId, Kora MDC entries and structured
   arguments; a plain <pattern> encoder drops all of them.
 
   KoraAsyncAppender is what produces the KoraLoggingEvent those fields live on — it is required,
@@ -15,12 +15,13 @@
     <statusListener class="ch.qos.logback.core.status.NopStatusListener"/>
 
     <appender name="STDOUT" class="ch.qos.logback.core.ConsoleAppender">
-        <encoder class="io.koraframework.logging.logback.ConsoleTextRecordEncoder"/>
+        <encoder class="io.koraframework.logging.logback.text.ConsoleTextRecordEncoder"/>
     </appender>
 
-    <!-- KoraAsyncAppender extends Logback AsyncAppenderBase. It accepts queueSize, neverBlock
-         and maxFlushTime. discardingThreshold has NO effect here: isDiscardable() always returns
-         false on AsyncAppenderBase, so no event is ever dropped by threshold. -->
+    <!-- KoraAsyncAppender extends Logback AsyncAppenderBase. It accepts queueSize (Kora default 512),
+         neverBlock (Kora default true: a full queue drops events), maxFlushTime (1000 ms) and
+         discardingThreshold (default queueSize/5: below that many free slots TRACE/DEBUG/INFO are
+         dropped, WARN/ERROR kept; 0 never drops by level). -->
     <appender name="ASYNC" class="io.koraframework.logging.logback.KoraAsyncAppender">
         <appender-ref ref="STDOUT"/>
         <queueSize>8192</queueSize>

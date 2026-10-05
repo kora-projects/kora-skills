@@ -1,12 +1,13 @@
 # Logback Configuration Reference
 
 Everything in this file is verified against the Kora 2.0 framework source (`logging/logging-logback`,
-`logging/logging-common`) and the migrated example applications. Logback is `1.6.2`, SLF4J `2.0.18`.
+`logging/logging-common`, `logging/logging-logback-json`). Logback is `1.6.5`, SLF4J `2.0.20`.
 
 ## Contents
 
 - [What `logging-logback` contains](#what-logging-logback-contains)
 - [Module setup](#module-setup)
+- [No logback.xml: KoraLogbackConfigurator](#no-logbackxml-koralogbackconfigurator)
 - [logback.xml](#logbackxml)
 - [Log levels are owned by the config, not by logback.xml](#log-levels-are-owned-by-the-config-not-by-logbackxml)
 - [Pattern layouts and the Kora converters](#pattern-layouts-and-the-kora-converters)
@@ -15,17 +16,24 @@ Everything in this file is verified against the Kora 2.0 framework source (`logg
 
 ## What `logging-logback` contains
 
-The whole public surface of `io.koraframework:logging-logback` is five classes plus one module
-interface. There is nothing else — do not assume a class exists because a 1.x setup had one.
+The public surface of `io.koraframework:logging-logback` — do not assume a class exists because a
+1.x setup had one.
 
-| Type | Kind | Purpose |
+| Type | Package | Purpose |
 |---|---|---|
-| `LogbackModule` | `interface … extends LoggingModule` | Supplies the `LoggingLevelApplier` that drives the Logback `LoggerContext` |
-| `KoraAsyncAppender` | `final class extends AsyncAppenderBase<ILoggingEvent>` | Async wrapper that captures the Kora `MDC` and the current `SpanContext` into the queued event |
-| `ConsoleTextRecordEncoder` | `final class implements Encoder<ILoggingEvent>` | Kora's text encoder — the one the examples use in `src/main/resources/logback.xml` |
-| `KoraLoggingEvent` | `record … implements ILoggingEvent` | The event `KoraAsyncAppender` produces; adds `koraMdc()` and `span()` |
-| `KoraMdcConverter` | `final class extends ClassicConverter` | Renders the Kora MDC as `key: <json>` pairs for a `PatternLayout` |
-| `KoraLoggingMarkerConverter` | `final class extends ClassicConverter` | Renders the first `StructuredArgument` marker as `field=<json>` |
+| `LogbackModule` | `io.koraframework.logging.logback` | `interface … extends LoggingModule`; supplies the `@DefaultComponent` `LoggingLevelApplier` that drives the Logback `LoggerContext` |
+| `KoraLogbackConfigurator` | `io.koraframework.logging.logback` | Logback `Configurator` registered through `ServiceLoader`; installs a default pipeline when no configuration file exists |
+| `LogbackEncoderFactory` | `io.koraframework.logging.logback` | SPI the configurator picks an encoder from (`name()`, `priority()`, `create(LoggerContext)`) |
+| `KoraLogbackProperties` | `io.koraframework.logging.logback` | Reads `kora.logging.*` bootstrap settings from system properties, then environment variables |
+| `KoraAsyncAppender` | `io.koraframework.logging.logback` | `final class extends AsyncAppenderBase<ILoggingEvent>`; captures the Kora `MDC` and the current `SpanContext` into the queued event |
+| `KoraLoggingEvent` | `io.koraframework.logging.logback` | `record … implements ILoggingEvent`; adds `koraMdc()` and `span()` |
+| `KoraMdcConverter` | `io.koraframework.logging.logback` | `ClassicConverter` rendering the Kora MDC as `key: <json>` pairs for a `PatternLayout` |
+| `KoraLoggingMarkerConverter` | `io.koraframework.logging.logback` | `ClassicConverter` rendering the first `StructuredArgument` marker as `field=<json>` |
+| `ConsoleTextRecordEncoder` | `io.koraframework.logging.logback.text` | Kora's text encoder, built from `LoggingEventTextWriter` parts |
+| `ConsoleTextEncoderFactory`, `ColorConsoleTextEncoderFactory` | `io.koraframework.logging.logback.text` | Encoder factories named `text` and `pretty` |
+
+`io.koraframework:logging-logback-json` adds `JsonRecordEncoder` and the `json` factory in
+`io.koraframework.logging.logback.json` — see [json-logging-reference.md](json-logging-reference.md).
 
 `logging-common` adds `LoggingModule`, `LoggingConfig`, `LoggingLevelApplier`,
 `LoggingLevelRefresher`, `MDC`, the `arg` package, the `masking` package and the `@Log` / `@Mdc` /
@@ -36,10 +44,10 @@ interface. There is nothing else — do not assume a class exists because a 1.x 
 
 ```groovy
 dependencies {
-    koraBom platform("io.koraframework:kora-bom:$koraVersion")   // koraVersion=2.0.0.RC1
+    koraBom platform("io.koraframework:kora-bom:$koraVersion")   // koraVersion=2.0.0.RC2
     annotationProcessor "io.koraframework:annotation-processors" // Kotlin: ksp "io.koraframework:symbol-processors"
 
-    implementation "io.koraframework:logging-logback"
+    implementation "io.koraframework:logging-logback"            // or logging-logback-json for JSON output
     implementation "io.koraframework:config-hocon"               // or config-yaml
 }
 ```
@@ -49,7 +57,8 @@ dependencies {
 transitive excluded (SLF4J comes from `logging-common` instead). `logging-common/build.gradle`
 declares `api project(':core:common')`, `api project(':json:json-common')`,
 `api project(':config:config-common')`, `api libs.slf4j.api` and `api libs.slf4j.jul`
-(`org.slf4j:jul-to-slf4j`). So a single `logging-logback` dependency brings SLF4J, Logback,
+(`org.slf4j:jul-to-slf4j`, which `KoraLogbackConfigurator` uses to route `java.util.logging` into
+Logback). So a single `logging-logback` dependency brings SLF4J, Logback,
 `json-common` (needed for every structured value) and the OpenTelemetry API that
 `KoraAsyncAppender` reads `Span.current()` from.
 
@@ -99,16 +108,31 @@ and the graph does not build.
     }
     ```
 
+## No logback.xml: `KoraLogbackConfigurator`
+
+A `logback.xml` is optional. `KoraLogbackConfigurator` first lets Logback look for a configuration
+file (`logback-test.xml`, `logback.xml`, `-Dlogback.configurationFile`); **a file, when found,
+always wins**. Without one it selects a `LogbackEncoderFactory` — `text`, `pretty` (coloured,
+picked automatically inside a Gradle test worker) or `json` (when `logging-logback-json` is on the
+classpath) — by the `kora.logging.encoder` system property / `KORA_LOGGING_ENCODER` environment
+variable or by priority, and installs `ConsoleAppender` → `KoraAsyncAppender` on the root logger.
+Selection rules, priorities and every `kora.logging.*` property:
+[json-logging-reference.md](json-logging-reference.md#zero-config-pick-an-encoder-without-a-logbackxml).
+
+In both paths the configurator also installs the `java.util.logging` bridge (`SLF4JBridgeHandler`
+plus a `LevelChangePropagator`, skipped when already present); turn it off with
+`kora.logging.config.jul-bridge=false` / `KORA_LOGGING_CONFIG_JUL_BRIDGE=false`.
+
 ## logback.xml
 
-### Production — the shape every example uses
+### Production text output
 
 ```xml
 <configuration debug="false">
     <statusListener class="ch.qos.logback.core.status.NopStatusListener"/>
 
     <appender name="STDOUT" class="ch.qos.logback.core.ConsoleAppender">
-        <encoder class="io.koraframework.logging.logback.ConsoleTextRecordEncoder"/>
+        <encoder class="io.koraframework.logging.logback.text.ConsoleTextRecordEncoder"/>
     </appender>
 
     <appender name="ASYNC" class="io.koraframework.logging.logback.KoraAsyncAppender">
@@ -122,7 +146,17 @@ and the graph does not build.
 </configuration>
 ```
 
-`ConsoleTextRecordEncoder` takes no sub-elements. It renders, in order:
+The encoder is `io.koraframework.logging.logback.text.ConsoleTextRecordEncoder` — the `text`
+sub-package matters. A `logback.xml` still naming `io.koraframework.logging.logback.ConsoleTextRecordEncoder`
+fails to create the encoder, and with a `NopStatusListener` the only symptom is an empty console.
+For JSON, put `io.koraframework.logging.logback.json.JsonRecordEncoder` in the same place
+([json-logging-reference.md](json-logging-reference.md#declaring-jsonrecordencoder-in-logbackxml)).
+
+With no nested element, `ConsoleTextRecordEncoder` uses its default writers
+(`DefaultLoggingEventTextWriter`, `DefaultTraceTextWriter`, `DefaultMdcTextWriter`,
+`DefaultMessageTextWriter`, `DefaultStructuredTextWriter`, `DefaultExceptionTextWriter` from
+`io.koraframework.logging.logback.text.writer`); the first `<writer class="…"/>` element replaces
+them all. The default output, in order:
 
 ```
 yyyy-MM-dd HH:mm:ss.SSS LEVEL [thread] abbreviated.logger.Name - traceId=… spanId=… <koraMdc k=json …> <slf4jMdc k=v …> message
@@ -139,7 +173,9 @@ name is abbreviated to a target length of 100 characters.
 ### Test — pattern encoder
 
 The example apps deliberately use a different `logback-test.xml` in `src/test/resources`: a plain
-pattern encoder, still wrapped by `KoraAsyncAppender`, plus explicit `<logger>` elements.
+pattern encoder, still wrapped by `KoraAsyncAppender`, plus explicit `<logger>` elements. A
+`logback-test.xml` is optional: without any configuration file, tests running in a Gradle test
+worker get the coloured `pretty` encoder from `KoraLogbackConfigurator` with no XML at all.
 
 Those `<logger>` elements are **not** exempt from the reset below. `LoggingLevelRefresher` is a
 `@Root` component and its `init()` calls `reset()` unconditionally — an absent `logging` section
@@ -240,10 +276,13 @@ If you keep a `PatternLayout` instead of `ConsoleTextRecordEncoder`, two `Classi
 `logging-logback` can put the Kora-specific data back into the line:
 
 - `KoraMdcConverter` — renders the Kora MDC as `key: <json>` pairs. On a `KoraLoggingEvent` it reads
-  `koraMdc()`; on any other event it falls back to `MDC.get().values()`, **which throws when the
-  `ScopedValue` is unbound**. Only use it behind `KoraAsyncAppender`.
+  `koraMdc()`; on any other event it reads the bound `MDC`, and renders **nothing** when no MDC
+  scope is bound (startup, library pools, threads you start yourself) — it never fails the line.
+  Behind a synchronous appender it therefore only shows MDC values for records logged inside a
+  request/message/job scope; behind `KoraAsyncAppender` it uses the snapshot taken at log time.
 - `KoraLoggingMarkerConverter` — renders the first `StructuredArgument` marker as
-  `fieldName=<json>`.
+  `fieldName=<json>`, and an empty string for an event with no markers or no structured one (RC1
+  threw a `NullPointerException` on marker-less events, #934).
 
 Neither is auto-registered: `logging-logback` ships no `ServiceLoader` entry and no default
 configuration for them, so a Logback conversion rule must declare them before a pattern can use
@@ -259,9 +298,12 @@ read, so "it works on the JVM" proves nothing about it.
 
 Kora's own logback metadata ships inside the artifact at
 `META-INF/native-image/io.koraframework.logging.logback/` (`reflect-config.json` registering
-`KoraAsyncAppender`, `ConsoleTextRecordEncoder`, `KoraMdcConverter`,
-`KoraLoggingMarkerConverter` and the Logback classes it needs; `resource-config.json` including
-`logback.xml` and `logback-test.xml`).
+`KoraAsyncAppender`, `text.ConsoleTextRecordEncoder`, `KoraMdcConverter`,
+`KoraLoggingMarkerConverter`, `KoraLogbackConfigurator`, `text.ConsoleTextEncoderFactory`,
+`text.ColorConsoleTextEncoderFactory` (RC1 listed a non-existent `PrettyTextEncoderFactory`, #920)
+and the Logback classes it needs; `resource-config.json` including `logback.xml`, `logback-test.xml` and the
+two `META-INF/services` files the configurator is discovered through). `logging-logback-json`
+ships its own pair under `META-INF/native-image/io.koraframework.logging.logback.json/`.
 
 Application-owned metadata lives in the application's own resources and **is not migrated by
 OpenRewrite or any rename script — resource directories are never touched**. Two things change
@@ -272,7 +314,8 @@ when moving from 1.x:
    → `src/main/resources/META-INF/native-image/io.koraframework.examples/logback/`
 2. **The Kora class names inside** `reflect-config.json`:
    `ru.tinkoff.kora.logging.logback.ConsoleTextRecordEncoder`
-   → `io.koraframework.logging.logback.ConsoleTextRecordEncoder` (same for `KoraAsyncAppender`).
+   → `io.koraframework.logging.logback.text.ConsoleTextRecordEncoder` (note the `text` package);
+   `ru.tinkoff.kora.logging.logback.KoraAsyncAppender` → `io.koraframework.logging.logback.KoraAsyncAppender`.
    Third-party entries such as `ch.qos.logback.core.status.NopStatusListener` do **not** change.
 
 **File names are load-bearing.** Only `reflect-config.json`, `resource-config.json`,
@@ -284,11 +327,11 @@ the build succeeds and none of the registrations apply.
 find . -name "reflection-config.json"      # every hit is a dead file
 ```
 
-The migrated GraalVM examples keep exactly this pair:
+An application-owned pair for a text `logback.xml`:
 
 ```json
 [
-  { "name": "io.koraframework.logging.logback.ConsoleTextRecordEncoder",
+  { "name": "io.koraframework.logging.logback.text.ConsoleTextRecordEncoder",
     "allDeclaredConstructors": true, "allPublicMethods": true },
   { "name": "io.koraframework.logging.logback.KoraAsyncAppender",
     "allDeclaredConstructors": true, "allPublicMethods": true },
@@ -315,10 +358,12 @@ Symptom of lost logback metadata in a native image: the binary starts, but logs 
 
 | Symptom | Cause / fix |
 |---|---|
-| No logs at all | `logback.xml` missing from `src/main/resources`; set `<configuration debug="true">` and drop the `NopStatusListener` to see Logback's own diagnostics |
+| No logs at all | The encoder class in `logback.xml` does not exist (`…logback.ConsoleTextRecordEncoder` instead of `…logback.text.ConsoleTextRecordEncoder`), or `kora.logging.encoder` names an unknown encoder; set `<configuration debug="true">` and drop the `NopStatusListener` to see Logback's own diagnostics |
+| Output format is not the one `kora.logging.encoder` asks for | A `logback.xml` / `logback-test.xml` is on the classpath — a configuration file always wins over encoder selection |
+| Coloured text in tests, plain text or JSON in production | Expected without a `logback-test.xml`: the `pretty` encoder wins inside a Gradle test worker |
 | Levels from `logback.xml` ignored | Expected — `LoggingLevelRefresher.init()` resets them. Move them into `logging.levels` |
 | A `logging.levels` entry has no effect | Wrong key (`logging.level`), or a logger name that does not match — component logger names are listed in [component-telemetry-reference.md](component-telemetry-reference.md) |
 | A level string typo does not fail the build | `Level.toLevel(String)` resolves to a fallback instead of throwing; check the spelling against `TRACE/DEBUG/INFO/WARN/ERROR/OFF` |
-| `traceId` / MDC / structured fields missing | Plain `<pattern>` encoder — use `ConsoleTextRecordEncoder`, or a custom encoder reading `KoraLoggingEvent` |
+| `traceId` / MDC / structured fields missing | Plain `<pattern>` encoder — use `ConsoleTextRecordEncoder` or `JsonRecordEncoder` behind `KoraAsyncAppender` |
 | Graph build fails on `Config` or `ConfigValueMapper<LoggingConfig>` | Add `HoconConfigModule` or `YamlConfigModule` to the `@KoraApp` |
 | Native binary logs are empty | Metadata directory still on the old group, or a `reflection-config.json` file name |

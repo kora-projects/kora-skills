@@ -170,8 +170,9 @@ never has to:
 | Kafka consumers | `RecordHandler` / `RecordsHandler` (one `MDC` per poll, `mdc.fork()` per record) |
 | gRPC server | `VirtualThreadExecutorTransportFilter` |
 | JMS | `JmsMessageListenerContainer` |
-| JDK scheduler | `AbstractJob`, `CronJob` |
+| JDK scheduler | `KoraJdkJob` (`io.koraframework.scheduling.jdk.job`) |
 | Quartz scheduler | `KoraQuartzJob` |
+| DB scheduler (db-scheduler) | `KoraDbJob` (`io.koraframework.scheduling.db.scheduler.job`) |
 
 ## Imperative API
 

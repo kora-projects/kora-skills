@@ -206,6 +206,6 @@ poison record restarts and rejoins, rebalancing the group each time — see the
 - [Offsets](kafka-offset-reference.md)
 - [Error handling](kafka-error-handling-reference.md)
 
-**Source:** framework tag `2.0.0.RC1` —
-[ConsumerAwareRebalanceListener](https://github.com/kora-projects/kora/blob/2.0.0.RC1/kafka/kafka/src/main/java/io/koraframework/kafka/common/consumer/ConsumerAwareRebalanceListener.java) ·
-[KafkaSubscribeConsumerContainer](https://github.com/kora-projects/kora/blob/2.0.0.RC1/kafka/kafka/src/main/java/io/koraframework/kafka/common/consumer/containers/KafkaSubscribeConsumerContainer.java)
+**Source:** framework tag `2.0.0.RC2` —
+[ConsumerAwareRebalanceListener](https://github.com/kora-projects/kora/blob/2.0.0.RC2/kafka/kafka/src/main/java/io/koraframework/kafka/common/consumer/ConsumerAwareRebalanceListener.java) ·
+[KafkaSubscribeConsumerContainer](https://github.com/kora-projects/kora/blob/2.0.0.RC2/kafka/kafka/src/main/java/io/koraframework/kafka/common/consumer/containers/KafkaSubscribeConsumerContainer.java)

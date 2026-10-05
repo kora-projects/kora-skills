@@ -130,7 +130,7 @@ new SoapInvalidHttpResponseException(code, responseBody);
 
 So do not write `e.getStatusCode()` or `e.getResponseBody()` — those do not exist. If you need the
 status code for branching, get it from telemetry (`http.response.status_code` is on the span and on
-`rpc.client.duration`) or add an HTTP client interceptor.
+`rpc.client.call.duration`) or add an HTTP client interceptor.
 
 ---
 

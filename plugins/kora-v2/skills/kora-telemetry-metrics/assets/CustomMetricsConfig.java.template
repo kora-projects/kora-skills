@@ -2,39 +2,35 @@ package ${package};
 
 import io.koraframework.common.annotation.Module;
 import io.koraframework.micrometer.module.PrometheusMeterRegistryInitializer;
+import io.micrometer.core.instrument.config.MeterFilter;
 
 /**
  * Metrics customization module (Kora 2.0).
  *
+ * For common tags you need no initializer: use metrics.tags in application.conf or a
+ * MetricsTagsProvider component (see AppMetricsTagsProvider.java.template). Declare your own
+ * PrometheusMeterRegistryInitializer only for other registry.config() settings -- meter
+ * filters, deny rules, naming conventions.
+ *
  * MetricsModule collects every PrometheusMeterRegistryInitializer with
  * All&lt;PrometheusMeterRegistryInitializer&gt; and applies them inside
  * PrometheusMeterRegistryWrapper.init(), BEFORE the JVM binders are bound and before
- * kora.up is registered -- so common tags land on those meters too.
+ * kora.up is registered.
+ *
+ * MetricsModule's common-tags initializer is not a @DefaultComponent (since 2.0.0.RC2), so it
+ * stays in that All&lt;&gt; next to this one: metrics.tags and MetricsTagsProvider keep applying.
+ * Do not re-merge them here.
  *
  * PrometheusMeterRegistryInitializer extends
  * Function&lt;PrometheusMeterRegistry, PrometheusMeterRegistry&gt;, so it MUST return the
- * registry. Returning a registry you did not derive from the argument breaks the chain
- * for every later initializer.
- *
- * Declare it as a `default` method of a `@Module` interface -- Kora picks it up as a
- * component automatically. Several initializers may coexist; they are applied in graph
- * order.
- *
- * This is the global alternative to the per-component telemetry.metrics.tags config key.
+ * registry.
  */
 @Module
 public interface CustomMetricsConfig {
 
-    /**
-     * Adds common tags attached to every metric in the process.
-     * Keep the values bounded -- they multiply onto every time series.
-     */
-    default PrometheusMeterRegistryInitializer commonTagsInit() {
+    default PrometheusMeterRegistryInitializer meterFiltersInit() {
         return registry -> {
-            registry.config().commonTags(
-                    "service", "my-service",
-                    "environment", "production",
-                    "version", "1.0.0");
+            registry.config().meterFilter(MeterFilter.denyNameStartsWith("jvm.buffer"));
             return registry;
         };
     }

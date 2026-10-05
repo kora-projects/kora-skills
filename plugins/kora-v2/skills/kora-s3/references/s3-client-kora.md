@@ -17,7 +17,7 @@ depend on, the AWS SDK. For the AWS SDK wrapper see [s3-client-aws.md](s3-client
 
 ```groovy
 dependencies {
-    koraBom platform("io.koraframework:kora-bom:$koraVersion")   // koraVersion=2.0.0.RC1
+    koraBom platform("io.koraframework:kora-bom:$koraVersion")   // koraVersion=2.0.0.RC2
     annotationProcessor "io.koraframework:annotation-processors"
 
     implementation "io.koraframework.experimental:s3-client-kora"
@@ -200,6 +200,8 @@ public record HeadObjectResult(String bucket, String key, long size, HttpHeaders
 }
 ```
 
+`headers` are the HEAD response headers, so the derived accessors return the server's metadata.
+
 ### `ListBucketResult`
 
 ```java
@@ -331,7 +333,7 @@ Read from the path given by `@S3.Client(value)`.
 |---|---|---|---|
 | `endpoint` | `String` | **required** | Was `url` in Kora 1.x |
 | `region` | `String` | `"aws-global"` | |
-| `addressStyle` | `PATH` \| `VIRTUAL_HOSTED` | `PATH` | Keep `PATH` for MinIO / Ceph |
+| `addressStyle` | `PATH` \| `VIRTUAL_HOSTED` | `PATH` | Keep `PATH` for self-hosted servers (RustFS, SeaweedFS, LocalStack, MinIO, Ceph) |
 | `requestTimeout` | `Duration` | `45s` | |
 | `credentials.accessKey` | `String` | **required*** | *unless every method takes `S3Credentials` |
 | `credentials.secretKey` | `String` | **required*** | |
@@ -398,10 +400,10 @@ generated implementations call.
 |---|---|
 | `headObject(creds, bucket, key, args, required)` | `@Nullable HeadObjectResult` (+ convenience overloads, `headObjectOptional`) |
 | `getObject(creds, bucket, key, args, required)` | `@Nullable GetObjectResult` (+ overloads, `getObjectOptional`) |
-| `putObject(creds, bucket, key, args, data, off, len)` | `String` ETag |
-| `putObject(creds, bucket, key, args, contentWriter)` | `String` ETag |
+| `putObject(creds, bucket, key, args, data, off, len)` | `String` ETag — hashes and sends exactly `data[off, off + len)` |
+| `putObject(creds, bucket, key, args, contentWriter)` | `String` ETag — streamed `aws-chunked`; `args` headers and content type are applied |
 | `deleteObject(creds, bucket, key, args)` | `void` |
-| **`deleteObjects(creds, bucket, List<String> keys)`** | `void` — batch delete, up to 1000 keys; throws `S3ClientDeleteException` with per-key errors |
+| **`deleteObjects(creds, bucket, List<String> keys)`** | `void` — batch delete (`POST /<bucket>?delete`), up to 1000 keys; throws `S3ClientDeleteException` with per-key errors |
 | `listObjectsV2(creds, bucket, args)` | `ListBucketResult` |
 | `listObjectsV2Iterator(creds, bucket, args)` | `Iterator<ListBucketResult.ListBucketItem>` (lazy paging) |
 | `createMultipartUpload` / `uploadPart` / `listParts` / `completeMultipartUpload` / `abortMultipartUpload` / `listMultipartUploads` | low-level multipart API |
@@ -456,7 +458,7 @@ RuntimeException
 
 | Signal | Detail |
 |---|---|
-| Metrics | Micrometer `Timer` **`rpc.client.duration`**, tags `rpc.system=s3`, `rpc.method`, `aws.s3.bucket`, `error.type`, `system.config`, `system.name.simple`, `system.name.canonical` |
+| Metrics | Micrometer `Timer` **`rpc.client.call.duration`**, tags `rpc.system.name=s3`, `rpc.method`, `aws.s3.bucket`, `error.type`, `system.config`, `system.name.simple`, `system.name.canonical` |
 | Tracing | OpenTelemetry span per operation, same attributes |
 | Logging | SLF4J logger named after the `@S3.Client` **interface's canonical name**. `DEBUG` for "S3Client request started" / "S3Client response received", `WARN` on failure with `exceptionType` |
 
@@ -471,10 +473,10 @@ logging.levels { "com.example.storage.S3FileClient" = "DEBUG" }
 
 ## Source of truth
 
-- Framework source, tag `2.0.0.RC1`:
-  [experimental/s3-client-kora](https://github.com/kora-projects/kora/tree/2.0.0.RC1/experimental/s3-client-kora) ·
-  [s3-client-annotation-processor](https://github.com/kora-projects/kora/tree/2.0.0.RC1/experimental/s3-client-annotation-processor) ·
-  [s3-client-symbol-processor](https://github.com/kora-projects/kora/tree/2.0.0.RC1/experimental/s3-client-symbol-processor)
+- Framework source, tag `2.0.0.RC2`:
+  [experimental/s3-client-kora](https://github.com/kora-projects/kora/tree/2.0.0.RC2/experimental/s3-client-kora) ·
+  [s3-client-annotation-processor](https://github.com/kora-projects/kora/tree/2.0.0.RC2/experimental/s3-client-annotation-processor) ·
+  [s3-client-symbol-processor](https://github.com/kora-projects/kora/tree/2.0.0.RC2/experimental/s3-client-symbol-processor)
 - Migrated examples, branch `migration/2.0`:
   [kora-java-s3-client-kora](https://github.com/kora-projects/kora-examples/tree/migration/2.0/examples/java/kora-java-s3-client-kora) ·
   [kora-kotlin-s3-client-kora](https://github.com/kora-projects/kora-examples/tree/migration/2.0/examples/kotlin/kora-kotlin-s3-client-kora) ·

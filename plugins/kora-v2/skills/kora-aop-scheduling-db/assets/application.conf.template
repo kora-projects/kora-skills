@@ -1,0 +1,37 @@
+# Kora 2.x DB scheduling — scheduling.dbScheduler is read by DbSchedulerModule.
+# Every key below shows its default except the job paths; drop what you do not change.
+
+jdbc {
+  jdbcUrl = ${POSTGRES_JDBC_URL}
+  username = ${POSTGRES_USER}
+  password = ${POSTGRES_PASS}
+  poolName = "kora"
+}
+
+scheduling {
+  dbScheduler {
+    tableName = "kora_scheduling_db_scheduler_jobs"   # the name the bundled schema scripts create
+    tableInitialize = false                 # true only for dev/tests (not "initializeTable")
+    executionParallelism = 10
+    shutdownWait = 30s
+    polling {
+      strategy = "FETCH"                    # or LOCK_AND_FETCH
+      prefetchMode = "DEFAULT"              # or BOUNDED, BUFFERED
+      interval = 10s
+    }
+  }
+
+  telemetry {
+    logging.enabled = false
+    metrics.enabled = false
+    tracing.enabled = true
+  }
+
+  jobs {
+    cleanup {
+      cron = "0 0 2 * * *"                  # "-" disables the job, as does enabled = false
+      enabled = true
+      telemetry.logging.enabled = true      # also keeps the job identity in errors (PR #961)
+    }                                       # no `name` key: the job name is annotation-only
+  }
+}

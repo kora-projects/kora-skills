@@ -1,8 +1,11 @@
-# Mapper Reference — discovery, naming, and the MapStruct annotations
+# Mapper Reference (Java) — discovery, naming, and the MapStruct annotations
 
-**Verified against** the Kora 2.0 extension sources under `mapping/` at tag `2.0.0.RC1`
-(<https://github.com/kora-projects/kora/tree/2.0.0.RC1/mapping>) and the working examples on
-`kora-examples` branch `migration/2.0`. MapStruct annotation semantics come from MapStruct itself:
+**Scope: Java only.** MapStruct is the Java mapping path in Kora 2.0; Kotlin uses Konvert — see
+[`konvert-reference.md`](konvert-reference.md).
+
+**Verified against** `mapping/mapstruct-java-extension` (sources and `MapstructKoraExtensionTest`)
+on Kora `master` for `2.0.0.RC2` (<https://github.com/kora-projects/kora/tree/2.0.0.RC2/mapping>)
+and the working examples on `kora-examples` branch `migration/2.0`. MapStruct annotation semantics come from MapStruct itself:
 <https://mapstruct.org/documentation/stable/reference/html/>.
 
 ## Contents
@@ -11,7 +14,6 @@
 - [Generated implementation names](#generated-implementation-names)
 - [Tagging a mapper](#tagging-a-mapper)
 - [Mappers that need dependencies](#mappers-that-need-dependencies)
-- [Konvert discovery, and how it differs](#konvert-discovery-and-how-it-differs)
 - [Interface vs abstract class](#interface-vs-abstract-class)
 - [@Mapping parameters](#mapping-parameters)
 - [@MappingTarget for PATCH updates](#mappingtarget-for-patch-updates)
@@ -68,9 +70,8 @@ the "was not generated" error.
 | top-level `pkg.CarMapper` | `pkg.CarMapperImpl` |
 | nested `pkg.SomeInterface.TestMapper` | `pkg.SomeInterface$TestMapperImpl` |
 
-Enclosing type names are joined with `$` and the suffix `Impl` appended — in both the Java and the
-KSP extension. **Nested `@Mapper` interfaces are supported**; Kora's Java extension has a dedicated
-test for the nested case. (Konvert behaves differently — see below.)
+Enclosing type names are joined with `$` and the suffix `Impl` appended. **Nested `@Mapper`
+interfaces are supported**; Kora's Java extension has a dedicated test for the nested case.
 
 ## Tagging a mapper
 
@@ -90,7 +91,11 @@ public CarService(@Tag(Internal.class) InternalCarMapper mapper) { … }
 ```
 
 An untagged mapper answers only untagged claims, and vice versa — a tag mismatch surfaces as an
-ordinary unresolved dependency, not as a MapStruct error.
+ordinary unresolved dependency, not as a MapStruct error. Matching uses the graph's normal rule, so a
+`@Tag(Tag.Any.class)` claim accepts the mapper whatever its tag, and the graph node is registered
+under the mapper's tag. `@Tag` on a parameter of the generated `Impl` constructor (e.g. a tagged
+`uses` collaborator) is honoured as well. Tagged mappers resolve correctly from `2.0.0.RC2` on; on
+`2.0.0.RC1` a tagged `@Mapper` was not matched to a tagged claim.
 
 ## Mappers that need dependencies
 
@@ -125,34 +130,6 @@ annotations; only the constructor matters. If you do not need `uses`, leave `com
 plain `@Mapper` works and the default generated implementation has a single implicit public
 constructor.
 
-## Konvert discovery, and how it differs
-
-`KonvertKoraExtension` follows the same fallback path with three differences that matter:
-
-| | MapStruct extension | Konvert extension |
-|---|---|---|
-| Annotation | `org.mapstruct.Mapper` | `io.mcarle.konvert.api.Konverter` |
-| Accepted kinds | interface **or** class | **interface only** |
-| Generated impl | `Outer$InnerImpl` class, bound via its constructor | top-level `object <SimpleName>Impl`, referenced directly as a singleton |
-| Mapper dependencies | possible (constructor injection) | **none** — the extension binds the object with empty dependency lists |
-
-The naming rule is the sharp edge: Konvert emits a top-level `object <SimpleName>Impl` in the same
-package **even for a nested `@Konverter`**, dropping the enclosing type name. Two nested
-`@Konverter` interfaces with the same simple name in one package therefore collide.
-
-```kotlin
-import io.mcarle.konvert.api.Konverter
-
-@Konverter
-interface CarMapper {
-    fun carToCarDto(car: Car): CarDto
-}
-```
-
-Per-field mapping options are Konvert's own (`@Konvert`, `@Mapping`); see
-<https://mcarleio.github.io/konvert/>. Kora neither adds to nor constrains them — it only binds the
-generated object.
-
 ## Interface vs abstract class
 
 | Form | When |
@@ -160,8 +137,7 @@ generated object.
 | `interface` | Default. Pure mapping, no state |
 | `abstract class` | Non-trivial helpers or state; MapStruct implements the abstract methods |
 
-Both are accepted by the MapStruct extension (it allows `INTERFACE` and `CLASS`). Konvert accepts
-interfaces only.
+Both are accepted by the MapStruct extension (it allows `INTERFACE` and `CLASS`).
 
 ```java
 @Mapper
@@ -209,8 +185,8 @@ void applyPatch(@MappingTarget Order existing, PatchOrderDto patch);
 - `NullValuePropertyMappingStrategy.IGNORE` skips null source properties — PATCH semantics.
 - To distinguish "field absent" from "explicitly null" in the request body, pair it with
   `JsonNullable<T>` from [`kora-json`](../../kora-json/SKILL.md).
-- `@MappingTarget` needs a **mutable** target. Java records and Kotlin `val` data classes cannot be
-  patched in place; map to a new instance instead.
+- `@MappingTarget` needs a **mutable** target. Java records cannot be patched in place; map to a new
+  instance instead.
 
 ## @Named helpers
 

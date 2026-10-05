@@ -118,13 +118,10 @@ Three details that differ from the 1.x version of this template:
 
 1. **No `CompletionException` unwrapping.** The call is synchronous; the exception you catch is the
    one that was thrown.
-2. **No `try/catch (IOException)` around `toByteArray`.** At `2.0.0.RC1`
-   `JsonWriter.toByteArray` declares **no `throws` clause at all**, so catching `IOException`
-   is `error: exception IOException is never thrown in body of corresponding try statement`.
-   The `*Unchecked` method variants no longer exist either. (After RC1, on `master`, commit
-   `4b941999b` added `throws JacksonException` to `write`, `toByteArray`, `toString` and
-   `toPrettyString`; the `IOException` catch is wrong in both versions, and code written against
-   RC1 keeps compiling.)
+2. **No `try/catch (IOException)` around `toByteArray`.** `JsonWriter.toByteArray` declares
+   only `throws JacksonException` (unchecked, Jackson 3), so catching `IOException` is
+   `error: exception IOException is never thrown in body of corresponding try statement`.
+   The `*Unchecked` method variants no longer exist either.
 3. **`@Tag(HttpServer.class)`, not `@Tag(HttpServerModule.class)`.** The old tag compiles and the
    interceptor is silently never invoked — see [Interceptors](interceptors-reference.md#the-tag-that-changed--read-this-first).
 

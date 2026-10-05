@@ -23,7 +23,7 @@ import io.koraframework.test.extension.junit5.TestComponent;
  *   annotationProcessor     "io.koraframework:annotation-processors"
  *   testAnnotationProcessor "io.koraframework:annotation-processors"
  *   testImplementation      "io.koraframework:test-junit5"
- *   testImplementation      "org.mockito:mockito-core:5.23.0"   // older Byte Buddy fails on Java 25
+ *   testImplementation      "org.mockito:mockito-core:5.24.0"   // older Byte Buddy fails on Java 25
  */
 @KoraAppTest(Application.class)
 class ${componentName}Test implements KoraAppTestConfigModifier {

@@ -9,7 +9,7 @@ metadata:
 
 # Kora AOP Caching
 
-> **Kora sub-skill — obey the [kora-v2 meta rules](../../SKILL.md) on every task:** **R0** ground the workspace on Kora 2.0 refs before starting (framework source at tag `2.0.0.RC1` + `kora-examples` at `migration/2.0`; `kora-docs` is 1.x only) · **R1** read this sub-skill before writing code · **R2** Kora 2.0 APIs only — no Spring/Micronaut/Quarkus, no Kora 1.x APIs, no invented annotations or config keys · **R3** journal any incorrect Kora usage. Add comments/Javadoc only if asked.
+> **Kora sub-skill — obey the [kora-v2 meta rules](../../SKILL.md) on every task:** **R0** ground the workspace on Kora 2.0 refs before starting (framework source at tag `2.0.0.RC2` + `kora-examples` at `migration/2.0` + Kora 2.0 docs at koraframework.io/v2, which trail the source; 1.x `kora-docs` pages are never an authority) · **R1** read this sub-skill before writing code · **R2** Kora 2.0 APIs only — no Spring/Micronaut/Quarkus, no Kora 1.x APIs, no invented annotations or config keys · **R3** journal any incorrect Kora usage. Add comments/Javadoc only if asked.
 
 | | |
 |---|---|
@@ -53,7 +53,7 @@ A blind `parameters` → `args` search-and-replace is unsafe: HOCON and YAML fil
 
 ### 2.1 Dependencies
 
-`koraVersion=2.0.0.RC1` from plain `mavenCentral()`; the BOM is `io.koraframework:kora-bom`.
+`koraVersion=2.0.0.RC2` from plain `mavenCentral()`; the BOM is `io.koraframework:kora-bom`.
 Never pin a version on an individual `io.koraframework:*` artifact.
 
 ```groovy
@@ -223,7 +223,7 @@ See [cache-key-mapper-reference.md](references/cache-key-mapper-reference.md).
 | Contract | `CaffeineCache<K, V>` (adds `getAll()`) | `RedisCache<K, V>` (adds `putExpireAfterWrite(...)`) |
 | Scope | one JVM, lost on restart | shared across pods, survives restart |
 | Required config | none — `maximumSize` defaults to `100000` | **`keyPrefix`** plus a `lettuce { uri = … }` section |
-| Errors | propagate | swallowed: a Redis failure reads as a miss |
+| Errors | propagate | Redis failures swallowed (a failed read is a miss); loader exceptions propagate |
 | `CacheMode.ASYNC` | ignored (compile warning) | honoured |
 
 ```java

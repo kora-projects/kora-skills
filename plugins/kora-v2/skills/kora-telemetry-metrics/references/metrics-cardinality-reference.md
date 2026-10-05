@@ -50,6 +50,7 @@ memory leak *and* an unbounded write load on the scraper.
 | Tag | Example values | Why it is safe |
 |---|---|---|
 | `http.request.method` | `GET`, `POST`, `PUT`, `DELETE` | fixed set |
+| `http.response.status_code` | `200`, `404`, `500` | the codes your routes actually return |
 | `http.route` | `/api/users/{id}` — the **template** | one per declared route; Kora uses `UNKNOWN_ROUTE` when nothing matched |
 | `error.type` | `""`, `java.io.IOException` | the exception classes your code can actually throw |
 | `db.operation.name` | `SELECT`, `INSERT`, `UPDATE` | fixed set |
@@ -184,7 +185,8 @@ Cardinality is not only about tags. Every Kora timer is a histogram with `teleme
 boundaries, and the default `MetricsConfig.DEFAULT_SLO` has **14** of them. Each distinct tag
 combination therefore produces roughly 14 `_bucket` series plus `_count`, `_sum` and `_max`.
 
-50 route/method combinations × 17 series ≈ 850 series from one metric, before common tags.
+50 route/method combinations × 17 series ≈ 850 series from one metric — multiplied again by the
+number of distinct `http.response.status_code` values each route returns, before common tags.
 
 Trim the buckets where you do not need the resolution:
 
@@ -195,7 +197,8 @@ httpServer.telemetry.metrics {
 }
 ```
 
-And remember that `PrometheusMeterRegistryInitializer` common tags and per-component
+And remember that global common tags (`metrics.tags`, `MetricsTagsProvider`, or a
+`PrometheusMeterRegistryInitializer`) and per-component
 `telemetry.metrics.tags` multiply onto **every** series — a constant-valued common tag adds no
 cardinality, but a tag that differs per pod (like an instance id) multiplies everything by the
 number of pods.

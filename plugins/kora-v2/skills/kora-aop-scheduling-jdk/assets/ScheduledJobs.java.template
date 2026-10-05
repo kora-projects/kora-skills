@@ -12,10 +12,10 @@
 package com.example.app.jobs;
 
 import io.koraframework.common.annotation.Component;
-import io.koraframework.scheduling.jdk.annotation.ScheduleAtFixedRate;
-import io.koraframework.scheduling.jdk.annotation.ScheduleOnce;
-import io.koraframework.scheduling.jdk.annotation.ScheduleWithCron;
-import io.koraframework.scheduling.jdk.annotation.ScheduleWithFixedDelay;
+import io.koraframework.scheduling.jdk.annotation.ScheduleJdkAtFixedRate;
+import io.koraframework.scheduling.jdk.annotation.ScheduleJdkOnce;
+import io.koraframework.scheduling.jdk.annotation.ScheduleJdkWithCron;
+import io.koraframework.scheduling.jdk.annotation.ScheduleJdkWithFixedDelay;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -33,7 +33,7 @@ public final class ScheduledJobs {
      * starts late; runs of the same job never overlap.
      * Use for: heartbeat, metric scrape, health poll.
      */
-    @ScheduleAtFixedRate(initialDelay = 30, period = 60, unit = ChronoUnit.SECONDS)
+    @ScheduleJdkAtFixedRate(initialDelay = 30, period = 60, unit = ChronoUnit.SECONDS)
     void heartbeat() {
         log.debug("heartbeat");
     }
@@ -44,10 +44,10 @@ public final class ScheduledJobs {
      *
      * Timings come from the config path; the annotation carries none, so `delay` is required there.
      */
-    @ScheduleWithFixedDelay(config = "scheduling.jobs.cleanup")
+    @ScheduleJdkWithFixedDelay(config = "scheduling.jobs.cleanup")
     void cleanup() {
-        // Shutdown waits for this method to return — it is never interrupted.
-        // Bound the run so shutdown latency stays predictable.
+        // Shutdown waits up to scheduling.jdk.shutdownWait, then interrupts this method.
+        // Bound the run so it finishes inside that budget.
         var deadline = Instant.now().plus(Duration.ofSeconds(20));
 
         while (Instant.now().isBefore(deadline)) {
@@ -63,16 +63,18 @@ public final class ScheduledJobs {
      * One shot — runs once, `delay` after startup.
      * Use for: cache warm-up, late binding, work that must not block graph initialisation.
      */
-    @ScheduleOnce(delay = 5, unit = ChronoUnit.MINUTES)
+    @ScheduleJdkOnce(delay = 5, unit = ChronoUnit.MINUTES)
     void warmup() {
         log.info("warming caches");
     }
 
     /**
-     * Cron — in-process, no Quartz. 5, 6 or 7 fields, JVM default time zone.
-     * Quartz-only modifiers L, W, # and C are not supported here.
+     * Cron — in-process, no Quartz. 5, 6 or 7 fields, checked at compile time.
+     * Time zone: a @Tag(SchedulingModule.class) ZoneId component if declared, else the JVM default.
+     * Quartz-only modifiers L, W, # and C are not supported here — the build fails on them.
+     * DST: a skipped local time does not fire, a repeated local time fires twice.
      */
-    @ScheduleWithCron("0 0 3 * * ?")
+    @ScheduleJdkWithCron("0 0 3 * * ?")
     void nightlyCompaction() {
         log.info("nightly compaction");
     }
@@ -88,9 +90,11 @@ public final class ScheduledJobs {
 // application.conf (HOCON):
 //
 // scheduling {
-//   jdk.shutdownWait = 30s          # executor termination budget; default 30s.
-//                                   # NOTE: there is no `threads` key in Kora 2.x — the pool size is
-//                                   # the number of jobs declared with `config = "..."`.
+//   jdk {
+//     shutdownWait = 30s            # drain budget for running jobs, then interrupt; default 30s
+//     executionParallelism = 50     # optional cap on concurrent runs; default unlimited.
+//                                   # No `threads` key: every run is a fresh virtual thread.
+//   }
 //   telemetry {
 //     logging.enabled = false       # default false
 //     metrics.enabled = false       # default false — job metrics are OFF unless you enable them
@@ -100,6 +104,7 @@ public final class ScheduledJobs {
 //   jobs.cleanup {
 //     initialDelay = 30s
 //     delay        = 5m
+//     enabled      = true                # default; false = never scheduled (config-declared jobs only)
 //     telemetry.logging.enabled = true   # per-job override of the block above
 //   }
 // }
@@ -109,6 +114,7 @@ public final class ScheduledJobs {
 // scheduling:
 //   jdk:
 //     shutdownWait: "30s"
+//     executionParallelism: 50
 //   telemetry:
 //     logging:
 //       enabled: false
@@ -120,6 +126,7 @@ public final class ScheduledJobs {
 //     cleanup:
 //       initialDelay: "30s"
 //       delay: "5m"
+//       enabled: true
 //       telemetry:
 //         logging:
 //           enabled: true

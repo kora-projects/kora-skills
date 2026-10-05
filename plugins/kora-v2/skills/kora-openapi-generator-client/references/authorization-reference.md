@@ -1,8 +1,8 @@
 # OpenAPI Client Authorization Reference — Kora 2.x
 
 How a generated Kora 2.0 HTTP client authenticates outbound requests. Verified against
-`ClientSecuritySchemaGenerator` and `ClientApiGenerator` in `io.koraframework:openapi-generator` at
-tag `2.0.0.RC1`, the `io.koraframework.http.client.common.auth` / `.interceptor` packages, and the
+`ClientSecuritySchemaGenerator` and `ClientApiGenerator` in `io.koraframework:openapi-generator`
+for `2.0.0.RC2`, the `io.koraframework.http.client.common.auth` / `.interceptor` packages, and the
 migrated Java/Kotlin OpenAPI HTTP-client examples.
 
 Everything here is **client-side** (outbound). `Principal` and `HttpServerPrincipalExtractor`
@@ -34,7 +34,8 @@ When the contract declares `components.securitySchemes`, the generator emits an 
 - a `SecurityConfig` record plus a `@DefaultComponent` factory that reads credentials from config;
 - a `@DefaultComponent` `HttpClientTokenProvider` per scheme the generator can resolve on its own;
 - a marker class and a `@DefaultComponent` `HttpClientInterceptor` per distinct **security
-  requirement** appearing in the contract.
+  requirement** appearing in the contract (the factory method is declared to return
+  `HttpClientInterceptor`, not the generated class).
 
 Each generated method then carries `@InterceptWith(value = HttpClientInterceptor.class, tag =
 ApiSecurity.<Requirement>.class)`, so Kora looks the interceptor up by tag at graph build time.
@@ -79,11 +80,12 @@ names `HttpClientTokenProvider`, not the tag you expected.
 | Scheme | Generated | Sends |
 |---|---|---|
 | `type: apiKey` (header / query / cookie) | `@DefaultComponent @Tag(<Scheme>) HttpClientTokenProvider` reading the config value | the configured parameter |
-| `type: http, scheme: basic` | `@Tag(<Scheme>) BasicAuthHttpClientTokenProvider` built from `username` + `password` | `Authorization: Basic <base64>` |
-| `type: http, scheme: bearer` | tag class only — **no provider** | `Authorization: <token>` from your provider |
-| `type: oauth2` | tag class only — **no provider** | `Authorization: <token>` from your provider |
+| `type: http, scheme: basic` | `@DefaultComponent @Tag(<Scheme>) BasicAuthHttpClientTokenProvider` built from `username` + `password` (UTF-8, base64) | `Authorization: Basic <base64>` |
+| `type: http, scheme: bearer` | tag class only — **no provider** | `Authorization: Bearer <token>` — your provider returns the bare token |
+| `type: oauth2` | tag class only — **no provider** | `Authorization: Bearer <token>` — your provider returns the bare token |
+| `type: openIdConnect` | tag class only — **no provider** (handled exactly like `oauth2`) | `Authorization: Bearer <token>` — your provider returns the bare token |
 
-Any other `type` (for example `openIdConnect` without a supported mapping) aborts generation with
+Any other `type` aborts generation with
 an explicit "unsupported security scheme" message rather than emitting something that silently
 does nothing.
 
@@ -147,8 +149,9 @@ interface Application : HoconConfigModule, LogbackModule, JsonModule, OkHttpClie
 }
 ```
 
-The provider returns the **full header value**, so include the scheme prefix if the server expects
-one (`"Bearer " + token`); the generated interceptor writes it into `Authorization` unchanged.
+The provider returns the **bare token**. The generated interceptor adds the scheme itself —
+`Bearer ` for `http`/`bearer`, `oauth2` and `openIdConnect`, `Basic ` for `http`/`basic` — so a
+provider that returns `"Bearer " + token` sends `Authorization: Bearer Bearer …`.
 
 **A scheme you do not use still needs a provider, and it must return `null`.** When several
 schemes share an operation, the generated interceptor walks them in order and uses the first
@@ -222,7 +225,9 @@ PetsApiResponses.ListPetsApiResponse listPets(
 ```
 
 The parameter name is the security scheme name and its location follows the scheme (query, header,
-cookie, or the `Authorization` header for `http` / `oauth2` / `openIdConnect`). Use it when the
+cookie, or the `Authorization` header for `http` / `oauth2` / `openIdConnect`). No interceptor is
+involved, so for an `Authorization` argument the caller passes the full header value, scheme
+included (`"Bearer " + token`). Use it when the
 credential varies per call — a per-user token, for instance — rather than per client instance. A
 scheme whose location cannot be mapped to a parameter fails generation with a message naming the
 operation and the scheme.
@@ -280,11 +285,12 @@ Kora ships three ready-made client interceptors in
 
 | Interceptor | Constructor | Effect |
 |---|---|---|
-| `ApiKeyHttpClientInterceptor` | `(ApiKeyLocation location, String parameterName, String secret)` | header, query param or cookie; `ApiKeyLocation` is a nested enum with `HEADER`, `QUERY`, `COOKIE` |
+| `ApiKeyHttpClientInterceptor` | `(ApiKeyLocation location, String parameterName, String secret)` or `(ApiKeyLocation, String parameterName, HttpClientTokenProvider)` | header, query param or cookie (appended to an existing `Cookie` header); `ApiKeyLocation` is a nested enum with `HEADER`, `QUERY`, `COOKIE` |
 | `BasicAuthHttpClientInterceptor` | `(String username, String password)` or `(HttpClientTokenProvider)` | `Authorization: Basic <base64>` |
 | `BearerAuthHttpClientInterceptor` | `(String token)` or `(HttpClientTokenProvider)` | `Authorization: Bearer <token>` |
 
-Both `BasicAuth…` and `BearerAuth…` skip the header entirely when the provider returns `null`.
+All three leave the request untouched when the value is `null` or blank, so a provider may return
+`null` to mean "no credential for this call".
 
 ```java
 @Module
@@ -322,6 +328,7 @@ build. Go through `extensions`, or hand-write the client (`kora-http-client`).
 |---|---|
 | `No component found for dependency: HttpClientTokenProvider` with a scheme tag | A `bearer` or `oauth2` scheme has no application-supplied provider — add one under `@Tag(ApiSecurity.<Scheme>.class)` |
 | Request goes out with the wrong credential | Several schemes apply and an unused one returns a non-null token; make it return `null`, or set `primaryAuth` |
+| Server sees `Authorization: Bearer Bearer …` | Your bearer/oauth2 provider returns the prefixed value; return the bare token, the generated interceptor adds `Bearer ` |
 | Requests unauthenticated, no error anywhere | Credential config path wrong or unset — every generated credential is `@Nullable`, so a missing value yields a `null` token |
 | `Multiple components match` on a provider | Your `@Component` and the generated one collide — the generated one is `@DefaultComponent`, so match its type *and* tag exactly rather than adding a second binding |
 | Provider never called | The interceptor is bound by tag; a hand-written provider tagged `SecurityRequirementTagN` (1.x) is never resolved |

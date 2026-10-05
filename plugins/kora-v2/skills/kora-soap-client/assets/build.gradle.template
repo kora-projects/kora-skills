@@ -1,5 +1,5 @@
 // Kora 2.0 SOAP client — Java.
-// Requires gradle.properties:  koraVersion=2.0.0.RC1
+// Requires gradle.properties:  koraVersion=2.0.0.RC2
 //
 // Build chain:
 //   src/main/resources/wsdl/*.wsdl

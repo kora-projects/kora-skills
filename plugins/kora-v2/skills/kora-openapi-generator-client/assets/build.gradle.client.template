@@ -1,7 +1,7 @@
 // Kora 2.x — OpenAPI-generated HTTP client (Java).
 //
 // Requires in gradle.properties:
-//     koraVersion=2.0.0.RC1
+//     koraVersion=2.0.0.RC2
 //
 // The Gradle process itself must run on JDK 25+: io.koraframework:openapi-generator is a
 // BUILDSCRIPT dependency, resolved by the JVM running Gradle, not by the toolchain below.
@@ -22,8 +22,8 @@ plugins {
     id "java"
     id "application"
     // The OpenAPI Generator Gradle plugin. Distinct from the Kora generator above:
-    // the Kora generator is built against org.openapitools:openapi-generator 7.24.0.
-    id "org.openapi.generator" version "7.24.0"
+    // the Kora generator is built against org.openapitools:openapi-generator 7.25.0.
+    id "org.openapi.generator" version "7.25.0"
 }
 
 repositories { mavenCentral() }
@@ -54,8 +54,6 @@ dependencies {
     //   http-client-ok     -> io.koraframework.http.client.ok.OkHttpClientModule
     //   http-client-jdk    -> io.koraframework.http.client.jdk.JdkHttpClientModule
     //   http-client-apache -> io.koraframework.http.client.apache.ApacheHttpClientModule
-    // The Apache and JDK integrations were corrected after 2.0.0.RC1 was cut, so on RC1
-    // http-client-ok is the best-exercised choice.
     implementation "io.koraframework:http-client-ok"
 
     implementation "io.koraframework:json-common"
@@ -91,6 +89,11 @@ def openApiGeneratePet = tasks.register("openApiGeneratePet", GenerateTask) {
             // LOWER-CASED, so tag "pet" -> PetApi -> @HttpClient("httpClient.pet.petApi").
             // Use `clientConfig` instead to give every API in this spec one shared section.
             clientConfigPrefix: "httpClient.pet",
+
+            // SEALED (default): methods return the sealed *ApiResponse, one variant per status.
+            // SUCCESSFUL: methods return the 2xx variant and throw declared error responses as
+            // PetApi.PetApi<Type>HttpClientResponseException. 4XX/5XX ranges are supported.
+            // clientResponseMode: "SUCCESSFUL",
 
             // Only when the spec declares components.securitySchemes:
             // securityConfigPrefix: "openapiAuth",

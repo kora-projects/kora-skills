@@ -1,0 +1,89 @@
+// @Retryable with a retry budget, a per-retry RetryBudgetFactory and a NonRetryableException (Kora 2.0).
+// The class AND every annotated method must be `open`.
+// Replace `com.example.app.resilience` with your package.
+
+package com.example.app.resilience
+
+import io.koraframework.common.annotation.Component
+import io.koraframework.common.annotation.Module
+import io.koraframework.common.annotation.Tag
+import io.koraframework.resilient.retry.KoraRetryBudget
+import io.koraframework.resilient.retry.NonRetryableException
+import io.koraframework.resilient.retry.Retry
+import io.koraframework.resilient.retry.RetryBudgetFactory
+import io.koraframework.resilient.retry.annotation.RetrySpec
+import io.koraframework.resilient.retry.annotation.Retryable
+
+// Budget from the `retryBudget` block via the default RetryBudgetFactory.
+@RetrySpec("resilient.retry.inventory")
+interface InventoryRetry : Retry
+
+// Budget from the tagged RetryBudgetFactory below.
+@RetrySpec("resilient.retry.pricing")
+interface PricingRetry : Retry
+
+@Component
+open class StockService(
+    private val inventoryApi: InventoryApi,
+    private val pricingApi: PricingApi
+) {
+
+    // A denied budget token ends the loop: the ORIGINAL exception propagates (no RetryExhaustedException)
+    // and resilient.retry.exhausted is tagged resilient.reason=EXHAUSTED_BUDGET.
+    @Retryable(InventoryRetry::class)
+    open fun available(sku: String): Int = inventoryApi.available(sku)
+
+    @Retryable(PricingRetry::class)
+    open fun price(sku: String): Long = pricingApi.price(sku)
+}
+
+// Lookup order per retry: a RetryBudgetFactory tagged with the spec class, else the untagged one
+// (DefaultRetryBudgetFactory, or your own untagged component replacing it for every retry).
+// Returning null means "no budget".
+@Module
+interface RetryBudgetModule {
+
+    @Tag(PricingRetry::class)
+    fun pricingRetryBudget(): RetryBudgetFactory =
+        RetryBudgetFactory { _, _ -> KoraRetryBudget(0.2, 50, 50, 1.0) }
+}
+
+// Retried by default unless the exception implements the NonRetryableException marker interface.
+// A tagged RetryPredicate or an overridden Retry.isFailure replaces that check.
+class UnknownSkuException(sku: String) : RuntimeException("Unknown SKU: $sku"), NonRetryableException
+
+// ---------------------------------------------------------------- placeholders
+
+interface InventoryApi {
+    fun available(sku: String): Int
+}
+
+@Component
+class InventoryApiClient : InventoryApi {
+    override fun available(sku: String): Int = throw UnknownSkuException(sku)
+}
+
+interface PricingApi {
+    fun price(sku: String): Long
+}
+
+@Component
+class PricingApiClient : PricingApi {
+    override fun price(sku: String): Long = 0L
+}
+
+// Config (HOCON):
+//
+// resilient.retry {
+//   inventory {
+//     delay = "100ms"
+//     attempts = 3
+//     retryBudget {
+//       ratio = 0.1               # tokens deposited per successful call; one retry costs one token
+//       tokensMax = 100           # default 100
+//       tokensInitial = 10        # default 10, <= tokensMax
+//       minTokensPerSecond = 0.5  # default 0.0 — time-based refill
+//     }
+//   }
+//   pricing { delay = "50ms", attempts = 2 }   # budget comes from the tagged factory, no block needed
+// }

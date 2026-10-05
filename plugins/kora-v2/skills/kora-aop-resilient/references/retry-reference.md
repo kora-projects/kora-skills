@@ -153,31 +153,93 @@ means the retries can never finish.
 
 ## Retry Budget
 
-New in 2.0. A token bucket that caps the *proportion* of traffic that is retried, so a broad outage
-cannot multiply load on a struggling dependency:
+A token bucket that caps the *proportion* of traffic that is retried, so a broad outage cannot
+multiply load on a struggling dependency. Each retry withdraws one token; each successful call
+deposits `ratio` tokens, capped at `tokensMax`:
 
 ```hocon
 resilient.retry.external.retryBudget {
   enabled = true            # default true
-  ratio = 0.1               # default 0.1 — retries allowed per successful call
+  ratio = 0.1               # default 0.1 — tokens deposited per successful call
   tokensMax = 100           # default 100
-  tokensInitial = 10        # default 10
-  minTokensPerSecond = 0.0  # default 0.0
+  tokensInitial = 10        # default 10, must be <= tokensMax
+  minTokensPerSecond = 0.0  # default 0.0 — time-based refill on top of successes
 }
 ```
 
 When the budget denies a retry the attempt is rejected: the original exception propagates instead of
 `RetryExhaustedException`, and the `resilient.retry.exhausted` counter is tagged
-`reason=EXHAUSTED_BUDGET` rather than `EXHAUSTED_ATTEMPTS`.
+`resilient.reason=EXHAUSTED_BUDGET` rather than `EXHAUSTED_ATTEMPTS`.
 
-Omitting the `retryBudget` block leaves the budget off entirely.
+Omitting the `retryBudget` block (or `retryBudget.enabled = false`) leaves the budget off entirely.
+The budget belongs to the spec: every method sharing the spec shares one budget.
+
+### Where the budget comes from
+
+| Type (`io.koraframework.resilient.retry`) | Role |
+|---|---|
+| `RetryBudget` | the contract: `tryAcquireRetryToken()`, `onSuccess()`, `availableTokens()` |
+| `KoraRetryBudget` | the in-JVM implementation (lock-free, per process) |
+| `RetryBudgetFactory` | `@Nullable RetryBudget get(String name, RetryConfig config)` — builds the budget for one retry; `null` = no budget |
+| `DefaultRetryBudgetFactory` | the default factory supplied by `ResilientModule` (`@DefaultComponent`): a `KoraRetryBudget` from the `retryBudget` block, `null` when the block is absent or disabled |
+
+Each generated retry module injects two factories and uses the first one present:
+
+1. a `RetryBudgetFactory` tagged `@Tag(<RetrySpec>.class)` — overrides the budget for **that retry only**;
+2. the untagged `RetryBudgetFactory` — the `DefaultRetryBudgetFactory`, or your own untagged
+   component, which replaces the default for **every** retry.
+
+`name` passed to the factory is the spec interface's simple name.
+
+```java
+@Module
+public interface RetryBudgetModule {
+
+    @Tag(ExternalRetry.class)
+    default RetryBudgetFactory externalRetryBudget() {
+        return (name, config) -> new KoraRetryBudget(0.2, 50, 50, 1.0);
+    }
+}
+```
+
+```kotlin
+@Module
+interface RetryBudgetModule {
+
+    @Tag(ExternalRetry::class)
+    fun externalRetryBudget(): RetryBudgetFactory =
+        RetryBudgetFactory { _, _ -> KoraRetryBudget(0.2, 50, 50, 1.0) }
+}
+```
+
+A custom factory is not bound to the `retryBudget` block — the one above installs a budget even when
+the section has none. For a budget shared by all instances of the service, return a
+`DistributedRetryBudgetFactory` from the tagged method; see
+[distributed-reference.md](distributed-reference.md#distributed-retry-budget).
 
 ---
 
 ## Failure Predicate
 
-By default every `Throwable` is retried (`Retry.isFailure` returns `true`). Two ways to narrow it,
-the second winning over the first — same shape as the circuit breaker.
+By default every exception is retried **except** one that implements the marker interface
+`io.koraframework.resilient.retry.NonRetryableException` — `Retry.isFailure` is
+`!(throwable instanceof NonRetryableException)`. A non-retryable exception ends the loop on the
+first throw and propagates unchanged, without `RetryExhaustedException`:
+
+```java
+public final class InvalidOrderException extends RuntimeException implements NonRetryableException {
+    public InvalidOrderException(String message) { super(message); }
+}
+```
+
+```kotlin
+class InvalidOrderException(message: String) : RuntimeException(message), NonRetryableException
+```
+
+`NonRetryableException` is an **interface**, not a class: keep your exception hierarchy and add it
+to `implements`. It is honoured only by the default `isFailure`. Two ways to replace that default,
+the second winning over the first — same shape as the circuit breaker. Either one takes over
+completely, so check the marker yourself if you still want it respected.
 
 ### 1. Override `isFailure` on the spec
 
@@ -251,16 +313,21 @@ public final class DataSyncService {
 (`onException(t)` → `ACCEPTED`/`REJECTED`/`EXHAUSTED`, `doDelay()`, `getAttempts()`,
 `getDelayNanos()`; it is `AutoCloseable` and must be closed to flush telemetry).
 
+`toString()` on the injected spec, on a `RetryState` and on a `RetryBudget` reports the live
+state, e.g.
+`KoraRetry{name='SyncRetry', enabled=true, attempts=3, delayNanos=…, delayStepNanos=…, retryBudget=KoraRetryBudget{availableTokens=9.0, …}}`.
+Use it in logs while debugging; do not parse it.
+
 ---
 
 ## Telemetry
 
-Off by default. Counters, tagged `name` = the config path given to `@RetrySpec`:
+Off by default. Counters, tagged `resilient.name` = the config path given to `@RetrySpec`:
 
 | Metric | Meaning | Extra tags |
 |---|---|---|
 | `resilient.retry.attempts` | one increment per retry performed | — |
-| `resilient.retry.exhausted` | retry loop gave up | `reason` = `EXHAUSTED_ATTEMPTS` / `EXHAUSTED_BUDGET` |
+| `resilient.retry.exhausted` | retry loop gave up | `resilient.reason` = `EXHAUSTED_ATTEMPTS` / `EXHAUSTED_BUDGET` |
 
 Enable under `resilient.telemetry.retry`, or per spec under `<specPath>.telemetry`.
 
@@ -276,6 +343,9 @@ Enable under `resilient.telemetry.retry`, or per spec under `<specPath>.telemetr
 | `RetryExhaustedException` never thrown | `attempts = 0`, `enabled = false`, or the predicate rejected the exception — the original propagates. |
 | `backoff` set but `delayStep` ignored | Expected: `backoff` replaces the linear formula. |
 | Retries amplify an outage | Add a `retryBudget` block, or narrow the predicate. |
+| Validation error retried N times | Make the exception implement `NonRetryableException`, or reject it in the predicate. |
+| `NonRetryableException` still retried | A tagged `RetryPredicate` or an overridden `isFailure` replaced the default check. |
+| Retry budget per JVM instead of per service | `KoraRetryBudget` is in-process; tag a `DistributedRetryBudgetFactory` for the spec. |
 | Non-idempotent operation retried | Retry only idempotent work, or carry an idempotency key. |
 | Retry blows the enclosing timeout | Put `@Timeout` *below* `@Retryable` for a per-attempt bound; see [timeout-reference.md](timeout-reference.md). |
 | Predicate ignored | Missing `@Tag(<Spec>.class)`. |

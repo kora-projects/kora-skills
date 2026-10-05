@@ -91,8 +91,8 @@ interface CustomMapperClient {
 
         override fun apply(response: HttpClientResponse): MappedResponse {
             response.body().asInputStream().use { input ->
-                // read() is nullable in Kora 2.0. HttpClientDecoderException keeps the failure typed
-                // on 2.0.0.RC1, where the generated client does not yet wrap mapper failures.
+                // read() is nullable in Kora 2.0; the generated client wraps this in another
+                // HttpClientDecoderException, like every other mapper failure.
                 return jsonReader.read(input.readAllBytes())
                     ?: throw HttpClientDecoderException(IllegalStateException("empty success payload"))
             }

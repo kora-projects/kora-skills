@@ -1,0 +1,96 @@
+package ${package};
+
+import io.koraframework.database.common.UpdateCount;
+import io.koraframework.database.common.annotation.Id;
+import io.koraframework.database.common.annotation.Query;
+import io.koraframework.database.common.annotation.Repository;
+import io.koraframework.database.common.annotation.Table;
+import io.koraframework.database.jdbc.JdbcRepository;
+import io.koraframework.database.jdbc.annotation.EntityJdbc;
+import io.koraframework.database.jdbc.postgres.PgRange;
+import io.koraframework.database.jdbc.postgres.annotation.Pg;
+import io.koraframework.database.jdbc.postgres.annotation.PgJsonb;
+import io.koraframework.json.common.annotation.Json;
+import org.jspecify.annotations.Nullable;
+
+import java.time.Duration;
+import java.time.LocalDate;
+import java.util.List;
+import java.util.Set;
+
+/**
+ * PostgreSQL-specific columns through io.koraframework:database-jdbc-postgres.
+ *
+ * Wiring: the @KoraApp extends PostgresJdbcDatabaseModule INSTEAD of JdbcDatabaseModule (it extends
+ * it), plus JsonModule for the @PgJsonb payload. The artifact brings the PostgreSQL driver.
+ *
+ * Tags select the mappers, and they are opt-in:
+ * - @Pg       List/Set/Collection<T> and arrays (bool, int2, int4, int8, float4, float8, numeric,
+ *             varchar, uuid), Duration/Period as interval
+ * - @PgJsonb  any @Json type as jsonb; @PgJson for a json column
+ * - PgRange<T> needs no tag (int4range, int8range, numrange, daterange, tsrange, tstzrange)
+ * Without the tag a List<Long> field fails with "No component found for dependency".
+ *
+ * Collection parameters accept List, Set or Collection; results are always List.
+ * `= ANY(:ids)` binds the whole collection as one array parameter — IN (:ids) cannot take a list.
+ * @PgJsonb sends a jsonb-typed parameter, so neither the INSERT nor `@>` needs a ::jsonb cast.
+ *
+ * Matching DDL:
+ *   CREATE TABLE ${table_name} (
+ *       id         BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+ *       name       VARCHAR(255) NOT NULL,
+ *       tags       VARCHAR[]    NOT NULL DEFAULT '{}',
+ *       ttl        INTERVAL,
+ *       validity   DATERANGE    NOT NULL,
+ *       attributes JSONB        NOT NULL
+ *   );
+ */
+@Repository
+public interface ${entity_name}Repository extends JdbcRepository {
+
+    @EntityJdbc
+    @Table("${table_name}")
+    record ${entity_name}(
+            @Id Long id,
+            String name,
+            @Pg List<String> tags,
+            @Pg @Nullable Duration ttl,
+            PgRange<LocalDate> validity,
+            @PgJsonb Attributes attributes) {
+
+        /** Constructor for inserts where the database assigns the id. */
+        public ${entity_name}(String name, List<String> tags, @Nullable Duration ttl,
+                              PgRange<LocalDate> validity, Attributes attributes) {
+            this(null, name, tags, ttl, validity, attributes);
+        }
+    }
+
+    @Json
+    record Attributes(String owner, List<String> labels) {}
+
+    @Query("SELECT %{return#selects} FROM %{return#table} WHERE id = :id")
+    @Nullable
+    ${entity_name} findById(Long id);
+
+    @Query("SELECT %{return#selects} FROM %{return#table} WHERE id = ANY(:ids)")
+    List<${entity_name}> findByIds(@Pg List<Long> ids);
+
+    @Query("SELECT %{return#selects} FROM %{return#table} WHERE tags && :tags")
+    List<${entity_name}> findByAnyTag(@Pg Set<String> tags);
+
+    @Query("SELECT %{return#selects} FROM %{return#table} WHERE validity @> :day")
+    List<${entity_name}> findValidOn(LocalDate day);
+
+    @Query("SELECT %{return#selects} FROM %{return#table} WHERE validity && :period")
+    List<${entity_name}> findOverlapping(PgRange<LocalDate> period);
+
+    @Query("SELECT %{return#selects} FROM %{return#table} WHERE attributes @> :filter")
+    List<${entity_name}> findByAttributes(@PgJsonb Attributes filter);
+
+    @Query("INSERT INTO %{entity#inserts -= @id}")
+    @Id
+    Long insert(${entity_name} entity);
+
+    @Query("DELETE FROM ${table_name} WHERE id = ANY(:ids)")
+    UpdateCount deleteByIds(@Pg List<Long> ids);
+}

@@ -66,7 +66,10 @@ data class Entity(
 
 `@field:Id`, `@field:Column`, `@field:Embedded` are the forms used throughout the migrated
 examples. `@Mapping` is the exception: it also targets `PARAMETER`, and the examples apply it
-without a use-site target (see [custom-mappers-reference.md](custom-mappers-reference.md)).
+without a use-site target (see [custom-mappers-reference.md](custom-mappers-reference.md)). Tag
+annotations such as `@Pg` / `@PgJsonb` behave the same way — the tag is read from the data-class
+constructor parameter, so `@Pg val tags: List<String>` needs no target
+(see [postgres-mappers-reference.md](postgres-mappers-reference.md#kotlin)).
 
 ---
 
@@ -191,6 +194,16 @@ domain value types — needs a `JdbcResultColumnMapper<T>` and/or `JdbcParameter
 Without one the build fails with `No component found for dependency: JdbcResultColumnMapper<X>`.
 See [custom-mappers-reference.md](custom-mappers-reference.md).
 
+**On PostgreSQL, `database-jdbc-postgres` supplies the common ones** — tagged, so they apply only
+where the tag is written (see [postgres-mappers-reference.md](postgres-mappers-reference.md)):
+
+| Java type | Tag | PostgreSQL |
+|-----------|-----|-----------|
+| `List<T>` (parameters also `Set<T>`, `Collection<T>`), `T[]`, primitive arrays | `@Pg` | `BOOLEAN[]`, `SMALLINT[]`, `INTEGER[]`, `BIGINT[]`, `REAL[]`, `DOUBLE PRECISION[]`, `NUMERIC[]`, `VARCHAR[]`, `UUID[]` |
+| `Duration`, `Period` | `@Pg` | `INTERVAL` |
+| `PgRange<Integer/Long/BigDecimal/LocalDate/LocalDateTime/OffsetDateTime>` | none | `INT4RANGE`, `INT8RANGE`, `NUMRANGE`, `DATERANGE`, `TSRANGE`, `TSTZRANGE` |
+| a `@Json` type, `JsonNullable<T>` | `@PgJson` / `@PgJsonb` | `JSON` / `JSONB` |
+
 Typical PostgreSQL column choices:
 
 | Java type | PostgreSQL |
@@ -213,9 +226,40 @@ Typical PostgreSQL column choices:
 
 ## JSONB mapping (PostgreSQL)
 
-Kora ships no JSONB column mapper — declare a small generic `@Module` once and tag it with `@Json`
-so the processor picks it for `@Json`-annotated fields. This is the module from the migrated
-examples:
+With `database-jdbc-postgres`, tag the field `@PgJsonb` (`@PgJson` for a `json` column) and annotate
+the payload **type** with `@Json`:
+
+```java
+@Repository
+public interface JsonbRepository extends JdbcRepository {
+
+    @EntityJdbc
+    record Entity(UUID id, @Column("value") @PgJsonb JsonbValue value) {
+        @Json
+        public record JsonbValue(String name, String surname) {}
+    }
+
+    @Query("SELECT * FROM entities_jsonb WHERE id = :id")
+    @Nullable
+    Entity findById(UUID id);
+
+    @Query("INSERT INTO entities_jsonb(id, value) VALUES (:entity.id, :entity.value)")
+    void insert(Entity entity);
+}
+
+@KoraApp
+public interface Application extends
+        HoconConfigModule, LogbackModule, JsonModule, PostgresJdbcDatabaseModule {}
+```
+
+The parameter is sent as a `jsonb`-typed `PGobject`, so the SQL needs no `::jsonb` cast, and a
+`jsonb` operator such as `value @> :filter` works with a `@PgJsonb` parameter. Details, `@PgJson` vs
+`@PgJsonb` and `JsonNullable<T>`: [postgres-mappers-reference.md](postgres-mappers-reference.md#json-and-jsonb-pgjson--pgjsonb).
+
+### Without `database-jdbc-postgres`
+
+The migrated examples predate the module and declare a small generic `@Module` tagged `@Json`
+instead, so the processor picks it for `@Json`-annotated fields:
 
 ```java
 @Module
@@ -274,8 +318,8 @@ public interface Application extends
 ```
 
 `@Json` and `JsonReader`/`JsonWriter` come from `io.koraframework.json.common(.annotation)`, artifact
-`io.koraframework:json-common`, module `io.koraframework.json.common.JsonModule`. The `::jsonb` cast
-in the INSERT is what makes PostgreSQL accept the parameter.
+`io.koraframework:json-common`, module `io.koraframework.json.common.JsonModule`. The examples keep
+a `::jsonb` cast in the INSERT. Prefer `@PgJsonb` for new code — same result, no module to maintain.
 
 ---
 
@@ -337,3 +381,4 @@ void insert(User user);
 - [repository-pattern-reference.md](repository-pattern-reference.md) — `@Repository`, `@Query`, macros
 - [custom-mappers-reference.md](custom-mappers-reference.md) — the four mapper contracts
 - [custom-mappers-advanced-reference.md](custom-mappers-advanced-reference.md) — when a mapper is constructed vs injected
+- [postgres-mappers-reference.md](postgres-mappers-reference.md) — PostgreSQL arrays, `interval`, ranges, `json`/`jsonb`

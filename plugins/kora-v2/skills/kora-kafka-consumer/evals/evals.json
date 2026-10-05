@@ -142,25 +142,21 @@
       ]
     },
     {
-      "id": "kora-kafka-consumer-kotlin-headers-rc1",
+      "id": "kora-kafka-consumer-kotlin-headers-exception",
       "skills": [
         "kora-kafka-consumer"
       ],
-      "query": "In my Kora 2.0.0.RC1 Kotlin service this listener produces generated code that will not compile: `@KafkaListener(\"kafka.consumer.orders\") fun process(key: String?, value: String?, headers: Headers, exception: Exception?)`. What is going on?",
+      "query": "In my Kora 2.0 Kotlin service I want a listener that receives the key, the value, the record headers and any deserialization error: `@KafkaListener(\"kafka.consumer.orders\") fun process(key: String?, value: String?, headers: Headers, exception: Exception?)`. Is this signature supported?",
       "expected_behavior": [
-        "Identifies this as a KSP defect at 2.0.0.RC1: the generated handler emits `val headers = record.headers()` inside the generated try block and then reads it outside, so the generated Kotlin does not compile",
-        "States that the fix landed after RC1 on master (commit 8e1eec9a4, backport of #845) and is not available in a released version",
-        "Labels it as a post-RC1 fix rather than as current released behaviour",
-        "Gives a workaround that works at RC1: take a ConsumerRecord parameter and call record.headers() inside the method",
-        "Notes that Java is unaffected and that Kotlin Headers without an exception parameter works at RC1",
-        "Does not tell the user to upgrade to a released 2.0 version that contains the fix, because none exists"
+        "Confirms the signature is supported by KSP as it is by the Java processor (covered by KafkaListenerKeyAndValueTest#testProcessKeyValueHeaderAndException)",
+        "Keeps key and value nullable because the generated code passes null when deserialization fails, and takes org.apache.kafka.common.header.Headers",
+        "Writes a plain `fun`, not `suspend fun`",
+        "Does not describe a KSP compile defect for Headers plus an exception parameter, and does not tell the user to switch to ConsumerRecord as a workaround"
       ],
       "tags": [
         "consumer",
         "signatures",
-        "kotlin",
-        "rc1",
-        "regression"
+        "kotlin"
       ]
     },
     {
@@ -193,7 +189,7 @@
         "Does not assign reader.read(data) straight to a non-null return type",
         "Declares `override fun deserialize(topic: String, data: ByteArray): OrderEvent` matching the @NullMarked contract, and mentions that a mismatch reports \"'deserialize' overrides nothing\" without naming nullability",
         "References the same @Tag on the listener parameter so the deserializer is actually selected",
-        "Does not wrap the call in try/catch (IOException) — at 2.0.0.RC1 JsonReader.read declares no checked exception"
+        "Does not wrap the call in try/catch (IOException) — JsonReader.read declares only the unchecked tools.jackson.core.JacksonException"
       ],
       "tags": [
         "serialization",
@@ -258,22 +254,20 @@
       ]
     },
     {
-      "id": "kora-kafka-consumer-assign-single-topic-rc1",
+      "id": "kora-kafka-consumer-assign-multi-topic",
       "skills": [
         "kora-kafka-consumer"
       ],
-      "query": "In my Kora 2.0.0.RC1 service I want every instance to receive every message from the topics `prices` and `rates`, so I removed group.id. Startup now fails.",
+      "query": "In my Kora 2.0 service I want every instance to receive every message from the topics `prices` and `rates`. How do I configure the listener?",
       "expected_behavior": [
         "Identifies the assign strategy (no group.id in driverProperties) as the broadcast mechanism",
-        "States that at 2.0.0.RC1 the generated assign container requires exactly one topic and reports \"@KafkaListener require to specify 1 topic to subscribe when groupId is null\" (a bare require(topics.size == 1) in Kotlin)",
-        "Recommends two separate kafka.consumer sections, one per topic, as the RC1 solution",
-        "Notes that multi-topic assign landed after RC1 on master (a0a2b8c1d, #844) and is not in a released version",
-        "Mentions that topicsPattern is not usable in assign mode and that the assign container never commits offsets, so `offset` decides where each start begins",
-        "Does not claim that adding both topics to the list works at RC1"
+        "Uses one kafka.consumer section with topics = [\"prices\", \"rates\"]; the assign container reads every partition of every listed topic",
+        "States that topicsPattern is rejected in assign mode: KafkaAssignConsumerContainer fails fast with \"does not support topicsPattern, please specify topics instead\", and an empty topics list fails with \"requires at least one topic\"",
+        "Mentions that the assign container never commits offsets, so `offset` (earliest / latest / a Duration) decides where each start begins",
+        "Does not claim assign mode accepts only a single topic and does not split the topics into two sections for that reason"
       ],
       "tags": [
         "strategies",
-        "rc1",
         "regression"
       ]
     },
@@ -305,7 +299,8 @@
       "expected_behavior": [
         "States that no KafkaConsumerLoggerFactory interface exists in Kora 2.0",
         "Registers a @Component that extends the concrete class io.koraframework.kafka.common.consumer.telemetry.impl.DefaultKafkaConsumerLoggerFactory and overrides create(DefaultKafkaConsumerTelemetry.TelemetryContext)",
-        "Explains that KafkaModule declares defaultKafkaConsumerTelemetryFactory as a @DefaultComponent whose @Nullable DefaultKafkaConsumerLoggerFactory parameter picks the component up",
+        "Calls super(maskingStrategy, bodyConverter) with the injected @Tag(KafkaConsumerTelemetry.class) MaskingStrategy and DefaultKafkaConsumerBodyConverter, and builds DefaultKafkaConsumerLogger with (logger, maskingStrategy, bodyConverter, context) — there is no no-arg or (logger, context) constructor",
+        "Explains that KafkaListenerModule (pulled in by KafkaModule) declares defaultKafkaConsumerTelemetryFactory as a @DefaultComponent whose @Nullable DefaultKafkaConsumerLoggerFactory parameter picks the component up",
         "Notes that the custom factory is consulted only when telemetry.logging.enabled = true, otherwise NoopKafkaConsumerLoggerFactory is substituted",
         "Mentions the broader options — subclassing DefaultKafkaConsumerTelemetryFactory, or supplying a KafkaConsumerTelemetryFactory @Component that replaces the default for every listener — and that configuration (tags, attributes, slo, driverMetrics) covers many cases",
         "Does not claim custom telemetry listeners are impossible in 2.0, and does not keep the 1.x interface with a renamed import"
@@ -395,6 +390,55 @@
         "transactions",
         "advanced"
       ]
+    },
+    {
+      "id": "kora-kafka-consumer-assign-topics-pattern",
+      "skills": [
+        "kora-kafka-consumer"
+      ],
+      "query": "My Kora 2.0 listener has `topicsPattern = \"prices-.*\"` and no group.id in driverProperties, because every instance should read everything. The application fails to start. Why?",
+      "expected_behavior": [
+        "Explains that without group.id the assign container is used, and KafkaAssignConsumerContainer rejects topicsPattern in its constructor with \"@KafkaListener with assign strategy (when group.id is null) does not support topicsPattern, please specify topics instead\"",
+        "Explains why: a pattern subscription needs the consumer-group rebalance protocol, which assign mode does not have",
+        "Offers the two fixes: list the topics explicitly in `topics` (one or more), or add a group.id and use subscribe mode where topicsPattern works",
+        "Does not suggest that the failure is a missing single-topic limit or recommend exactly one topic"
+      ],
+      "tags": [
+        "strategies",
+        "regression"
+      ]
+    },
+    {
+      "id": "kora-kafka-consumer-trace-payload-masking",
+      "skills": [
+        "kora-kafka-consumer"
+      ],
+      "query": "We need to see Kafka record keys, values and headers in our Kora 2.0 consumer logs while debugging, but the JSON values contain a `password` field and the `authorization` and `x-api-key` headers must never appear in clear. How do I set this up?",
+      "expected_behavior": [
+        "Enables telemetry.logging.enabled = true on the listener and sets the listener's logger (its canonical class name, under logging.levels) to TRACE, explaining that key/value/headers are added only at TRACE and only on the consumer side",
+        "Configures telemetry.logging.maskHeaders to include x-api-key, keeping authorization (the list replaces the default authorization/cookie/set-cookie; names are compared case-insensitively)",
+        "Registers a DataMasker component tagged @Tag(KafkaConsumerTelemetry.class), e.g. new JsonDataMasker(MaskingPathRules.builder().mask(\"password\", new MaskingFull()).build())",
+        "States that no Kafka DataMasker is registered by default, so without it JSON values are logged unmasked, and that the JSON masker is chosen only when the value is read through @Json (JsonKafkaDeserializer)",
+        "Mentions that the header replacement comes from the @Tag(KafkaConsumerTelemetry.class) MaskingStrategy (default ***), and that DefaultKafkaConsumerBodyConverter can be subclassed as a @Component to change masker selection",
+        "Links or defers to the shared masking model in kora-aop-logging for MaskingPathRules / DataMasker details",
+        "Does not invent config keys such as maskBody, maskFields or logging.payload"
+      ],
+      "tags": [
+        "telemetry",
+        "masking"
+      ]
+    },
+    {
+      "id": "kora-kafka-consumer-span-names",
+      "skills": ["kora-kafka-consumer"],
+      "query": "In Jaeger I search for spans named kafka.poll and 'orders process record' from my Kora 2.0 @KafkaListener and find nothing since the upgrade to 2.0.0.RC2. What are the span names now?",
+      "expected_behavior": [
+        "Says RC2 (#972) renamed them to the OpenTelemetry messaging convention: the poll span is 'poll' and the per-record span is 'process <topic>' (here 'process orders')",
+        "Mentions messaging.operation.name = poll / process and messaging.operation.type = receive / process on those spans",
+        "Keeps the rest right: the poll span is a trace root (setNoParent) and the record span continues the producer's W3C context with a link to the poll span",
+        "Notes that messaging.process.duration and messaging.process.batch.duration now also carry messaging.operation.name = process"
+      ],
+      "tags": ["telemetry", "tracing", "regression"]
     }
   ]
 }

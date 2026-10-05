@@ -1,7 +1,7 @@
 // Kora 2.x — OpenAPI HTTP server (Java)
 //
 // gradle.properties:
-//   koraVersion=2.0.0.RC1
+//   koraVersion=2.0.0.RC2
 //
 // IMPORTANT: the JVM that RUNS GRADLE must be 25+, because
 // io.koraframework:openapi-generator lands on the buildscript classpath below and is
@@ -27,8 +27,8 @@ plugins {
     id "application"
 
     // The OpenAPI Generator Gradle plugin — a different artifact from the line above.
-    // The Kora generator is built against openapi-generator 7.24.0, so 7.24.0 is aligned.
-    id "org.openapi.generator" version "7.24.0"
+    // The Kora generator is built against openapi-generator 7.25.0, so 7.25.0 is aligned.
+    id "org.openapi.generator" version "7.25.0"
 }
 
 java {

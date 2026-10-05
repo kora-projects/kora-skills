@@ -26,7 +26,7 @@ there, and only if something reachable from a `@Root` asks for it. Every compone
 
 All DI annotations live in **`io.koraframework.common.annotation`** — including `@Root`, which was
 already in `…common.annotation` under 1.x and only changed group. The table below is the complete
-package contents, verified against the published `common-2.0.0.RC1.jar`.
+package contents, verified against the published `common-2.0.0.RC2.jar`.
 
 | Annotation | Target | Purpose |
 |---|---|---|
@@ -80,7 +80,7 @@ class UserService(private val repository: UserRepository)
 |---|---|
 | **Class**, not an interface or annotation | non-classes are ignored |
 | **Not abstract** | abstract classes are silently skipped |
-| **Exactly one public constructor** | compile error: `@Component class must have exactly one public constructor.` (Kotlin: the primary constructor must be public) |
+| **Exactly one public constructor** | compile error: `@Component class must have exactly one public constructor:` (Kotlin: the primary constructor must be public) |
 | **No raw types** | a raw component type produces `Components with raw types can break dependency resolution in unpredictable way` |
 
 `final` is **not** a requirement — it is a convention, and one that flips when aspects are involved:
@@ -208,10 +208,13 @@ processor artifact is on the processor path. The ones shipped with Kora 2.0:
 | a config interface / `@ConfigMapper` type | `config-annotation-processor` / `config-symbol-processor` | `ConfigLinkerExtensionFactory` |
 | `Validator<T>` for a `@Valid` type | `validation-annotation-processor` / `validation-symbol-processor` | `ValidKoraExtensionFactory` |
 | a generated gRPC stub | `grpc-client-annotation-processor` / `grpc-client-symbol-processor` | `GrpcClientExtensionFactory` |
-| a MapStruct `@Mapper` / Konvert converter | `mapstruct-java-extension`, `mapstruct-ksp-extension`, `konvert-ksp-extension` | mapper implementations |
+| a MapStruct `@Mapper` (Java) / Konvert `@Konverter` (Kotlin) | `mapstruct-java-extension` / `konvert-ksp-extension` | mapper implementations |
 
 Aspect proxies are **not** extensions: the AOP processor generates a `…_AopProxy` subclass, and the
-`@KoraApp` processor registers that instead of the annotated class.
+`@KoraApp` processor registers that instead of the annotated class. The proxy is an implementation
+detail: declare and inject the component by its **original** type. A module provider whose return
+type is the generated `$Foo__AopProxy` class is rejected with `Component provider returns a
+generated AOP proxy type:` (Java and KSP alike), and the fix it prints is to return the proxied type.
 
 An extension that fails reports through the owning processor, so read the *earlier* errors in the
 build log before the `No component found` at the end. If the extension artifact is missing from the
@@ -266,7 +269,7 @@ plain `ru.tinkoff.kora` → `io.koraframework` replace lands them in the wrong p
 ### Two public constructors
 
 ```java
-// BAD — "@Component class must have exactly one public constructor."
+// BAD — "@Component class must have exactly one public constructor:"
 @Component
 public final class UserService {
     public UserService() { }

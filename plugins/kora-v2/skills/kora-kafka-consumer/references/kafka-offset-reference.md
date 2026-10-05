@@ -180,7 +180,7 @@ record is redelivered. `shutdownWait` should exceed your slowest handler.
 - [Rebalance](kafka-rebalance-reference.md)
 - [Transactions](kafka-transactions-reference.md)
 
-**Source:** framework tag `2.0.0.RC1` —
-[RecordHandler](https://github.com/kora-projects/kora/blob/2.0.0.RC1/kafka/kafka/src/main/java/io/koraframework/kafka/common/consumer/containers/handlers/impl/RecordHandler.java) ·
-[RecordsHandler](https://github.com/kora-projects/kora/blob/2.0.0.RC1/kafka/kafka/src/main/java/io/koraframework/kafka/common/consumer/containers/handlers/impl/RecordsHandler.java) ·
-[KafkaSubscribeConsumerContainer](https://github.com/kora-projects/kora/blob/2.0.0.RC1/kafka/kafka/src/main/java/io/koraframework/kafka/common/consumer/containers/KafkaSubscribeConsumerContainer.java)
+**Source:** framework tag `2.0.0.RC2` —
+[RecordHandler](https://github.com/kora-projects/kora/blob/2.0.0.RC2/kafka/kafka/src/main/java/io/koraframework/kafka/common/consumer/containers/handlers/impl/RecordHandler.java) ·
+[RecordsHandler](https://github.com/kora-projects/kora/blob/2.0.0.RC2/kafka/kafka/src/main/java/io/koraframework/kafka/common/consumer/containers/handlers/impl/RecordsHandler.java) ·
+[KafkaSubscribeConsumerContainer](https://github.com/kora-projects/kora/blob/2.0.0.RC2/kafka/kafka/src/main/java/io/koraframework/kafka/common/consumer/containers/KafkaSubscribeConsumerContainer.java)

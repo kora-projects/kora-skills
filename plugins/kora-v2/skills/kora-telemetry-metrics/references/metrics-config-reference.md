@@ -4,6 +4,7 @@ Everything that decides whether a metric is recorded, and where its config lives
 
 ## Contents
 
+- [The global `metrics` section](#global-metrics)
 - [The two gates](#the-two-gates)
 - [Module setup](#module-setup)
 - [The complete `telemetry.metrics` key set](#key-set)
@@ -12,18 +13,61 @@ Everything that decides whether a metric is recorded, and where its config lives
 - [`tags` — extra static tags](#tags)
 - [`driverMetrics` — the third-party pool/client meters](#driver-metrics)
 - [The system server](#system-server)
-- [Common tags via `PrometheusMeterRegistryInitializer`](#common-tags)
+- [Common tags: `metrics.tags`, `MetricsTagsProvider`, `PrometheusMeterRegistryInitializer`](#common-tags)
 - [Replacing the registry or the scraper](#replacing-the-registry)
 - [Keys that no longer exist](#removed-keys)
 - [Verification](#verification)
 
 ---
 
+## The global `metrics` section { #global-metrics }
+
+`MetricsModule` maps the top-level `metrics` path:
+
+```java
+@DefaultComponent
+default MetricsConfig metricsConfig(Config config, ConfigValueMapper<MetricsConfig> mapper) {
+    return mapper.mapOrThrow(config.get("metrics"));
+}
+```
+
+`io.koraframework.micrometer.module.MetricsConfig` — not to be confused with the per-component
+`io.koraframework.telemetry.common.TelemetryConfig.MetricsConfig` below:
+
+```java
+@ConfigMapper
+public interface MetricsConfig {
+    default boolean enabled() { return true; }
+    default Map<String, String> tags() { return Map.of(); }
+}
+```
+
+| Key | Default | Effect |
+|---|---|---|
+| `metrics.enabled` | `true` | `false` makes `prometheusMeterRegistry(...)` return `NoopMeterRegistry.INSTANCE`: no `PrometheusMeterRegistryWrapper`, no JVM binders, no `kora_up`, no initializers applied, every meter discarded, and `prometheusMetricsScraper` falls to its no-op branch — `/metrics` answers **200 with an empty body** |
+| `metrics.tags` | `{}` | common tags on every meter in the registry; merged with the `MetricsTagsProvider` components, config wins on a key conflict — see [common tags](#common-tags) |
+
+`metrics.enabled` is a kill switch, not an opt-in. It never turns a component's metrics on; that is
+still `<component>.telemetry.metrics.enabled` (gate 1 below), whose default is `false`.
+
+```hocon
+metrics {
+  # enabled = false       # kill switch: registry becomes NoopMeterRegistry
+  tags {
+    "service" = "order-service"
+    "deployment.environment" = ${?ENV}
+  }
+}
+```
+
+---
+
 ## The two gates { #the-two-gates }
 
-A Kora component records metrics only when **both** conditions hold.
+With the global switch at its `true` default, a Kora component records metrics only when **both**
+conditions hold.
 
-### Gate 1 — `metrics.enabled`, which defaults to `false`
+### Gate 1 — `<component>.telemetry.metrics.enabled`, which defaults to `false`
 
 `io.koraframework.telemetry.common.TelemetryConfig`:
 
@@ -73,6 +117,11 @@ loudly.
 | no | `true` | **none** | `# Metric Scraper disabled` |
 | yes | not set (`false`) | **none** | `kora_up` + JVM meters only |
 | yes | `true` | recorded | `kora_up` + JVM + component meters |
+| yes, global `metrics.enabled = false` | any | discarded by `NoopMeterRegistry` | empty |
+
+With `metrics.enabled = false` gate 2 technically passes — the injected `MeterRegistry` is
+`NoopMeterRegistry`, not `null` — so component factories build their real metrics objects and
+record into a registry that drops everything.
 
 ---
 
@@ -101,11 +150,13 @@ public interface Application extends
 }
 ```
 
-`MetricsModule` contributes three components, all replaceable:
+`MetricsModule` contributes five components; all but the common-tags initializer are `@DefaultComponent` and replaceable:
 
 | Method | Provides | Notes |
 |---|---|---|
-| `prometheusMeterRegistry(All<PrometheusMeterRegistryInitializer>)` | `@Root @DefaultComponent Wrapped<MeterRegistry>` | a `PrometheusMeterRegistryWrapper`; `@Root` so it starts even if nothing injects it |
+| `metricsConfig(Config, ConfigValueMapper<MetricsConfig>)` | `@DefaultComponent MetricsConfig` | the global `metrics` section |
+| `prometheusMeterRegistry(MetricsConfig, All<PrometheusMeterRegistryInitializer>)` | `@Root @DefaultComponent Wrapped<MeterRegistry>` | a `PrometheusMeterRegistryWrapper`, or `NoopMeterRegistry` when `metrics.enabled = false`; `@Root` so it starts even if nothing injects it |
+| `commonTagsMeterRegistryInitializer(MetricsConfig, All<MetricsTagsProvider>)` | `PrometheusMeterRegistryInitializer` (**not** `@DefaultComponent` since RC2, #935) | installs `MeterFilter.commonTags(...)` with the merged tags; an identity function when there are none. Always part of `All<PrometheusMeterRegistryInitializer>`, next to yours |
 | `prometheusMetricsScraper(MeterRegistry)` | `@DefaultComponent MetricsScraper` | `prometheus::scrape` for a `PrometheusMeterRegistry`, otherwise a no-op writer |
 | `micrometerMeterProvider(MeterRegistry, @Nullable CallbackRegistrar)` | `@DefaultComponent MicrometerMeterProvider` | the OpenTelemetry ↔ Micrometer bridge |
 
@@ -116,8 +167,8 @@ already extends `UndertowSystemHttpServerModule`, which registers it.
 
 ## The complete `telemetry.metrics` key set { #key-set }
 
-`MetricsConfig` declares exactly three settings. Every component's `*MetricsConfig` extends it, and
-only two add anything.
+`TelemetryConfig.MetricsConfig` declares exactly three settings. Every component's `*MetricsConfig`
+extends it, and only two add anything.
 
 | Key | Type | Default | Applies to |
 |---|---|---|---|
@@ -266,8 +317,8 @@ jdbc.telemetry.metrics {
 ```
 
 Use this for per-component labels. For labels that belong on *every* series in the process, use
-[`PrometheusMeterRegistryInitializer`](#common-tags) instead — a common tag set applied in fifteen
-config blocks is fifteen chances to drift.
+the global [`metrics.tags` or a `MetricsTagsProvider`](#common-tags) instead — a common tag set
+applied in fifteen config blocks is fifteen chances to drift.
 
 ---
 
@@ -337,11 +388,39 @@ service that deliberately used custom ports comes up green on the wrong ones.
 
 ---
 
-## Common tags via `PrometheusMeterRegistryInitializer` { #common-tags }
+## Common tags: `metrics.tags`, `MetricsTagsProvider`, `PrometheusMeterRegistryInitializer` { #common-tags }
 
-`MetricsModule` collects them with `All<PrometheusMeterRegistryInitializer>` and applies them in
-`PrometheusMeterRegistryWrapper.init()` **before** binding the JVM binders and registering
-`kora.up` — so common tags land on those meters too:
+`MetricsModule` ships an initializer (a plain module component, deliberately **not**
+`@DefaultComponent`) that merges two sources into one global `MeterFilter`:
+
+```java
+default PrometheusMeterRegistryInitializer commonTagsMeterRegistryInitializer(MetricsConfig config, All<MetricsTagsProvider> tagsProviders) {
+    var merged = new LinkedHashMap<String, String>();
+    for (var provider : tagsProviders) {
+        merged.putAll(provider.tags());
+    }
+    // config tags are applied last so static configuration wins on key conflicts
+    merged.putAll(config.tags());
+    if (merged.isEmpty()) {
+        return registry -> registry;
+    }
+    var tags = Tags.of(merged.entrySet().stream()
+        .map(e -> Tag.of(e.getKey(), e.getValue()))
+        .toList());
+    return registry -> {
+        registry.config().meterFilter(MeterFilter.commonTags(tags));
+        return registry;
+    };
+}
+```
+
+| Source | When to use | Precedence |
+|---|---|---|
+| `metrics.tags { … }` | static values known at deploy time | wins on a key conflict |
+| `MetricsTagsProvider` components | values computed at startup (region from the environment, build version, …) | merged in graph order, overridden by config |
+
+The initializers run in `PrometheusMeterRegistryWrapper.init()` **before** the JVM binders are bound
+and `kora.up` is registered, so the common tags land on those meters too:
 
 ```java
 var meterRegistry = new PrometheusMeterRegistry(PrometheusConfig.DEFAULT);
@@ -353,9 +432,45 @@ new ClassLoaderMetrics().bindTo(meterRegistry);
 …
 ```
 
+### `MetricsTagsProvider`
+
+```java
+package io.koraframework.micrometer.module;
+
+public interface MetricsTagsProvider {
+    Map<String, String> tags();
+}
+```
+
+Register any number as components. `tags()` is called once, while the graph builds the
+initializer — a value that changes afterwards is never seen. Templates:
+[`AppMetricsTagsProvider.java.template`](../assets/AppMetricsTagsProvider.java.template) /
+[`AppMetricsTagsProvider.kt.template`](../assets/AppMetricsTagsProvider.kt.template).
+
+```hocon
+metrics.tags {
+  "service" = "order-service"
+  "region" = "eu-1"          # beats a provider that also returns "region"
+}
+```
+
+### Your own `PrometheusMeterRegistryInitializer`
+
 The type is `Function<PrometheusMeterRegistry, PrometheusMeterRegistry>`, so it **must return the
-registry** — returning `void`, or returning a fresh registry you did not derive from the argument,
-breaks the chain.
+registry** — returning `void`, or a fresh registry you did not derive from the argument, breaks the
+chain. It is the hook onto `registry.config()`: `meterFilter(io.micrometer.core.instrument.config.MeterFilter)`,
+`namingConvention(...)`, deny and rename rules. Cardinality caps and rename/deny rules are
+`MeterFilter`s; consult the
+[Micrometer meter-filter documentation](https://docs.micrometer.io/micrometer/reference/concepts/meter-filters.html)
+for the factory you need, since those APIs belong to Micrometer, not Kora.
+
+**Declaring one does not displace the common-tags initializer.** Since 2.0.0.RC2 (#935)
+`commonTagsMeterRegistryInitializer` is a regular component, so `All<PrometheusMeterRegistryInitializer>`
+always contains it next to yours — `metrics.tags` and every `MetricsTagsProvider` keep applying. (In
+RC1 it was `@DefaultComponent`, and `All<T>` drops a default candidate when a non-default one exists,
+so a custom initializer silently removed the common tags; do not copy the RC1 workaround that
+re-merged `MetricsConfig.tags()` and `All<MetricsTagsProvider>` by hand — it now installs the same
+filter twice.) Your initializer only adds its own rules:
 
 Java:
 
@@ -364,16 +479,14 @@ package com.example;
 
 import io.koraframework.common.annotation.Module;
 import io.koraframework.micrometer.module.PrometheusMeterRegistryInitializer;
+import io.micrometer.core.instrument.config.MeterFilter;
 
 @Module
 public interface CustomMetricsConfig {
 
-    default PrometheusMeterRegistryInitializer commonTagsInit() {
+    default PrometheusMeterRegistryInitializer meterFiltersInit() {
         return registry -> {
-            registry.config().commonTags(
-                    "service", "order-service",
-                    "environment", "production",
-                    "version", "1.0.0");
+            registry.config().meterFilter(MeterFilter.denyNameStartsWith("jvm.buffer"));
             return registry;
         };
     }
@@ -387,27 +500,20 @@ package com.example
 
 import io.koraframework.common.annotation.Module
 import io.koraframework.micrometer.module.PrometheusMeterRegistryInitializer
+import io.micrometer.core.instrument.config.MeterFilter
 
 @Module
 interface CustomMetricsConfig {
 
-    fun commonTagsInit(): PrometheusMeterRegistryInitializer =
+    fun meterFiltersInit(): PrometheusMeterRegistryInitializer =
         PrometheusMeterRegistryInitializer { registry ->
-            registry.config().commonTags(
-                "service", "order-service",
-                "environment", "production",
-                "version", "1.0.0")
+            registry.config().meterFilter(MeterFilter.denyNameStartsWith("jvm.buffer"))
             registry
         }
 }
 ```
 
-Multiple initializers are allowed and are applied in graph order. This is also the only hook Kora
-gives you onto `registry.config()`, so anything Micrometer exposes there — `commonTags(...)`,
-`meterFilter(io.micrometer.core.instrument.config.MeterFilter)`, `namingConvention(...)` — is
-reachable from here. Cardinality caps and rename/deny rules are `MeterFilter`s; consult the
-[Micrometer meter-filter documentation](https://docs.micrometer.io/micrometer/reference/concepts/meter-filters.html)
-for the factory you need, since those APIs belong to Micrometer, not Kora.
+Multiple initializers of your own are allowed and are applied in graph order.
 
 Useful common tags: `service`, `environment`, `version`, `region`. Keep them bounded — they multiply
 onto every series in the process.
@@ -416,8 +522,8 @@ onto every series in the process.
 
 ## Replacing the registry or the scraper { #replacing-the-registry }
 
-Both `MetricsModule` factory methods are `@DefaultComponent`, so a `@Component` of the same type in
-your graph wins. Two consequences worth knowing:
+`prometheusMeterRegistry` and `prometheusMetricsScraper` are `@DefaultComponent`, so a `@Component` of
+the same type in your graph wins. Two consequences worth knowing:
 
 - Supplying a non-Prometheus `MeterRegistry` leaves `prometheusMetricsScraper` matching the
   `else` branch, which returns `os -> {}`. `/metrics` then answers **200 with an empty body**.
@@ -439,7 +545,7 @@ your graph wins. Two consequences worth knowing:
 
 | 1.x key | Status in 2.0 |
 |---|---|
-| `metrics.opentelemetrySpec` (`V120` / `V123`) | **removed** — no source reads it, and no module resolves a top-level `metrics` config path |
+| `metrics.opentelemetrySpec` (`V120` / `V123`) | **removed** — the top-level `metrics` section maps onto `MetricsConfig`, which declares only `enabled` and `tags` |
 | `httpServer.publicApiHttpPort` | → `httpServer.port` |
 | `httpServer.privateApiHttpPort` | → `httpServer.system.port` |
 | `httpServer.privateApiHttpMetricsPath` | → `httpServer.system.metricsPath` |
@@ -457,6 +563,7 @@ changed on top of it. Setting `opentelemetrySpec` in a 2.0 config silently does 
 # 1. the registry is bound at all
 curl -s http://localhost:8085/metrics | head -1
 #    "# Metric Scraper disabled"  -> MetricsModule missing
+#    (nothing at all)             -> metrics.enabled = false
 
 # 2. component instrumentation is actually on
 curl -s http://localhost:8080/your/route > /dev/null

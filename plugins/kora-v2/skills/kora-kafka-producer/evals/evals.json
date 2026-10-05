@@ -168,12 +168,26 @@
       "query": "Port my Kora 1.x producer telemetry customisation to 2.0. I had a KafkaProducerLogger implementation registered through a telemetry listener factory component to change the log lines.",
       "expected_behavior": [
         "States that the 1.x KafkaProducerLogger-style listener interfaces and their factory registration no longer exist in Kora 2.0",
-        "Replaces it by declaring a @Component that EXTENDS DefaultKafkaPublisherLoggerFactory (or DefaultKafkaPublisherMetricsFactory for meters), which KafkaModule injects as a @Nullable dependency into the default telemetry factory",
-        "Mentions that replacing telemetry wholesale means a @Component implementing KafkaPublisherTelemetryFactory, which overrides the @DefaultComponent supplied by KafkaModule",
+        "Replaces it by declaring a @Component that EXTENDS DefaultKafkaPublisherLoggerFactory (or DefaultKafkaPublisherMetricsFactory for meters), which KafkaPublisherModule (via KafkaModule) injects as a @Nullable dependency into the default telemetry factory",
+        "Passes the injected @Tag(KafkaPublisherTelemetry.class) MaskingStrategy to super(...) — DefaultKafkaPublisherLoggerFactory has no no-arg constructor",
+        "Mentions that replacing telemetry wholesale means a @Component implementing KafkaPublisherTelemetryFactory, which overrides the @DefaultComponent supplied by KafkaPublisherModule",
         "Uses the io.koraframework.kafka.common.producer.telemetry package (impl subpackage for the Default* classes)",
         "Does not invent a listener-registration API, an All<T> collection of listeners, or a config key that names a logger class"
       ],
       "tags": ["producer", "telemetry", "regression", "migration"]
+    },
+    {
+      "id": "kora-kafka-producer-header-masking",
+      "skills": ["kora-kafka-producer"],
+      "query": "Our Kora 2.0 Kafka publisher adds an `x-api-key` header to every record. I want producer debug logs, including the record payload, but the API key must never be logged. How do I configure this?",
+      "expected_behavior": [
+        "Enables kafka.producer.<name>.telemetry.logging.enabled = true and explains that headers are logged only when the publisher's logger is at TRACE",
+        "Adds x-api-key to telemetry.logging.maskHeaders while keeping authorization, cookie and set-cookie, since the configured list replaces the default; matching is case-insensitive",
+        "States that the Kafka publisher never logs record keys or values, at any level — only masked headers — so the payload cannot be obtained from producer telemetry",
+        "Mentions that the masked value is produced by the @Tag(KafkaPublisherTelemetry.class) MaskingStrategy (default ***), replaceable with a tagged MaskingStrategy component such as MaskingKeepLast",
+        "Does not invent a producer DataMasker, a body-masking config key or a payload-logging switch for the publisher"
+      ],
+      "tags": ["producer", "telemetry", "masking"]
     },
     {
       "id": "kora-kafka-producer-testcontainers-coordinates",
@@ -202,6 +216,18 @@
         "Does not mark the transactional wrapper interface's inherited methods as suspend or add methods to it"
       ],
       "tags": ["producer", "transactions", "kotlin", "advanced"]
+    },
+    {
+      "id": "kora-kafka-producer-span-names",
+      "skills": ["kora-kafka-producer"],
+      "query": "What spans and meter tags does a Kora 2.0.0.RC2 @KafkaPublisher produce when tracing and metrics are on?",
+      "expected_behavior": [
+        "Names the per-record PRODUCER span 'send <topic>' (RC1 used '<topic> send') with messaging.operation.name = send and messaging.operation.type = send",
+        "Mentions the INTERNAL 'producer transaction' span for transactional publishers, with messaging.operation.name = commit or rollback",
+        "Lists messaging.client.operation.duration and messaging.client.sent.messages with messaging.system, messaging.client.id, messaging.operation.name, messaging.operation.type, destination name/partition and error.type",
+        "Says metrics.enabled defaults to false while tracing.enabled defaults to true"
+      ],
+      "tags": ["telemetry", "tracing"]
     }
   ]
 }

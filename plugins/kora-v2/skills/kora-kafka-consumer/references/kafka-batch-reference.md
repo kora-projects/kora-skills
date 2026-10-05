@@ -226,7 +226,7 @@ lower `pollTimeout`.
 - [Error handling](kafka-error-handling-reference.md)
 - [Consumer configuration](kafka-consumer-reference.md)
 
-**Source:** framework tag `2.0.0.RC1` —
-[RecordsHandler](https://github.com/kora-projects/kora/blob/2.0.0.RC1/kafka/kafka/src/main/java/io/koraframework/kafka/common/consumer/containers/handlers/impl/RecordsHandler.java) ·
-[HandlerWrapper](https://github.com/kora-projects/kora/blob/2.0.0.RC1/kafka/kafka/src/main/java/io/koraframework/kafka/common/consumer/containers/handlers/wrapper/HandlerWrapper.java);
+**Source:** framework tag `2.0.0.RC2` —
+[RecordsHandler](https://github.com/kora-projects/kora/blob/2.0.0.RC2/kafka/kafka/src/main/java/io/koraframework/kafka/common/consumer/containers/handlers/impl/RecordsHandler.java) ·
+[HandlerWrapper](https://github.com/kora-projects/kora/blob/2.0.0.RC2/kafka/kafka/src/main/java/io/koraframework/kafka/common/consumer/containers/handlers/wrapper/HandlerWrapper.java);
 [Apache Kafka consumer configs](https://kafka.apache.org/documentation/#consumerconfigs)

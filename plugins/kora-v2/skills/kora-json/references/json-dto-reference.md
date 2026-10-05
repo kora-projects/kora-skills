@@ -1,6 +1,6 @@
 # JSON DTO Reference (Kora 2.x)
 
-Verified against the Kora 2.0 sources — [`json/json-common`](https://github.com/kora-projects/kora/tree/2.0.0.RC1/json/json-common)
+Verified against the Kora 2.0 sources — [`json/json-common`](https://github.com/kora-projects/kora/tree/2.0.0.RC2/json/json-common)
 and the `json-annotation-processor` / `json-symbol-processor` test suites.
 
 ## Contents
@@ -92,6 +92,40 @@ Targets `TYPE`, `METHOD`.
 @JsonWriter
 public record ExportResponse(String report, int totalRecords) {}
 ```
+
+### Single-value types
+
+`@JsonReader` on a **`public static` factory method** `(V) -> T` plus `@JsonWriter` on a method
+returning `V` — an instance method `() -> V` or a static `(T) -> V` — makes a non-enum type read and
+write as a single JSON value (Jackson's `@JsonCreator(mode = DELEGATING)` + `@JsonValue`). The
+generated reader/writer delegate to `JsonReader<V>` / `JsonWriter<V>` from the graph. Proven by
+`DelegatingValueTest` in both processors.
+
+```java
+public record UserId(long id) {
+    @JsonReader public static UserId of(long v) { return new UserId(v); }
+    @JsonWriter public long id() { return id; }                      // UserId(42) <-> 42
+}
+
+public record Sku(String code) {
+    @JsonReader public static Sku parse(String v) { return new Sku(v); }
+    @JsonWriter public static String toJson(Sku sku) { return sku.code(); }   // static form
+}
+```
+
+```kotlin
+class UserId(val id: Long) {
+    @JsonWriter fun toJson(): Long = id
+    companion object { @JsonReader fun of(v: Long): UserId = UserId(v) }
+}
+```
+
+- Kotlin: the factory is declared in the `companion object`.
+- A factory that is not `public static` fails with `@JsonReader factory method must be public static`;
+  an annotated method outside a class fails with
+  `@JsonReader on a method is supported only for a static factory method of a class or enum`.
+- A `null` value is written as JSON `null`.
+- Enums keep their own mechanism — a `@Json` accessor (see [Enum Serialization](#7-enum-serialization)).
 
 > **Import collision:** `io.koraframework.json.common.annotation.JsonReader` (annotation) and
 > `io.koraframework.json.common.JsonReader` (runtime contract) share a simple name. In a file

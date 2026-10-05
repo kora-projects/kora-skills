@@ -8,9 +8,9 @@ metadata:
 
 # Kora JSON — compile-time JSON processing
 
-> **Kora sub-skill — obey the [kora-v2 meta rules](../../SKILL.md) on every task:** **R0** ground the workspace on Kora 2.0 refs before starting (framework source at tag `2.0.0.RC1` + `kora-examples` at `migration/2.0`; `kora-docs` is 1.x only) · **R1** read this sub-skill before writing code · **R2** Kora 2.0 APIs only — no Spring/Micronaut/Quarkus, no Kora 1.x APIs, no invented annotations or config keys · **R3** journal any incorrect Kora usage. Add comments/Javadoc only if asked.
+> **Kora sub-skill — obey the [kora-v2 meta rules](../../SKILL.md) on every task:** **R0** ground the workspace on Kora 2.0 refs before starting (framework source at tag `2.0.0.RC2` + `kora-examples` at `migration/2.0` + Kora 2.0 docs at koraframework.io/v2, which trail the source; 1.x `kora-docs` pages are never an authority) · **R1** read this sub-skill before writing code · **R2** Kora 2.0 APIs only — no Spring/Micronaut/Quarkus, no Kora 1.x APIs, no invented annotations or config keys · **R3** journal any incorrect Kora usage. Add comments/Javadoc only if asked.
 
-**Version:** Kora 2.0 (`io.koraframework`, `2.0.0.RC1` on Maven Central) | **Java:** 25 | **Kotlin:** 2.4 + KSP | **Gradle:** 9+
+**Version:** Kora 2.0 (`io.koraframework`, `2.0.0.RC2` on Maven Central) | **Java:** 25 | **Kotlin:** 2.4.20 + KSP 2.3.12 | **Gradle:** 9.8.0
 
 Kora generates `JsonReader<T>` / `JsonWriter<T>` at compile time from `@Json`-annotated
 records (Java) or data classes (Kotlin). No reflection, no runtime mapper discovery: an
@@ -39,9 +39,9 @@ exposes as an `api` dependency. Kora 2.0 JSON contracts are **synchronous** — 
 
 Two consequences that a package rename alone will not fix:
 
-- **`toByteArray` / `toString` declare no checked exception.** In `2.0.0.RC1` they declare no
-  `throws` clause at all. Java code that wrapped them in `try { … } catch (IOException e)`
-  now fails to compile with
+- **`toByteArray` / `toString` declare no checked exception.** They declare only
+  `throws tools.jackson.core.JacksonException`, which is unchecked. Java code that wrapped them
+  in `try { … } catch (IOException e)` now fails to compile with
   `error: exception IOException is never thrown in body of corresponding try statement`.
   Delete the `catch` block and the `import java.io.IOException;`.
 - **`JsonReader<T>.read(...)` is annotated `@Nullable`.** Kotlin cannot assign the result to
@@ -49,12 +49,11 @@ Two consequences that a package rename alone will not fix:
 
 ## Quick Start
 
-`gradle.properties` — **`2.0.0.RC1` is the Kora 2.0 release on Maven Central** (published
-2026-08-13, the only `2.0.x` there). `2.0.0-SNAPSHOT` is the development line and needs the
-snapshot repository; do not put it in a new project.
+`gradle.properties` — pin the released **`2.0.0.RC2`** from Maven Central. `2.0.0-SNAPSHOT` is
+the development line and needs the snapshot repository; do not put it in a new project.
 
 ```properties
-koraVersion=2.0.0.RC1
+koraVersion=2.0.0.RC2
 ```
 
 `build.gradle` — plain `mavenCentral()`; all Kora artifacts inherit their version from the
@@ -185,30 +184,73 @@ from `io.koraframework.common.annotation` / `io.koraframework.common.naming`.
 
 ### Runtime contracts (verbatim signatures)
 
-As published in **`2.0.0.RC1`** — not one method declares a `throws` clause:
-
 ```java
 public interface JsonWriter<T> extends Mapping.MappingFunction {
-    void write(JsonGenerator generator, @Nullable T object);
-    default byte[] toByteArray(@Nullable T value);
-    default String toString(@Nullable T value);
-    default String toPrettyString(@Nullable T value);
+    void write(JsonGenerator generator, @Nullable T object) throws JacksonException;
+    default byte[] toByteArray(@Nullable T value) throws JacksonException;
+    default String toString(@Nullable T value) throws JacksonException;
+    default String toPrettyString(@Nullable T value) throws JacksonException;
 }
 
 public interface JsonReader<T> extends Mapping.MappingFunction {
-    @Nullable T read(JsonParser parser);
-    @Nullable default T read(byte[] bytes);
-    @Nullable default T read(byte[] bytes, int offset, int length);
-    @Nullable default T read(String str);
-    @Nullable default T read(InputStream is);
+    @Nullable T read(JsonParser parser) throws JacksonException;
+    @Nullable default T read(byte[] bytes) throws JacksonException;
+    @Nullable default T read(byte[] bytes, int offset, int length) throws JacksonException;
+    @Nullable default T read(String str) throws JacksonException;
+    @Nullable default T read(InputStream is) throws JacksonException;
 }
 ```
 
-The `2.0.0-SNAPSHOT` development line adds an explicit
-`throws tools.jackson.core.JacksonException` to every one of them. That changes nothing for
-callers: `JacksonException` is **unchecked** (Kora's own `RawJsonWriter.write` and
-`ListJsonReader.read` override these methods with no `throws` clause). Neither line declares
-`IOException`, in any method.
+`tools.jackson.core.JacksonException` is **unchecked**, so callers need no `try/catch` and an
+implementation may omit the clause (Kora's own `RawJsonWriter.write` and `ListJsonReader.read`
+do). No method declares `IOException`.
+
+### Parse errors
+
+Every generated reader and built-in `JsonModule` reader fails with a
+`tools.jackson.core.exc.StreamReadException` whose message starts `Failed to read json` and ends
+with the JSON Pointer of the failing value (`(at /items/0/price)`, `<root>` for the top level):
+
+| Situation | Message shape |
+|---|---|
+| wrong token for a field | `Failed to read json Order.quantity: expected an integer number, but got a string "abc" (at /quantity)` |
+| required field absent | `Failed to read json Order: missing required field(s): id, quantity (at …)` |
+| non-nullable field is JSON `null` | `Failed to read json Order.id: required field must not be null (at /id)` |
+| wrong scalar in a built-in reader | `Failed to read json: expected an integer number, but got a boolean true (at /count)` |
+| unknown enum value | `Failed to read json enum: expected one of [NEW, PAID], but got "SENT" (at /status)` |
+| sealed type, discriminator missing | `Failed to read json Payment: missing required discriminator field "type", expected one of [CARD, CASH] (at …)` |
+| sealed type, unknown discriminator | `Failed to read json Payment: unknown discriminator value "WIRE" for field "type", expected one of [CARD, CASH] (at …)` |
+
+String values over 128 characters are truncated in the message. Map `StreamReadException` to a
+`400` in an HTTP error handler; do not parse the message text, it is diagnostic.
+
+### Single-value types — `@JsonReader` factory / `@JsonWriter` method
+
+A non-enum type can serialize as **one JSON value** instead of an object (Jackson's
+`@JsonCreator(mode = DELEGATING)` + `@JsonValue`): annotate a `public static` factory
+`(V) -> T` with `@JsonReader` and a method producing `V` with `@JsonWriter` — an instance
+method `() -> V` or a static one `(T) -> V`. The generated reader/writer delegate to the
+`JsonReader<V>` / `JsonWriter<V>` for the value type.
+
+```java
+public record UserId(long id) {
+    @JsonReader public static UserId of(long v) { return new UserId(v); }
+    @JsonWriter public long id() { return id; }
+}
+// UserId(42) <-> 42
+```
+
+```kotlin
+class Sku(val code: String) {
+    @JsonWriter fun toJson(): String = code
+    companion object { @JsonReader fun parse(v: String): Sku = Sku(v) }
+}
+// Sku("ABC") <-> "ABC"
+```
+
+In Kotlin the factory lives in the `companion object`. A non-`public static` factory fails with
+`@JsonReader factory method must be public static`. For enums use the `@Json` accessor instead
+([Enum serialization](#enum-serialization)).
 
 ### Sealed interfaces
 
@@ -309,7 +351,9 @@ and `NON_NULL` do not change that. See
 | `JsonReader can't choose a constructor for type` | Keep a single public constructor, or mark exactly one with `@JsonReader`/`@Json` |
 | `JsonWriter can't find an accessor for field` | Java bean field has no `field()`/`getField()` accessor — add one, or exclude the field with `@JsonSkip` |
 | `Json discriminator value can't be empty` | `@JsonDiscriminatorValue({})` — supply at least one value or drop the annotation |
-| Field missing on read | Fields are required by default — mark them `@Nullable` (Kotlin: `T?`) |
+| `Failed to read json X: missing required field(s): …` | Fields are required by default — mark them `@Nullable` (Kotlin: `T?`), or send the field |
+| `Failed to read json X: unknown discriminator value "…" for field "…"` | The payload's discriminator matches no `@JsonDiscriminatorValue` (or subtype simple name); the message lists the accepted values. Add the value, or set `@JsonDiscriminatorField(defaultValue = …)` only for a missing field |
+| `Failed to read json …: expected …, but got … (at /path)` | The value at that JSON Pointer has the wrong JSON type for the field |
 | Phantom `ru.tinkoff.kora` errors after the rename | Stale generated sources: `./gradlew clean` + `--no-build-cache`; never edit `build/generated` |
 | Jackson types do not resolve | Kora 2.0 uses **Jackson 3** under group `tools.jackson.core`, not `com.fasterxml.jackson.core` |
 

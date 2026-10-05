@@ -24,9 +24,7 @@ import java.util.concurrent.atomic.AtomicInteger
  *   fun process(records: ConsumerRecords<K, V>)                  // whole poll batch
  *   fun process(record: ConsumerRecord<K, V>, consumer: Consumer<K, V>)   // you commit
  *   fun process(value: String?, exception: Exception?)           // deserialization errors
- *
- * At 2.0.0.RC1, combining `headers: Headers` with an exception parameter generates Kotlin that does
- * not compile (fixed after RC1 on master). Take a ConsumerRecord and call record.headers() instead.
+ *   fun process(key: String?, value: String?, headers: Headers, exception: Exception?)
  */
 @Component
 class ${listenerName} {

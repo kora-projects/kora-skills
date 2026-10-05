@@ -103,8 +103,8 @@ and an explicit version on the `ksp` dependency** — the BOM does not constrain
 ```kotlin
 plugins {
     id("application")
-    kotlin("jvm") version "2.4.10"
-    id("com.google.devtools.ksp") version "2.3.11"
+    kotlin("jvm") version "2.4.20"
+    id("com.google.devtools.ksp") version "2.3.12"
 }
 
 repositories {
@@ -149,14 +149,15 @@ ksp {
 `-annotation-processor`, **plus `mapstruct-java-extension`**.
 
 `symbol-processors` (Kotlin) aggregates the same domains in `-symbol-processor` form, **plus
-`mapstruct-ksp-extension` and `konvert-ksp-extension`**.
+`konvert-ksp-extension`**.
 
 Consequences worth knowing:
 
-- MapStruct and Konvert discovery is already on the processor classpath. Do not add
-  `mapstruct-java-extension` / `mapstruct-ksp-extension` / `konvert-ksp-extension` by hand.
-- You still add the third-party halves yourself: `org.mapstruct:mapstruct` plus its processor, or
-  `io.mcarle:konvert-api` plus `ksp("io.mcarle:konvert")`.
+- Mapper discovery is already on the processor classpath. Do not add `mapstruct-java-extension` or
+  `konvert-ksp-extension` by hand.
+- You still add the third-party half yourself, by language: Java → `org.mapstruct:mapstruct` plus
+  `annotationProcessor "org.mapstruct:mapstruct-processor"`; Kotlin → `io.mcarle:konvert-api` plus
+  `ksp("io.mcarle:konvert")`. Never MapStruct in a Kotlin module.
 
 ---
 
@@ -201,7 +202,7 @@ subprojects {
 // submodule/build.gradle.kts
 plugins {
     kotlin("jvm")
-    id("com.google.devtools.ksp") version "2.3.11"
+    id("com.google.devtools.ksp") version "2.3.12"
 }
 
 dependencies {
@@ -218,7 +219,7 @@ A submodule that contributes components to a `@KoraApp` in another module marks 
 
 ## KSP 2 differences
 
-Kotlin 2.4.10 / KSP 2.3.11 replace the 1.9.x pair, and KSP 2 **no longer exports the `KspTask`
+Kotlin 2.4.20 / KSP 2.3.12 replace the 1.9.x pair, and KSP 2 **no longer exports the `KspTask`
 Gradle type**. Build logic that used it stops compiling:
 
 ```kotlin
@@ -239,8 +240,8 @@ tasks.named("kspKotlin") { /* ... */ }
 
 This matters most when a code generator (OpenAPI, protobuf) must run before KSP.
 
-Kora 2.0 has no `kapt` requirement: MapStruct for Kotlin goes through `mapstruct-ksp-extension`
-inside `symbol-processors`, so KSP alone is enough.
+Kora 2.0 has no `kapt` step: Kotlin maps with Konvert, whose processor is a KSP processor, so KSP
+alone is enough. MapStruct is Java-only — see [`kora-mapstruct`](../../kora-mapstruct/SKILL.md).
 
 ---
 
@@ -268,7 +269,7 @@ Checklist:
 ```
 
 - The `com.google.devtools.ksp` plugin is applied.
-- The KSP plugin version matches the Kotlin version (2.4.10 → 2.3.11).
+- The KSP plugin version matches the Kotlin version (2.4.20 → 2.3.12).
 
 ### `SQL query placeholder has no matching method parameter: :id`
 

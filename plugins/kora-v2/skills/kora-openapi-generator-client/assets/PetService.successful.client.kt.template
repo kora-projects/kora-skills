@@ -1,0 +1,60 @@
+package com.example
+
+import com.example.openapi.pet.api.PetApi
+import com.example.openapi.pet.model.Pet
+import io.koraframework.common.annotation.Component
+import io.koraframework.http.client.common.exception.HttpClientResponseException
+
+/**
+ * Using a Kora 2.x OpenAPI HTTP client generated with `clientResponseMode = "SUCCESSFUL"`.
+ *
+ * Each operation with a single 2xx response returns that 2xx data class directly, so the payload is
+ * `petApi.getPetById(id).content`. Declared error responses (non-2xx and `default`) are thrown
+ * instead of returned: one [HttpClientResponseException] subclass per distinct error body type,
+ * nested in the generated `PetApi`. The spec's `Error` schema is generated as `ModelError`, hence
+ * `PetApiModelErrorHttpClientResponseException`; an error response without a body throws
+ * `PetApiNoContentHttpClientResponseException`.
+ *
+ * Status code, headers and the raw body come from the base class (`code`, `headers`, `bytes`); the
+ * parsed error body is the `content` property.
+ */
+@Component
+class PetService(private val petApi: PetApi) {
+
+    /** Spec: 200 Pet, 404 Error. A 404 propagates as the typed exception. */
+    fun getPet(petId: Long): Pet = petApi.getPetById(petId).content
+
+    /** Several error statuses can share one exception type - branch on `code`. */
+    fun findPet(petId: Long): Pet? = try {
+        petApi.getPetById(petId).content
+    } catch (e: PetApi.PetApiModelErrorHttpClientResponseException) {
+        if (e.code == 404) null else throw e
+    }
+
+    /** Spec: 200 Pet, 400 Error, default Error. The 400 and every undeclared status land in the same exception. */
+    fun createPet(pet: Pet): Pet = try {
+        petApi.addPet(pet).content
+    } catch (e: PetApi.PetApiModelErrorHttpClientResponseException) {
+        throw IllegalArgumentException("addPet failed with ${e.code}: ${e.content.message}", e)
+    }
+
+    /** Spec: 204 (no body), 404 (no body). */
+    fun deletePet(petId: Long): Boolean = try {
+        petApi.deletePet(petId)
+        true
+    } catch (e: PetApi.PetApiNoContentHttpClientResponseException) {
+        false
+    }
+
+    /**
+     * Catch the typed exception first. The base [HttpClientResponseException] is what an error body
+     * that fails to parse, or a status with no declared response and no `default`, arrives as.
+     */
+    fun getPetOrFallback(petId: Long, fallback: Pet): Pet = try {
+        getPet(petId)
+    } catch (e: PetApi.PetApiModelErrorHttpClientResponseException) {
+        fallback
+    } catch (e: HttpClientResponseException) {
+        throw IllegalStateException("petApi answered ${e.code}", e)
+    }
+}

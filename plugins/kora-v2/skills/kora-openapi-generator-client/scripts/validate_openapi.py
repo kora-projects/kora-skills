@@ -181,15 +181,6 @@ class OpenAPIValidator:
             if not responses:
                 self.errors.append(f"No responses defined for {where}")
 
-            # Status-code RANGE responses (4XX/5XX) are not supported at 2.0.0.RC1; support
-            # landed after the tag was cut.
-            ranges = [str(code) for code in responses if re.fullmatch(r"[1-5]XX", str(code))]
-            if ranges:
-                self.warnings.append(
-                    f"{where} declares range response(s) {', '.join(sorted(ranges))} - not "
-                    f"supported at Kora 2.0.0.RC1; declare exact codes plus 'default'"
-                )
-
     def validate_components(self) -> None:
         schemas = ((self.spec.get("components") or {}).get("schemas")) or {}
 
@@ -369,11 +360,6 @@ class OpenAPIValidator:
                 self.warnings.append(
                     f"Multiple request content types for {where} ({', '.join(sorted(content))}) - "
                     f"the generator uses one of them"
-                )
-            if any(str(k).startswith("multipart/") for k in content):
-                self.warnings.append(
-                    f"{where} uses multipart - multipart mapping and parsing were fixed after "
-                    f"2.0.0.RC1, so verify the generated mappers on the released version"
                 )
 
     # --------------------------------------------------------------- entry point

@@ -168,14 +168,14 @@ public record Payment(String id,
 
 - `@Mask` targets `TYPE`, `FIELD`, `RECORD_COMPONENT`, `PARAMETER`, `METHOD` and `TYPE_USE`; its
   single attribute is `Class<? extends MaskingStrategy> value() default MaskingFull.class`.
-- `@Mask` **on the type** is what makes the processor run: `LoggingAnnotationProcessor` only reacts
-  to `@Mask` on a class or record (not an interface, not an abstract class) and generates a
-  `@Module` interface named `<Type>MaskingRulesModule` with a `@DefaultComponent` factory returning
-  `MaskingRules<Type>`. The name comes from `NameUtils.generatedType`, which prefixes the **outer
-  classes**: a nested `Outer.Payment` yields `Outer_Payment_MaskingRulesModule`, not
-  `Payment_MaskingRulesModule`. An interface or abstract class annotated `@Mask` is a compile
-  error, not a silent skip (`"Only classes and records can be annotated with @Mask"` /
-  `"Abstract classes can't be annotated with @Mask"`).
+- `@Mask` **on the type** is what the rules generator reacts to: only a class or record (not an
+  interface, not an abstract class) gets a `@Module` interface named `$<Type>_MaskingRulesModule`
+  with a `@DefaultComponent` factory returning `MaskingRules<Type>`. Outer classes are prefixed: a
+  nested `Outer.Payment` yields `$Outer_Payment_MaskingRulesModule`. Both KSP (Kotlin) and the Java
+  annotation processor generate it (Java since `2.0.0.RC2`, #921) — see
+  [logging-masking.md](../../kora-aop-logging/references/logging-masking.md#java-and-kotlin-both-generate-the-rules).
+  An interface or abstract class annotated `@Mask` is rejected (`"Only classes and records can be
+  annotated with @Mask"` / `"Abstract classes can't be annotated with @Mask"`).
 - Built-in strategies, all `@DefaultComponent`s of `LoggingModule`:
   `MaskingFull` (replacement `***`), `MaskingKeepFirst` (first 4 chars + `***`),
   `MaskingKeepLast` (`***` + last 4 chars). A custom `MaskingStrategy`
@@ -189,7 +189,10 @@ public record Payment(String id,
 - JSON `null` is never masked; map **keys** are never masked as values.
 
 Masking of `@Log`-ged method arguments and results is driven by the same annotations but wired by
-the aspect — see [`kora-aop-logging`](../../kora-aop-logging/SKILL.md).
+the aspect — see [`kora-aop-logging`](../../kora-aop-logging/SKILL.md). The same rule syntax
+(`MaskingRules` extends `MaskingPathRules`) also drives the `DataMasker` body maskers of HTTP and
+Kafka telemetry; how the masking layers relate is in the canonical
+[logging-masking.md](../../kora-aop-logging/references/logging-masking.md).
 
 ## How a structured value reaches the output
 
@@ -202,12 +205,13 @@ Logback event (KeyValuePair / Marker / argument array)
         ▼  KoraAsyncAppender.append  →  KoraLoggingEvent(… koraMdc, spanContext)
         │
         ▼  ConsoleTextRecordEncoder  →  "\tk={…json…}"
+           JsonRecordEncoder         →  "args":{"k":{…json…}}
 ```
 
 An encoder that does not know about `StructuredArgument` — a plain `<pattern>` encoder — drops the
 value entirely: `%msg` renders `arg(...)` through `toString()` and never sees a marker or a
-key/value pair. This is why the example apps use `ConsoleTextRecordEncoder` in
-`src/main/resources/logback.xml`.
+key/value pair. This is why production output uses `ConsoleTextRecordEncoder` or
+`JsonRecordEncoder` — see [json-logging-reference.md](json-logging-reference.md).
 
 ## Best practices
 

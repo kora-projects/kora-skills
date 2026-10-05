@@ -8,11 +8,11 @@ metadata:
 
 # Kora Testing JUnit (Kotlin)
 
-> **Kora sub-skill — obey the [kora-v2 meta rules](../../SKILL.md) on every task:** **R0** ground the workspace on Kora 2.0 refs before starting (framework source at tag `2.0.0.RC1` + `kora-examples` at `migration/2.0`; `kora-docs` is 1.x only) · **R1** read this sub-skill before writing code · **R2** Kora 2.0 APIs only — no Spring/Micronaut/Quarkus, no Kora 1.x APIs, no invented annotations or config keys · **R3** journal any incorrect Kora usage. Add comments/Javadoc only if asked.
+> **Kora sub-skill — obey the [kora-v2 meta rules](../../SKILL.md) on every task:** **R0** ground the workspace on Kora 2.0 refs before starting (framework source at tag `2.0.0.RC2` + `kora-examples` at `migration/2.0` + Kora 2.0 docs at koraframework.io/v2, which trail the source; 1.x `kora-docs` pages are never an authority) · **R1** read this sub-skill before writing code · **R2** Kora 2.0 APIs only — no Spring/Micronaut/Quarkus, no Kora 1.x APIs, no invented annotations or config keys · **R3** journal any incorrect Kora usage. Add comments/Javadoc only if asked.
 
 | | |
 |---|---|
-| **Artifact** | `io.koraframework:test-junit5` (BOM `io.koraframework:kora-bom`, `2.0.0.RC1`) |
+| **Artifact** | `io.koraframework:test-junit5` (BOM `io.koraframework:kora-bom`, `2.0.0.RC2`) |
 | **Extension package** | `io.koraframework.test.extension.junit5` — `@KoraAppTest`, `@TestComponent`, `KoraAppTestConfigModifier`, `KoraAppTestGraphModifier`, `KoraConfigModification`, `KoraGraphModification`, `KoraAppGraph` |
 | **Mockito strictness** | `io.koraframework.test.extension.junit5.mockito.MockitoStrictness` |
 | **Processor** | `ksp("io.koraframework:symbol-processors:${property("koraVersion")}")`; `kspTest(...)` **only** when `src/test` declares its own `@KoraApp` |
@@ -109,7 +109,7 @@ tasks.test {
 }
 ```
 
-`gradle.properties` carries `koraVersion=2.0.0.RC1` and `junitVersion=6.1.3`, resolved from plain
+`gradle.properties` carries `koraVersion=2.0.0.RC2` and `junitVersion=6.1.3`, resolved from plain
 `mavenCentral()`. In a Kotlin module the BOM goes **directly** on `implementation` and every
 processor coordinate names its version explicitly — do not port the Java-side `koraBom`
 configuration with `extendsFrom` into `build.gradle.kts`.
@@ -507,6 +507,8 @@ plain component.
 | Mock not applied / inconsistent instance | `MockKExtension` / `MockitoExtension` attached alongside `@KoraAppTest` | remove the extra `@ExtendWith(...)` |
 | `Cannot use KoraAppTestConfigModifier with @KoraAppTest constructor injection` | modifier + constructor `@TestComponent` | move injection to fields or test-method parameters |
 | `Cannot inject mocks through test method parameters with TestInstance.Lifecycle.PER_CLASS` | per-method mock under a per-class graph | switch to `PER_METHOD`, or declare mocks as fields |
+| `IllegalArgumentException: Graph node belongs to another application graph` (`GraphImpl$GraphConditionKey.hashCode`) at graph init | the test graph contains a `@Conditional` component (any full-graph test of such an app): the extension always `copy()`s the draw and `subgraph()`s it for declared roots/mocks, and both keep the original node condition, which reads the original condition node on the derived graph | fixed in `2.0.0.RC2` (kora-projects/kora PR #963) — only `2.0.0.RC1` is affected; on RC1 no practical workaround besides keeping `@Conditional` out of the graph under test |
+| `PER_CLASS` tests fail in `beforeEach` (`KoraJUnit5Extension.resetMocks`) with `Graph node value was not initialized because condition failed` | with MockK or Mockito on the classpath `resetMocks` reads every graph node, and a condition-failed `@Conditional` node throws on read; `KoraAppGraph.getAll` throws the same way instead of skipping it. Reachable once #963 is in | fixed in `2.0.0.RC2` (kora-projects/kora PR #964) — only `2.0.0.RC1` is affected; on RC1 use `PER_METHOD` and avoid `getAll` over that type |
 | `Injected fields cannot be static` / `cannot be final` | `@TestComponent` on a `const`/companion/`val` field | use `lateinit var`, or constructor injection |
 | `ConfigValueException: … null at path: 'ROOT.jdbc.username'` | `db { }` left in an `ofString` block | rename the section to `jdbc { }` |
 | App comes up on 8080/8085 despite custom ports | `publicApiHttpPort` / `privateApiHttpPort` in test config — unknown keys, silently ignored | use `httpServer.port` and `httpServer.system.port` |

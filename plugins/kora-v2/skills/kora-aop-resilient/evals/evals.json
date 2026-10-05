@@ -9,7 +9,7 @@
       "expected_behavior": [
         "Adds implementation \"io.koraframework:resilient-kora\"",
         "Adds the mandatory processor: Java annotationProcessor \"io.koraframework:annotation-processors\", Kotlin ksp \"io.koraframework:symbol-processors\"",
-        "Uses platform \"io.koraframework:kora-bom\" at 2.0.0.RC1 (koraVersion property) from plain mavenCentral(), without pinning per-artifact versions",
+        "Uses platform \"io.koraframework:kora-bom\" at 2.0.0.RC2 (koraVersion property) from plain mavenCentral(), without pinning per-artifact versions",
         "Has the @KoraApp interface extend io.koraframework.resilient.ResilientModule",
         "States that the generated $<Spec>_Module must NOT be extended manually — @KoraApp picks it up"
       ],
@@ -329,13 +329,14 @@
         "Declares a single spec interface used by both classes so they share one permit pool",
         "Configures limitForPeriod = 100 and limitRefreshPeriod = \"1s\", both required",
         "States that an exceeded limit throws RateLimitExceededException immediately — callers are never blocked or queued",
-        "Notes it is a per-process fixed-window limiter with no cluster-wide coordination"
+        "Notes it is a per-process limiter whose default algorithm is TOKEN_BUCKET (GCRA, burst up to limitForPeriod), with type = FIXED_WINDOW as the alternative, and points to @RateLimiterDistributedSpec when the quota must hold across instances"
       ],
       "anti_behavior": [
         "Claims @RateLimited existed in Kora 1.x",
-        "Describes it as a token bucket that blocks or queues callers",
+        "Describes the limiter as blocking or queueing callers",
         "Gives each class its own spec interface on the same config path",
-        "Suggests a resilient.ratelimiter key set that is not limitForPeriod / limitRefreshPeriod / enabled"
+        "Suggests a resilient.ratelimiter key set other than limitForPeriod / limitRefreshPeriod / type / enabled",
+        "Claims KoraRateLimiter is fixed-window only or not a token bucket"
       ],
       "tags": [
         "rate-limiter",
@@ -388,6 +389,185 @@
         "signatures",
         "regression-reactive-removed"
       ]
+    },
+    {
+      "id": "kora-aop-resilient-rate-limiter-algorithm",
+      "skills": [
+        "kora-aop-resilient"
+      ],
+      "query": "Our Kora 2.0 @RateLimited limiter is set to limitForPeriod = 100, limitRefreshPeriod = \"1s\". Someone on the team says it lets 200 calls through around a second boundary because it is a fixed window. Is that right, and how do I choose the algorithm?",
+      "expected_behavior": [
+        "States that the local limiter selects its algorithm with the `type` key (RateLimiterConfig.type, enum RateLimiterType) and that the default is TOKEN_BUCKET",
+        "Explains TOKEN_BUCKET is GCRA: continuous refill at limitForPeriod / limitRefreshPeriod with a burst of up to limitForPeriod after idle, so it does not double at a window boundary",
+        "Explains that only type = FIXED_WINDOW has the up-to-2x boundary behaviour, and when a literal quota per window is worth that",
+        "States that both algorithms reject immediately with RateLimitExceededException and never block or queue"
+      ],
+      "anti_behavior": [
+        "Claims KoraRateLimiter is fixed-window only or 'not a token bucket'",
+        "Recommends halving limitRefreshPeriod as the only fix for boundary bursts",
+        "Invents keys such as algorithm, burst or timeoutDuration for the local @RateLimiterSpec section",
+        "Claims the token bucket waits for a permit"
+      ],
+      "tags": [
+        "rate-limiter",
+        "config",
+        "regression-token-bucket-default"
+      ]
+    },
+    {
+      "id": "kora-aop-resilient-non-retryable-marker",
+      "skills": [
+        "kora-aop-resilient"
+      ],
+      "query": "In Kora 2.0 I don't want @Retryable to retry our ValidationException, and I don't want our circuit breaker to count OrderNotFoundException as a failure. Is there something simpler than writing predicates?",
+      "expected_behavior": [
+        "Uses the marker interfaces io.koraframework.resilient.retry.NonRetryableException and io.koraframework.resilient.circuitbreaker.NonCircuitableException",
+        "Notes both are interfaces, so the exceptions keep their superclass and add the marker to implements (Kotlin: to the supertype list)",
+        "States a NonRetryableException propagates on the first throw without RetryExhaustedException",
+        "States a NonCircuitableException still propagates to the caller but is counted as neither a failure nor a success by the breaker",
+        "Warns that a tagged RetryPredicate/CircuitBreakerPredicate or an overridden isFailure replaces the default check, so the markers are only honoured by the default isFailure"
+      ],
+      "anti_behavior": [
+        "Invents annotations such as @NonRetryable or @NoRetry",
+        "Declares NonRetryableException or NonCircuitableException as a class to extend",
+        "Places the markers in io.koraframework.resilient.exception or another wrong package",
+        "Claims the markers still apply when a tagged predicate is present"
+      ],
+      "tags": [
+        "retry",
+        "circuit-breaker",
+        "predicate",
+        "regression-non-retryable"
+      ]
+    },
+    {
+      "id": "kora-aop-resilient-retry-budget-factory",
+      "skills": [
+        "kora-aop-resilient"
+      ],
+      "query": "Our Kora 2.0 service has ten @RetrySpec retries. For just one of them, PricingRetry, I want a different retry budget implementation than the one built from config. How is the retry budget wired?",
+      "expected_behavior": [
+        "Explains the RetryBudget interface (tryAcquireRetryToken, onSuccess, availableTokens) with KoraRetryBudget as the in-JVM implementation",
+        "Explains that each retry gets its budget from a RetryBudgetFactory: a factory tagged @Tag(PricingRetry.class) wins for that retry, else the untagged one",
+        "States the untagged default is DefaultRetryBudgetFactory from ResilientModule, which builds a KoraRetryBudget from the retryBudget block and returns null (no budget) when the block is absent or disabled",
+        "Registers a RetryBudgetFactory component tagged @Tag(PricingRetry.class), e.g. in a @Module, and notes an untagged one would replace the default for every retry",
+        "Notes that a denied token propagates the original exception and tags resilient.retry.exhausted with resilient.reason=EXHAUSTED_BUDGET"
+      ],
+      "anti_behavior": [
+        "Invents a config key such as retryBudget.type or retryBudgetFactoryName to pick the implementation",
+        "Uses a string name or failurePredicateName-style lookup",
+        "Claims the retry budget is shared across service instances by default"
+      ],
+      "tags": [
+        "retry",
+        "retry-budget",
+        "advanced"
+      ]
+    },
+    {
+      "id": "kora-aop-resilient-distributed-rate-limiter",
+      "skills": [
+        "kora-aop-resilient"
+      ],
+      "query": "We run six replicas of a Kora 2.0 service and the partner API allows 50 requests per second in total, not per replica. We already use Redis. How do I rate limit across all replicas?",
+      "expected_behavior": [
+        "Adds io.koraframework:resilient-kora-distributed-redis-lettuce (which brings resilient-kora-distributed and redis-lettuce) and extends LettuceDistributedResilientModule on the @KoraApp while keeping ResilientModule",
+        "Declares the spec with @RateLimiterDistributedSpec(\"...\") from io.koraframework.resilient.distributed.ratelimiter.annotation on an interface extending io.koraframework.resilient.ratelimiter.RateLimiter, and keeps using @RateLimited(Spec.class)",
+        "Configures limitForPeriod, limitRefreshPeriod and the required keyPrefix, and notes the algorithm key is `algorithm` (TOKEN_BUCKET default, or FIXED_WINDOW), not `type`",
+        "Configures the Redis connection through the lettuce section (lettuce.uri; standalone or cluster)",
+        "States that a Redis failure propagates as an exception rather than letting the call through"
+      ],
+      "anti_behavior": [
+        "Keeps @RateLimiterSpec and claims its state is shared between replicas",
+        "Divides the limit by the replica count as the recommended solution",
+        "Writes a Lua script or a custom Redis client as a required step",
+        "Uses `type = TOKEN_BUCKET` inside the distributed section"
+      ],
+      "tags": [
+        "rate-limiter",
+        "distributed",
+        "redis"
+      ]
+    },
+    {
+      "id": "kora-aop-resilient-distributed-per-key",
+      "skills": [
+        "kora-aop-resilient"
+      ],
+      "query": "Can Kora 2.0's distributed rate limiter limit each tenant separately, e.g. 10 requests per second per tenantId, using DistributedRateLimiterFactory?",
+      "expected_behavior": [
+        "States that the framework source has no DistributedRateLimiterFactory and no per-key limiter: a @RateLimiterDistributedSpec maps to one Redis key, <keyPrefix>:<SpecSimpleName>",
+        "Says per-tenant limiting has to be implemented in application code",
+        "Warns that specs with the same simple name and keyPrefix share one quota across services"
+      ],
+      "anti_behavior": [
+        "Shows DistributedRateLimiterFactory.get(key) or any other per-key API as if it existed",
+        "Claims a SpEL/placeholder in the spec path creates one limiter per tenant"
+      ],
+      "tags": [
+        "rate-limiter",
+        "distributed",
+        "regression-no-invented-api"
+      ]
+    },
+    {
+      "id": "kora-aop-resilient-distributed-retry-budget",
+      "skills": [
+        "kora-aop-resilient"
+      ],
+      "query": "Make the retry budget of PartnerRetry shared across all instances of our Kora 2.0 service via Redis.",
+      "expected_behavior": [
+        "Uses io.koraframework.resilient.distributed.retry.DistributedRetryBudgetFactory built from the DistributedRetryBudgetClient supplied by LettuceDistributedResilientModule",
+        "Registers it as a RetryBudgetFactory component tagged @Tag(PartnerRetry.class), noting it is not registered by any module automatically",
+        "Keeps the retryBudget block on resilient.retry.partner because the distributed factory returns no budget without it",
+        "Notes minTokensPerSecond is ignored by the distributed budget and that the key is <keyPrefix>:PartnerRetry with a TTL (default prefix kora:retrybudget, 10 minutes)"
+      ],
+      "anti_behavior": [
+        "Injects DistributedRetryBudgetFactory as if a module provided it",
+        "Invents a retryBudget.distributed or retryBudget.redis config key",
+        "Drops the retryBudget block"
+      ],
+      "tags": [
+        "retry",
+        "retry-budget",
+        "distributed",
+        "redis"
+      ]
+    },
+    {
+      "id": "kora-aop-resilient-inspect-state",
+      "skills": [
+        "kora-aop-resilient"
+      ],
+      "query": "How can I log the current state of a Kora 2.0 circuit breaker and rate limiter from my code while debugging?",
+      "expected_behavior": [
+        "Injects the spec interface and logs its toString(), which reports the implementation and live state (breaker state and counters, available permits; retries and retry budgets likewise)",
+        "Says the toString format is for humans and should not be parsed",
+        "Mentions resilient.circuitbreaker.state as the metric to monitor state in production, with telemetry enabled explicitly"
+      ],
+      "anti_behavior": [
+        "Calls a getState() method on the CircuitBreaker contract",
+        "Uses a CircuitBreakerManager or RateLimiterManager"
+      ],
+      "tags": [
+        "debugging",
+        "telemetry"
+      ]
+    },
+    {
+      "id": "kora-aop-resilient-metric-tags",
+      "skills": ["kora-aop-resilient"],
+      "query": "Write a PromQL alert for Kora 2.0 when the circuit breaker configured at resilient.circuitbreaker.payments is OPEN, and a panel for rejected rate-limiter acquires.",
+      "expected_behavior": [
+        "Enables metrics first (resilient.telemetry.circuitBreaker / rateLimiter or <specPath>.telemetry, off by default) and needs MetricsModule in the graph",
+        "Uses resilient_circuitbreaker_state == 2 (0 CLOSED, 1 HALF_OPEN, 2 OPEN) filtered by the resilient_name label equal to the spec's config path",
+        "Uses resilient_ratelimiter_acquire with resilient_status=\"rejected\"",
+        "States that since 2.0.0.RC2 every resilience tag is resilient.-prefixed (resilient.name, resilient.state, resilient.status, resilient.reason, resilient.type)"
+      ],
+      "anti_behavior": [
+        "Filters on a bare name=\"...\" or status=\"...\" label (the RC1 tag names)"
+      ],
+      "tags": ["telemetry", "metrics"]
     }
   ]
 }

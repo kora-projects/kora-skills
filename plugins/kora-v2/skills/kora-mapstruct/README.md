@@ -1,33 +1,33 @@
-# Kora MapStruct
+# Kora MapStruct / Konvert
 
-DTO ↔ entity mapping in Kora 2.0. Kora generates no mappers — it ships three **extensions** that
-bind an implementation another processor produced, so an annotated mapper interface becomes an
-injectable component with no `@Component` and no module to plug into `@KoraApp`.
+DTO ↔ entity mapping in Kora 2.0. The module language picks the tool, with no crossover:
 
-- **Java → MapStruct.** `org.mapstruct.@Mapper` + the MapStruct javac processor;
+- **Java → MapStruct.** `org.mapstruct.@Mapper` + `annotationProcessor "org.mapstruct:mapstruct-processor"`;
   `mapstruct-java-extension` binds the generated `*MapperImpl`.
-- **Kotlin → Konvert.** `io.mcarle.konvert.api.@Konverter` + Konvert's KSP processor;
-  `konvert-ksp-extension` binds the generated `object <Name>Impl`. **kapt is not the 2.0 path.**
-- **Kotlin consuming a Java MapStruct mapper** → `mapstruct-ksp-extension` binds an impl that is
-  already on the compile classpath.
+- **Kotlin → Konvert.** `io.mcarle.konvert.api.@Konverter` + `ksp("io.mcarle:konvert")`;
+  `konvert-ksp-extension` binds the generated `object <Name>Impl`. Never MapStruct or `kapt` in Kotlin.
 
-All three ship inside `io.koraframework:annotation-processors` / `io.koraframework:symbol-processors`
-and are never declared directly. `ru.tinkoff.kora:mapstruct-extension` does not exist in 2.0.
+Kora generates no mappers — the extension binds the implementation the mapping library produced, so
+the mapper interface becomes an injectable component with no `@Component` and no module to plug
+into `@KoraApp`. The extensions ship inside `io.koraframework:annotation-processors` /
+`io.koraframework:symbol-processors` and are never declared directly.
+`ru.tinkoff.kora:mapstruct-extension` does not exist in 2.0.
 
 ## When to Use
 
 - Mapping between request/response DTOs, domain entities and persistence rows
 - Field renames, ignores, computed values, enum ↔ String conversion
 - PATCH-style in-place updates via `@MappingTarget` (Java/MapStruct)
-- Deciding between MapStruct, Konvert, and a hand-written mapper
+- A user asks for MapStruct in Kotlin — steer to Konvert
+- Deciding between a mapping library and a hand-written mapper
 
 ## Entry point
 
-Read `SKILL.md` for the Quick Starts and the Kotlin ruling, then the files under `references/`.
+Read `SKILL.md` for the language rule and both quick starts, then the files under `references/`.
 
 ## Resources
 
-- `SKILL.md` — mechanism, Java and Kotlin quick starts, versions, decision table, pitfalls
-- `references/` — mapper discovery and annotations, build configuration, MapStruct expressions
-- `assets/` — Java `@Mapper` and Kotlin `@Konverter` templates, plus Gradle snippets for both
-- `evals/` — regression cases covering the removed coordinate, the kapt question, and version pinning
+- `SKILL.md` — the rule, mechanism, Java (MapStruct) and Kotlin (Konvert) quick starts, Konvert limits, pitfalls
+- `references/` — Java: mapper discovery and annotations, build configuration, MapStruct expressions; Kotlin: Konvert
+- `assets/` — Java `@Mapper` and Kotlin `@Konverter` template twins, Gradle snippets for both
+- `evals/` — regression cases: language rule, removed coordinate, kapt question, Konvert limits, version pinning

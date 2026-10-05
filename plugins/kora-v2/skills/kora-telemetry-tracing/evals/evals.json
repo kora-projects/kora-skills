@@ -7,10 +7,10 @@
       ],
       "query": "Set up OpenTelemetry tracing in my Kora service and export traces over OTLP gRPC to an OpenTelemetry Collector. The service name should be order-service.",
       "expected_behavior": [
-        "Adds io.koraframework:opentelemetry-tracing-exporter-grpc and leaves it unversioned, taking the version from platform(\"io.koraframework:kora-bom:$koraVersion\") with koraVersion=2.0.0.RC1",
+        "Adds io.koraframework:opentelemetry-tracing-exporter-grpc and leaves it unversioned, taking the version from platform(\"io.koraframework:kora-bom:$koraVersion\") with koraVersion=2.0.0.RC2",
         "Extends OpentelemetryGrpcExporterModule from io.koraframework.opentelemetry.tracing.exporter.grpc on the @KoraApp interface (@KoraApp imported from io.koraframework.common.annotation)",
         "Sets tracing.exporter.endpoint to an OTLP gRPC URL on port 4317 with no path segment",
-        "Sets tracing.attributes.\"service.name\" = \"order-service\" and explains that the OTLP resource is built from tracing.attributes alone",
+        "Sets tracing.attributes.\"service.name\" = \"order-service\" and explains that Kora adds no resource attribute itself: the OTLP resource is built only from OpentelemetryTracingAttributesProvider components and tracing.attributes",
         "Includes the processor: annotationProcessor \"io.koraframework:annotation-processors\" (Java) or ksp \"io.koraframework:symbol-processors\" (Kotlin)",
         "Does not add io.opentelemetry:* dependencies by hand, since the OpenTelemetry API and SDK arrive transitively"
       ],
@@ -101,10 +101,11 @@
       ],
       "query": "Do I have to turn tracing on in Kora 2.0 the same way I have to turn metrics on?",
       "expected_behavior": [
-        "States that TracingConfig.enabled() defaults to true, unlike LoggingConfig.enabled() and MetricsConfig.enabled(), which default to false",
+        "States that TracingConfig.enabled() and OpentelemetryTracingConfig.enabled() default to true, unlike the per-component LoggingConfig.enabled() and MetricsConfig.enabled() (telemetry.logging/metrics.enabled), which default to false",
         "Explains that you therefore only ever write tracing.enabled = false, and that writing true changes nothing",
         "Names httpServer.system as the single place where tracing is overridden to false",
-        "Points out that with tracing on but tracing.exporter.endpoint unset, spans are created and sampled but silently never exported"
+        "Points out that with tracing on but tracing.exporter.endpoint unset, spans are created and sampled but silently never exported",
+        "Explains that tracing.enabled = false swaps in TracerProvider.noop() and makes the exporter SpanExporter/SpanProcessor no-ops"
       ],
       "anti_behavior": [
         "Tells the user to add tracing.enabled = true or <component>.telemetry.tracing.enabled = true to make tracing work",
@@ -319,6 +320,50 @@
       "tags": [
         "logging",
         "advanced"
+      ]
+    },
+    {
+      "id": "kora-telemetry-tracing-attributes-provider",
+      "skills": [
+        "kora-telemetry-tracing"
+      ],
+      "query": "I want every exported span of my Kora 2.0 Java service to carry service.instance.id from the HOSTNAME environment variable and the build version from the jar manifest, computed at startup. service.name is already in tracing.attributes.",
+      "expected_behavior": [
+        "Implements io.koraframework.opentelemetry.tracing.OpentelemetryTracingAttributesProvider in a @Component class returning Map<String, String> from attributes()",
+        "Explains that OpentelemetryTracingModule collects every provider through All<OpentelemetryTracingAttributesProvider> and puts their attributes on the OpenTelemetry Resource, so they apply to every span",
+        "States that tracing.attributes is applied after the providers and wins on a key conflict, so service.name stays in config",
+        "Notes that attributes() is called once while the graph builds the Resource",
+        "Uses OpenTelemetry resource semantic-convention keys (service.instance.id, service.version) and a fallback such as \"unknown\" for missing values"
+      ],
+      "anti_behavior": [
+        "Adds the values as per-component telemetry.tracing.attributes or sets them on each span by hand",
+        "Replaces the @DefaultComponent Resource with a hand-built one when a provider suffices",
+        "Claims the provider overrides tracing.attributes"
+      ],
+      "tags": [
+        "config",
+        "resource",
+        "java"
+      ]
+    },
+    {
+      "id": "kora-telemetry-tracing-resource-conflict",
+      "skills": [
+        "kora-telemetry-tracing"
+      ],
+      "query": "My OpentelemetryTracingAttributesProvider returns service.name = order-service-canary, but traces still show order-service. tracing.attributes has \"service.name\" = \"order-service\". Is the provider not registered?",
+      "expected_behavior": [
+        "Explains that the provider is registered: opentelemetryTracingResource puts every provider's attributes first and tracing.attributes last, so the config value wins on the service.name key",
+        "Fixes it by removing service.name from tracing.attributes (or computing it in config with an environment substitution) rather than expecting the provider to override config"
+      ],
+      "anti_behavior": [
+        "Claims providers are applied after config",
+        "Suggests a tracing.resource or tracing.attributesProvider config key"
+      ],
+      "tags": [
+        "config",
+        "resource",
+        "troubleshooting"
       ]
     }
   ]

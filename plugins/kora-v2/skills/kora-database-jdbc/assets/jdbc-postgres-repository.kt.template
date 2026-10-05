@@ -1,0 +1,86 @@
+package ${package}
+
+import io.koraframework.database.common.UpdateCount
+import io.koraframework.database.common.annotation.Id
+import io.koraframework.database.common.annotation.Query
+import io.koraframework.database.common.annotation.Repository
+import io.koraframework.database.common.annotation.Table
+import io.koraframework.database.jdbc.JdbcRepository
+import io.koraframework.database.jdbc.annotation.EntityJdbc
+import io.koraframework.database.jdbc.postgres.PgRange
+import io.koraframework.database.jdbc.postgres.annotation.Pg
+import io.koraframework.database.jdbc.postgres.annotation.PgJsonb
+import io.koraframework.json.common.annotation.Json
+import java.time.Duration
+import java.time.LocalDate
+
+/**
+ * PostgreSQL-specific columns through io.koraframework:database-jdbc-postgres (Kotlin).
+ *
+ * Wiring: the @KoraApp extends PostgresJdbcDatabaseModule INSTEAD of JdbcDatabaseModule (it extends
+ * it), plus JsonModule for the @PgJsonb payload. The artifact brings the PostgreSQL driver.
+ *
+ * Tags select the mappers, and they are opt-in:
+ * - @Pg       List/Set/Collection<T> and arrays (bool, int2, int4, int8, float4, float8, numeric,
+ *             varchar, uuid; LongArray, IntArray, ...), Duration/Period as interval
+ * - @PgJsonb  any @Json type as jsonb; @PgJson for a json column
+ * - PgRange<T> needs no tag (int4range, int8range, numrange, daterange, tsrange, tstzrange)
+ * Write @Pg / @PgJsonb without a use-site target — the tag is read from the constructor parameter.
+ * @Id keeps its `@field:` target.
+ *
+ * Collection parameters accept List, Set or Collection; results are always List.
+ * `= ANY(:ids)` binds the whole collection as one array parameter — IN (:ids) cannot take a list.
+ * @PgJsonb sends a jsonb-typed parameter, so neither the INSERT nor `@>` needs a ::jsonb cast.
+ *
+ * Matching DDL:
+ *   CREATE TABLE ${table_name} (
+ *       id         BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+ *       name       VARCHAR(255) NOT NULL,
+ *       tags       VARCHAR[]    NOT NULL DEFAULT '{}',
+ *       ttl        INTERVAL,
+ *       validity   DATERANGE    NOT NULL,
+ *       attributes JSONB        NOT NULL
+ *   );
+ */
+@Repository
+interface ${entity_name}Repository : JdbcRepository {
+
+    @EntityJdbc
+    @Table("${table_name}")
+    data class ${entity_name}(
+        @field:Id val id: Long?,
+        val name: String,
+        @Pg val tags: List<String>,
+        @Pg val ttl: Duration?,
+        val validity: PgRange<LocalDate>,
+        @PgJsonb val attributes: Attributes
+    )
+
+    @Json
+    data class Attributes(val owner: String, val labels: List<String>)
+
+    @Query("SELECT %{return#selects} FROM %{return#table} WHERE id = :id")
+    fun findById(id: Long): ${entity_name}?
+
+    @Query("SELECT %{return#selects} FROM %{return#table} WHERE id = ANY(:ids)")
+    fun findByIds(@Pg ids: List<Long>): List<${entity_name}>
+
+    @Query("SELECT %{return#selects} FROM %{return#table} WHERE tags && :tags")
+    fun findByAnyTag(@Pg tags: Set<String>): List<${entity_name}>
+
+    @Query("SELECT %{return#selects} FROM %{return#table} WHERE validity @> :day")
+    fun findValidOn(day: LocalDate): List<${entity_name}>
+
+    @Query("SELECT %{return#selects} FROM %{return#table} WHERE validity && :period")
+    fun findOverlapping(period: PgRange<LocalDate>): List<${entity_name}>
+
+    @Query("SELECT %{return#selects} FROM %{return#table} WHERE attributes @> :filter")
+    fun findByAttributes(@PgJsonb filter: Attributes): List<${entity_name}>
+
+    @Id
+    @Query("INSERT INTO %{entity#inserts -= @id}")
+    fun insert(entity: ${entity_name}): Long
+
+    @Query("DELETE FROM ${table_name} WHERE id = ANY(:ids)")
+    fun deleteByIds(@Pg ids: List<Long>): UpdateCount
+}

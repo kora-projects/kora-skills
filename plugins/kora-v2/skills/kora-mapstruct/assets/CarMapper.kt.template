@@ -1,0 +1,47 @@
+// Kora 2.0 — Konvert mapper that needs a graph component (Kotlin).
+//
+// A @Konverter can never take graph dependencies: Konvert generates `object CarMapperImpl` and
+// `konvert-ksp-extension` binds it with an empty dependency list. Keep the name-matched field copy
+// in the @Konverter and delegate through a regular @Component that takes the mapper plus the
+// collaborators.
+//
+// Requires, in build.gradle.kts:
+//   ksp("io.koraframework:symbol-processors:${property("koraVersion")}")
+//   ksp("io.mcarle:konvert:4.5.1")
+//   implementation("io.mcarle:konvert-api:4.5.1")
+//
+// Replace `com.example.app.mapper` with your package.
+
+package com.example.app.mapper
+
+import com.example.app.dto.CarDto
+import com.example.app.dto.RegisteredCarDto
+import com.example.app.entity.Car
+import io.koraframework.common.annotation.Component
+import io.mcarle.konvert.api.Konverter
+import java.time.LocalDate
+
+@Component
+class DateMapper {
+
+    fun asString(date: LocalDate): String = date.toString()
+}
+
+@Konverter
+interface CarMapper {
+
+    fun carToCarDto(car: Car): CarDto
+}
+
+@Component
+class CarDtoAssembler(
+    private val carMapper: CarMapper,
+    private val dateMapper: DateMapper,
+) {
+
+    // Konvert copies the name-matched fields; the graph-backed part is composed around its result.
+    fun toDto(car: Car): RegisteredCarDto = RegisteredCarDto(
+        car = carMapper.carToCarDto(car),
+        registered = dateMapper.asString(car.registeredOn),
+    )
+}

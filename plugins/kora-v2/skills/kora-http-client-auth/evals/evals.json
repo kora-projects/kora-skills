@@ -11,7 +11,7 @@
         "Declares the password accessor non-nullable, noting that a null credential makes the interceptor send no Authorization header at all and surfaces only as an upstream 401",
         "Attaches the interceptor with @InterceptWith from io.koraframework.http.common.annotation on the @HttpClient interface or a method",
         "Uses @HttpClient(\"httpClient.someClient\") with the path as value, never configPath =, and sets the target address via httpClient.<client>.url in config rather than an annotation attribute",
-        "Depends on io.koraframework:http-client-common plus a transport (http-client-ok, http-client-jdk or http-client-apache) through the io.koraframework:kora-bom platform at 2.0.0.RC1",
+        "Depends on io.koraframework:http-client-common plus a transport (http-client-ok, http-client-jdk or http-client-apache) through the io.koraframework:kora-bom platform at 2.0.0.RC2",
         "Does not use ru.tinkoff.kora packages, the kora-parent BOM, field injection, a @Value-style placeholder annotation, or a non-existent interceptors = {...} attribute on @HttpClient"
       ],
       "tags": ["basic-auth", "java", "basic"]
@@ -25,12 +25,16 @@
         "Supplies it from a @Module factory function, since a framework class cannot carry @Component, and lists that module in the @KoraApp supertypes",
         "Provides the key through a @ConfigSource interface referencing an environment variable",
         "Attaches it with @InterceptWith(ApiKeyHttpClientInterceptor::class)",
-        "Uses ksp(\"io.koraframework:symbol-processors\") for Kotlin rather than annotationProcessor, with Kotlin 2.4.10 / KSP 2.3.11",
+        "Uses ksp(\"io.koraframework:symbol-processors\") for Kotlin rather than annotationProcessor, with Kotlin 2.4.20 / KSP 2.3.12",
         "Mentions io.koraframework:http-client-common plus a transport, and states there is no http-client-auth artifact in any Kora version",
         "Does not use suspend, runBlocking or Dispatchers.IO anywhere in the wiring",
-        "Does not use field injection, a @Value-style annotation, or ru.tinkoff.kora imports"
+        "Does not use field injection, a @Value-style annotation, or ru.tinkoff.kora imports",
+        "Notes that a null or blank key makes ApiKeyHttpClientInterceptor skip the header (no failure at graph build), so the config accessor should be non-nullable for a startup failure"
       ],
-      "tags": ["api-key", "kotlin", "basic"]
+      "tags": ["api-key", "kotlin", "basic"],
+      "anti_behavior": [
+        "Claims ApiKeyHttpClientInterceptor rejects a null key with Objects.requireNonNull at graph build"
+      ]
     },
     {
       "id": "kora-http-client-auth-bearer-static",
@@ -231,13 +235,17 @@
       "skills": ["kora-http-client-auth"],
       "query": "I turned on request logging for my Kora 2.0 HTTP client to debug auth and now I want to make sure the X-API-KEY header is not written to the log. I set httpClient.myApi.telemetry.logging.maskHeaders = [\"X-API-KEY\"].",
       "expected_behavior": [
-        "Points out that header names are stored lower-cased and the mask set is matched against the stored name, so \"X-API-KEY\" never matches — it must be \"x-api-key\"",
+        "States that maskHeaders entries are lower-cased before matching, so \"X-API-KEY\" does match the x-api-key header — the case is not the problem",
         "Points out that setting maskHeaders replaces the default [\"authorization\", \"set-cookie\", \"cookie\"] instead of extending it, so the defaults must be restated alongside the new entry",
         "Notes that client telemetry logging and metrics default to false in Kora 2.0 while tracing defaults to true, so logging only exposes headers once explicitly enabled",
-        "Mentions that an API key in a query parameter needs maskQueries, which starts empty, and that request bodies are not masked at all",
+        "Mentions that an API key in a query parameter needs maskQueries, which starts empty, and that bodies (logged at TRACE) are masked only by a @Tag(HttpClientTelemetry.class) DataMasker for their format",
         "Does not invent config keys outside telemetry.logging"
       ],
-      "tags": ["telemetry", "security", "advanced"]
+      "tags": ["telemetry", "security", "advanced"],
+      "anti_behavior": [
+        "Claims maskHeaders must be written in lower case to match",
+        "Suggests a telemetry.logging.mask key to change the replacement text instead of a @Tag(HttpClientTelemetry.class) MaskingStrategy"
+      ]
     },
     {
       "id": "kora-http-client-auth-openapi-token-provider",
@@ -248,11 +256,14 @@
         "Supplies a provider for every scheme that appears in an operation's security list, including alternatives the service never takes, with those returning null — and notes that a scheme declared under components/securitySchemes but referenced by no operation needs no provider at all",
         "Explains that the generated interceptor evaluates the security alternatives in declaration order and applies the first one whose providers all returned non-null, so a non-null token from an alternative the service does not use silently wins and the request goes out with the wrong header",
         "Notes that when no alternative comes out complete the request is forwarded with no credential after a single WARN, so the failure surfaces as an upstream 401 rather than an error in the service",
-        "Notes that for http, oauth2 and openId schemes the returned string becomes the whole Authorization header value, so a bearer provider must return \"Bearer \" + token — unlike BearerAuthHttpClientInterceptor, which adds the prefix itself",
+        "Notes that the generated interceptor adds the scheme prefix itself (\"Basic \" for http basic, \"Bearer \" for http bearer, oauth2 and openId), so the provider returns the bare token — the same contract as BearerAuthHttpClientInterceptor",
         "Uses @Tag(ApiSecurity.BearerAuth.class) with the scheme-name tag class rather than an ordinal SecurityRequirementTagN form",
         "Defers the generated client's config paths and generator settings to the OpenAPI client skill"
       ],
-      "tags": ["openapi", "bearer", "advanced"]
+      "tags": ["openapi", "bearer", "advanced"],
+      "anti_behavior": [
+        "Returns \"Bearer \" + token from a provider tagged for a generated ApiSecurity scheme, which sends Authorization: Bearer Bearer ..."
+      ]
     }
   ]
 }

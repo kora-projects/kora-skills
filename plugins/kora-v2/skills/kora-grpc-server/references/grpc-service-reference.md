@@ -1,6 +1,6 @@
 # gRPC Service Implementation Reference — Kora 2.0
 
-**Framework source (authority):** [`GrpcServerFactoryModule`](https://github.com/kora-projects/kora/blob/2.0.0.RC1/grpc/grpc-server/src/main/java/io/koraframework/grpc/server/GrpcServerFactoryModule.java) · [`VirtualThreadExecutorTransportFilter`](https://github.com/kora-projects/kora/blob/2.0.0.RC1/grpc/grpc-server/src/main/java/io/koraframework/grpc/server/handler/VirtualThreadExecutorTransportFilter.java)
+**Framework source (authority):** [`GrpcServerFactoryModule`](https://github.com/kora-projects/kora/blob/2.0.0.RC2/grpc/grpc-server/src/main/java/io/koraframework/grpc/server/GrpcServerFactoryModule.java) · [`VirtualThreadExecutorTransportFilter`](https://github.com/kora-projects/kora/blob/2.0.0.RC2/grpc/grpc-server/src/main/java/io/koraframework/grpc/server/handler/VirtualThreadExecutorTransportFilter.java)
 **Migrated examples:** [`UserService.java`](https://github.com/kora-projects/kora-examples/blob/migration/2.0/examples/java/kora-java-grpc-server/src/main/java/io/koraframework/example/grpc/server/UserService.java) · [`UserService.kt`](https://github.com/kora-projects/kora-examples/blob/migration/2.0/examples/kotlin/kora-kotlin-grpc-server/src/main/kotlin/io/koraframework/kotlin/example/grpc/server/UserService.kt) · [`UserStreamingServiceGrpcHandler.java`](https://github.com/kora-projects/kora-examples/blob/migration/2.0/guides/java/kora-java-guide-grpc-server-advanced-app/src/main/java/io/koraframework/guide/grpcserver/advanced/grpc/UserStreamingServiceGrpcHandler.java)
 
 ## Contents

@@ -9,7 +9,7 @@ metadata:
 
 # Kora Config YAML
 
-> **Kora sub-skill — obey the [kora-v2 meta rules](../../SKILL.md) on every task:** **R0** ground the workspace on Kora 2.0 refs before starting (framework source at tag `2.0.0.RC1` + `kora-examples` at `migration/2.0`; `kora-docs` is 1.x only) · **R1** read this sub-skill before writing code · **R2** Kora 2.0 APIs only — no Spring/Micronaut/Quarkus, no Kora 1.x APIs, no invented annotations or config keys · **R3** journal any incorrect Kora usage. Add comments/Javadoc only if asked.
+> **Kora sub-skill — obey the [kora-v2 meta rules](../../SKILL.md) on every task:** **R0** ground the workspace on Kora 2.0 refs before starting (framework source at tag `2.0.0.RC2` + `kora-examples` at `migration/2.0` + Kora 2.0 docs at koraframework.io/v2, which trail the source; 1.x `kora-docs` pages are never an authority) · **R1** read this sub-skill before writing code · **R2** Kora 2.0 APIs only — no Spring/Micronaut/Quarkus, no Kora 1.x APIs, no invented annotations or config keys · **R3** journal any incorrect Kora usage. Add comments/Javadoc only if asked.
 
 | | |
 |---|---|
@@ -47,7 +47,7 @@ type whose fields are all optional or defaulted still binds.
 ### 1. Dependency
 
 Versions come from the BOM — never pin a version on an individual `io.koraframework:*` artifact.
-The current release is **`koraVersion=2.0.0.RC1`** from plain `mavenCentral()`; `2.0.0-SNAPSHOT` is
+The current release is **`koraVersion=2.0.0.RC2`** from plain `mavenCentral()`; `2.0.0-SNAPSHOT` is
 the development line and needs its own snapshot repository, so do not put it in a new project. The
 processor is mandatory: without it `@ConfigSource` generates nothing and the graph has no config
 component. Full build wiring lives in
@@ -396,17 +396,16 @@ rewriting dotted keys into nesting. Everything else — annotations, mappers, su
 
 ## Source of truth
 
-Version-aligned material only — pinned to the tag and branch that match the published `2.0.0.RC1`
-artifacts. Everything in this skill was verified against these; the `config/` tree is byte-identical
-between the `2.0.0.RC1` tag and `master`.
+Version-aligned material only — pinned to the tag and branch that match the published `2.0.0.RC2`
+artifacts. Everything in this skill was verified against the framework source.
 
-- Module source: <https://github.com/kora-projects/kora/tree/2.0.0.RC1/config/config-yaml>
-- Shared binding/mapping/substitution: <https://github.com/kora-projects/kora/tree/2.0.0.RC1/config/config-common>
+- Module source: <https://github.com/kora-projects/kora/tree/2.0.0.RC2/config/config-yaml>
+- Shared binding/mapping/substitution: <https://github.com/kora-projects/kora/tree/2.0.0.RC2/config/config-common>
 - Migrated examples (branch `migration/2.0`, **not** the repository default):
   <https://github.com/kora-projects/kora-examples/tree/migration/2.0/examples/java/kora-java-config-yaml>,
   `examples/kotlin/kora-kotlin-config-yaml`, `guides/java/kora-java-guide-config-yaml-app`
 
-> **There is no Kora 2.0 documentation upstream yet.** The docs site and the `kora-docs` repository
-> — including its `docs/v2` directory — still describe **1.x**: `ru.tinkoff.kora` packages,
-> `@ConfigValueExtractor`, and modules that 2.0 removed. Use them for 1.x background only, never to
-> answer a 2.0 API question. Read the source above instead.
+> The Kora 2.0 documentation ([Configuration](https://koraframework.io/v2/en/documentation/config/))
+> explains concepts but can trail the framework — confirm every key, default and signature in the
+> source above. The 1.x pages (`ru.tinkoff.kora` packages, `@ConfigValueExtractor`) are never an
+> authority for a 2.0 question.

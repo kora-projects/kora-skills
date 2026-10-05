@@ -6,7 +6,7 @@ Coordinates and patterns taken from the migrated Kotlin examples on
 [`kora-kotlin-crud`](https://github.com/kora-projects/kora-examples/tree/migration/2.0/examples/kotlin/kora-kotlin-crud),
 [`kora-kotlin-kafka`](https://github.com/kora-projects/kora-examples/tree/migration/2.0/examples/kotlin/kora-kotlin-kafka) —
 and cross-checked against the framework's own
-[`gradle/libs.versions.toml`](https://github.com/kora-projects/kora/blob/2.0.0.RC1/gradle/libs.versions.toml).
+[`gradle/libs.versions.toml`](https://github.com/kora-projects/kora/blob/2.0.0.RC2/gradle/libs.versions.toml).
 
 Kora ships **no** Testcontainers wrapper. The container is plain Testcontainers; the only Kora part is
 feeding its coordinates into the graph through `KoraAppTestConfigModifier`.
@@ -58,7 +58,7 @@ dependencies {
     testImplementation("io.koraframework:database-flyway")
     // database-flyway ships flyway-core only; without the dialect artifact Flyway fails
     // at startup with "Unsupported Database: PostgreSQL"
-    testImplementation("org.flywaydb:flyway-database-postgresql:13.1.0")
+    testImplementation("org.flywaydb:flyway-database-postgresql:13.9.0")
     testRuntimeOnly("org.postgresql:postgresql:42.7.3")
 
     testImplementation("org.testcontainers:junit-jupiter:1.21.4")

@@ -8,7 +8,7 @@
       "query": "Scaffold a contract-first Kora 2.x HTTP server in Java from an OpenAPI spec with GET /pets/{petId}. Wire the Gradle generation and implement the delegate so it returns the pet or 404.",
       "expected_behavior": [
         "Puts io.koraframework:openapi-generator:$koraVersion on the buildscript classpath and applies the org.openapi.generator Gradle plugin, treating the two versions as separate things",
-        "Uses koraVersion=2.0.0.RC1 from plain mavenCentral() and the io.koraframework:kora-bom platform, never ru.tinkoff.kora:kora-parent",
+        "Uses koraVersion=2.0.0.RC2 from plain mavenCentral() and the io.koraframework:kora-bom platform, never ru.tinkoff.kora:kora-parent",
         "Registers a GenerateTask with generatorName = \"kora\", configOptions mode = \"java-server\", and a unique outputDir wired into sourceSets.main and compileJava.dependsOn",
         "Adds annotationProcessor \"io.koraframework:annotation-processors\" and implementation \"io.koraframework:http-server-undertow\" plus json-common",
         "Implements PetApiDelegate as an @Component (io.koraframework.common.annotation.Component) returning PetApiResponses.GetPetByIdApiResponse.GetPetById200ApiResponse or ...GetPetById404ApiResponse",
@@ -250,6 +250,137 @@
       "tags": [
         "build",
         "advanced"
+      ]
+    },
+    {
+      "id": "kora-openapi-generator-server-oauth-scope-403",
+      "skills": [
+        "kora-openapi-generator-server"
+      ],
+      "query": "Our Kora 2.0 generated server has an operation secured with oAuth2ClientCredentials: [pets:write]. A client with a valid token that only has pets:read gets 403, but a request with no token gets 401. Is that expected, and how do we make the extractor work?",
+      "expected_behavior": [
+        "Confirms it is expected: the generated ApiSecurity interceptor answers 403 Forbidden when the extractor returned a principal whose scopes() lack a required scope, and 401 Unauthorized when no principal was extracted",
+        "Registers one HttpServerPrincipalExtractor<String, PrincipalWithScopes> tagged with the scheme marker @Tag(ApiSecurity.OAuth2ClientCredentials.class), returning a principal whose scopes() reflect the token",
+        "Notes the extractor receives the raw Authorization header including the Bearer prefix and must strip it",
+        "Notes an operation that also allows anonymous access (- {}) is let through instead of answering 401/403"
+      ],
+      "anti_behavior": [
+        "Claims the generated interceptor always answers 401 for a missing scope",
+        "Suggests editing the generated ApiSecurity or tagging the extractor with the scope-specific interceptor tag"
+      ],
+      "tags": [
+        "auth",
+        "oauth2",
+        "regression"
+      ]
+    },
+    {
+      "id": "kora-openapi-generator-server-range-responses",
+      "skills": [
+        "kora-openapi-generator-server"
+      ],
+      "query": "Our contract for POST /pets declares 201, 4XX and 5XX responses with an Error body. What does the Kora 2.0 server generator produce, and how does the delegate return a 409?",
+      "expected_behavior": [
+        "States range responses are supported: CreatePet4XXApiResponse and CreatePet5XXApiResponse records take int statusCode as their first component, like the default response",
+        "Returns new ...CreatePet4XXApiResponse(409, error) from the delegate, and explains the generated response mapper sends HttpResponseEntity.of(rs.statusCode(), ...), i.e. exactly that status",
+        "Warns nothing validates the code against the range, so the caller must pass a 4xx to the 4XX record",
+        "Notes the Error schema is generated as ModelError"
+      ],
+      "anti_behavior": [
+        "Says 4XX/5XX ranges are not supported and must be replaced with explicit codes",
+        "Throws HttpServerResponseException instead of returning the declared range record"
+      ],
+      "tags": [
+        "responses",
+        "ranges",
+        "intermediate"
+      ]
+    },
+    {
+      "id": "kora-openapi-generator-server-validation-interceptor-off",
+      "skills": [
+        "kora-openapi-generator-server"
+      ],
+      "query": "We map validation errors ourselves in a global HttpServerInterceptor that catches ViolationException and returns our problem+json body. With enableServerValidation on, the generated controller also adds ValidationHttpServerInterceptor. How do we keep validation but drop the generated interceptor?",
+      "expected_behavior": [
+        "Sets configOptions enableServerValidationInterceptor = \"false\" alongside enableServerValidation = \"true\"",
+        "Explains the controller then keeps @Validate and the constraint annotations but no longer carries @InterceptWith(ValidationHttpServerInterceptor.class), so ViolationException propagates to the application's own handling",
+        "Warns that if nothing maps ViolationException the constraint violation becomes a 500",
+        "States the option only has an effect in a server mode with enableServerValidation on (default true)"
+      ],
+      "anti_behavior": [
+        "Invents an option name such as disableValidationInterceptor",
+        "Suggests deleting the annotation from generated code"
+      ],
+      "tags": [
+        "validation",
+        "build",
+        "advanced"
+      ]
+    },
+    {
+      "id": "kora-openapi-generator-server-extensions-aspects",
+      "skills": [
+        "kora-openapi-generator-server"
+      ],
+      "query": "Put @Log on every generated controller method of the pet tag and add our AdminHttpServerInterceptor (tagged com.example.Tags.Admin) only on deletePet, in a Kora 2.0 java-server generation task.",
+      "expected_behavior": [
+        "Uses configOptions.extensions JSON with a tags.pet.additionalMethodAnnotations entry holding the fully-qualified @io.koraframework.logging.common.annotation.Log",
+        "Adds operations.deletePet.interceptorTag [\"com.example.Tags.Admin\"] (optionally with interceptorType), producing @InterceptWith(value = HttpServerInterceptor.class, tag = Tags.Admin.class) on that controller method",
+        "Explains that sections apply global '*' then tag then operation, and that type-level annotation keys are read from '*' only",
+        "Notes that any additionalMethodAnnotations make the generated controller non-final so aspects such as @Log can apply",
+        "Writes fully-qualified class names because the generator resolves them with ClassName.bestGuess"
+      ],
+      "anti_behavior": [
+        "Uses the removed interceptors or additionalContractAnnotations options",
+        "Adds @InterceptWith or @Log to generated code by hand"
+      ],
+      "tags": [
+        "extensions",
+        "build",
+        "advanced"
+      ]
+    },
+    {
+      "id": "kora-openapi-generator-server-type-mappings",
+      "skills": [
+        "kora-openapi-generator-server"
+      ],
+      "query": "kotlin-server on Kora 2.0: our date-time fields come out as OffsetDateTime but the domain uses Instant, and generation of a schema with `type: object, additionalProperties: true` plus an array of an inline enum — what types will those be?",
+      "expected_behavior": [
+        "Adds typeMappings.set(mapOf(\"DateTime\" to \"java.time.Instant\")) to the GenerateTask (a plugin property, not configOptions)",
+        "States only Instant, ZonedDateTime and LocalDateTime are recognised and anything else falls back to OffsetDateTime",
+        "States the free-form object becomes Map<String, Any> in Kotlin (Map<String, Object> in Java)",
+        "States the array of an inline enum stays a List of the nested enum class"
+      ],
+      "anti_behavior": [
+        "Recommends a custom JsonReader or post-processing generated models to get Instant"
+      ],
+      "tags": [
+        "models",
+        "type-mapping",
+        "kotlin"
+      ]
+    },
+    {
+      "id": "kora-openapi-generator-server-openidconnect-scopes",
+      "skills": [
+        "kora-openapi-generator-server"
+      ],
+      "query": "Our server contract protects endpoints with an `openIdConnect` scheme and lists required scopes per operation (e.g. `- oidc: [pets:write]`). What does the Kora server generator expect from me and who returns 403?",
+      "expected_behavior": [
+        "States the generator reads the raw Authorization header for an openIdConnect scheme, like oauth2",
+        "Declares the extractor as HttpServerPrincipalExtractor<String, PrincipalWithScopes> tagged with the scheme marker class from ApiSecurity",
+        "Explains the generated interceptor answers 401 when no principal is extracted and 403 when the principal's scopes() lack a required scope"
+      ],
+      "anti_behavior": [
+        "Claims openIdConnect is unsupported on the server or that scopes are ignored for it",
+        "Suggests editing generated ApiSecurity code to enforce scopes"
+      ],
+      "tags": [
+        "openapi-server",
+        "security",
+        "openid-connect"
       ]
     }
   ]

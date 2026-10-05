@@ -46,10 +46,10 @@ logging.levels {
 httpServer {
   telemetry.logging {
     enabled = true
-    # maskHeaders defaults to ["authorization", "cookie", "set-cookie"]
+    # maskHeaders defaults to ["authorization", "cookie", "set-cookie"]. The replacement text is
+    # the @Tag(HttpServerTelemetry.class) MaskingStrategy component (default "***"), not a config key.
     maskHeaders = ["authorization", "cookie", "set-cookie", "x-api-key"]
     maskQueries = ["token"]
-    mask = "***"
     stacktrace = true
     maxRequestBodyLogSize = "64KiB"
     maxResponseBodyLogSize = "64KiB"

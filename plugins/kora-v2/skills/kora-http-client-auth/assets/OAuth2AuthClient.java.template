@@ -24,8 +24,8 @@ import org.jspecify.annotations.Nullable;
  * </pre>
  *
  * <p>The client id and secret travel in {@code Authorization: Basic}, which the client logger masks
- * by default. Putting them in the form body instead would put them in the log, because there is no
- * body masking.</p>
+ * by default. Putting them in the form body instead would log them at TRACE unless a
+ * {@code @Tag(HttpClientTelemetry.class)} {@code FormUrlencodedDataMasker} is in the graph.</p>
  *
  * <p>Do <b>not</b> attach a Bearer interceptor here: this client is what produces the token.</p>
  */

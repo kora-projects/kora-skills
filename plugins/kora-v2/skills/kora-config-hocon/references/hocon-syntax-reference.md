@@ -315,8 +315,12 @@ remove one of these system properties`. There is no `config.environment` profile
 per-environment configuration is a file selection plus `include`.
 
 Kora watches the config file, and every file it includes, on a virtual thread named
-`config-reload`, and refreshes the affected part of the graph when the content or a symlink target
-changes. Disable it by setting the `KORA_CONFIG_WATCHER_ENABLED` environment variable or the
+`config-reload`. Once a second it compares each tracked file's modification time and symlink
+target; a graph refresh is triggered only when one of them changed, or when the refreshed config
+adds or drops an included file — an idle config file never causes a refresh. The refresh rebuilds
+only the components whose config value actually changed (see
+[kora-di-runtime](../../kora-di-runtime/references/runtime-graph-api-reference.md#4-refresh)).
+Disable the watcher by setting the `KORA_CONFIG_WATCHER_ENABLED` environment variable or the
 `kora.config.watcher.enabled` system property to `false`.
 
 ---

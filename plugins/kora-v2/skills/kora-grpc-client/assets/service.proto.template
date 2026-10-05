@@ -1,7 +1,7 @@
 // Proto contract shared by the Kora gRPC client and its server.
 // Save as: src/main/proto/${service_name}.proto
 //
-// Generated with protoc 3.25.3 + protoc-gen-grpc-java 1.83.1 (see the build templates).
+// Generated with protoc 3.25.3 + protoc-gen-grpc-java 1.84.0 (see the build templates).
 // The generated ${service_name}Grpc class is what Kora keys everything on:
 //   - the config section is grpcClient.${service_name}  (the proto service SIMPLE name)
 //   - client interceptors are scoped with @Tag(${service_name}Grpc.class)

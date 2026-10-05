@@ -3,8 +3,8 @@
 // the templates in this directory can be dropped into a compiling project.
 //
 // Plugin versions belong in the settings/root build:
-//   org.jetbrains.kotlin.jvm    2.4.10
-//   com.google.devtools.ksp     2.3.11
+//   org.jetbrains.kotlin.jvm    2.4.20
+//   com.google.devtools.ksp     2.3.12
 
 import org.gradle.jvm.toolchain.JavaLanguageVersion
 import org.gradle.jvm.toolchain.JvmVendorSpec

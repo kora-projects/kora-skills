@@ -5,7 +5,7 @@
       "skills": ["kora-aop-scheduling-jdk"],
       "query": "In my Kora service (Java), add a job that logs a heartbeat every 30 seconds with an initial delay of 10 seconds, using the built-in JVM scheduler.",
       "expected_behavior": [
-        "Uses @ScheduleAtFixedRate(initialDelay = 10, period = 30, unit = ChronoUnit.SECONDS) imported from io.koraframework.scheduling.jdk.annotation",
+        "Uses @ScheduleJdkAtFixedRate(initialDelay = 10, period = 30, unit = ChronoUnit.SECONDS) imported from io.koraframework.scheduling.jdk.annotation",
         "Marks the enclosing class @Component from io.koraframework.common.annotation and gives the method no arguments",
         "Adds io.koraframework:scheduling-jdk (version from the io.koraframework:kora-bom BOM) plus annotationProcessor \"io.koraframework:annotation-processors\", and extends SchedulingJdkModule on the @KoraApp interface",
         "Does not use ru.tinkoff.kora packages, the kora-parent BOM, a Spring @Scheduled annotation, or an external scheduler library"
@@ -15,7 +15,7 @@
     {
       "id": "kora-aop-scheduling-jdk-kotlin-class-not-open",
       "skills": ["kora-aop-scheduling-jdk"],
-      "query": "I added @ScheduleWithFixedDelay to a method on a Kotlin @Component class in my Kora 2 service and someone told me the class has to be `open` or the job silently never runs. Is that right?",
+      "query": "I added @ScheduleJdkWithFixedDelay to a method on a Kotlin @Component class in my Kora 2 service and someone told me the class has to be `open` or the job silently never runs. Is that right?",
       "expected_behavior": [
         "Says No: the scheduling processor generates a $<Class>_SchedulingModule that calls the component through ValueOf<T>, so no AOP proxy is created and the class does not need to be open (Kotlin) or non-final (Java)",
         "Notes that the migrated Kora 2.0 examples ship a plain `@Component class` in Kotlin and `@Component public final class` in Java and both schedule correctly",
@@ -40,9 +40,9 @@
     {
       "id": "kora-aop-scheduling-jdk-ksp-coordinate",
       "skills": ["kora-aop-scheduling-jdk"],
-      "query": "Kotlin Kora 2 project: which KSP artifact do I need so @ScheduleAtFixedRate actually generates something? I found ru.tinkoff.kora:scheduling-ksp on Maven Central.",
+      "query": "Kotlin Kora 2 project: which KSP artifact do I need so @ScheduleJdkAtFixedRate actually generates something? I found ru.tinkoff.kora:scheduling-ksp on Maven Central.",
       "expected_behavior": [
-        "Rejects scheduling-ksp: it is a Kora 1.x leftover on Maven Central and is not constrained by the 2.0.0.RC1 kora-bom",
+        "Rejects scheduling-ksp: it is a Kora 1.x leftover on Maven Central and is not constrained by the 2.0.0.RC2 kora-bom",
         "Gives ksp(\"io.koraframework:symbol-processors\") as the normal aggregate, noting the module-specific artifact is io.koraframework:scheduling-symbol-processor",
         "Keeps the version coming from platform(\"io.koraframework:kora-bom:...\") rather than pinning the artifact",
         "Adds implementation(\"io.koraframework:scheduling-jdk\") and the SchedulingJdkModule on @KoraApp"
@@ -56,9 +56,9 @@
       "expected_behavior": [
         "Explains that both are Kora 1.x keys and unknown HOCON keys are ignored without any warning, which is why the app starts green",
         "States that scheduling.shutdownWait moved to scheduling.jdk.shutdownWait (SchedulingJdkModule reads the config at path scheduling.jdk)",
-        "States that scheduling.threads was removed with no replacement key: the ScheduledThreadPoolExecutor core size is the number of jobs declared with config = \"...\"",
-        "Warns that with zero config-driven jobs the pool runs on a single thread, so annotation-only jobs serialize behind each other",
-        "Does not invent a replacement thread-count key or claim the 1.x keys still work"
+        "States that there is no thread-pool size any more: each run executes on a fresh virtual thread (kora-jdk-scheduler-job-N) dispatched by one platform timer thread (kora-jdk-scheduler-timer)",
+        "Names scheduling.jdk.executionParallelism as the only concurrency knob — a cap on runs executing at once across all jobs, default Integer.MAX_VALUE (unlimited) — rather than a replacement for threads = 10",
+        "Does not claim the pool size equals the number of config-driven jobs, and does not claim the 1.x keys still work"
       ],
       "tags": ["scheduling", "config", "regression", "silent-failure"]
     },
@@ -69,7 +69,7 @@
       "expected_behavior": [
         "Identifies that scheduling.telemetry.metrics.enabled defaults to false in Kora 2.0 and must be set to true explicitly",
         "Shows the config, e.g. scheduling.telemetry.metrics.enabled = true, and notes a MeterRegistry component must also be in the graph",
-        "Names the meter scheduling.job.duration (a Micrometer Timer) and its tags code.function.name, system.name.simple, system.name.canonical, error.type, plus the system.config tag carrying the config path for jobs that declare one",
+        "Names the meter scheduling.job.duration (a Micrometer Timer) and its tags scheduling.system (jdk), code.function.name, system.name.simple, system.name.canonical, error.type, plus the system.config tag carrying the config path for jobs that declare one",
         "Mentions that logging.enabled also defaults to false while tracing.enabled defaults to true, and that per-job overrides live under <job-config-path>.telemetry",
         "Does not claim metrics are on by default or reference a scheduling.metrics.* key outside telemetry"
       ],
@@ -78,13 +78,13 @@
     {
       "id": "kora-aop-scheduling-jdk-overlap",
       "skills": ["kora-aop-scheduling-jdk"],
-      "query": "My Kora job with @ScheduleAtFixedRate(period = 60, unit = ChronoUnit.SECONDS) sometimes takes 90 seconds. Will two copies run at the same time, and should I add a synchronized block?",
+      "query": "My Kora job with @ScheduleJdkAtFixedRate(period = 60, unit = ChronoUnit.SECONDS) sometimes takes 90 seconds. Will two copies run at the same time, and should I add a synchronized block?",
       "expected_behavior": [
-        "Says no: @ScheduleAtFixedRate delegates to ScheduledExecutorService.scheduleAtFixedRate, whose contract is that a late execution starts late but never runs concurrently, and Kora additionally wraps every run of a job in a per-job ReentrantLock",
+        "Says no: the JDK executor schedules the next periodic run only after the current one returns, and each job also serialises its runs behind a per-job lock, so runs of the same job never overlap",
+        "Explains that a fixed-rate job keeps its original timetable, so after a 90 s run on a 60 s period the next run starts as soon as the long one finishes (catch-up), not in parallel",
         "Explains the real difference: fixed rate measures start-to-start and tries to keep cadence, fixed delay measures end-to-start and always leaves an idle gap",
-        "Rejects the synchronized block as unnecessary for the same job, while noting different jobs can run concurrently subject to the pool",
-        "If pool sizing comes up, says the core size is the number of jobs declared with config = \"...\" and that there is no scheduling.threads key in 2.0",
-        "Does not repeat the Kora 1.x claim that @ScheduleAtFixedRate allows overlapping executions"
+        "Rejects the synchronized block as unnecessary for the same job, while noting different jobs run concurrently on their own virtual threads, optionally capped by scheduling.jdk.executionParallelism",
+        "Does not repeat the Kora 1.x claim that fixed-rate jobs (1.x @ScheduleAtFixedRate, now @ScheduleJdkAtFixedRate) allow overlapping executions, and does not mention a scheduling.threads key"
       ],
       "tags": ["scheduling", "concurrency", "regression"]
     },
@@ -93,9 +93,10 @@
       "skills": ["kora-aop-scheduling-jdk"],
       "query": "I need one job in my Kora 2 service to run at 03:00 every day. Single instance, nothing to persist. Do I have to pull in Quartz?",
       "expected_behavior": [
-        "Says no: Kora 2.0 ships @ScheduleWithCron in io.koraframework.scheduling.jdk.annotation, backed by the in-process CronExpression evaluator in scheduling-jdk",
-        "Shows @ScheduleWithCron(\"0 0 3 * * ?\") on a no-argument method of a @Component, with 5, 6 or 7 space-separated fields",
-        "Notes the expression is parsed during graph build so a bad expression fails startup with IllegalArgumentException, and that it fires in the JVM default time zone",
+        "Says no: Kora 2.0 ships @ScheduleJdkWithCron in io.koraframework.scheduling.jdk.annotation, backed by the in-process io.koraframework.scheduling.jdk.util.CronExpression evaluator in scheduling-jdk",
+        "Shows @ScheduleJdkWithCron(\"0 0 3 * * ?\") on a no-argument method of a @Component, with 5, 6 or 7 space-separated fields",
+        "Notes that a bad cron literal fails the build (compile-time check), a bad cron from config fails startup with IllegalArgumentException, and that it fires in the JVM default time zone unless a @Tag(SchedulingModule.class) ZoneId component exists",
+        "Accepts month and day-of-week aliases in lists, ranges and steps (e.g. JUL-OCT, WED-FRI, JUL/2)",
         "Notes the Quartz-only modifiers L, W, # and C are not supported by the JDK evaluator",
         "Does not add the scheduling-quartz artifact or QuartzModule for this requirement"
       ],
@@ -107,8 +108,8 @@
       "query": "We run four replicas of a Kora service and a nightly reconciliation job must execute exactly once across the cluster and survive restarts. Can the JDK scheduler do that?",
       "expected_behavior": [
         "Says no: scheduling-jdk holds no state, so every replica runs every job and nothing survives the process",
-        "Routes to the kora-aop-scheduling-quartz skill for a persistent JDBC job store, clustering and misfire handling",
-        "Distinguishes clearly: plain in-process cron is fine on the JDK scheduler via @ScheduleWithCron, but persistence, clustering, @ScheduleWithTrigger, @DisallowConcurrentExecution and Quartz-only cron modifiers are the Quartz module's job",
+        "Routes to the kora-aop-scheduling-db skill (io.koraframework:scheduling-db-scheduler, DbSchedulerModule, @ScheduleDbWithCron from io.koraframework.scheduling.db.scheduler.annotation): one execution per firing across replicas, next execution time persisted in a database table",
+        "Mentions Quartz with a clustered JDBC JobStore (kora-aop-scheduling-quartz) as the alternative when Quartz triggers, misfire policies or L/W/#/C cron are needed",
         "Does not invent a cluster or persistence option on the JDK annotations"
       ],
       "tags": ["scheduling", "routing", "advanced"]
@@ -116,13 +117,13 @@
     {
       "id": "kora-aop-scheduling-jdk-graceful-shutdown",
       "skills": ["kora-aop-scheduling-jdk"],
-      "query": "My Kora 2 batch import job processes a long list and blocks shutdown for minutes. I already check Thread.currentThread().isInterrupted() in the loop but it never triggers. What is going on?",
+      "query": "My Kora 2 batch import job processes a long list. On shutdown the service waits about 30 seconds, logs 'SchedulingJdkExecutor failed completing graceful shutdown in PT30S', and the job seems to keep going. What is happening and how should I write the job?",
       "expected_behavior": [
-        "Explains that Kora 2.0 never interrupts a running scheduled job: the job's release() blocks on the same lock the run holds until the method returns, and it cancels the schedule with cancel(false), which does not interrupt",
-        "Explains that scheduling.jdk.shutdownWait is the executor's awaitTermination budget after the jobs are already stopped, so it does not bound a running job",
-        "Recommends cooperative cancellation instead: a bounded batch per run, an in-run deadline, and timeouts on every blocking call, keeping the work unit well under the container kill timeout",
-        "Keeps interrupt handling only where the code genuinely blocks on something interruptible, rather than as the shutdown mechanism",
-        "Does not tell the user to raise scheduling.shutdownWait (a 1.x key) or claim SIGTERM interrupts the job"
+        "Explains the shutdown path: the job's release() cancels its next run with cancel(false) and returns immediately; the executor then waits up to scheduling.jdk.shutdownWait (default 30s) for running jobs",
+        "Explains that when shutdownWait expires the executor calls shutdownNow(), which interrupts running job threads and logs the 'failed completing graceful shutdown' warning, and that release() does not wait again afterwards",
+        "Tells the job to honour the interrupt: check Thread.currentThread().isInterrupted() in the loop and restore the flag instead of swallowing InterruptedException",
+        "Recommends finishing before the interrupt: a bounded batch per run or an in-run deadline below shutdownWait, timeouts on blocking calls, idempotent resumable work",
+        "Does not claim Kora never interrupts a scheduled job, does not claim shutdownWait fails to bound a running job, and does not use the 1.x key scheduling.shutdownWait"
       ],
       "tags": ["scheduling", "shutdown", "regression", "advanced"]
     },
@@ -131,10 +132,10 @@
       "skills": ["kora-aop-scheduling-jdk"],
       "query": "Kotlin Kora 2 service: I need a data sync task that waits 2 minutes after each run finishes before running again, and the timing must come from config, not from the code.",
       "expected_behavior": [
-        "Uses @ScheduleWithFixedDelay so the gap is measured after completion, on a no-argument member function of a @Component class",
+        "Uses @ScheduleJdkWithFixedDelay so the gap is measured after completion, on a no-argument member function of a @Component class",
         "Sets config = \"scheduling.jobs.sync\" (or another path that does not collide with scheduling.jdk or scheduling.telemetry) and defines initialDelay and delay under it as HOCON/YAML durations",
         "Explains that annotation attributes become defaults of the generated config interface and config values win, and that omitting `delay` from the annotation makes the config key mandatory",
-        "Mentions that the per-job path also accepts a telemetry block overriding scheduling.telemetry for that job",
+        "Mentions that the per-job path also accepts an enabled switch (default true) and a telemetry block overriding scheduling.telemetry for that job",
         "Does not use a `unit` key in the config file or reach for Quartz cron for a fixed-delay requirement"
       ],
       "tags": ["scheduling", "kotlin", "config"]
@@ -142,15 +143,133 @@
     {
       "id": "kora-aop-scheduling-jdk-dependencies-java",
       "skills": ["kora-aop-scheduling-jdk"],
-      "query": "What Gradle dependencies and processors do I need to make @ScheduleAtFixedRate work in a Java Kora 2 project?",
+      "query": "What Gradle dependencies and processors do I need to make @ScheduleJdkAtFixedRate work in a Java Kora 2 project?",
       "expected_behavior": [
-        "Adds platform(\"io.koraframework:kora-bom:$koraVersion\") with koraVersion=2.0.0.RC1 from mavenCentral(), and io.koraframework:scheduling-jdk with no explicit version",
+        "Adds platform(\"io.koraframework:kora-bom:$koraVersion\") with koraVersion=2.0.0.RC2 from mavenCentral(), and io.koraframework:scheduling-jdk with no explicit version",
         "Includes annotationProcessor \"io.koraframework:annotation-processors\" (Kotlin: ksp(\"io.koraframework:symbol-processors\")) and explains that without it no job component is generated",
         "Extends SchedulingJdkModule on the @KoraApp interface and adds a config module such as HoconConfigModule",
         "Mentions the Java 25 toolchain requirement for Kora 2.0 artifacts",
         "Does not use ru.tinkoff.kora:kora-parent, does not pin individual io.koraframework artifact versions, and does not omit the processor"
       ],
       "tags": ["scheduling", "java", "setup", "basic"]
+    },
+    {
+      "id": "kora-aop-scheduling-jdk-thread-model",
+      "skills": ["kora-aop-scheduling-jdk"],
+      "query": "Our Kora 2 Java service has 12 @ScheduleJdkWithFixedDelay jobs, several of them do JDBC calls. What threads do they run on, can a slow job block the others, and how do I stop them from exhausting a 10-connection Hikari pool?",
+      "expected_behavior": [
+        "States that SchedulingJdkModule provides VirtualThreadSchedulingJdkExecutor: one platform timer thread named kora-jdk-scheduler-timer plus a fresh virtual thread per run named kora-jdk-scheduler-job-N",
+        "Explains that a slow job does not delay other jobs, because each run gets its own virtual thread and the job count does not size any pool",
+        "Recommends scheduling.jdk.executionParallelism (default Integer.MAX_VALUE, i.e. unlimited; excess runs queue FIFO) set below the JDBC pool size to cap concurrent runs",
+        "Keeps the job methods as plain blocking code on no-argument @Component methods",
+        "Does not mention ScheduledThreadPoolExecutor, kora-scheduler-N platform threads, a scheduling.threads key, or pool size derived from config-driven jobs"
+      ],
+      "tags": ["scheduling", "threading", "config", "regression"]
+    },
+    {
+      "id": "kora-aop-scheduling-jdk-cron-dst",
+      "skills": ["kora-aop-scheduling-jdk"],
+      "query": "Kora 2 JDK scheduler, server in Europe/Berlin. I have @ScheduleJdkWithCron(\"0 30 2 * * ?\") for a daily billing export. What happens on the daylight-saving change days?",
+      "expected_behavior": [
+        "Explains the cron is evaluated in the JVM default time zone unless a @Tag(SchedulingModule.class) ZoneId component is declared, in which case that zone (and its DST rules) applies",
+        "States that on the spring-forward day 02:30 does not exist and that run is skipped (not shifted to 03:30); the next fire is 02:30 the following day",
+        "States that on the fall-back day 02:30 occurs twice and the job fires twice, once per occurrence, in instant order",
+        "Recommends moving a once-per-day job out of the 01:00-03:00 transition window or evaluating cron in UTC (a UTC @Tag(SchedulingModule.class) ZoneId component), and making the export idempotent",
+        "Does not claim the job silently runs exactly once on both days"
+      ],
+      "tags": ["scheduling", "cron", "timezone"]
+    },
+    {
+      "id": "kora-aop-scheduling-jdk-rc1-rename",
+      "skills": ["kora-aop-scheduling-jdk"],
+      "query": "I bumped my Kora service from 2.0.0.RC1 to 2.0.0.RC2 and now `@ScheduleAtFixedRate(period = 30, unit = ChronoUnit.SECONDS)` fails with `cannot find symbol`, and my test's `components = FixedRateJob.class` import is broken too. The import is still io.koraframework.scheduling.jdk.annotation. What happened?",
+      "expected_behavior": [
+        "Explains Kora PR #952 renamed the JDK annotations: @ScheduleJdkAtFixedRate, @ScheduleJdkWithFixedDelay, @ScheduleJdkOnce, @ScheduleJdkWithCron, still in io.koraframework.scheduling.jdk.annotation",
+        "Rewrites the job as @ScheduleJdkAtFixedRate(period = 30, unit = ChronoUnit.SECONDS) with the same attributes",
+        "Moves the test import to io.koraframework.scheduling.jdk.job.FixedRateJob (job classes moved to .job, CronExpression to .util, AbstractJob became KoraJdkJob)",
+        "Mentions that a snapshot-era scheduling.jdk.maxConcurrentExecutions key is now scheduling.jdk.executionParallelism and the old key is ignored silently"
+      ],
+      "anti_behavior": [
+        "Keeps @ScheduleAtFixedRate and blames a missing dependency or processor",
+        "Adds scheduling-quartz or switches the job to Quartz to fix the compile error"
+      ],
+      "tags": ["scheduling", "migration", "regression"]
+    },
+    {
+      "id": "kora-aop-scheduling-jdk-disable-job",
+      "skills": ["kora-aop-scheduling-jdk"],
+      "query": "Kora 2 (master): I want to switch off my nightly @ScheduleJdkWithCron(\"0 0 3 * * ?\") cleanup job on the staging environment through configuration, without a rebuild. How?",
+      "expected_behavior": [
+        "Adds config = \"scheduling.jobs.cleanup\" to the annotation, keeping the value as the default expression",
+        "Uses the object form under the path, e.g. scheduling.jobs.cleanup { cron = \"0 0 3 * * ?\", enabled = false } or enabled = ${?CLEANUP_ENABLED}, because the bare-string form has no place for enabled",
+        "Explains enabled comes from SchedulingJobConfig, defaults to true, exists only for jobs declared with config, and a disabled job is never scheduled and logs 'is disabled by configuration and won't be scheduled' at INFO"
+      ],
+      "anti_behavior": [
+        "Invents a global scheduling.jdk.enabled switch or removes SchedulingJdkModule per environment",
+        "Uses a cron expression that never fires as the way to disable the job"
+      ],
+      "tags": ["scheduling", "config", "cron"]
+    },
+    {
+      "id": "kora-aop-scheduling-jdk-cron-time-zone",
+      "skills": ["kora-aop-scheduling-jdk"],
+      "query": "Our Kora 2 pods run with TZ=UTC but the business wants the @ScheduleJdkWithCron(\"0 0 9 * * MON-FRI\") report at 09:00 Moscow time. Can I set the cron time zone without changing the JVM time zone?",
+      "expected_behavior": [
+        "Declares a java.time.ZoneId component tagged @Tag(SchedulingModule.class) (io.koraframework.scheduling.common.SchedulingModule, Tag from io.koraframework.common.annotation) returning ZoneId.of(\"Europe/Moscow\"), e.g. as a default method on the @KoraApp interface",
+        "Explains the generated cron job factory takes it as an optional @Tag(SchedulingModule.class) @Nullable ZoneId and falls back to the JVM default zone without it",
+        "Notes the same component sets the zone for Quartz and db-scheduler cron jobs too, and that fixed-rate/fixed-delay/once jobs are unaffected"
+      ],
+      "anti_behavior": [
+        "Invents a zone or timeZone attribute on @ScheduleJdkWithCron or a scheduling.jdk.timeZone config key",
+        "Only tells the user to change -Duser.timezone / TZ"
+      ],
+      "tags": ["scheduling", "cron", "timezone"]
+    },
+    {
+      "id": "kora-aop-scheduling-jdk-cron-compile-check",
+      "skills": ["kora-aop-scheduling-jdk"],
+      "query": "My Kora 2 build now fails with: Invalid CRON expression '0 0 0 L * ?' in @ScheduleJdkWithCron on 'com.example.BillingJobs#monthEnd()': day-of-month modifier L in L is not supported by the JDK scheduler. It used to compile. Why, and how do I run a job on the last day of the month?",
+      "expected_behavior": [
+        "Explains the scheduling processor now validates cron literals at compile time per scheduler, and the JDK scheduler does not support the Quartz modifiers L, W, # and C",
+        "Offers either moving the job to Quartz (@ScheduleQuartzWithCron from io.koraframework.scheduling.quartz.annotation supports L) or running daily with a JDK cron and checking for the last day of the month in the method body",
+        "Notes a cron supplied through config is validated at startup instead, failing with IllegalArgumentException 'Invalid CRON expression ... for JDK job ...'"
+      ],
+      "anti_behavior": [
+        "Claims the JDK CronExpression supports L, W or # and suggests a typo fix",
+        "Suggests disabling annotation processing or the processor check"
+      ],
+      "tags": ["scheduling", "cron", "compile-error"]
+    },
+    {
+      "id": "kora-aop-scheduling-jdk-noop-telemetry-void",
+      "skills": ["kora-aop-scheduling-jdk"],
+      "query": "Every scheduled job in my Kora 2.0.0.RC1 service logs `JDK Job 'java.lang.Void#noop' started in 0.1ms` under the logger java.lang.Void. No tracing, default scheduling telemetry. Why don't I see my class names?",
+      "expected_behavior": [
+        "Explains that with job logging and metrics off (the 2.0 defaults) and no tracing (no Tracer component), DefaultSchedulingTelemetryFactory returns the shared NoopSchedulingTelemetry.INSTANCE whose jobClass() is Void and jobMethod() is noop, and KoraJdkJob takes its logger and lifecycle messages from that telemetry",
+        "States it is fixed in 2.0.0.RC2 (kora-projects/kora PR #961) and only 2.0.0.RC1 is affected",
+        "Recommends upgrading to RC2, and gives the RC1 workaround: scheduling.telemetry.logging.enabled = true (or per job <config-path>.telemetry.logging.enabled = true), noting each run then also logs 'Scheduled Job execution completed' at INFO"
+      ],
+      "anti_behavior": [
+        "Blames the user's logback configuration or the job class",
+        "Claims the scheduled method is not actually running"
+      ],
+      "tags": ["scheduling", "telemetry", "regression"]
+    },
+    {
+      "id": "kora-aop-scheduling-jdk-conditional-component",
+      "skills": ["kora-aop-scheduling-jdk"],
+      "query": "Kora 2: ReportJobs is @Component @Conditional(tag = ReportsEnabled.class) with a @ScheduleJdkWithFixedDelay method. With reports disabled the app starts fine, but with job logging on I see every run fail with IllegalStateException: Graph node value was not initialized because condition failed. Why is the job running at all?",
+      "expected_behavior": [
+        "Explains the generated $ReportJobs_SchedulingModule job factory is @Root and carries no @Conditional, so the job is created and scheduled even when the condition fails, and each run's ValueOf<ReportJobs>.get() throws",
+        "Notes that with job logging off (the default) these failures are invisible",
+        "States it is fixed in 2.0.0.RC2 (kora-projects/kora PR #962), which puts the class's condition on the job factory, and only 2.0.0.RC1 is affected",
+        "Gives the RC1 workaround: keep the scheduled method on an unconditional component and reach the conditional one through All<T>, returning when it is empty"
+      ],
+      "anti_behavior": [
+        "Recommends a @Nullable ReportJobs dependency as the workaround - it throws the same exception (PR #960)",
+        "Claims @Conditional is ignored on scheduled components in general"
+      ],
+      "tags": ["scheduling", "conditional", "regression"]
     }
   ]
 }

@@ -108,6 +108,10 @@ List<Long> findExistingAssigneeId(List<Long> assigneeIds);      // -> ListOfLong
 Reach for `@Mapping` only when the by-type route cannot decide: two mappers for one type, or a
 mapper you do not want in the graph at all.
 
+On PostgreSQL the `List<Long>` mapper above is already shipped by `database-jdbc-postgres` — tag the
+parameter `@Pg List<Long> assigneeIds` instead of writing it
+([postgres-mappers-reference.md](postgres-mappers-reference.md)).
+
 ---
 
 ## Column naming without `@Column`
@@ -119,11 +123,15 @@ Field names are converted by the entity's naming strategy, `SnakeCaseNameConvert
 | `userId` | `user_id` |
 | `firstName` | `first_name` |
 | `simple` | `simple` |
-| `HTTPClient` | `h_t_t_p_client` |
+| `executorUuid` | `executor_uuid` |
+| `HTTPClient` | `http_client` |
+| `userID` | `user_id` |
+
+Java (annotation processor) and Kotlin (KSP) apply the same conversion, so a Kotlin entity needs
+no `@Column` for a plain camel-case property either.
 
 `@Column` earns its place when the column name is not what the converter produces, when a JOIN
-aliases a column, or on a legacy schema. Blanket `@Column` on every field is noise. The acronym row
-above is the usual reason a schema does need one.
+aliases a column, or on a legacy schema. Blanket `@Column` on every field is noise.
 
 Change the strategy for a whole entity with `@NamingStrategy(X.class)` from
 `io.koraframework.common.annotation`; converters live in `io.koraframework.common.naming` and need
@@ -175,6 +183,10 @@ public interface JdbcJsonbMapperModule {
     }
 }
 ```
+
+`database-jdbc-postgres` ships exactly this pair for PostgreSQL, tagged `@PgJson` / `@PgJsonb`
+([postgres-mappers-reference.md](postgres-mappers-reference.md#json-and-jsonb-pgjson--pgjsonb)) —
+write your own only for another database or payload encoding.
 
 The `@Json` tag is what keeps the template narrow: it only satisfies fields that are themselves
 annotated `@Json`. **An untagged generic factory for `JdbcResultColumnMapper<T>` would match every

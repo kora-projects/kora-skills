@@ -20,7 +20,7 @@ import java.util.List;
 /**
  * Declarative Kora 2.0 HTTP client for a User API.
  *
- * Build (gradle.properties: koraVersion=2.0.0.RC1):
+ * Build (gradle.properties: koraVersion=2.0.0.RC2):
  * <pre>
  * koraBom platform("io.koraframework:kora-bom:$koraVersion")
  * annotationProcessor "io.koraframework:annotation-processors"

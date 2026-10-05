@@ -1,7 +1,7 @@
 # HTTP Client Transports Reference (Kora 2.x)
 
 Reference for [kora-http-client](../SKILL.md). Verified against the framework source at tag
-**`2.0.0.RC1`** — the only 2.0 release on Maven Central — with post-RC1 changes labelled as such.
+**`2.0.0.RC2`**.
 
 ## Contents
 
@@ -14,6 +14,7 @@ Reference for [kora-http-client](../SKILL.md). Verified against the framework so
 - [Advanced tuning with Configurer](#advanced-tuning-with-configurer)
 - [Proxy](#proxy)
 - [Telemetry](#telemetry)
+- [Log masking](#log-masking)
 - [Removed: http-client-async](#removed-http-client-async)
 - [Troubleshooting](#troubleshooting)
 
@@ -29,12 +30,12 @@ Reference for [kora-http-client](../SKILL.md). Verified against the framework so
 | Config section | `httpClient.ok` | `httpClient.jdk` | `httpClient.apache` |
 | HTTP versions | `HTTP_1_1`, `HTTP_2`, `HTTP_3` | `HTTP_1_1`, `HTTP_2` | not selectable |
 | Extra dependencies | OkHttp + Okio | none | `org.apache.httpcomponents.client5` |
-| State at RC1 | unchanged since RC1 | one header fix landed after RC1 | new in 2.0; integration corrected after RC1 |
+| Headers it owns (dropped if you set them) | — | `connection`, `content-length`, `expect`, `host`, `upgrade` | `content-length`, `transfer-encoding` |
 
 **Recommendation:** `http-client-ok` unless something rules it out — it is the transport the Kotlin
-example application and both HTTP-client guides use, and the only one with no post-RC1 fixes.
-`http-client-jdk` is the zero-extra-dependency option. `http-client-apache` exists at RC1 but see
-its caveats below before choosing it for a new service.
+example application and both HTTP-client guides use. `http-client-jdk` is the zero-extra-dependency
+option. `http-client-apache` (new in 2.0) fits when the service already standardises on Apache
+HttpClient 5 or needs its connection-pool sizing.
 
 Exactly **one** transport module goes into `@KoraApp`. All three register the `HttpClient`
 component under the same `httpClient` base config path, so two of them in one graph is an ambiguous
@@ -46,7 +47,7 @@ binding.
 
 ```groovy
 dependencies {
-    koraBom platform("io.koraframework:kora-bom:$koraVersion")   // koraVersion=2.0.0.RC1
+    koraBom platform("io.koraframework:kora-bom:$koraVersion")   // koraVersion=2.0.0.RC2
     annotationProcessor "io.koraframework:annotation-processors"
 
     implementation "io.koraframework:http-client-ok"
@@ -111,8 +112,9 @@ These are **transport-level** and shared by every declarative client. Per-call b
 `requestTimeout`, set inside a client's own block (or per method) — see
 [declarative-client-reference](declarative-client-reference.md#client-configuration).
 
-The JDK transport applies `connectTimeout` only; it has no read-timeout knob, so bound JDK-based
-calls with `requestTimeout` on the client.
+The JDK transport has no socket-read timeout: it applies `readTimeout` as the per-request timeout
+(`HttpRequest.timeout`) of every call that sets no `requestTimeout`; a client or method
+`requestTimeout` replaces it. A zero or negative `readTimeout` means no timeout.
 
 ---
 
@@ -167,11 +169,10 @@ httpClient {
 Unlike OkHttp, `httpVersion` here is the JDK's exact version setting, not a preference list. The
 client runs on a virtual-thread executor.
 
-**RC1 caveat.** `2.0.0.RC1` forwards every request header to `java.net.http.HttpRequest.Builder`
-except `content-length`. `java.net.http` refuses the restricted names `connection`, `expect`,
-`host` and `upgrade` with `IllegalArgumentException: restricted header name: …`. Commit
-`6c10c221f` (after RC1) filters all five. On RC1: do not set those headers from an interceptor, or
-use `http-client-ok`.
+`java.net.http` refuses the restricted header names `connection`, `content-length`, `expect`,
+`host` and `upgrade`, so the transport **silently skips** them when copying request headers — the
+JDK client derives them itself (`host` from the URI). A `Host` header set by an interceptor or a
+request signer therefore never reaches the wire on this transport.
 
 ---
 
@@ -195,18 +196,15 @@ httpClient {
 }
 ```
 
-**Two RC1 caveats — both fixed on `master` after RC1, neither released:**
+`ApacheHttpClientConfig` holds **only** these three keys. Timeouts and proxy come from the shared
+`httpClient` block like every other transport: `connectTimeout` becomes both the request-config and
+the pool's connection connect timeout, `readTimeout` the response timeout, and `proxy` /
+`useEnvProxy` a proxy selector (with credentials when both `user` and `password` are set). Do not
+repeat them under `httpClient.apache` — they are not keys there.
 
-1. **Timeouts and proxy are read from `httpClient.apache`, not `httpClient`.** At RC1
-   `ApacheHttpClientConfig extends HttpClientConfig`, and the wrapper reads
-   `apacheConfig.connectTimeout()` / `readTimeout()` / `proxy()`. Anything you set at the base
-   `httpClient` level is ignored by this transport, so on RC1 repeat them inside the `apache`
-   block. Commit `00fb89d9e` drops the inheritance and switches the wrapper to the base config.
-2. **`Content-Length` / `Transfer-Encoding` headers are forwarded to Apache**, which derives
-   framing from the entity itself and then rejects the request via `RequestContent` — most visibly
-   on binary uploads. The same commit filters both headers.
-
-If either matters, use `http-client-ok` or `http-client-jdk` on RC1.
+Apache derives message framing from the entity, so the transport drops `Content-Length` and
+`Transfer-Encoding` request headers instead of forwarding them (forwarding them would make
+Apache's `RequestContent` reject the request).
 
 ---
 
@@ -278,9 +276,8 @@ httpClient {
 }
 ```
 
-Proxy authentication is applied only when **both** `user` and `password` are present.
-
-On RC1 the Apache transport reads this block from `httpClient.apache` — see above.
+Proxy authentication is applied only when **both** `user` and `password` are present. All three
+transports read this block from `httpClient`.
 
 ---
 
@@ -313,12 +310,63 @@ Metrics additionally need a `MeterRegistry` in the graph (`micrometer-module`) a
 `HttpClientTelemetryFactory`, so without them the corresponding telemetry is silently absent even
 with `enabled = true`.
 
-The client timer is registered as **`http.client.request.duration`**, tagged with the HTTP method,
-status code, server address, URL scheme and target, plus `error.type` on failures. See
+The client timer is registered as **`http.client.request.duration`**, tagged `http.request.method`,
+`http.response.status_code`, `server.address`, `url.scheme`, `server.port` (the URI port, else `80`
+for `http` / `443` for `https`), **`url.template`** (the route template — not `http.route`, which is a
+server-side attribute), `error.type` (empty on success) and `system.config`, `system.name.simple`,
+`system.name.canonical`. The client span carries `url.template` too. See
 [`kora-telemetry-metrics`](../../kora-telemetry-metrics/SKILL.md).
 
-Header and query masking is on by default for `authorization`, `set-cookie` and `cookie`; extend it
-with `telemetry.logging.maskHeaders` / `maskQueries`.
+---
+
+## Log masking
+
+Client request/response logging masks header values listed in `telemetry.logging.maskHeaders`
+(default `["authorization", "set-cookie", "cookie"]`) and query values listed in `maskQueries`
+(default empty). Both are logged only when the client's `.request` / `.response` logger is at
+`DEBUG`; bodies are logged only at `TRACE`. A failed call without a response (connection error,
+timeout) is logged at `WARN` as `HttpClient error received` on the **`.response`** logger, so that
+logger's level controls it.
+
+| What | Config picks | Graph component decides how | Default |
+|---|---|---|---|
+| Header / query values | `maskHeaders`, `maskQueries` | `@Tag(HttpClientTelemetry.class) MaskingStrategy` | replaced with `***` |
+| Request / response bodies | body `Content-Type` → `json` (`*/json`, `*+json`), `xml` (`*/xml`, `*+xml`), `form-urlencoded` | `@Tag(HttpClientTelemetry.class) DataMasker` with that `format()` | **none — logged as is** |
+
+- A configured list **replaces** its default: restate `authorization`, `set-cookie`, `cookie` when
+  you add a header. Names are lower-cased before matching, so config case does not matter.
+- There is no `mask` key (neither per client nor per method). The replacement text is the
+  `MaskingStrategy`'s job; it receives the original value, so `MaskingKeepLast` can keep a suffix.
+- The tag is `io.koraframework.http.client.common.telemetry.HttpClientTelemetry`, one strategy and
+  one masker per format for **all** clients. For per-client body rules, subclass
+  `DefaultHttpClientBodyConverter`, override `selectRequestDataMasker` / `selectResponseDataMasker`
+  (they receive the client config path and canonical name) and return it from a factory method typed
+  `DefaultHttpClientBodyConverter`.
+
+```java
+@Tag(HttpClientTelemetry.class)
+default DataMasker httpClientJsonBodyMasker() {
+    return new JsonDataMasker(MaskingPathRules.builder()
+            .mask("access_token", new MaskingFull())
+            .mask("client_secret", new MaskingFull())
+            .build());
+}
+```
+
+```kotlin
+@Tag(HttpClientTelemetry::class)
+fun httpClientJsonBodyMasker(): DataMasker = JsonDataMasker(
+    MaskingPathRules.builder()
+        .mask("access_token", MaskingFull())
+        .mask("client_secret", MaskingFull())
+        .build()
+)
+```
+
+`MaskingStrategy`, `MaskingFull`, `MaskingKeepFirst`, `MaskingKeepLast`, `MaskingPathRules` are in
+`io.koraframework.logging.common.masking`; `DataMasker`, `JsonDataMasker`, `XmlDataMasker`,
+`FormUrlencodedDataMasker` in `…masking.raw`. The shared model (path syntax, fail-closed parsing,
+length limits) is in [kora-aop-logging → masking](../../kora-aop-logging/references/logging-masking.md).
 
 ---
 
@@ -348,13 +396,12 @@ Step 4 is the real work. Steps 1–3 alone leave a graph that fails to resolve
 |---|---|
 | `Multiple components match` for `HttpClient` | Two transport modules in the same `@KoraApp` — keep one |
 | Connect timeouts under load | Raise `httpClient.connectTimeout`; on OkHttp remember `retryOnConnectionFailure = true` multiplies the effective wait |
-| `IllegalArgumentException: restricted header name` | JDK transport on RC1 — see the JDK caveat above |
-| Apache client ignores `httpClient.connectTimeout` | RC1 reads it from `httpClient.apache` — set it there |
-| Apache rejects an upload with a `RequestContent` error | RC1 forwards `Content-Length`/`Transfer-Encoding`; stop setting them, or switch transport |
+| A `Host` / `Connection` / `Expect` header set by an interceptor is missing on the wire | JDK transport — it drops restricted headers and derives them itself |
+| `connectTimeout` placed under `httpClient.apache` has no effect | It is not an Apache key; set it at `httpClient` |
 | HTTP/2 not negotiated | Set `httpClient.ok.httpVersion = "HTTP_2"` (or `jdk`) and confirm the server supports it — the list always falls back to 1.1 |
 | Connection pool exhausted | OkHttp/JDK: a `Configurer` component; Apache: `httpClient.apache.maxConnections` |
 | No `http.client.request.duration` metric | `telemetry.metrics.enabled` is `false` by default, and a `MeterRegistry` must be in the graph |
-| Credentials visible in logs | Add the header/query names to `telemetry.logging.maskHeaders` / `maskQueries` |
+| Credentials visible in logs | Add the header/query names to `telemetry.logging.maskHeaders` / `maskQueries` (restating the defaults); for bodies add a `@Tag(HttpClientTelemetry.class) DataMasker` — see [Log masking](#log-masking) |
 
 ---
 

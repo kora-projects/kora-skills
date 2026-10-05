@@ -1,0 +1,26 @@
+package ${package}
+
+import io.koraframework.common.annotation.Component
+import io.koraframework.opentelemetry.tracing.OpentelemetryTracingAttributesProvider
+
+/**
+ * OTLP resource attributes computed at startup.
+ *
+ * `OpentelemetryTracingModule` collects every [OpentelemetryTracingAttributesProvider] with
+ * `All<OpentelemetryTracingAttributesProvider>` and puts their attributes on the `Resource` of the
+ * tracer provider, so every exported span carries them. `tracing.attributes` from
+ * `application.conf` is applied last and wins on a key conflict -- keep static values such as
+ * `service.name` there.
+ *
+ * [attributes] is called once while the graph is built.
+ */
+@Component
+class AppTracingAttributesProvider : OpentelemetryTracingAttributesProvider {
+
+    private val attributes: Map<String, String> = mapOf(
+        "service.instance.id" to (System.getenv("HOSTNAME") ?: "unknown"),
+        "service.version" to (javaClass.`package`.implementationVersion ?: "unknown"),
+    )
+
+    override fun attributes(): Map<String, String> = attributes
+}

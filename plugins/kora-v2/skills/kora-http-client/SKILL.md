@@ -8,9 +8,9 @@ metadata:
 
 # Kora HTTP Client — declarative outbound calls
 
-> **Kora sub-skill — obey the [kora-v2 meta rules](../../SKILL.md) on every task:** **R0** ground the workspace on Kora 2.0 refs before starting (framework source at tag `2.0.0.RC1` + `kora-examples` at `migration/2.0`; `kora-docs` is 1.x only) · **R1** read this sub-skill before writing code · **R2** Kora 2.0 APIs only — no Spring/Micronaut/Quarkus, no Kora 1.x APIs, no invented annotations or config keys · **R3** journal any incorrect Kora usage. Add comments/Javadoc only if asked.
+> **Kora sub-skill — obey the [kora-v2 meta rules](../../SKILL.md) on every task:** **R0** ground the workspace on Kora 2.0 refs before starting (framework source at tag `2.0.0.RC2` + `kora-examples` at `migration/2.0` + Kora 2.0 docs at koraframework.io/v2, which trail the source; 1.x `kora-docs` pages are never an authority) · **R1** read this sub-skill before writing code · **R2** Kora 2.0 APIs only — no Spring/Micronaut/Quarkus, no Kora 1.x APIs, no invented annotations or config keys · **R3** journal any incorrect Kora usage. Add comments/Javadoc only if asked.
 
-**Version:** Kora 2.0 (`io.koraframework`, `2.0.0.RC1` on Maven Central) | **Java:** 25 | **Kotlin:** 2.4 + KSP | **Gradle:** 9+
+**Version:** Kora 2.0 (`io.koraframework`, `2.0.0.RC2`) | **Java:** 25 | **Kotlin:** 2.4 + KSP | **Gradle:** 9+
 
 Annotate an interface with `@HttpClient`, declare methods with `@HttpRoute`, and the annotation
 processor (Java) or symbol processor (Kotlin) generates `$<Name>_ClientImpl` plus a
@@ -63,7 +63,7 @@ a test rather than a compiler:
 `gradle.properties`:
 
 ```properties
-koraVersion=2.0.0.RC1
+koraVersion=2.0.0.RC2
 ```
 
 Java (`build.gradle`) — resolve from plain `mavenCentral()`:
@@ -213,16 +213,16 @@ public final class UserService {
 
 ### Transports
 
-| Module interface | Artifact | Transport config section | HTTP versions | Status at `2.0.0.RC1` |
+| Module interface | Artifact | Transport config section | HTTP versions | Notes |
 |---|---|---|---|---|
-| `OkHttpClientModule` | `io.koraframework:http-client-ok` | `httpClient.ok` | `HTTP_1_1` (default), `HTTP_2`, `HTTP_3` | unchanged since RC1 — **default choice** |
-| `JdkHttpClientModule` | `io.koraframework:http-client-jdk` | `httpClient.jdk` | `HTTP_1_1` (default), `HTTP_2` | established; one header fix landed after RC1 |
-| `ApacheHttpClientModule` | `io.koraframework:http-client-apache` | `httpClient.apache` | Apache HttpClient 5, no `httpVersion` key | **new in 2.0**, transport integration corrected after RC1 |
+| `OkHttpClientModule` | `io.koraframework:http-client-ok` | `httpClient.ok` | `HTTP_1_1` (default), `HTTP_2`, `HTTP_3` | **default choice** |
+| `JdkHttpClientModule` | `io.koraframework:http-client-jdk` | `httpClient.jdk` | `HTTP_1_1` (default), `HTTP_2` | no extra dependency; drops the restricted headers `connection`/`content-length`/`expect`/`host`/`upgrade` |
+| `ApacheHttpClientModule` | `io.koraframework:http-client-apache` | `httpClient.apache` | Apache HttpClient 5, no `httpVersion` key | **new in 2.0**; `httpClient.apache` holds only `followRedirects`, `maxRedirects`, `maxConnections` |
 
-Prefer `http-client-ok`; `http-client-jdk` is the dependency-free alternative. `http-client-apache`
-is available at RC1 but its integration received fixes on `master` afterwards — on RC1 it reads
-`connectTimeout` / `readTimeout` / `proxy` from `httpClient.apache` rather than from `httpClient`,
-and it forwards `Content-Length` / `Transfer-Encoding` headers that Apache rejects.
+Prefer `http-client-ok`; `http-client-jdk` is the dependency-free alternative. Every transport reads
+`connectTimeout` / `readTimeout` / `proxy` / `useEnvProxy` from the shared `httpClient` block, and
+every transport reports a failure to connect (refused, connect timeout) as
+`HttpClientConnectionException`.
 
 `http-client-async` / `AsyncHttpClientModule` **do not exist in 2.0** and have no drop-in
 replacement. Details and every config key: [transports-reference](references/transports-reference.md).
@@ -340,8 +340,9 @@ which never mentions nullability.
 | `Method has async signature, this might not work correctly` (warning), then a missing mapper | `CompletionStage`/`Mono` return type — make the method synchronous |
 | `ConfigValueException` at `httpClient.<x>.url`, or calls going to the wrong host | The config path is the `@HttpClient` value, or `httpClient.<lowerCamelInterfaceName>` when omitted. An absent block throws; a stale block that still exists is read as-is |
 | `@Json` body not serialized | Add `io.koraframework:json-common`, extend `io.koraframework.json.common.JsonModule`, annotate the DTO with `@Json` |
-| A mapper failure surfaces as `HttpClientUnknownException`, not `HttpClientDecoderException` | Expected on `2.0.0.RC1` — the generated client only started wrapping decode failures after RC1. Catch `HttpClientException` (the common supertype) |
-| `IllegalArgumentException: restricted header name` on the JDK transport | RC1 forwards `connection`/`expect`/`host`/`upgrade` to `java.net.http`; drop the header or use `http-client-ok` |
+| Catching `HttpClientTimeoutException` misses "service down" | A refused connection or elapsed `connectTimeout` is `HttpClientConnectionException` on every transport; catch both, or `HttpClientException` |
+| A `Host`/`Connection`/`Expect` header set by an interceptor never reaches the server | JDK transport — `java.net.http` owns those names, so Kora skips them |
+| `telemetry.logging.mask` has no effect / secrets in `TRACE` bodies | There is no `mask` key; the replacement is a `@Tag(HttpClientTelemetry.class) MaskingStrategy`, and bodies are masked only by a `@Tag(HttpClientTelemetry.class) DataMasker` — see [transports-reference → Log masking](references/transports-reference.md#log-masking) |
 | Interceptor header change ignored | `request.toBuilder().header(…).build()` — the request is never mutated in place |
 | No `http.client.request.duration` metric | `telemetry.metrics.enabled` defaults to **false**; enable it per client |
 | Phantom `ru.tinkoff.kora` errors after the rename | Stale generated sources — `./gradlew clean` with `--no-build-cache`; never edit `build/generated` |

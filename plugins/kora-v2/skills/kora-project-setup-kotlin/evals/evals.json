@@ -8,7 +8,7 @@
       "query": "Create a new Kora microservice in Kotlin from scratch with Gradle.",
       "expected_behavior": [
         "Creates build.gradle.kts, settings.gradle.kts, gradle.properties and gradle/wrapper/gradle-wrapper.properties",
-        "Uses Gradle Kotlin DSL with the application plugin, kotlin(\"jvm\") version 2.4.10 and com.google.devtools.ksp version 2.3.11",
+        "Uses Gradle Kotlin DSL with the application plugin, kotlin(\"jvm\") version 2.4.20 and com.google.devtools.ksp version 2.3.12",
         "Provides an Application.kt with a @KoraApp interface imported from io.koraframework.common.annotation and a main() that runs KoraApplication.run { ApplicationGraph.graph() }",
         "Extends UndertowPublicHttpServerModule, not the removed UndertowHttpServerModule",
         "Does not use field injection or a runtime reflection-based application class; the root is the @KoraApp interface"
@@ -25,7 +25,7 @@
       ],
       "query": "Wire up KSP so Kora generates code for my Kotlin project.",
       "expected_behavior": [
-        "Adds the com.google.devtools.ksp plugin version 2.3.11 alongside Kotlin 2.4.10, and explains that both must match the versions Kora 2.x is built with",
+        "Adds the com.google.devtools.ksp plugin version 2.3.12 alongside Kotlin 2.4.20, and explains that both must match the versions Kora 2.x is built with",
         "Declares ksp(\"io.koraframework:symbol-processors:${property(\"koraVersion\")}\") with an explicit version because ksp resolves on its own classpath",
         "Registers build/generated/ksp/main/kotlin as a source directory via sourceSets.main",
         "Does not use Java annotationProcessor or the kapt plugin for Kotlin",
@@ -44,7 +44,7 @@
       "query": "How do I pin all the Kora dependency versions in my Kotlin build.gradle.kts?",
       "expected_behavior": [
         "Imports the BOM as implementation(platform(\"io.koraframework:kora-bom:${property(\"koraVersion\")}\"))",
-        "Pins koraVersion=2.0.0.RC1, the released 2.0.x on Maven Central, resolvable from plain mavenCentral()",
+        "Pins koraVersion=2.0.0.RC2, the current 2.0.x release on Maven Central, resolvable from plain mavenCentral()",
         "Explicitly does NOT create a koraBom configuration and does NOT use extendsFrom; states that pattern belongs to Java modules",
         "Keeps an explicit version on the ksp (and kspTest, if present) processor dependency",
         "Leaves individual io.koraframework:* implementation dependencies without versions because the BOM aligns them",
@@ -64,7 +64,7 @@
       ],
       "query": "Which Kora 2 version do I put in my Kotlin build? I see 2.0.0-SNAPSHOT in the framework repo, and browsing io/koraframework on Maven Central I also find kora-parent and cache-redis — should I use those?",
       "expected_behavior": [
-        "Pins koraVersion=2.0.0.RC1 as the released 2.0.x of io.koraframework:kora-bom on Maven Central, needing only mavenCentral()",
+        "Pins koraVersion=2.0.0.RC2 as the current 2.0.x release of io.koraframework:kora-bom on Maven Central, needing only mavenCentral()",
         "Explains 2.0.0-SNAPSHOT is the master development line and would require https://central.sonatype.com/repository/maven-snapshots or a local publishToMavenLocal, and does not recommend it for a new project",
         "Rejects io.koraframework:kora-parent and io.koraframework:cache-redis as 1.x/alpha leftovers that the 2.0 BOM does not constrain",
         "Directs the user to take coordinates from what the BOM constrains rather than from the Maven Central group listing",
@@ -104,7 +104,7 @@
       "expected_behavior": [
         "Configures kotlin { jvmToolchain { ... } } with JavaLanguageVersion 25 or newer and explains that 25 is the bytecode floor of Kora 2.x artifacts",
         "Distinguishes the toolchain from the JVM running Gradle, and notes the buildscript classpath (openapi-generator) needs a Gradle JVM of 25+",
-        "Pins the Gradle wrapper distributionUrl to gradle-9.5.1-bin.zip",
+        "Pins the Gradle wrapper distributionUrl to gradle-9.8.0-bin.zip",
         "Adds the foojay-resolver-convention plugin in settings.gradle.kts for toolchain auto-download",
         "Does not propose JDK 21, and does not freeze a specific 'latest' JDK without saying to re-derive the latest GA release",
         "Does not rely on Maven or a manually configured JAVA_HOME instead of the toolchain"
@@ -172,7 +172,7 @@
       "skills": [
         "kora-project-setup-kotlin"
       ],
-      "query": "Here is my Kotlin build.gradle.kts:\n\nval koraBom: Configuration by configurations.creating\nconfigurations {\n    ksp.get().extendsFrom(koraBom)\n    implementation.get().extendsFrom(koraBom)\n    testImplementation.get().extendsFrom(koraBom)\n}\ndependencies {\n    koraBom(platform(\"io.koraframework:kora-bom:2.0.0.RC1\"))\n    ksp(\"io.koraframework:symbol-processors\")\n}\n\nIs this right for Kora 2.x?",
+      "query": "Here is my Kotlin build.gradle.kts:\n\nval koraBom: Configuration by configurations.creating\nconfigurations {\n    ksp.get().extendsFrom(koraBom)\n    implementation.get().extendsFrom(koraBom)\n    testImplementation.get().extendsFrom(koraBom)\n}\ndependencies {\n    koraBom(platform(\"io.koraframework:kora-bom:2.0.0.RC2\"))\n    ksp(\"io.koraframework:symbol-processors\")\n}\n\nIs this right for Kora 2.x?",
       "expected_behavior": [
         "Says no: Kotlin modules do not create a koraBom configuration and do not use extendsFrom",
         "Rewrites it as implementation(platform(\"io.koraframework:kora-bom:${property(\"koraVersion\")}\")) plus ksp(\"io.koraframework:symbol-processors:${property(\"koraVersion\")}\")",
@@ -298,6 +298,29 @@
         "nullability",
         "regression",
         "basic"
+      ]
+    },
+    {
+      "id": "kora-project-setup-kotlin-mapper-no-kapt",
+      "skills": [
+        "kora-project-setup-kotlin",
+        "kora-mapstruct"
+      ],
+      "query": "Scaffold a Kora 2.0 Kotlin service that will need DTO-to-entity mappers. Our Kora 1.x Kotlin services used kapt with MapStruct — include the same setup.",
+      "expected_behavior": [
+        "Keeps the build KSP-only: kotlin(\"jvm\") 2.4.20, com.google.devtools.ksp 2.3.12, ksp(\"io.koraframework:symbol-processors:${property(\"koraVersion\")}\")",
+        "Replaces MapStruct with Konvert: ksp(\"io.mcarle:konvert:4.5.1\") and implementation(\"io.mcarle:konvert-api:4.5.1\"), with @Konverter interfaces",
+        "Explains MapStruct is Java-only in Kora 2.0 because it is a javac processor that KSP cannot run, and points to the kora-mapstruct skill"
+      ],
+      "anti_behavior": [
+        "Adds kotlin(\"kapt\") or any kapt(...) dependency",
+        "Adds org.mapstruct:mapstruct or org.mapstruct:mapstruct-processor to the Kotlin module",
+        "Declares mapstruct-ksp-extension or konvert-ksp-extension as its own dependency"
+      ],
+      "tags": [
+        "regression",
+        "mapping",
+        "ksp"
       ]
     }
   ]

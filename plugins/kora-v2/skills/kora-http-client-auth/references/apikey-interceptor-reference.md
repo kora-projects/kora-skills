@@ -192,9 +192,9 @@ public HttpClientResponse processRequest(InterceptChain chain, HttpClientRequest
 }
 ```
 
-`io.koraframework.http.common.cookie.Cookie`. The built-in
-`ApiKeyHttpClientInterceptor` with `ApiKeyLocation.COOKIE` does **not** do this merge — it
-overwrites the header — which is one concrete reason to hand-write.
+`io.koraframework.http.common.cookie.Cookie`. The built-in `ApiKeyHttpClientInterceptor` with
+`ApiKeyLocation.COOKIE` performs the same merge, so hand-write this only when the cookie needs
+something the built-in cannot express.
 
 ---
 

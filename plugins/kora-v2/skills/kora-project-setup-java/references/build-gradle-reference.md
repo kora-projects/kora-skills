@@ -22,6 +22,7 @@ background only, never as a 2.0 API authority.
 - [settings.gradle](#settingsgradle)
 - [Gradle wrapper](#gradle-wrapper)
 - [Docker packaging](#docker-packaging)
+- [Fat jar with Shadow](#fat-jar-with-shadow)
 - [Multi-module and library projects](#multi-module-and-library-projects)
 
 ## Plugins
@@ -95,9 +96,9 @@ repositories {
 }
 ```
 
-`io.koraframework:kora-bom:2.0.0.RC1` and the 95 modules it constrains are on
-Maven Central; `mavenCentral()` alone resolves the whole build. This is the only
-2.0.x release published — put `2.0.0.RC1` in a new project.
+`io.koraframework:kora-bom:2.0.0.RC2` and the 100 modules it constrains are on
+Maven Central; `mavenCentral()` alone resolves the whole build. Put `2.0.0.RC2`
+in a new project.
 
 `2.0.0-SNAPSHOT` is the framework's `master` development line, not a version to
 put in a project. It resolves only from the snapshot repository, or after
@@ -183,7 +184,7 @@ fails at **runtime**, not at compile time:
 
 | Library | Aligned with Kora 2.0 | Symptom when pinned lower |
 |---|---|---|
-| gRPC | `1.83.1` | `AbstractMethodError` while building the server |
+| gRPC | `1.84.0` | `AbstractMethodError` while building the server |
 | Flyway | `13.x`; `database-flyway` ships `flyway-core` only — add your dialect artifact yourself (e.g. `org.flywaydb:flyway-database-postgresql`) | `FlywayException: Unsupported Database` at startup |
 | Mockito / Byte Buddy | Byte Buddy must understand class file version 69 (Java 25) | `IllegalArgumentException: Java 25 (69) is not supported by the current version of Byte Buddy` |
 | Testcontainers | `2.x` renamed its modules to `testcontainers-postgresql`, `testcontainers-kafka`, `testcontainers-cassandra` | unresolved dependency |
@@ -250,7 +251,7 @@ clears it; the message never points at the cause.
 ## gradle.properties
 
 ```properties
-koraVersion=2.0.0.RC1
+koraVersion=2.0.0.RC2
 junitVersion=6.1.3
 
 org.gradle.java.installations.auto-detect=true
@@ -293,10 +294,10 @@ not already installed, making the build reproducible across machines.
 `gradle/wrapper/gradle-wrapper.properties`:
 
 ```properties
-distributionUrl=https\://services.gradle.org/distributions/gradle-9.5.1-bin.zip
+distributionUrl=https\://services.gradle.org/distributions/gradle-9.8.0-bin.zip
 ```
 
-Gradle `9.5.1` is what the Kora 2.0 reference apps pin. Gradle 9 is also what the
+Gradle `9.8.0` is the wrapper the Kora framework itself builds with. Gradle 9 is also what the
 GraalVM `native-build-tools` `1.1.7` plugin expects if you later add native-image
 builds.
 
@@ -326,6 +327,25 @@ CMD [ "/opt/app/application/bin/application" ]
 `8080` is the public API (`httpServer.port`), `8085` the system API
 (`httpServer.system.port`, serving `/system/readiness`, `/system/liveness`,
 `/metrics`).
+
+## Fat jar with Shadow
+
+The reference apps ship the `distTar` layout above, not a fat jar. If you build one with the
+`com.gradleup.shadow` 9.x plugin, `mergeServiceFiles()` on its own is not enough:
+
+```groovy
+shadowJar {
+    mergeServiceFiles()
+    duplicatesStrategy = DuplicatesStrategy.INCLUDE   // let every META-INF/services copy reach the merge
+}
+```
+
+Without `INCLUDE` the jar keeps only the first copy of each `META-INF/services/*` file — the
+default duplicates strategy drops the others before the service-file transformer sees them. Flyway
+registers its plugins through `ServiceLoader` files in both `flyway-core` and
+`flyway-database-postgresql`, so the fat jar then fails at startup with a `NullPointerException`
+in `DryRunConfigurationExtensionStub.getOrResolveOutputStream`. This was observed on a real
+service build, not derived from Kora source — Kora itself does not touch the packaging.
 
 ## Multi-module and library projects
 

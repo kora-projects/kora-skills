@@ -8,7 +8,7 @@ metadata:
 
 # Kora Config HOCON
 
-> **Kora sub-skill — obey the [kora-v2 meta rules](../../SKILL.md) on every task:** **R0** ground the workspace on Kora 2.0 refs before starting (framework source at tag `2.0.0.RC1` + `kora-examples` at `migration/2.0`; `kora-docs` is 1.x only) · **R1** read this sub-skill before writing code · **R2** Kora 2.0 APIs only — no Spring/Micronaut/Quarkus, no Kora 1.x APIs, no invented annotations or config keys · **R3** journal any incorrect Kora usage. Add comments/Javadoc only if asked.
+> **Kora sub-skill — obey the [kora-v2 meta rules](../../SKILL.md) on every task:** **R0** ground the workspace on Kora 2.0 refs before starting (framework source at tag `2.0.0.RC2` + `kora-examples` at `migration/2.0` + Kora 2.0 docs at koraframework.io/v2, which trail the source; 1.x `kora-docs` pages are never an authority) · **R1** read this sub-skill before writing code · **R2** Kora 2.0 APIs only — no Spring/Micronaut/Quarkus, no Kora 1.x APIs, no invented annotations or config keys · **R3** journal any incorrect Kora usage. Add comments/Javadoc only if asked.
 
 | | |
 |---|---|
@@ -59,7 +59,7 @@ in both roles and only a second pass corrects the runtime one. Fix the type, not
 
 ### 1. Dependencies
 
-Kora 2.0 is published on Maven Central. Put `koraVersion=2.0.0.RC1` in `gradle.properties` and
+Kora 2.0 is published on Maven Central. Put `koraVersion=2.0.0.RC2` in `gradle.properties` and
 resolve from `mavenCentral()` — no snapshot repository is involved.
 
 Java (`build.gradle`):
@@ -462,8 +462,9 @@ Library `reference.conf` files are merged as a fallback, JVM `-D` overrides win 
 the result is resolved once.
 
 Kora watches the config file, plus every file it pulls in through a filesystem `include`, on a
-virtual thread and refreshes the affected part of the graph on change (classpath and URL includes
-are not watched). Disable it with the `KORA_CONFIG_WATCHER_ENABLED` env var or
+virtual thread polling once a second, and refreshes the affected part of the graph only when a
+tracked file's modification time or symlink target changed, or an included file was added or
+removed (classpath and URL includes are not watched). Disable it with the `KORA_CONFIG_WATCHER_ENABLED` env var or
 the `kora.config.watcher.enabled` system property set to `false`.
 
 ---
@@ -591,13 +592,14 @@ explicitly (see [kora-di-compile](../kora-di-compile/SKILL.md) for multi-module 
 
 ## Source of truth
 
-Version-aligned authorities for Kora 2.0. The published documentation site still describes Kora 1.x
-in `ru.tinkoff.kora` terms — including any page served under a `/v2/` path, which is a copy of the
-1.x content. Do not resolve a 2.0 config question from it; use the sources below:
+Version-aligned authorities for Kora 2.0, highest first. The Kora 2.0 documentation
+([Configuration](https://koraframework.io/v2/en/documentation/config/)) explains concepts but can
+trail the framework — confirm every key, default and signature in the source below. The 1.x pages
+(`ru.tinkoff.kora`) are never an authority for 2.0.
 
-- Framework source, tag `2.0.0.RC1`:
-  [config-common](https://github.com/kora-projects/kora/tree/2.0.0.RC1/config/config-common) ·
-  [config-hocon](https://github.com/kora-projects/kora/tree/2.0.0.RC1/config/config-hocon)
+- Framework source, tag `2.0.0.RC2`:
+  [config-common](https://github.com/kora-projects/kora/tree/2.0.0.RC2/config/config-common) ·
+  [config-hocon](https://github.com/kora-projects/kora/tree/2.0.0.RC2/config/config-hocon)
 - Migrated examples, branch `migration/2.0`:
   [kora-java-config-hocon](https://github.com/kora-projects/kora-examples/tree/migration/2.0/examples/java/kora-java-config-hocon) ·
   [kora-kotlin-config-hocon](https://github.com/kora-projects/kora-examples/tree/migration/2.0/examples/kotlin/kora-kotlin-config-hocon)

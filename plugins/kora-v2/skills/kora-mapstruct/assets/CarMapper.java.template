@@ -1,0 +1,47 @@
+// Kora 2.0 — MapStruct mapper that takes a graph component (Java).
+//
+// MapStruct instantiates `uses` helpers itself unless asked for constructor injection. With
+// injectionStrategy = CONSTRUCTOR, MapStruct emits a CarMapperImpl constructor taking DateMapper,
+// and Kora's `mapstruct-java-extension` binds that single public constructor, so DateMapper is
+// resolved from the graph.
+//
+// Requires, in build.gradle:
+//   annotationProcessor "io.koraframework:annotation-processors"
+//   annotationProcessor "org.mapstruct:mapstruct-processor:1.6.3"
+//   implementation      "org.mapstruct:mapstruct:1.6.3"
+//   implementation      "jakarta.inject:jakarta.inject-api:2.0.1"   // componentModel = "jakarta" annotates the impl
+//
+// Replace `com.example.app.mapper` with your package.
+
+package com.example.app.mapper;
+
+import com.example.app.dto.CarDto;
+import com.example.app.entity.Car;
+import org.mapstruct.InjectionStrategy;
+import org.mapstruct.Mapper;
+import org.mapstruct.Mapping;
+
+@Mapper(uses = DateMapper.class,
+        injectionStrategy = InjectionStrategy.CONSTRUCTOR,
+        componentModel = "jakarta")   // no @Component — the extension binds CarMapperImpl
+public interface CarMapper {
+
+    @Mapping(source = "registeredOn", target = "registered")
+    @Mapping(source = "numberOfSeats", target = "seatCount")
+    CarDto carToCarDto(Car car);
+}
+
+// Kora reads none of the jakarta.inject annotations; it only needs exactly one public constructor
+// on CarMapperImpl. Never componentModel = "spring" or "cdi".
+//
+// DateMapper.java — the helper is an ordinary Kora component:
+//
+//   import io.koraframework.common.annotation.Component;
+//   import java.time.LocalDate;
+//
+//   @Component
+//   public final class DateMapper {
+//       public String asString(LocalDate date) {
+//           return date.toString();
+//       }
+//   }

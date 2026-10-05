@@ -9,7 +9,7 @@ metadata:
 
 # Kora HTTP Client Auth
 
-> **Kora sub-skill — obey the [kora-v2 meta rules](../../SKILL.md) on every task:** **R0** ground the workspace on Kora 2.0 refs before starting (framework source at tag `2.0.0.RC1` + `kora-examples` at `migration/2.0`; `kora-docs` is 1.x only) · **R1** read this sub-skill before writing code · **R2** Kora 2.0 APIs only — no Spring/Micronaut/Quarkus, no Kora 1.x APIs, no invented annotations or config keys · **R3** journal any incorrect Kora usage. Add comments/Javadoc only if asked.
+> **Kora sub-skill — obey the [kora-v2 meta rules](../../SKILL.md) on every task:** **R0** ground the workspace on Kora 2.0 refs before starting (framework source at tag `2.0.0.RC2` + `kora-examples` at `migration/2.0` + Kora 2.0 docs at koraframework.io/v2, which trail the source; 1.x `kora-docs` pages are never an authority) · **R1** read this sub-skill before writing code · **R2** Kora 2.0 APIs only — no Spring/Micronaut/Quarkus, no Kora 1.x APIs, no invented annotations or config keys · **R3** journal any incorrect Kora usage. Add comments/Javadoc only if asked.
 
 | | |
 |---|---|
@@ -21,7 +21,7 @@ metadata:
 | **Client annotation** | `io.koraframework.http.client.common.annotation.HttpClient` — `@HttpClient("httpClient.myApi")` |
 | **Exceptions** | `io.koraframework.http.client.common.exception.{HttpClientResponseException, HttpClientDecoderException}` |
 
-Everything in this skill is verified against the framework source at tag `2.0.0.RC1` and the
+Everything in this skill is verified against the framework source at tag `2.0.0.RC2` and the
 migrated examples on `migration/2.0` — see [Source of truth](#source-of-truth).
 
 ---
@@ -55,8 +55,9 @@ Three consequences, and every 1.x auth flow has to be redesigned around them:
    `(ctx, chain, request)` order that only deletes `ctx` puts the arguments in the right places by
    luck; check them.
 
-`getToken` may return `null`, and both `BasicAuthHttpClientInterceptor` and
-`BearerAuthHttpClientInterceptor` then forward the request **with no credential header at all**.
+`getToken` may return `null` (or a blank string), and `BasicAuthHttpClientInterceptor`,
+`BearerAuthHttpClientInterceptor` and `ApiKeyHttpClientInterceptor` then forward the request
+**with no credential at all**.
 That is the intended way to say "this scheme does not apply here" — and the reason a
 misconfigured secret shows up as an upstream `401` rather than a startup failure.
 
@@ -64,7 +65,7 @@ misconfigured secret shows up as an upstream `401` rather than a startup failure
 
 ## 2. Quick start — API key on every request
 
-`build.gradle` (`koraVersion=2.0.0.RC1` in `gradle.properties`, resolved from plain `mavenCentral()`):
+`build.gradle` (`koraVersion=2.0.0.RC2` in `gradle.properties`, resolved from plain `mavenCentral()`):
 
 ```groovy
 dependencies {
@@ -206,11 +207,13 @@ one for you:
 | Scheme | Type | Constructors |
 |---|---|---|
 | `Authorization: Basic <base64>` | `BasicAuthHttpClientInterceptor` | `(String username, String password)` — encodes for you — or `(HttpClientTokenProvider)` returning the **already Base64-encoded** credentials |
-| API key in header / query / cookie | `ApiKeyHttpClientInterceptor` | `(ApiKeyLocation location, String parameterName, String secret)`; `ApiKeyLocation` is the nested enum `HEADER`, `QUERY`, `COOKIE` |
+| API key in header / query / cookie | `ApiKeyHttpClientInterceptor` | `(ApiKeyLocation location, String parameterName, String secret)` for a fixed key, or `(ApiKeyLocation, String, HttpClientTokenProvider)` for a rotating one; `ApiKeyLocation` is the nested enum `HEADER`, `QUERY`, `COOKIE` |
 | `Authorization: Bearer <token>` | `BearerAuthHttpClientInterceptor` | `(HttpClientTokenProvider)` for a dynamic token, or `(String token)` for a fixed one |
 
-`ApiKeyHttpClientInterceptor` calls `Objects.requireNonNull` on the secret, so a null key fails
-during graph init. The Basic and Bearer interceptors do not — see §1.
+None of the three validates its credential at graph init: a `null` or blank value skips the
+credential on each request (§1). Make the config accessor non-`@Nullable` so a missing key fails as
+`ConfigValueException` at startup instead. `COOKIE` appends `name=value` to an existing `Cookie`
+header rather than replacing it.
 
 Full walk-through with config: [references/http-client-auth-reference.md](references/http-client-auth-reference.md).
 
@@ -275,8 +278,13 @@ providers all returned non-null**. So a provider for an alternative you do not u
 out complete, the request is forwarded with **no** credential and a single
 `WARN Security schema is defined for api but no data was provided`.
 
-For `http` / `oauth2` / `openId` schemes the returned string becomes the whole `Authorization`
-header value, so a Bearer provider returns `"Bearer " + token`, not the bare token.
+The generated interceptor writes the `authorization` header with the scheme prefix itself —
+`"Basic "` for `http`/`basic`, `"Bearer "` for `http`/`bearer`, `oauth2` and `openId` — so a
+provider returns the **bare** token, exactly as for `BearerAuthHttpClientInterceptor`. The same
+`OAuth2ClientCredentialsProvider` therefore serves both. Only an `http` scheme other than basic or
+bearer gets the provider value verbatim. The generated basic-auth provider (built from the
+generated security config) is a `@DefaultComponent`, so a provider of your own under the same tag
+replaces it.
 
 Everything else about generated clients — config paths, `ApiSecurity` tag names, the security
 config prefix — belongs to [kora-openapi-generator-client](../kora-openapi-generator-client/SKILL.md).
@@ -294,15 +302,19 @@ httpClient.serviceA.telemetry.logging.enabled = true
 ```
 
 The client logger masks headers through `maskHeaders`, whose default is
-`["authorization", "set-cookie", "cookie"]`. Two source-verified traps:
-
-- **Setting `maskHeaders` replaces the default, it does not extend it.** Adding `"x-api-key"` alone
-  silently unmasks `authorization`. List the defaults again alongside your own.
-- **Header names are lower-cased when stored**, and the mask set is matched against the stored
-  name. `maskHeaders = ["X-API-KEY"]` never matches and the key is logged in clear text.
+`["authorization", "set-cookie", "cookie"]`. **Setting `maskHeaders` replaces the default, it does
+not extend it** — adding `"x-api-key"` alone silently unmasks `authorization`, so list the defaults
+again alongside your own. Names are lower-cased on both sides before matching, so `"X-API-KEY"` and
+`"x-api-key"` are equivalent.
 
 An API key in a **query parameter** is not masked by anything by default — `maskQueries` starts
-empty. Add the parameter name (lower-case) if you enable logging.
+empty. Add the parameter name if you enable logging.
+
+There is no `mask` key: the replacement (`***` by default) is a
+`@Tag(HttpClientTelemetry.class) MaskingStrategy` component. Request and response **bodies** —
+where a token endpoint's `client_secret` or `access_token` travels — are logged at `TRACE` and are
+masked only by a `@Tag(HttpClientTelemetry.class) DataMasker` for their format (`form-urlencoded`,
+`json`, `xml`). See [kora-http-client → Log masking](../kora-http-client/references/transports-reference.md#log-masking).
 
 ---
 
@@ -319,9 +331,10 @@ empty. Add the parameter name (lower-case) if you enable logging.
 | Build fails on `io.koraframework:http-client-async` | Removed in 2.0 with no replacement | `http-client-ok`, `http-client-jdk` or `http-client-apache` |
 | `cannot find symbol: class RootUriInterceptor` | The one interceptor that **was** deleted from `http-client-common` in 2.0 | Nothing replaces it — set the base address as `httpClient.<client>.url`, which the generated client already prefixes |
 | `Required dependency … http-client-auth` | That artifact has never existed | `http-client-common` + a transport |
-| Upstream returns 401, no error at startup | Credential resolved to `null`; Basic/Bearer then send no header at all | Declare the config accessor non-`@Nullable` so a missing key fails as `ConfigValueException` during startup |
+| Upstream returns 401, no error at startup | Credential resolved to `null` or blank; Basic/Bearer/ApiKey then send no credential at all | Declare the config accessor non-`@Nullable` so a missing key fails as `ConfigValueException` during startup |
 | Retried request carries the API key twice | `queryParam(name, value)` **appends**, unlike `header(name, value)` which **replaces** | `queryParamRemove(name)` before re-adding |
-| Secret appears in logs | `maskHeaders` overridden without the defaults, or listed in upper case | See §8 |
+| Secret appears in logs | `maskHeaders` overridden without the defaults, the key travels in a query parameter not listed in `maskQueries`, or it is in a `TRACE`-logged body with no `DataMasker` | See §8 |
+| Generated client sends `Authorization: Bearer Bearer …` | The `ApiSecurity` provider returns `"Bearer " + token`; the generated interceptor adds the prefix itself | Return the bare token |
 | A discarded 401 response leaks a connection | `HttpClientResponse` is `Closeable`; only the response the client finally returns is auto-closed | Close the response you throw away before retrying |
 
 ---
@@ -371,8 +384,7 @@ see [kora-testing-junit-java](../kora-testing-junit-java/SKILL.md) and
 | `assets/CustomAuthInterceptor.{java,kt}.template` | Hand-written interceptor with a single 401 retry |
 | `scripts/generate-auth-templates.sh` | Renders one scheme into a project package — `--scheme oauth2\|interceptor\|all`, `--lang java\|kotlin`, `--dry-run` |
 
-Every template exists in both languages and is verified by compiling the generated output against
-the published `2.0.0.RC1` artifacts (javac 25, Kotlin 2.4.10).
+Every template exists in both languages.
 
 Basic auth, API-key and static-Bearer wiring have no templates on purpose — each is one line inside
 a `@Module` you already own:
@@ -395,16 +407,18 @@ new BearerAuthHttpClientInterceptor(config.token());
 
 ## Source of truth
 
-There is no Kora 2.0 documentation site. The published docs and every branch of `kora-docs`,
-including its `docs/v2` directory, describe **1.x** in `ru.tinkoff.kora` terms — usable as
-conceptual background, never as a 2.0 API authority. This skill was verified against:
+Framework source and tests outrank everything else; the Kora 2.0 docs
+([koraframework.io/v2/en](https://koraframework.io/v2/en/)) are a secondary reference, and the 1.x
+docs are background only. This skill was verified against:
 
-- Framework source, tag `2.0.0.RC1`:
-  [http-client-common](https://github.com/kora-projects/kora/tree/2.0.0.RC1/http/http-client-common)
+- Framework source, tag `2.0.0.RC2`:
+  [http-client-common](https://github.com/kora-projects/kora/tree/2.0.0.RC2/http/http-client-common)
   (`auth/`, `interceptor/`, `request/`, `telemetry/`) ·
-  [http-common](https://github.com/kora-projects/kora/tree/2.0.0.RC1/http/http-common)
+  [http-common](https://github.com/kora-projects/kora/tree/2.0.0.RC2/http/http-common)
   (`annotation/InterceptWith`, `telemetry/MaskingUtils`) ·
-  [http-client-annotation-processor](https://github.com/kora-projects/kora/tree/2.0.0.RC1/http/http-client-annotation-processor)
+  [http-client-annotation-processor](https://github.com/kora-projects/kora/tree/2.0.0.RC2/http/http-client-annotation-processor) ·
+  [openapi-generator](https://github.com/kora-projects/kora/tree/2.0.0.RC2/openapi/openapi-generator)
+  (`ClientSecuritySchemaGenerator`)
 - Migrated examples, branch `migration/2.0`:
   [kora-java-http-client](https://github.com/kora-projects/kora-examples/tree/migration/2.0/examples/java/kora-java-http-client) ·
   [kora-kotlin-http-client](https://github.com/kora-projects/kora-examples/tree/migration/2.0/examples/kotlin/kora-kotlin-http-client) ·

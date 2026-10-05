@@ -1,9 +1,9 @@
 # Kora JUnit 5 Extension — config and graph modifiers (Kotlin, Kora 2.x)
 
 Verified against
-[`KoraConfigModification`](https://github.com/kora-projects/kora/blob/2.0.0.RC1/test/test-junit5/src/main/java/io/koraframework/test/extension/junit5/KoraConfigModification.java),
-[`KoraGraphModification`](https://github.com/kora-projects/kora/blob/2.0.0.RC1/test/test-junit5/src/main/java/io/koraframework/test/extension/junit5/KoraGraphModification.java),
-[`KoraAppGraph`](https://github.com/kora-projects/kora/blob/2.0.0.RC1/test/test-junit5/src/main/java/io/koraframework/test/extension/junit5/KoraAppGraph.java)
+[`KoraConfigModification`](https://github.com/kora-projects/kora/blob/2.0.0.RC2/test/test-junit5/src/main/java/io/koraframework/test/extension/junit5/KoraConfigModification.java),
+[`KoraGraphModification`](https://github.com/kora-projects/kora/blob/2.0.0.RC2/test/test-junit5/src/main/java/io/koraframework/test/extension/junit5/KoraGraphModification.java),
+[`KoraAppGraph`](https://github.com/kora-projects/kora/blob/2.0.0.RC2/test/test-junit5/src/main/java/io/koraframework/test/extension/junit5/KoraAppGraph.java)
 and `KoraJUnit5Extension`, plus the framework's own Kotlin test
 `kotlin/mockk/MockkGraphModificationTests.kt` and the migrated Kotlin examples.
 

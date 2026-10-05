@@ -101,8 +101,8 @@ public interface CustomMapperClient {
             try (var is = response.body().asInputStream()) {
                 var payload = this.jsonReader.read(is.readAllBytes());
                 if (payload == null) {
-                    // read() is @Nullable in Kora 2.0. Throwing explicitly keeps the failure typed
-                    // on 2.0.0.RC1, where the generated client does not yet wrap mapper failures.
+                    // read() is @Nullable in Kora 2.0; the generated client wraps this in another
+                    // HttpClientDecoderException, like every other mapper failure.
                     throw new HttpClientDecoderException(new IllegalStateException("empty success payload"));
                 }
                 return payload;

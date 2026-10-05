@@ -1,6 +1,6 @@
 {
   "name": "kora-v2",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "Kora Framework development skill for building production-grade Java/Kotlin services — with compile-time DI, HTTP, Database, Kafka, gRPC, SOAP, OpenAPI, Telemetry, AOP. Zero reflection, zero proxies, synchronous contracts on virtual threads, AI agent friendly. For Kora version 2.x",
   "author": "Anton Kurako",
   "license": "Apache-2.0",
@@ -28,6 +28,9 @@
     "telemetry",
     "caching",
     "resilience",
+    "postgresql",
+    "scheduling",
+    "db-scheduler",
     "backend"
   ],
   "main": "SKILL.md",
@@ -38,22 +41,24 @@
   ],
   "requirements": {
     "java": "25+ (Kora 2.0 artifacts are compiled to class-file 69; the JDK running Gradle must also be 25+ when io.koraframework:openapi-generator is on the buildscript classpath)",
-    "kotlin": "2.4.10 with KSP 2.3.11 (must match the versions the framework itself is built with)",
-    "gradle": "9+ (the Kora 2.0 examples pin wrapper 9.5.1)"
+    "kotlin": "2.4.20 with KSP 2.3.12 (must match the versions the framework itself is built with)",
+    "gradle": "9+ (the framework pins wrapper 9.8.0)"
   },
   "kora": {
     "group": "io.koraframework",
     "bom": "io.koraframework:kora-bom",
-    "release": "2.0.0.RC1",
+    "release": "2.0.0.RC2",
+    "sourceCommit": "78351e1cf9bfb71fa59b1821a8f85fcad48afecb",
     "snapshot": "2.0.0-SNAPSHOT",
     "snapshotRepository": "https://central.sonatype.com/repository/maven-snapshots"
   },
   "documentation": {
-    "source": "https://github.com/kora-projects/kora/tree/2.0.0.RC1",
+    "source": "https://github.com/kora-projects/kora/tree/2.0.0.RC2",
+    "docs": "https://koraframework.io/v2/en/",
     "examples": "https://github.com/kora-projects/kora-examples/tree/migration/2.0",
     "migration_1x_to_2x": "https://github.com/kora-projects/kora-examples/tree/migration/2.0/migration",
     "changelog": "https://github.com/kora-projects/kora/releases",
-    "kora_docs_note": "https://kora-projects.github.io/kora-docs/en/ documents Kora 1.x only — there is no 2.0 documentation site yet, so it must not be used as an API authority for 2.x"
+    "kora_docs_note": "https://koraframework.io/v2/en/ (source: kora-docs branch feature/kora-2.0, mkdocs/docs/v2) documents Kora 2.0 but can trail the framework; source and tests win on any conflict. https://kora-projects.github.io/kora-docs/en/ and docs/v1 document Kora 1.x only and are never an API authority for 2.x"
   },
   "compatibility": [
     "claude-code",

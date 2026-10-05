@@ -21,6 +21,7 @@ grpcServer {
     telemetry {
         logging {
             enabled = true           # DEFAULT false in Kora 2.0 — must be set explicitly
+            # maskHeaders = [ "authorization", "cookie", "set-cookie" ]   # the default; a list replaces it
         }
         metrics {
             enabled = true           # DEFAULT false in Kora 2.0 — must be set explicitly.

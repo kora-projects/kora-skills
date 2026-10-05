@@ -264,7 +264,8 @@ public ${Api}ApiResponses.UploadApiResponse upload(${Api}ApiController.UploadFor
 }
 ```
 
-Multipart mapping and parsing received fixes after `2.0.0.RC1`; the signature shape is unchanged.
+Array form fields arrive as lists (an absent optional array is `null`); boolean form values accept
+only `true` / `false`.
 
 ---
 

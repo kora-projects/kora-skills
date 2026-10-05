@@ -1,12 +1,11 @@
 # Scalar Reference — Kora 2.0
 
-**Verified against** the Kora 2.0 framework source at tag `2.0.0.RC1`
+**Verified against** the Kora 2.0 framework source for `2.0.0.RC2`
 (`openapi/openapi-management/src/main/java/io/koraframework/openapi/management/ScalarHttpServerHandler.java`,
 `OpenApiManagementConfig.ScalarConfig`, `OpenApiManagementModule#scalarManagementController`), the
 bundled page `src/main/resources/kora/openapi/management/scalar/index.page`, the module tests
 (`OpenApiTests#scalarSourcesSingleFile`, `#scalarSourcesMultipleFiles`), and the migrated examples
 `kora-java-crud` / `kora-kotlin-crud` on `kora-examples` branch `migration/2.0`.
-`openapi/openapi-management` is byte-identical between tag `2.0.0.RC1` and `master`.
 
 ## Contents
 
@@ -53,7 +52,7 @@ Same module and dependencies as Swagger UI; only the config block differs.
 
 ```groovy
 dependencies {
-    koraBom platform("io.koraframework:kora-bom:$koraVersion")   // 2.0.0.RC1
+    koraBom platform("io.koraframework:kora-bom:$koraVersion")   // 2.0.0.RC2
     annotationProcessor "io.koraframework:annotation-processors"
 
     implementation "io.koraframework:openapi-management"

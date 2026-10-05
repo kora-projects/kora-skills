@@ -2,7 +2,7 @@
 
 The `*ApiDelegate` interface is the **only** implementation point of a generated Kora HTTP
 server. Everything in this document was read out of the generated output of
-`io.koraframework:openapi-generator` at `2.0.0.RC1`.
+`io.koraframework:openapi-generator` for `2.0.0.RC2`.
 
 ## Contents
 
@@ -140,7 +140,7 @@ transport models and your domain, and to pick a response record.
 | `deprecated: true` | `@Deprecated` on the method |
 
 `format` matters: `format: uuid` → `java.util.UUID`, `format: date` → `LocalDate`,
-`format: date-time` → `OffsetDateTime`, `format: binary` → `byte[]`, `type: string` with
+`format: date-time` → `OffsetDateTime` (or the `typeMappings` target), `format: binary` → `byte[]`, `type: string` with
 `format: uri` → `java.net.URI`, `type: number` → `BigDecimal`.
 
 ## 4. Parameter order
@@ -216,9 +216,9 @@ The record's components follow the form schema; `format: binary` fields become
 `FormMultipart.FormPart` (or `List<FormMultipart.FormPart>` for arrays), and every other
 non-string field is read through an `HttpServerParameterReader`.
 
-Multipart form mapping and parsing received fixes **after** `2.0.0.RC1` (on `master`). If a
-multipart operation misbehaves on RC1, that is the known cause — the delegate signature shape
-above is unchanged.
+Array form fields (strings, primitives, enums, models) are collected part by part; an absent
+optional array arrives as `null`, not an empty list. Boolean form values are parsed strictly —
+anything but `true` / `false` answers `400`.
 
 ## 8. Raw and binary bodies
 

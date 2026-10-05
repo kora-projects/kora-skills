@@ -14,14 +14,14 @@
 
 - Compile-time DI с `@KoraApp`, `@Component`, `@Module`, tags, lifecycle и диагностикой DI graph.
 - HTTP server/client, authentication, OpenAPI server/client generation и управление спецификацией.
-- JDBC, Cassandra, Flyway/Liquibase migrations через единый скилл `kora-database-migration`.
+- JDBC (включая PostgreSQL-массивы, диапазоны, `interval`, `json`/`jsonb`), Cassandra, Flyway/Liquibase migrations через единый скилл `kora-database-migration`.
 - Kafka producer/consumer flows, gRPC server/client и SOAP/WSDL client integration.
-- Telemetry: OpenTelemetry tracing, Micrometer metrics и structured logging.
-- AOP: caching, resilience, logging, scheduling и validation.
+- Telemetry: OpenTelemetry tracing, Micrometer metrics, structured и JSON logging, маскирование секретов в telemetry-логах.
+- AOP: caching, resilience (включая распределённые rate limiter и retry budget на Redis), logging, scheduling (JDK, Quartz, db-scheduler в базе данных) и validation.
 - Testing: JUnit 5, `@KoraAppTest`, Testcontainers и black-box test patterns.
 - Project setup для Java/Kotlin приложений на Kora.
 
-Пакет содержит **39 доменных скиллов и один Codex meta-skill**.
+Пакет содержит **40 доменных скиллов и один Codex meta-skill**.
 
 ## Установка
 
@@ -150,7 +150,7 @@ plugins/kora-v2/
   .codex-plugin/
     plugin.json             # Plugin manifest для Codex
   references/
-    kora-docs-map.md        # Карта исходников фреймворка и примеров
+    kora-docs-map.md        # Карта исходников фреймворка, документации 2.0 и примеров
   skills/
     kora-starter/           # Видимая для Codex копия корневого meta-skill
     kora-di-compile/
@@ -174,7 +174,7 @@ plugins/kora-v2/
 | Messaging                | `kora-kafka-producer`, `kora-kafka-consumer`                                                                                                                                          |
 | gRPC и SOAP              | `kora-grpc-server`, `kora-grpc-client`, `kora-soap-client`                                                                                                                            |
 | Telemetry                | `kora-telemetry-tracing`, `kora-telemetry-metrics`, `kora-telemetry-logging`                                                                                                          |
-| AOP                      | `kora-aop-caching`, `kora-aop-resilient`, `kora-aop-logging`, `kora-aop-scheduling-jdk`, `kora-aop-scheduling-quartz`, `kora-aop-validation`                                          |
+| AOP                      | `kora-aop-caching`, `kora-aop-resilient`, `kora-aop-logging`, `kora-aop-scheduling-jdk`, `kora-aop-scheduling-quartz`, `kora-aop-scheduling-db`, `kora-aop-validation`                |
 | Тестирование             | `kora-testing-junit-java`, `kora-testing-junit-kotlin`, `kora-testing-blackbox`                                                                                                       |
 | Инструменты и обучение   | `kora-s3`, `kora-mapstruct`, `kora-journal`, `kora-teacher`                                                                                                                           |
 | Совместимость с агентами | `kora-starter`                                                                                                                                                                        |
@@ -193,21 +193,24 @@ plugins/kora-v2/
 
 | Компонент      | Версия                                                                                                                         |
 |----------------|--------------------------------------------------------------------------------------------------------------------------------|
-| Kora Framework | 2.x — на Maven Central опубликован `2.0.0.RC1`                                                                                 |
+| Kora Framework | 2.x — целевая версия `2.0.0.RC2` (синхронизировано с тегом `2.0.0.RC2`, `master` на `78351e1cf`)                                                  |
 | Java           | 25+ (JDK, на котором запускается сам Gradle, тоже должен быть 25+, когда `openapi-generator` попадает в buildscript classpath) |
-| Kotlin         | 2.4.10 с KSP 2.3.11                                                                                                            |
-| Gradle         | 9+ (примеры Kora 2.0 фиксируют wrapper 9.5.1)                                                                                  |
+| Kotlin         | 2.4.20 с KSP 2.3.12                                                                                                            |
+| Gradle         | 9+ (фреймворк фиксирует wrapper 9.8.0)                                                                                         |
 
 ## Источники
 
-Сайта документации Kora 2.0 пока не существует. `kora-projects.github.io/kora-docs` и репозитории
-`kora-java-template` / `kora-kotlin-template` по-прежнему описывают Kora **1.x** — их нельзя
-использовать как источник истины по API 2.x. Авторитетные материалы:
+Документация Kora 2.0 опубликована на [koraframework.io/v2/ru](https://koraframework.io/v2/ru/). Она
+может отставать от фреймворка, поэтому скиллы сверяют каждый ключ и значение по умолчанию с исходниками:
+сначала исходники и тесты, затем мигрированные примеры, затем документация 2.0.
+`kora-projects.github.io/kora-docs` и репозитории `kora-java-template` / `kora-kotlin-template`
+по-прежнему описывают Kora **1.x** — их нельзя использовать как источник истины по API 2.x.
 
 | Ресурс                                 | Ссылка                                                                      |
 |----------------------------------------|-----------------------------------------------------------------------------|
-| Исходники фреймворка (релиз)           | https://github.com/kora-projects/kora/tree/2.0.0.RC1                        |
+| Исходники фреймворка (релиз)           | https://github.com/kora-projects/kora/tree/2.0.0.RC2                        |
 | Исходники фреймворка (разработка)      | https://github.com/kora-projects/kora/tree/master                           |
+| Документация Kora 2.0                  | https://koraframework.io/v2/ru/ (en: https://koraframework.io/v2/en/)       |
 | Мигрированные примеры приложений       | https://github.com/kora-projects/kora-examples/tree/migration/2.0           |
 | Корпус миграции 1.x → 2.0              | https://github.com/kora-projects/kora-examples/tree/migration/2.0/migration |
 | Релизы                                 | https://github.com/kora-projects/kora/releases                              |

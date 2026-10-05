@@ -20,7 +20,7 @@ configurations {
 }
 
 dependencies {
-    // koraVersion=2.0.0.RC1 lives in gradle.properties
+    // koraVersion=2.0.0.RC2 lives in gradle.properties
     koraBom platform("io.koraframework:kora-bom:$koraVersion")
 
     // Mandatory: without it nothing is generated and the only symptom is

@@ -25,28 +25,27 @@ from typing import Dict, List, Optional, Tuple
 GROUP = "io.koraframework"
 GROUP_EXPERIMENTAL = "io.koraframework.experimental"
 
-# 2.0.0.RC1 is published on Maven Central and is the only 2.0.x release there, so a generated
+# 2.0.0.RC2 is published on Maven Central, so a generated
 # project resolves from plain mavenCentral(). Override with --kora-version. A -SNAPSHOT version is
 # the development line and additionally needs the Sonatype snapshot repository, which is why the
 # generator adds that repository only when the requested version is a snapshot.
-DEFAULT_KORA_VERSION = "2.0.0.RC1"
+DEFAULT_KORA_VERSION = "2.0.0.RC2"
 
 # Kora 2.0 artifacts are compiled at JVM 25, so 25 is the floor. The migration guides recommend
 # the latest GA feature release - override with --jdk rather than editing this constant.
 DEFAULT_JDK = 25
 
-KOTLIN_VERSION = "2.4.10"
-KSP_VERSION = "2.3.11"
-OPENAPI_PLUGIN_VERSION = "7.24.0"
-GRADLE_VERSION = "9.5.1"  # matches assets/gradle-wrapper/gradle-wrapper.properties
+KOTLIN_VERSION = "2.4.20"
+KSP_VERSION = "2.3.12"
+OPENAPI_PLUGIN_VERSION = "7.25.0"
+GRADLE_VERSION = "9.8.0"  # matches assets/gradle-wrapper/gradle-wrapper.properties
 
-POSTGRES_DRIVER = "org.postgresql:postgresql:42.7.7"
 MYSQL_DRIVER = "com.mysql:mysql-connector-j:9.2.0"
 # database-flyway ships flyway-core only; the dialect artifact is the application's job.
-FLYWAY_POSTGRES_DIALECT = "org.flywaydb:flyway-database-postgresql:13.1.0"
-FLYWAY_MYSQL_DIALECT = "org.flywaydb:flyway-database-mysql:13.1.0"
+FLYWAY_POSTGRES_DIALECT = "org.flywaydb:flyway-database-postgresql:13.9.0"
+FLYWAY_MYSQL_DIALECT = "org.flywaydb:flyway-mysql:13.9.0"
 
-MOCKITO = "org.mockito:mockito-core:5.23.0"
+MOCKITO = "org.mockito:mockito-core:5.24.0"
 MOCKK = "io.mockk:mockk:1.14.11"
 
 # Module definitions. Every artifact below appears in the Kora 2.0 settings.gradle.
@@ -95,15 +94,19 @@ MODULES: Dict[str, dict] = {
     # ---- Database ---------------------------------------------------------
     "jdbc-postgres": {
         "category": "Database",
-        "artifact": "database-jdbc",
+        # database-jdbc-postgres brings database-jdbc and the org.postgresql driver as api.
+        "artifact": "database-jdbc-postgres",
         "extra_artifacts": [(GROUP, "database-flyway")],
-        "external": [POSTGRES_DRIVER, FLYWAY_POSTGRES_DIALECT],
-        "module_interface": ("io.koraframework.database.jdbc.JdbcDatabaseModule", "JdbcDatabaseModule"),
+        "external": [FLYWAY_POSTGRES_DIALECT],
+        "module_interface": (
+            "io.koraframework.database.jdbc.postgres.PostgresJdbcDatabaseModule",
+            "PostgresJdbcDatabaseModule",
+        ),
         "extra_module_interfaces": [
             ("io.koraframework.database.flyway.FlywayJdbcDatabaseModule", "FlywayJdbcDatabaseModule")
         ],
         "package_example": "repository",
-        "description": "JDBC + PostgreSQL (Flyway migrations, config section `jdbc`)",
+        "description": "JDBC + PostgreSQL mappers and driver (Flyway migrations, config section `jdbc`)",
     },
     "jdbc-mysql": {
         "category": "Database",
@@ -155,6 +158,13 @@ MODULES: Dict[str, dict] = {
         "package_example": None,
         "description": "OpenTelemetry tracing (OTLP/gRPC exporter)",
     },
+    "logging-json": {
+        "category": "Telemetry",
+        "artifact": "logging-logback-json",
+        "module_interface": None,
+        "package_example": None,
+        "description": "JSON console logs (Logback encoder picked automatically; KORA_LOGGING_ENCODER overrides)",
+    },
 
     # ---- gRPC -------------------------------------------------------------
     "grpc-server": {
@@ -162,14 +172,14 @@ MODULES: Dict[str, dict] = {
         "artifact": "grpc-server",
         "module_interface": ("io.koraframework.grpc.server.GrpcServerModule", "GrpcServerModule"),
         "package_example": None,
-        "description": "gRPC Server (pin grpc test transports to 1.83.1)",
+        "description": "gRPC Server (pin grpc test transports to 1.84.0)",
     },
     "grpc-client": {
         "category": "gRPC",
         "artifact": "grpc-client",
         "module_interface": ("io.koraframework.grpc.client.GrpcClientModule", "GrpcClientModule"),
         "package_example": None,
-        "description": "gRPC Client (pin grpc test transports to 1.83.1)",
+        "description": "gRPC Client (pin grpc test transports to 1.84.0)",
     },
 
     # ---- OpenAPI ----------------------------------------------------------
@@ -208,6 +218,20 @@ MODULES: Dict[str, dict] = {
         "package_example": None,
         "description": "Resilience: @CircuitBreakable, @Retryable, @Timeout, @RateLimited, @Fallback",
     },
+    "resilient-redis": {
+        "category": "AOP",
+        "artifact": "resilient-kora-distributed-redis-lettuce",
+        "extra_artifacts": [(GROUP, "resilient-kora")],
+        "module_interface": ("io.koraframework.resilient.ResilientModule", "ResilientModule"),
+        "extra_module_interfaces": [
+            (
+                "io.koraframework.resilient.distributed.LettuceDistributedResilientModule",
+                "LettuceDistributedResilientModule",
+            )
+        ],
+        "package_example": None,
+        "description": "Resilience + Redis-backed distributed rate limiter / retry budget (Lettuce)",
+    },
     "caching": {
         "category": "AOP",
         "artifact": "cache-caffeine",
@@ -237,14 +261,24 @@ MODULES: Dict[str, dict] = {
         "artifact": "scheduling-jdk",
         "module_interface": ("io.koraframework.scheduling.jdk.SchedulingJdkModule", "SchedulingJdkModule"),
         "package_example": "scheduler",
-        "description": "In-process scheduling: @ScheduleAtFixedRate, @ScheduleWithFixedDelay, @ScheduleOnce",
+        "description": "In-process scheduling: @ScheduleJdkAtFixedRate, @ScheduleJdkWithFixedDelay, @ScheduleJdkOnce, @ScheduleJdkWithCron",
     },
     "scheduling-quartz": {
         "category": "AOP",
         "artifact": "scheduling-quartz",
         "module_interface": ("io.koraframework.scheduling.quartz.QuartzModule", "QuartzModule"),
         "package_example": None,
-        "description": "Quartz scheduling: @ScheduleWithCron, @ScheduleWithTrigger",
+        "description": "Quartz scheduling: @ScheduleQuartzWithCron, @ScheduleQuartzWithTrigger",
+    },
+    "scheduling-db": {
+        "category": "AOP",
+        "artifact": "scheduling-db-scheduler",
+        "module_interface": (
+            "io.koraframework.scheduling.db.scheduler.DbSchedulerModule",
+            "DbSchedulerModule",
+        ),
+        "package_example": None,
+        "description": "Clustered DB scheduling on db-scheduler (needs jdbc-postgres or jdbc-mysql)",
     },
 
     # ---- Other ------------------------------------------------------------
@@ -384,6 +418,11 @@ def validate_modules(selected: List[str]) -> None:
         print("error: pick at most one database module, got: " + ", ".join(databases), file=sys.stderr)
         raise SystemExit(2)
 
+    if "scheduling-db" in selected and not any(m in selected for m in ("jdbc-postgres", "jdbc-mysql")):
+        print("error: scheduling-db stores its jobs in the database; add jdbc-postgres or jdbc-mysql",
+              file=sys.stderr)
+        raise SystemExit(2)
+
     transports = [m for m in selected if m in HTTP_CLIENT_KEYS]
     if len(transports) > 1:
         print("warning: more than one HTTP client transport selected (" + ", ".join(transports) + ");",
@@ -457,7 +496,7 @@ SNAPSHOT_REPO = "https://central.sonatype.com/repository/maven-snapshots"
 
 
 def repository_lines(kora_version: str, kotlin: bool) -> List[str]:
-    """Project repositories. RC1 and every release live on Central; only snapshots need more."""
+    """Project repositories. Every release lives on Central; only snapshots need more."""
     lines = ["repositories {", "    mavenCentral()"]
     if is_snapshot(kora_version):
         lines.append("    // required only for the -SNAPSHOT development line")
@@ -725,7 +764,7 @@ def generate_settings_gradle(name: str, lang: str) -> str:
 def generate_gradle_properties(kora_version: str, lang: str) -> str:
     lines = [
         "# Kora BOM version - every io.koraframework:* artifact inherits it.",
-        "# 2.0.0.RC1 is on Maven Central; check the releases page before moving to a newer one:",
+        "# 2.0.0.RC2 is on Maven Central; check the releases page before moving to a newer one:",
         "# https://github.com/kora-projects/kora/releases",
         f"koraVersion={kora_version}",
         "",
@@ -939,10 +978,21 @@ def generate_application_conf(name: str, modules: List[str]) -> str:
             "}",
         ])
 
-    if "caching-redis" in modules:
+    if "scheduling-db" in modules:
         lines.extend([
             "",
-            "# Lettuce/Redis client used by cache-redis-lettuce",
+            "# db-scheduler keeps its jobs in the `jdbc` database; create its table on startup.",
+            "scheduling {",
+            "  dbScheduler {",
+            "    tableInitialize = true",
+            "  }",
+            "}",
+        ])
+
+    if "caching-redis" in modules or "resilient-redis" in modules:
+        lines.extend([
+            "",
+            "# Lettuce/Redis client",
             "lettuce {",
             '  uri = "redis://localhost:6379"',
             "  uri = ${?REDIS_URI}",
@@ -1478,7 +1528,7 @@ def generate_dockerfile(name: str, jdk: int) -> str:
     return f"""# Build stage.
 # Kora 2.0 artifacts are built at JVM 25, and openapi-generator on the buildscript classpath is
 # resolved by the JVM running Gradle - so the builder image must be {jdk}, not just the toolchain.
-FROM gradle:9.5.1-jdk{jdk} AS builder
+FROM gradle:{GRADLE_VERSION}-jdk{jdk} AS builder
 
 WORKDIR /home/gradle/project
 

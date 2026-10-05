@@ -97,7 +97,9 @@ Two SLF4J messages: `>` on entry, `<` on exit, each optionally carrying an SLF4J
 ```
 
 Arguments are keyed by parameter name; the result is always keyed `out`. A `void` / `Unit` method
-never gets an `out` payload.
+never gets an `out` payload. With the JSON encoder (`io.koraframework:logging-logback-json`) the
+marker becomes the record's top-level `data` field and the message is `>` / `<`:
+`{"…","message":">","data":{"id":"42","limit":"10"}}`.
 
 **Exceptions.** The aspect wraps the call in `try/catch (Throwable)`. If `WARN` is enabled it logs
 at **WARN** with `<` and a payload of `errorType` (canonical class name) and `errorMessage`; the
@@ -119,6 +121,9 @@ Three ways to change what is written:
 | `@Json` | `LoggingModule.jsonStructuredArgumentMapper` (`@Json`-tagged) over the type's `JsonWriter<T>` | nested JSON object |
 | `@Mapping(MyMapper.class)` | your `StructuredArgumentMapper<T>` implementation | whatever it writes |
 | `@Mask` (± `@Json`) | `MaskedStructuredArgumentMapper<T>` | see [logging-masking.md](logging-masking.md) |
+
+Only `@Mask` / `MaskingRules<T>` masks `@Log` payloads. The transport `DataMasker`s and tagged
+`MaskingStrategy`s from [logging-masking.md](logging-masking.md#four-masking-layers) never see them.
 
 `@Json` is `io.koraframework.json.common.annotation.Json` and is itself a `@Tag`, so it selects the
 JSON-flavoured mapper. Using it requires `JsonModule` (`io.koraframework.json.common.JsonModule`) in

@@ -9,7 +9,7 @@
 
 /*
 // gradle.properties
-//   koraVersion=2.0.0.RC1
+//   koraVersion=2.0.0.RC2
 // repositories { mavenCentral() }
 // Java toolchain 25 (Kora 2.0 artifacts are class-file 69).
 
@@ -103,7 +103,7 @@ orders.redis.cache {
 
   telemetry {
     logging.enabled = false
-    metrics.enabled = false     # enables cache.operation.duration and cache.ratio
+    metrics.enabled = false     # enables cache.operation.duration and cache.requests
     tracing.enabled = true
   }
 }

@@ -7,8 +7,8 @@
       ],
       "query": "Set up a gRPC server in my Kora service that serves a UserService defined in a .proto file. Show me the dependencies and the handler.",
       "expected_behavior": [
-        "Uses the Kora 2.0 coordinates: platform(\"io.koraframework:kora-bom:2.0.0.RC1\") from mavenCentral(), io.koraframework:grpc-server, annotationProcessor \"io.koraframework:annotation-processors\" (or ksp \"io.koraframework:symbol-processors\" for Kotlin)",
-        "Adds io.grpc:grpc-protobuf pinned to 1.83.1 and the com.google.protobuf Gradle plugin 0.10.0 with protoc 3.25.3 and protoc-gen-grpc-java 1.83.1",
+        "Uses the Kora 2.0 coordinates: platform(\"io.koraframework:kora-bom:2.0.0.RC2\") from mavenCentral(), io.koraframework:grpc-server, annotationProcessor \"io.koraframework:annotation-processors\" (or ksp \"io.koraframework:symbol-processors\" for Kotlin)",
+        "Adds io.grpc:grpc-protobuf pinned to 1.84.0 and the com.google.protobuf Gradle plugin 0.10.0 with protoc 3.25.3 and protoc-gen-grpc-java 1.84.0",
         "Registers build/generated/source/proto/main/grpc and .../main/java on the java source set (not kotlin.srcDir, even in a Kotlin project)",
         "Extends io.koraframework.grpc.server.GrpcServerModule on the @KoraApp interface and boots with KoraApplication.run(ApplicationGraph::graph)",
         "Implements an UNTAGGED @Component that extends the generated UserServiceGrpc.UserServiceImplBase and uses io.grpc.stub.StreamObserver",
@@ -29,9 +29,9 @@
       ],
       "query": "My Kora gRPC server tests fail with: java.lang.AbstractMethodError: does not define or inherit an implementation of the resolved method 'buildClientTransportServers(List, MetricRecorder)'. My build has testImplementation \"io.grpc:grpc-inprocess:1.74.0\". What is wrong?",
       "expected_behavior": [
-        "Identifies the cause as mixed io.grpc versions: grpc-inprocess is pinned at 1.74.0 while grpc-core arrives at 1.83.1 through io.koraframework:grpc-server",
+        "Identifies the cause as mixed io.grpc versions: grpc-inprocess is pinned at 1.74.0 while grpc-core arrives at 1.84.0 through io.koraframework:grpc-server",
         "States that kora-bom constrains only io.koraframework:* artifacts and pins nothing under io.grpc, so every io.grpc coordinate is the application's responsibility",
-        "Fixes it by pinning grpc-inprocess (and every other io.grpc artifact, in both implementation and testImplementation) to 1.83.1",
+        "Fixes it by pinning grpc-inprocess (and every other io.grpc artifact, in both implementation and testImplementation) to 1.84.0",
         "Notes that this fails at runtime rather than at compile time, and suggests auditing with ./gradlew dependencies filtered on io.grpc",
         "Does not suggest excluding transitive dependencies, downgrading grpc-core, or adding a resolution strategy that forces the older version"
       ],
@@ -47,12 +47,12 @@
       "skills": [
         "kora-grpc-server"
       ],
-      "query": "I bumped my Kora gRPC project to protoc 4.35.1 because that is the version in Kora's gradle/libs.versions.toml, and now the generated sources will not compile: \"error: cannot find symbol @com.google.protobuf.Generated\".",
+      "query": "I bumped my Kora gRPC project to protoc 4.36.2 because that is the version in Kora's gradle/libs.versions.toml, and now the generated sources will not compile: \"error: cannot find symbol @com.google.protobuf.Generated\".",
       "expected_behavior": [
-        "Explains that io.grpc:grpc-protobuf:1.83.1 brings com.google.protobuf:protobuf-java:3.25.9, not the 4.x line",
+        "Explains that io.grpc:grpc-protobuf:1.84.0 brings com.google.protobuf:protobuf-java:3.25.9, not the 4.x line",
         "Explains that protoc 4.x gencode references com.google.protobuf.Generated and com.google.protobuf.RuntimeVersion, and that neither class exists in protobuf-java 3.25.9",
         "States that kora-bom constrains only io.koraframework:* and pins nothing under com.google.protobuf, so the catalog value is not what reaches a consumer",
-        "Offers two consistent fixes: revert protoc to 3.25.3 (what all eight migrated Kora 2.0 gRPC projects pin), or keep protoc 4.35.1 and also add an explicit implementation \"com.google.protobuf:protobuf-java:4.35.1\"",
+        "Offers two consistent fixes: revert protoc to 3.25.3 (what all eight migrated Kora 2.0 gRPC projects pin), or keep protoc 4.36.2 and also add an explicit implementation \"com.google.protobuf:protobuf-java:4.36.2\"",
         "Warns against mixing the two halves, and notes the runtime variant (NoClassDefFoundError: com/google/protobuf/RuntimeVersion) when 4.x is on the compile classpath but 3.x wins at runtime",
         "Does not tell the user to just copy Kora's libs.versions.toml value, which works inside Kora's own build only because it pins protobuf-java alongside protoc"
       ],
@@ -155,7 +155,7 @@
       ],
       "query": "What metrics does the Kora gRPC server emit, how do I add custom tags, and why do I see nothing in Prometheus right now?",
       "expected_behavior": [
-        "Names rpc.server.duration as the only metric the module registers (a Micrometer Timer)",
+        "Names rpc.server.call.duration as the only metric the module registers (a Micrometer Timer), tagged rpc.system.name, rpc.service, rpc.method, rpc.response.status_code (the status code name such as OK) and error.type",
         "States that grpcServer.telemetry.metrics.enabled and grpcServer.telemetry.logging.enabled both default to FALSE in Kora 2.0, while tracing.enabled defaults to true, and that this is the reason nothing appears",
         "Shows enabling it explicitly in the grpcServer.telemetry section, and notes that a MeterRegistry must also be in the graph (io.koraframework:micrometer-module)",
         "Configures grpcServer.telemetry.metrics.tags for metric tags and grpcServer.telemetry.tracing.attributes for span attributes",
@@ -198,7 +198,7 @@
       "expected_behavior": [
         "Identifies the missing io.grpc:grpc-services dependency as the cause",
         "Explains that the module probes for io.grpc.protobuf.services.ProtoReflectionServiceV1 with a classpath check and ignores the flag with no warning when the class is absent",
-        "Adds io.grpc:grpc-services pinned to 1.83.1, matching every other io.grpc artifact",
+        "Adds io.grpc:grpc-services pinned to 1.84.0, matching every other io.grpc artifact",
         "Shows a grpcurl list command and notes that the full method name uses the .proto package, not java_package",
         "Recommends keeping reflection off in production unless the endpoint is internal only"
       ],
@@ -271,6 +271,30 @@
         "error-handling",
         "basic",
         "kora-2.0"
+      ]
+    },
+    {
+      "id": "kora-grpc-server-log-masking",
+      "skills": [
+        "kora-grpc-server"
+      ],
+      "query": "Our Kora 2.0 gRPC server logs requests at DEBUG, and clients send an x-api-key metadata header that now shows up in the logs. We also want TRACE bodies for debugging but the messages contain passport numbers. How do we mask both?",
+      "expected_behavior": [
+        "Adds x-api-key to grpcServer.telemetry.logging.maskHeaders and restates the defaults authorization, cookie, set-cookie, because a configured list replaces the default",
+        "Explains that masked values are replaced by the @Tag(GrpcServerTelemetry.class) MaskingStrategy component (default ***), which can be replaced, e.g. with MaskingKeepLast",
+        "States that there is no mask config key",
+        "Explains that protobuf bodies are logged at TRACE via DefaultGrpcServerBodyConverter with no masking, and that redaction means providing a DefaultGrpcServerBodyConverter subclass (overriding convertRequestMessage/convertResponseMessage or convertMessage) from a factory method typed DefaultGrpcServerBodyConverter",
+        "Points to kora-aop-logging for the shared masking model"
+      ],
+      "anti_behavior": [
+        "Claims gRPC bodies are masked by a DataMasker or by maskHeaders",
+        "Writes a ServerInterceptor that strips the header before telemetry as the masking mechanism",
+        "Invents keys such as maskBody, mask or maskMetadata"
+      ],
+      "tags": [
+        "telemetry",
+        "logging",
+        "masking"
       ]
     }
   ]

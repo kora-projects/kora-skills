@@ -22,11 +22,11 @@ import sys
 from pathlib import Path
 from typing import Dict
 
-DEFAULT_KORA_VERSION = "2.0.0.RC1"
-GRADLE_DISTRIBUTION = "gradle-9.5.1-bin.zip"
+DEFAULT_KORA_VERSION = "2.0.0.RC2"
+GRADLE_DISTRIBUTION = "gradle-9.8.0-bin.zip"
 JAVA_TOOLCHAIN = 25
-KOTLIN_PLUGIN_VERSION = "2.4.10"
-KSP_PLUGIN_VERSION = "2.3.11"
+KOTLIN_PLUGIN_VERSION = "2.4.20"
+KSP_PLUGIN_VERSION = "2.3.12"
 
 
 def parse_args():
@@ -716,7 +716,7 @@ def main() -> int:
     print(f"\nProject '{args.name}' created at {base_path}")
     print("\nNext steps:")
     print(f"  cd {base_path}")
-    print("  gradle wrapper --gradle-version 9.5.1   # if you do not already have the wrapper jar")
+    print("  gradle wrapper --gradle-version 9.8.0   # if you do not already have the wrapper jar")
     print("  ./gradlew classes")
     print("  ./gradlew run")
     print("\nKora 2.0 requires JDK 25 or newer.")

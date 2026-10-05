@@ -1,7 +1,7 @@
 # Advanced Codegen — Kora 2.x OpenAPI Server
 
 Options beyond `mode` and `enableServerValidation`, verified against `CodegenParams` and the
-generator's own test fixtures at `2.0.0.RC1`.
+generator's own test fixtures for `2.0.0.RC2`.
 
 ## Contents
 
@@ -240,8 +240,8 @@ migrated build file:
 | `delegateMethodBodyMode: "throw-exception"` | `"throwException"` |
 | `mode: "java-reactive-server"` etc. | `java-server` / `kotlin-server` |
 
-`forceIncludeOptional` is a special case: it is parsed, but no generator consumes it at
-`2.0.0.RC1`, so setting it changes nothing.
+`forceIncludeOptional` is a special case: it is parsed, but no generator consumes it, so setting
+it changes nothing.
 
 Because unknown keys are ignored rather than rejected, a stale option produces **no error and no
 effect** — check the generated output, not the build log, when an option seems to do nothing.

@@ -9,7 +9,7 @@ plugins {
 
 repositories {
     mavenCentral()
-    // io.koraframework:kora-bom:2.0.0.RC1 is on Maven Central; nothing else is needed.
+    // io.koraframework:kora-bom:2.0.0.RC2 is on Maven Central; nothing else is needed.
     // Only the 2.0.0-SNAPSHOT development line also needs:
     // maven { url = "https://central.sonatype.com/repository/maven-snapshots" }
 }
@@ -46,7 +46,7 @@ dependencies {
 
     // Testing
     testImplementation "io.koraframework:test-junit5"
-    testImplementation "org.testcontainers:junit-jupiter:1.21.4"
+    testImplementation "org.testcontainers:testcontainers-junit-jupiter:2.0.5"
 }
 
 application {

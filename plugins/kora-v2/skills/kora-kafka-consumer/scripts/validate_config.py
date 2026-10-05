@@ -8,8 +8,8 @@ Checks
   errors
     * a consumer with neither topics nor topicsPattern
     * a missing driverProperties block, or one without bootstrap.servers
-    * assign strategy (no group.id) with more than one topic, or with topicsPattern
-      — at 2.0.0.RC1 the generated container requires exactly one topic
+    * assign strategy (no group.id) without topics, or with topicsPattern
+      — KafkaAssignConsumerContainer rejects both at startup
     * ru.tinkoff.kora anywhere in the file (Kora 1.x group)
     * the ${VAR:default} pseudo-placeholder, which is not HOCON
   warnings
@@ -206,11 +206,10 @@ def check_consumer(name: str, body: str, report: Report) -> None:
         if has_pattern:
             report.error(
                 "%s: assign strategy (no group.id) does not support topicsPattern — "
-                "list exactly one topic, or add group.id" % where)
-        elif topics is None or topics != 1:
+                "list the topics, or add group.id" % where)
+        elif topics is None or topics < 1:
             report.error(
-                "%s: assign strategy (no group.id) requires exactly one topic at 2.0.0.RC1, "
-                "found %s" % (where, "none" if topics is None else topics))
+                "%s: assign strategy (no group.id) requires at least one topic, found none" % where)
         if value_of(own, "offset") is None:
             report.warn("%s: assign strategy never commits — set `offset` so restarts are "
                         "predictable (earliest | latest | a Duration)" % where)

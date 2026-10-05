@@ -9,13 +9,13 @@
 
 /*
 // gradle.properties
-//   koraVersion=2.0.0.RC1
+//   koraVersion=2.0.0.RC2
 // repositories { mavenCentral() }
-// Kotlin 2.4.10 + KSP 2.3.11, JVM toolchain 25.
+// Kotlin 2.4.20 + KSP 2.3.12, JVM toolchain 25.
 
 plugins {
-    kotlin("jvm") version "2.4.10"
-    id("com.google.devtools.ksp") version "2.3.11"
+    kotlin("jvm") version "2.4.20"
+    id("com.google.devtools.ksp") version "2.3.12"
 }
 
 dependencies {
@@ -99,7 +99,7 @@ orders.redis.cache {
 
   telemetry {
     logging.enabled = false
-    metrics.enabled = false     # enables cache.operation.duration and cache.ratio
+    metrics.enabled = false     # enables cache.operation.duration and cache.requests
     tracing.enabled = true
   }
 }

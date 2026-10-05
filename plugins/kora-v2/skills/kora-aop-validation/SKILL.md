@@ -8,7 +8,7 @@ metadata:
 
 # Kora AOP Validation
 
-> **Kora sub-skill — obey the [kora-v2 meta rules](../../SKILL.md) on every task:** **R0** ground the workspace on Kora 2.0 refs before starting (framework source at tag `2.0.0.RC1` + `kora-examples` at `migration/2.0`; `kora-docs` is 1.x only) · **R1** read this sub-skill before writing code · **R2** Kora 2.0 APIs only — no Spring/Micronaut/Quarkus, no Kora 1.x APIs, no invented annotations or config keys · **R3** journal any incorrect Kora usage. Add comments/Javadoc only if asked.
+> **Kora sub-skill — obey the [kora-v2 meta rules](../../SKILL.md) on every task:** **R0** ground the workspace on Kora 2.0 refs before starting (framework source at tag `2.0.0.RC2` + `kora-examples` at `migration/2.0` + Kora 2.0 docs at koraframework.io/v2, which trail the source; 1.x `kora-docs` pages are never an authority) · **R1** read this sub-skill before writing code · **R2** Kora 2.0 APIs only — no Spring/Micronaut/Quarkus, no Kora 1.x APIs, no invented annotations or config keys · **R3** journal any incorrect Kora usage. Add comments/Javadoc only if asked.
 
 | | |
 |---|---|
@@ -16,7 +16,7 @@ metadata:
 | **Modules** | `io.koraframework.validation.common.constraint.ValidatorModule` · `io.koraframework.validation.module.ValidationModule extends ValidatorModule` |
 | **Annotations** | `io.koraframework.validation.common.annotation.*` |
 | **Processor** | Java `annotationProcessor "io.koraframework:annotation-processors"` · Kotlin `ksp "io.koraframework:symbol-processors"` |
-| **Version** | `2.0.0.RC1` from `mavenCentral()` via `io.koraframework:kora-bom` · Java 25 · Kotlin 2.4 + KSP |
+| **Version** | `2.0.0.RC2` from `mavenCentral()` via `io.koraframework:kora-bom` · Java 25 · Kotlin 2.4 + KSP |
 
 Validation is generated at compile time, with no reflection: `@Valid` on a type emits a
 `$Name_Validator` class implementing `Validator<T>` and registers it in the DI graph; `@Validate` on
@@ -55,7 +55,7 @@ Pick by whether the application serves HTTP.
 
 ```groovy
 dependencies {
-    koraBom platform("io.koraframework:kora-bom:$koraVersion")   // koraVersion=2.0.0.RC1
+    koraBom platform("io.koraframework:kora-bom:$koraVersion")   // koraVersion=2.0.0.RC2
     annotationProcessor "io.koraframework:annotation-processors" // mandatory: generates validators + aspects
     implementation "io.koraframework:validation-common"
 }
@@ -103,7 +103,7 @@ The `koraBom` configuration wiring for Groovy builds lives in
 [`kora-project-setup-java`](../kora-project-setup-java/SKILL.md) / [`kora-project-setup-kotlin`](../kora-project-setup-kotlin/SKILL.md).
 
 > **`validation-module` does not drag an HTTP server in.** Its dependency on `http-server-common` is
-> `compileOnly` (`requires static` in `module-info`), and the published `2.0.0.RC1` POM and Gradle
+> `compileOnly` (`requires static` in `module-info`), and the published `2.0.0.RC2` POM and Gradle
 > module metadata list only `validation-common` and `jspecify`. You must add an HTTP server module
 > yourself. Conversely, extending `ValidationModule` in a non-HTTP application compiles fine — the
 > interceptor is simply an unused component and gets pruned — but prefer `ValidatorModule` there so

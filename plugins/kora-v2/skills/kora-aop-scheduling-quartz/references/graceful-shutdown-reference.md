@@ -1,22 +1,22 @@
 # Shutdown Reference (Quartz, Kora 2.0)
 
-What actually happens to a running Quartz job when a Kora 2.0 service stops, and how to bound a
-long job given those semantics.
+What happens to a running Quartz job when a Kora 2.0 service stops, and how to write a long job
+that stops cleanly.
 
-**Shutdown is not shared between the two Kora schedulers.** `scheduling-common` contains only
+**Shutdown is not shared code between the Kora schedulers.** `scheduling-common` contains only
 `SchedulingJobConfig`, `SchedulingModule` and the `telemetry/` package — no `Lifecycle`, no
-shutdown code at all. Each backend owns its own teardown, and they differ on the one point that
-decides how you write a long job. Everything on this page is Quartz-only; for the JDK scheduler
-see [kora-aop-scheduling-jdk](../../kora-aop-scheduling-jdk/SKILL.md).
+shutdown code. Each backend owns its own teardown. Everything on this page is Quartz-only; for the
+JDK scheduler see [kora-aop-scheduling-jdk](../../kora-aop-scheduling-jdk/SKILL.md), for
+db-scheduler [kora-aop-scheduling-db](../../kora-aop-scheduling-db/SKILL.md).
 
 ## Contents
 
 - [What shutdown does](#what-shutdown-does)
-- [How the JDK scheduler differs](#how-the-jdk-scheduler-differs)
-- [Why `isInterrupted()` does not work here](#why-isinterrupted-does-not-work-here)
+- [How the other schedulers compare](#how-the-other-schedulers-compare)
 - [Configuration](#configuration)
+- [Reacting to the interrupt](#reacting-to-the-interrupt)
 - [Bounding a long job](#bounding-a-long-job)
-- [Cooperative cancellation](#cooperative-cancellation)
+- [Release order](#release-order)
 - [Resumable jobs](#resumable-jobs)
 - [Operational control through the Scheduler](#operational-control-through-the-scheduler)
 - [Troubleshooting](#troubleshooting)
@@ -30,109 +30,97 @@ see [kora-aop-scheduling-jdk](../../kora-aop-scheduling-jdk/SKILL.md).
 
 ```java
 // KoraQuartzScheduler.release(), simplified
-final boolean waitForComplete = config.waitForJobComplete();   // scheduling.quartz.waitForJobComplete
-scheduler.shutdown(waitForComplete);
+scheduler.standby();                                   // no new firings
+var running = awaitRunningJobs(scheduler, shutdownWait);
+if (!running.isEmpty()) {
+    log.warn("KoraQuartzScheduler interrupting jobs {} still running after {}", keys, shutdownWait);
+    running.forEach(ctx -> ((InterruptableJob) ctx.getJobInstance()).interrupt());
+    running = awaitRunningJobs(scheduler, shutdownWait);
+    if (!running.isEmpty()) {
+        log.warn("KoraQuartzScheduler stopped while jobs {} are still running after interruption", keys);
+    }
+}
+scheduler.shutdown(false);
 ```
 
-`org.quartz.Scheduler.shutdown(boolean)` stops the scheduler thread — no new firings — and then
-shuts the thread pool down. In `SimpleThreadPool`, the default pool, that means:
+- `shutdownWait` is `scheduling.quartz.shutdownWait`, default **30 s**.
+- Every generated job extends `KoraQuartzJob`, which implements `org.quartz.InterruptableJob`.
+  It tracks the threads currently executing it, and `interrupt()` interrupts every one of them.
+- The worst case is therefore about **2 × `shutdownWait`**: one wait before the interrupt, one
+  after it.
+- `scheduler.shutdown(false)` does not wait any further. A job that ignored the interrupt keeps
+  running on its Quartz worker — a non-daemon platform thread — while the rest of the graph is
+  released.
 
-- each worker's run flag is cleared (`WorkerThread.shutdown()` is nothing but `run.set(false)`);
-- idle workers exit after their current `wait`;
-- **busy workers are left alone.** Quartz's own javadoc on `shutdown` says *"Jobs currently in
-  progress will complete."*
-- if `waitForJobsToComplete` is `true`, `shutdown` additionally waits for the busy workers and
-  joins them.
-
-So the only difference between the two settings is whether `release()` blocks.
-
----
-
-## How the JDK scheduler differs
-
-Worth knowing because the Kora 1.x documentation used one shutdown page for both schedulers, and
-the advice it gave is correct for the JDK one and wrong for Quartz.
-
-| | Quartz (`scheduling-quartz`) | JDK (`scheduling-jdk`) |
-|---|---|---|
-| Component | `KoraQuartzScheduler.release()` | `ThreadPoolSchedulingJdkExecutor.release()` |
-| Call | `Scheduler.shutdown(waitForJobComplete)` | `shutdown()` → `awaitTermination(shutdownWait)` → `shutdownNow()` on timeout |
-| Config key | `scheduling.quartz.waitForJobComplete` | `scheduling.jdk.shutdownWait` |
-| Default | `true` | `30s` |
-| Wait is bounded | **no** — `true` waits indefinitely | **yes** — capped at `shutdownWait` |
-| Running job interrupted | **never** | **yes**, once `shutdownWait` elapses (`shutdownNow()`) |
-
-So `Thread.currentThread().isInterrupted()` is a real signal on the JDK scheduler and dead code
-on Quartz. That single row is why the shared 1.x guidance had to be split. It also means the
-Quartz wait has no timeout of its own: bounding a long job is the application's job, not a
-config knob.
+Kora's own tests pin both paths: a job that sleeps for a minute is interrupted and `release()`
+returns within seconds when `shutdownWait` is 200 ms; a job that finishes in 500 ms with a 30 s
+budget completes without being interrupted.
 
 ---
 
-## Why `isInterrupted()` does not work here
+## How the other schedulers compare
 
-Kora 1.x guidance told you to poll `Thread.currentThread().isInterrupted()` in the job body. In
-Kora 2.0 on Quartz 2.5.2 that check **never becomes true as a result of shutdown** — nothing in
-the path interrupts the worker thread. It is dead code.
+| | Quartz (`scheduling-quartz`) | JDK (`scheduling-jdk`) | DB (`scheduling-db-scheduler`) |
+|---|---|---|---|
+| Component | `KoraQuartzScheduler.release()` | `VirtualThreadSchedulingJdkExecutor.release()` | `KoraDbScheduler.release()` → db-scheduler `Scheduler.stop()` |
+| Threads | Quartz `SimpleThreadPool` platform workers | one platform timer thread + a virtual thread per run | virtual threads |
+| Config key | `scheduling.quartz.shutdownWait` | `scheduling.jdk.shutdownWait` | `scheduling.dbScheduler.shutdownWait` |
+| Default | `30s` | `30s` | `30s` |
+| Running job interrupted | **yes**, after `shutdownWait`, through `InterruptableJob` | **yes**, after `shutdownWait` (`shutdownNow()`) | **yes**, after `shutdownWait` |
+| Waits after the interrupt | up to `shutdownWait` again | no | up to `shutdownWait` again |
 
-`org.quartz.InterruptableJob` plus `Scheduler.interrupt(JobKey)` is Quartz's real cancellation
-mechanism, and it is not reachable from a Kora-generated job:
-
-- the generated `$<Class>_<method>_Job` is declared `final`, so you cannot subclass it;
-- it extends `KoraQuartzJob`, whose `execute(JobExecutionContext)` is `final`;
-- neither implements `InterruptableJob`, so `Scheduler.interrupt(...)` has no
-  `interrupt()` to call.
-
-Two consequences to plan around:
-
-1. A job that runs for ten minutes keeps the JVM alive for up to ten minutes at shutdown
-   (`waitForJobComplete = true`), or keeps running while the rest of the graph is torn down
-   underneath it (`waitForJobComplete = false`) — Quartz workers are non-daemon threads.
-2. Cancellation has to be **cooperative**, driven by state your own code owns.
+So `Thread.currentThread().isInterrupted()` / `InterruptedException` is a real shutdown signal on
+all three schedulers.
 
 ---
 
 ## Configuration
 
 ```hocon
-scheduling.quartz.waitForJobComplete = true    # default
+scheduling.quartz.shutdownWait = 30s    # default
 ```
 
 ```yaml
 scheduling:
   quartz:
-    waitForJobComplete: true
+    shutdownWait: 30s
 ```
 
-| Value | `release()` | Running job |
-|---|---|---|
-| `true` (default) | blocks until running jobs finish | runs to completion |
-| `false` | returns immediately | still runs to completion, now concurrently with graph teardown |
+| Value | Behaviour |
+|---|---|
+| `30s` (default) | running jobs get 30 s, are then interrupted, and get another 30 s |
+| `0s` | running jobs are interrupted immediately; `release()` still waits up to 0 s afterwards |
+| a large value such as `365d` | waits for running jobs to complete regardless of time |
 
-`false` is almost never the right answer: the job outlives the components it depends on (data
-sources, HTTP clients) and will fail on already-released resources. Prefer keeping the default
-and making the job short.
+With a large value, make sure the platform's own grace period — Kubernetes
+`terminationGracePeriodSeconds`, a systemd `TimeoutStopSec` — is not shorter, or the process is
+killed mid-job anyway.
+
+**`waitForJobComplete` is gone.** Neither `scheduling.waitForJobComplete` (Kora 1.x) nor
+`scheduling.quartz.waitForJobComplete` (RC1 / earlier 2.0 snapshots) is read; an unknown HOCON
+key is ignored silently and the 30 s default applies.
 
 ---
 
-## Bounding a long job
+## Reacting to the interrupt
 
-The reliable lever is the job body. Give every long job a deadline or a batch cap so a single
-execution has a known upper bound:
+The interrupt reaches the job's own thread, so the usual Java rules apply:
+
+- a blocking call that honours interrupts (`Thread.sleep`, `BlockingQueue.take`,
+  `Future.get`, `Object.wait`, interruptible channels) throws `InterruptedException`;
+- a CPU-bound loop must poll `Thread.currentThread().isInterrupted()`;
+- a blocking call that does not react to interrupts keeps going — give it its own timeout.
 
 ```java
 @Component
 public final class BatchJob {
 
-    private static final Duration BUDGET = Duration.ofSeconds(30);
-
     @DisallowConcurrentExecution
-    @ScheduleWithCron("0 */5 * * * ?")
+    @ScheduleQuartzWithCron("0 */5 * * * ?")
     void processBatch() {
-        var deadline = Instant.now().plus(BUDGET);
         for (var item : repository.findPending(500)) {
-            if (Instant.now().isAfter(deadline)) {
-                log.info("Budget exhausted, resuming on the next fire");
+            if (Thread.currentThread().isInterrupted()) {
+                log.info("Shutdown requested, stopping; the rest is picked up on the next fire");
                 return;
             }
             process(item);
@@ -146,71 +134,42 @@ public final class BatchJob {
 class BatchJob(private val repository: PendingRepository) {
 
     @DisallowConcurrentExecution
-    @ScheduleWithCron("0 */5 * * * ?")
+    @ScheduleQuartzWithCron("0 */5 * * * ?")
     fun processBatch() {
-        val deadline = Instant.now().plus(BUDGET)
         for (item in repository.findPending(500)) {
-            if (Instant.now().isAfter(deadline)) {
-                log.info("Budget exhausted, resuming on the next fire")
+            if (Thread.currentThread().isInterrupted) {
+                log.info("Shutdown requested, stopping; the rest is picked up on the next fire")
                 return
             }
             process(item)
         }
     }
-
-    private companion object {
-        val BUDGET: Duration = Duration.ofSeconds(30)
-    }
 }
 ```
 
-`@DisallowConcurrentExecution` keeps the next firing from overlapping while the previous one is
-still draining the backlog.
+If you catch `InterruptedException` and cannot stop right away, restore the flag with
+`Thread.currentThread().interrupt()` so the outer loop still sees it. Do not swallow it.
 
 ---
 
-## Cooperative cancellation
+## Bounding a long job
 
-If a job genuinely has to react to shutdown, publish the signal yourself. A `Lifecycle`
-component owns the flag and flips it in `release()`; the job reads it:
-
-```java
-// io.koraframework.application.graph.Lifecycle
-@Component
-public final class ShutdownSignal implements Lifecycle {
-
-    private final AtomicBoolean stopping = new AtomicBoolean(false);
-
-    public boolean isStopping() {
-        return stopping.get();
-    }
-
-    @Override
-    public void init() { }
-
-    @Override
-    public void release() {
-        stopping.set(true);
-    }
-}
-```
+The interrupt is the last resort. A job that has a known upper bound per execution — a deadline
+or a batch cap — finishes inside `shutdownWait` and is never interrupted:
 
 ```java
 @Component
 public final class BatchJob {
 
-    private final ShutdownSignal shutdown;
-
-    BatchJob(ShutdownSignal shutdown) {
-        this.shutdown = shutdown;
-    }
+    private static final Duration BUDGET = Duration.ofSeconds(20);
 
     @DisallowConcurrentExecution
-    @ScheduleWithCron("0 */5 * * * ?")
+    @ScheduleQuartzWithCron("0 */5 * * * ?")
     void processBatch() {
-        for (var item : items) {
-            if (shutdown.isStopping()) {
-                log.info("Shutdown requested, stopping after {} items", processed);
+        var deadline = Instant.now().plus(BUDGET);
+        for (var item : repository.findPending(500)) {
+            if (Instant.now().isAfter(deadline) || Thread.currentThread().isInterrupted()) {
+                log.info("Stopping early, resuming on the next fire");
                 return;
             }
             process(item);
@@ -219,20 +178,28 @@ public final class BatchJob {
 }
 ```
 
-Mind the release order: the graph releases in reverse initialisation order, so a component the
-job **depends on** is released *after* `KoraQuartzScheduler`. With
-`waitForJobComplete = true` that is too late to help — the scheduler's `release()` is already
-blocking on the job. Keep this pattern for the `waitForJobComplete = false` case, or drive the
-flag from something released early (an HTTP admin endpoint, a readiness probe flip, a
-`Runtime.getRuntime().addShutdownHook` you install yourself). A deadline in the job body is
-simpler and always works — reach for that first.
+Keep the budget below `shutdownWait`. `@DisallowConcurrentExecution` keeps the next firing from
+overlapping while the previous one is still draining the backlog.
+
+---
+
+## Release order
+
+`KoraQuartzScheduler` depends on `KoraQuartzJobFactory`, which depends on every generated job,
+which depends on your component. The graph releases in reverse initialisation order, so the
+scheduler is released **before** the jobs and the components they use: while `release()` waits
+and interrupts, the job's data sources and clients are still alive.
+
+That also means a `Lifecycle` component the job depends on cannot serve as a "stopping" flag —
+its `release()` runs only after the scheduler has finished waiting. The interrupt is the signal;
+you do not need your own.
 
 ---
 
 ## Resumable jobs
 
-Because a job can be cut short by its own budget, or the process can die mid-run, make progress
-durable rather than in-memory:
+Because a job can be cut short by its own budget, by the interrupt, or by the process dying
+mid-run, make progress durable rather than in-memory:
 
 ```java
 @Component
@@ -240,14 +207,14 @@ public final class ResumableJob {
 
     @PersistJobDataAfterExecution     // needs a JDBC JobStore to survive a restart
     @DisallowConcurrentExecution
-    @ScheduleWithCron("0 */10 * * * ?")
+    @ScheduleQuartzWithCron("0 */10 * * * ?")
     void process(JobExecutionContext ctx) {
         var data = ctx.getJobDetail().getJobDataMap();
         long cursor = data.getLong("cursor");
 
-        var deadline = Instant.now().plusSeconds(30);
+        var deadline = Instant.now().plusSeconds(20);
         for (var item : repository.findAfter(cursor, 500)) {
-            if (Instant.now().isAfter(deadline)) break;
+            if (Instant.now().isAfter(deadline) || Thread.currentThread().isInterrupted()) break;
             process(item);
             cursor = item.id();
         }
@@ -288,40 +255,40 @@ public final class SchedulerAdmin {
 }
 ```
 
-`standby()` stops new firings without touching jobs already running — the same asymmetry as
-shutdown.
+`standby()` stops new firings without touching jobs already running — it is the first step of
+Kora's own shutdown. `Scheduler.interrupt(JobKey)` now reaches Kora jobs too, because
+`KoraQuartzJob` is an `InterruptableJob`.
 
 ---
 
 ## Troubleshooting
 
-### Shutdown hangs
+### Shutdown takes about a minute
 
-**Cause:** `waitForJobComplete` is `true` (the default) and a job is mid-run. There is no
-timeout on that wait.
-**Fix:** bound the job body with a deadline or batch cap. Do not switch to `false` — that only
-hides the wait while the job keeps running against a released graph.
+**Cause:** a job outlived `shutdownWait` (30 s), was interrupted, ignored the interrupt and ran
+through the second wait as well.
+**Fix:** honour `isInterrupted()` / `InterruptedException`, put timeouts on blocking calls, and
+bound the body below `shutdownWait`.
 
-### The job keeps running after shutdown "completed"
+### `KoraQuartzScheduler interrupting jobs [...] still running after PT30S`
 
-**Cause:** `waitForJobComplete = false`. Nothing was cancelled; the non-daemon Quartz worker is
-still executing.
-**Fix:** return to `true` and bound the job body.
+Expected when a run is longer than `shutdownWait`. Either bound the job or raise `shutdownWait`
+(together with the platform grace period).
 
-### `isInterrupted()` never returns `true`
+### `KoraQuartzScheduler stopped while jobs [...] are still running after interruption`
 
-Expected. Nothing interrupts a Quartz worker — see
-[above](#why-isinterrupted-does-not-work-here). Use a deadline or a cooperative flag.
+The job ignored the interrupt for another full `shutdownWait`. It is still running on a
+non-daemon worker while the graph is released — expect errors from released dependencies. Make
+the job interruptible.
+
+### `waitForJobComplete` has no effect
+
+The key no longer exists. Use `scheduling.quartz.shutdownWait`.
 
 ### A job restarted mid-batch reprocesses items
 
 **Cause:** progress was only in memory, or in a `JobDataMap` backed by `RAMJobStore`.
 **Fix:** persist the cursor in your own database, and make each unit idempotent.
-
-### Errors on shutdown from inside the job
-
-**Cause:** `waitForJobComplete = false` let the job outlive its dependencies.
-**Fix:** `waitForJobComplete = true` plus a bounded body.
 
 ---
 
@@ -330,3 +297,4 @@ Expected. Nothing interrupts a Quartz worker — see
 - [quartz-scheduling-reference.md](quartz-scheduling-reference.md) — annotations and generated code
 - [scheduling-config-reference.md](scheduling-config-reference.md) — `scheduling.quartz.*` keys
 - [kora-di-runtime](../../kora-di-runtime/SKILL.md) — `Lifecycle`, `@Root` and graph release order
+- [kora-aop-scheduling-db](../../kora-aop-scheduling-db/SKILL.md) — db-scheduler shutdown (`scheduling.dbScheduler.shutdownWait`, then interrupt)

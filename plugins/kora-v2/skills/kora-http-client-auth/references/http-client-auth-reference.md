@@ -22,7 +22,7 @@ Every authentication scheme `io.koraframework:http-client-common` ships, wired e
 
 ```groovy
 dependencies {
-    koraBom platform("io.koraframework:kora-bom:$koraVersion")   // koraVersion=2.0.0.RC1
+    koraBom platform("io.koraframework:kora-bom:$koraVersion")   // koraVersion=2.0.0.RC2
 
     annotationProcessor "io.koraframework:annotation-processors"  // Kotlin: ksp "io.koraframework:symbol-processors"
 
@@ -37,14 +37,11 @@ dependencies {
 - `http-client-async` was **removed** in 2.0. The transports are `http-client-ok`
   (`OkHttpClientModule`), `http-client-jdk` (`JdkHttpClientModule`) and `http-client-apache`
   (`ApacheHttpClientModule`).
-- `kora-bom` is resolved from plain `mavenCentral()`; `2.0.0.RC1` is the only 2.0 release on it.
-- Nothing in this skill depends on the transport: `http-client-common` is byte-identical between
-  the `2.0.0.RC1` tag and `master`, and the auth header is handled before the transport sees the
-  request. Two transport-integration fixes landed **after** RC1 and are therefore *not* in the
-  released artifacts — `http-client-jdk` skipping the JDK's restricted headers, and
-  `http-client-apache` letting the entity own `Content-Length`/`Transfer-Encoding`. Neither touches
-  `Authorization`; the JDK fix's own test asserts that `Authorization` is not restricted. If a
-  transport bug is blocking you, `http-client-ok` is unaffected by both.
+- `kora-bom` is resolved from plain `mavenCentral()`.
+- Nothing in this skill depends on the transport: the auth header is added by interceptors before
+  the transport sees the request. The transports drop only headers they own —
+  `http-client-jdk` the JDK's restricted `connection`/`content-length`/`expect`/`host`/`upgrade`,
+  `http-client-apache` `content-length`/`transfer-encoding` — and never `authorization`.
 
 ---
 
@@ -97,7 +94,7 @@ val token: String = provider.getToken(request)
 
 Handle it (`?: return request`) rather than asserting with `!!`.
 
-Note what `@NullMarked` does and does not reach here: at RC1 `http-client-common` and `http-common`
+Note what `@NullMarked` does and does not reach here: `http-client-common` and `http-common`
 carry it on `module-info.java` only — neither has a `package-info.java`. With the jars on the
 classpath, as a normal Gradle `implementation` dependency puts them, Kotlin therefore sees
 *parameters* as platform types, and both `request: HttpClientRequest` and `request: HttpClientRequest?`
@@ -229,6 +226,8 @@ public final class ApiKeyHttpClientInterceptor implements HttpClientInterceptor 
 
     public enum ApiKeyLocation { HEADER, QUERY, COOKIE }
 
+    public ApiKeyHttpClientInterceptor(ApiKeyLocation parameterLocation, String parameterName, HttpClientTokenProvider tokenProvider) { … }
+
     public ApiKeyHttpClientInterceptor(ApiKeyLocation parameterLocation, String parameterName, String secret) { … }
 }
 ```
@@ -261,10 +260,12 @@ Behaviour per location, straight from the implementation:
 |---|---|
 | `HEADER` | `toBuilder().header(name, secret)` — **replaces** any existing header of that name |
 | `QUERY` | `toBuilder().queryParam(name, secret)` — **appends**; running it twice sends the key twice |
-| `COOKIE` | `toBuilder().header("Cookie", Cookie.of(name, secret).toValue())` — **replaces** the whole `Cookie` header, dropping any other cookie the request carried |
+| `COOKIE` | appends `Cookie.of(name, secret).toValue()` to the request's existing `Cookie` header (`existing + "; " + cookie`), or sets it when there is none |
 
-The secret goes through `Objects.requireNonNull`, so a `null` key fails while the graph is built,
-not at request time. The parameter name is not checked.
+The key is read from the provider on **every** request (the `String` constructor wraps it in a
+constant provider). A `null` or blank key skips the parameter and forwards the request
+unauthenticated — nothing fails at graph build, so make the config accessor non-`@Nullable` if a
+missing key must stop startup. The parameter name is not checked.
 
 ---
 
@@ -312,8 +313,8 @@ provider entirely. For a token that has to be fetched and refreshed, see
 [jwt-token-provider-reference.md](jwt-token-provider-reference.md).
 
 The provider returns the **bare** token — `BearerAuthHttpClientInterceptor` adds the `"Bearer "`
-prefix. (The OpenAPI-generated `ApiSecurity` interceptor does **not**; there the provider must
-return the full header value. See `SKILL.md` §7.)
+prefix. The OpenAPI-generated `ApiSecurity` interceptor does the same for `bearer`, `oauth2` and
+`openId` schemes, so one provider serves both. See `SKILL.md` §7.
 
 ---
 
@@ -400,20 +401,25 @@ httpClient.serviceA {
     enabled = true
     maskHeaders = ["authorization", "set-cookie", "cookie", "x-api-key"]
     maskQueries = ["api_key"]
-    mask = "***"
   }
 }
 ```
 
-`HttpClientTelemetryConfig.HttpClientLoggingConfig` declares
-`maskHeaders()` defaulting to `["authorization", "set-cookie", "cookie"]`, `maskQueries()`
-defaulting to empty, and `mask()` defaulting to `"***"`. `MaskingUtils` compares against the stored
-header name, and `HttpHeadersImpl.set` lower-cases every name it stores. Therefore:
+`HttpClientTelemetryConfig.HttpClientLoggingConfig` declares `maskHeaders()` defaulting to
+`["authorization", "set-cookie", "cookie"]` and `maskQueries()` defaulting to empty. The logger
+factory lower-cases both lists, and `HttpHeadersImpl` lower-cases every header name it stores.
+Therefore:
 
 - A config value **replaces** the default set. Writing `maskHeaders = ["x-api-key"]` leaves
   `authorization` unmasked.
-- `maskHeaders = ["X-API-KEY"]` matches nothing. Use lower case.
+- The case you write does not matter — `"X-API-KEY"` and `"x-api-key"` both match.
 - Query parameters are matched lower-cased too, and nothing is masked until you list it.
+- There is no `mask` key. The replacement text (default `***`) comes from a
+  `@Tag(HttpClientTelemetry.class) MaskingStrategy` component; it receives the original value.
+- Bodies are logged at `TRACE` and masked only by a `@Tag(HttpClientTelemetry.class) DataMasker`
+  for their format — a `FormUrlencodedDataMasker` for a token request carrying `client_secret`, a
+  `JsonDataMasker` for a response carrying `access_token`. See
+  [kora-http-client → Log masking](../../kora-http-client/references/transports-reference.md#log-masking).
 
 Per-operation overrides exist under `httpClient.<client>.<operation>.telemetry.logging.*` with the
 same key names, all `@Nullable` so an unset one falls back to the client-level value.

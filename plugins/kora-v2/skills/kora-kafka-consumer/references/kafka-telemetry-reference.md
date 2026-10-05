@@ -7,6 +7,7 @@ Logging, metrics and tracing for `@KafkaListener`, and how to replace any of the
 - [Defaults changed in 2.0](#defaults-changed-in-20)
 - [Configuration](#configuration)
 - [Logging](#logging)
+- [Masking](#masking)
 - [Metrics](#metrics)
 - [Tracing](#tracing)
 - [Replacing a telemetry component](#replacing-a-telemetry-component)
@@ -48,7 +49,10 @@ kafka.consumer.orders {
   }
 
   telemetry {
-    logging.enabled = true
+    logging {
+      enabled = true
+      maskHeaders = ["authorization", "cookie", "set-cookie", "x-api-key"]
+    }
 
     metrics {
       enabled = true
@@ -107,8 +111,91 @@ The section is `logging.levels`, not `logging.level`.
 | records polled | TRACE (with topic/partition map) / DEBUG (count only) | `listenerConfig`, `topics`, `recordsCount` |
 | records handled | INFO | `listenerConfig`, `recordsCount` |
 | records handling failed | WARN | + `exceptionType`, `exceptionMessage` |
-| record starting | DEBUG | `listenerConfig`, `topic`, `partition`, `offset` |
+| record starting | DEBUG, or TRACE with payload | `listenerConfig`, `topic`, `partition`, `offset`; at TRACE also `headers`, `key`, `value` |
 | record finished / failed | DEBUG / WARN | same, plus exception fields on failure |
+
+---
+
+## Masking
+
+Record payloads are logged **only by the consumer and only at TRACE**: when the listener's logger is
+at TRACE (and `telemetry.logging.enabled = true`), the "KafkaListener starting handling record..."
+line is emitted at TRACE with three extra fields. At DEBUG the same line has no payload.
+
+| Field | Rendered by | Masking |
+|---|---|---|
+| `headers` | `KafkaHeaderUtils.toMaskedString` — `name: value` pairs, one per line | a header whose name is in `telemetry.logging.maskHeaders` (case-insensitive, default `authorization`, `cookie`, `set-cookie`) is replaced by the `@Tag(KafkaConsumerTelemetry.class) MaskingStrategy`, which receives the raw `byte[]` value; the default strategy writes `***` |
+| `key` / `value` | `DefaultKafkaConsumerBodyConverter.convertKey` / `convertValue` over the raw record bytes | if the key/value deserializer is a `JsonKafkaDeserializer` (an `@Json` parameter), the `@Tag(KafkaConsumerTelemetry.class) DataMasker` whose `format()` is `json` masks it; otherwise the bytes are written as UTF-8 text, unmasked |
+
+**No `DataMasker` is registered for Kafka by default** — `KafkaListenerModule` collects
+`@Tag(KafkaConsumerTelemetry.class) All<DataMasker>` and the collection is empty until you add one.
+Without it a TRACE log prints JSON values verbatim. Register a format masker under the Kafka tag:
+
+```java
+@Module
+public interface KafkaMaskingModule {
+
+    @Tag(KafkaConsumerTelemetry.class)
+    default DataMasker kafkaJsonDataMasker() {
+        return new JsonDataMasker(MaskingPathRules.builder()
+            .mask("password", new MaskingFull())
+            .mask("card.number", new MaskingKeepLast())
+            .build());
+    }
+
+    @Tag(KafkaConsumerTelemetry.class)
+    default MaskingStrategy kafkaHeaderMaskingStrategy() {
+        return new MaskingFull("<hidden>");
+    }
+}
+```
+
+```kotlin
+@Module
+interface KafkaMaskingModule {
+
+    @Tag(KafkaConsumerTelemetry::class)
+    fun kafkaJsonDataMasker(): DataMasker = JsonDataMasker(
+        MaskingPathRules.builder()
+            .mask("password", MaskingFull())
+            .mask("card.number", MaskingKeepLast())
+            .build()
+    )
+}
+```
+
+A tagged `MaskingStrategy` component replaces the `@DefaultComponent` `***` strategy for Kafka
+consumer headers only. Types: `io.koraframework.logging.common.masking.{MaskingStrategy,
+MaskingPathRules, MaskingFull, MaskingKeepFirst, MaskingKeepLast}` and
+`io.koraframework.logging.common.masking.raw.{DataMasker, JsonDataMasker}`;
+`io.koraframework.kafka.common.consumer.telemetry.KafkaConsumerTelemetry` is the tag. The masking
+model itself — path rules, fail-closed soft parsing, truncation — is documented once in
+[kora-aop-logging masking](../../kora-aop-logging/references/logging-masking.md).
+
+**Override points.** `DefaultKafkaConsumerBodyConverter` is a `@DefaultComponent`; subclass it and
+register the subclass as a `@Component` to change how a body is chosen or rendered. Its
+`protected` hooks are `selectKeyDataMasker(ConsumerRecord)`, `selectValueDataMasker(ConsumerRecord)`
+and `convertBody(byte[], DataMasker)` — e.g. select an `xml` masker for a topic that carries XML:
+
+```java
+@Component
+public final class XmlAwareBodyConverter extends DefaultKafkaConsumerBodyConverter {
+
+    private final DataMasker xml;
+
+    public XmlAwareBodyConverter(@Tag(KafkaConsumerTelemetry.class) All<DataMasker> maskers) {
+        super(StreamSupport.stream(maskers.spliterator(), false).toList());
+        this.xml = StreamSupport.stream(maskers.spliterator(), false)
+            .filter(m -> XmlDataMasker.FORMAT.equals(m.format()))
+            .findFirst().orElseThrow();
+    }
+
+    @Override
+    protected @Nullable DataMasker selectValueDataMasker(ConsumerRecord<?, ?> record) {
+        return record.topic().endsWith("-xml") ? xml : super.selectValueDataMasker(record);
+    }
+}
+```
 
 ---
 
@@ -125,6 +212,7 @@ Three meters, registered on the injected `MeterRegistry`:
 Common tags on all three:
 
 `messaging.system` (`kafka`), `messaging.client.id`, `messaging.consumer.group.name`,
+`messaging.operation.name` (`process`; on the two timers),
 `system.config` (the `@KafkaListener` path), `system.name.simple`, `system.name.canonical`, plus
 everything in `telemetry.metrics.tags`.
 
@@ -156,14 +244,20 @@ Two span kinds, both `SpanKind.CONSUMER`:
 
 | Span | When | Parent |
 |---|---|---|
-| `kafka.poll` | one per poll | none (`setNoParent`), so each poll is a trace root |
-| `<topic> process record` | one per record | the W3C context extracted from the record's headers, plus a link to the poll span |
+| `poll` | one per poll | none (`setNoParent`), so each poll is a trace root |
+| `process <topic>` | one per record | the W3C context extracted from the record's headers, plus a link to the poll span |
 
-`kafka.poll` attributes: `messaging.system`, `messaging.client.id`,
+Span names follow the OpenTelemetry messaging convention `<operation> <destination>` since
+2.0.0.RC2 (#972); RC1 named them `kafka.poll` and `<topic> process record`. The poll span ends with a
+`messaging.poll.result` event.
+
+`poll` attributes: `messaging.system`, `messaging.operation.name` = `poll`,
+`messaging.operation.type` = `receive`, `messaging.client.id`,
 `messaging.consumer.group.name`, `system.config`, `system.name.simple`, `system.name.canonical`,
 plus `telemetry.tracing.attributes`.
 
-Record span attributes: the same identity attributes plus `messaging.destination.name`,
+Record span attributes: the same identity attributes with `messaging.operation.name` = `process` and
+`messaging.operation.type` = `process`, plus `messaging.destination.name`,
 `messaging.destination.partition.id`, `messaging.kafka.offset` and, when the key can be stringified,
 `messaging.kafka.message.key`.
 
@@ -178,7 +272,8 @@ is exposed to your method as a parameter — a telemetry-context parameter is a 
 
 ## Replacing a telemetry component
 
-`KafkaModule` declares the factory as a `@DefaultComponent` with three optional collaborators:
+`KafkaListenerModule` (pulled in by `KafkaModule`) declares the factory as a `@DefaultComponent`
+with optional collaborators:
 
 ```java
 @DefaultComponent
@@ -196,15 +291,31 @@ There is **no `KafkaConsumerLoggerFactory` interface in 2.0** — the extension 
 narrow to broad:
 
 **1. Custom logger** — subclass `DefaultKafkaConsumerLoggerFactory` and register it as a
-`@Component`; the module picks it up through the `@Nullable` parameter:
+`@Component`; the module picks it up through the `@Nullable` parameter. The factory and the logger
+take the header `MaskingStrategy` and the `DefaultKafkaConsumerBodyConverter` in their constructors,
+so inject and pass them on:
 
 ```java
 @Component
 public final class OrderConsumerLoggerFactory extends DefaultKafkaConsumerLoggerFactory {
 
+    private final MaskingStrategy maskingStrategy;
+    private final DefaultKafkaConsumerBodyConverter bodyConverter;
+    private final AuditService audit;
+
+    public OrderConsumerLoggerFactory(@Tag(KafkaConsumerTelemetry.class) MaskingStrategy maskingStrategy,
+                                      DefaultKafkaConsumerBodyConverter bodyConverter,
+                                      AuditService audit) {
+        super(maskingStrategy, bodyConverter);
+        this.maskingStrategy = maskingStrategy;
+        this.bodyConverter = bodyConverter;
+        this.audit = audit;
+    }
+
     @Override
     public DefaultKafkaConsumerLogger create(DefaultKafkaConsumerTelemetry.TelemetryContext context) {
-        return new DefaultKafkaConsumerLogger(LoggerFactory.getLogger("kafka.consumer.audit"), context) {
+        var logger = LoggerFactory.getLogger("kafka.consumer.audit");
+        return new DefaultKafkaConsumerLogger(logger, maskingStrategy, bodyConverter, context) {
             @Override
             public void logRecordEnd(ConsumerRecord<?, ?> record, @Nullable Throwable error) {
                 super.logRecordEnd(record, error);
@@ -254,9 +365,13 @@ Migrating from a 1.x custom telemetry listener: port the logging bits into a
 | Lag gauge missing | subscribe mode never reports lag | use broker-side lag, or `driverMetrics = true` |
 | Custom logger never used | not a `@Component`, or logging disabled | register it and enable logging |
 | `KafkaConsumerLoggerFactory` does not resolve | 1.x interface, removed in 2.0 | subclass `DefaultKafkaConsumerLoggerFactory` |
+| `DefaultKafkaConsumerLogger(logger, context)` does not compile | the constructor also takes `MaskingStrategy` and `DefaultKafkaConsumerBodyConverter` | inject both and pass them on |
+| No `key` / `value` in record logs | logger at DEBUG, not TRACE | set the listener's logger to TRACE |
+| JSON values logged unmasked at TRACE | no `@Tag(KafkaConsumerTelemetry.class) DataMasker` with format `json` | register one (`JsonDataMasker`) |
+| A custom header still shows in clear | not in `telemetry.logging.maskHeaders` | add it; the list replaces the default, so keep `authorization` etc. |
 | Telemetry parameter on a listener does not compile | no such parameter kind in 2.0 | drop it; observations are not injectable |
 | Metric cardinality explosion | `driverMetrics = true`, or per-record tags | disable driver metrics; keep `tags` low-cardinality |
-| Every poll is its own trace | `kafka.poll` is created with `setNoParent()` | expected; per-record spans still continue the producer's trace |
+| Every poll is its own trace | the `poll` span is created with `setNoParent()` | expected; per-record spans still continue the producer's trace |
 
 ---
 
@@ -267,7 +382,7 @@ Migrating from a 1.x custom telemetry listener: port the logging bits into a
 - [Strategies](kafka-strategies-reference.md) — why lag is assign-only
 - [kora-telemetry-metrics](../../kora-telemetry-metrics/SKILL.md) · [kora-telemetry-tracing](../../kora-telemetry-tracing/SKILL.md) · [kora-telemetry-logging](../../kora-telemetry-logging/SKILL.md)
 
-**Source:** framework tag `2.0.0.RC1` —
-[consumer telemetry](https://github.com/kora-projects/kora/tree/2.0.0.RC1/kafka/kafka/src/main/java/io/koraframework/kafka/common/consumer/telemetry) ·
-[KafkaModule](https://github.com/kora-projects/kora/blob/2.0.0.RC1/kafka/kafka/src/main/java/io/koraframework/kafka/common/KafkaModule.java) ·
-[TelemetryConfig](https://github.com/kora-projects/kora/blob/2.0.0.RC1/telemetry/telemetry-common/src/main/java/io/koraframework/telemetry/common/TelemetryConfig.java)
+**Source:** framework tag `2.0.0.RC2` —
+[consumer telemetry](https://github.com/kora-projects/kora/tree/2.0.0.RC2/kafka/kafka/src/main/java/io/koraframework/kafka/common/consumer/telemetry) ·
+[KafkaListenerModule](https://github.com/kora-projects/kora/blob/2.0.0.RC2/kafka/kafka/src/main/java/io/koraframework/kafka/common/consumer/KafkaListenerModule.java) ·
+[TelemetryConfig](https://github.com/kora-projects/kora/blob/2.0.0.RC2/telemetry/telemetry-common/src/main/java/io/koraframework/telemetry/common/TelemetryConfig.java)

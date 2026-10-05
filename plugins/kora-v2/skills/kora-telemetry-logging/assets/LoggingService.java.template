@@ -80,13 +80,14 @@ public class LoggingService {
     }
 
     /**
-     * @Mask on the TYPE is what makes the processor generate the @Module holding the
-     * MaskingRules&lt;Payment&gt; component; @Mask on a component selects the strategy.
-     * Built-in strategies: MaskingFull (default, "***"), MaskingKeepFirst, MaskingKeepLast.
+     * @Mask on the TYPE marks it for a MaskingRules&lt;Payment&gt; component; @Mask on a component
+     * selects the strategy. Built-in strategies: MaskingFull (default, "***"), MaskingKeepFirst,
+     * MaskingKeepLast.
      *
-     * The generated name carries the outer classes as a prefix (NameUtils.generatedType), so
-     * this nested record yields LoggingService_Payment_MaskingRulesModule, not
-     * Payment_MaskingRulesModule. Declare the record top-level if you want the short name.
+     * javac does not run the masking rules processor, so in Java declare MaskingRules&lt;Payment&gt;
+     * in a @Module (MaskingRules.builder(Payment.class).mask("cvv", ...).build()) — see
+     * kora-aop-logging/references/logging-masking.md. KSP generates
+     * $LoggingService_Payment_MaskingRulesModule for the Kotlin equivalent.
      */
     @Json
     @Mask

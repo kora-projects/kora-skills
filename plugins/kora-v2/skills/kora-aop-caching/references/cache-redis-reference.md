@@ -43,7 +43,7 @@ No component found for dependency:
   io.koraframework.cache.redis.RedisCacheClient (no tags)
 ```
 
-The Kora 1.x artifact `cache-redis` **does not exist in 2.0** — it is not in the `2.0.0.RC1` BOM.
+The Kora 1.x artifact `cache-redis` **does not exist in 2.0** — it is not in the `2.0.0.RC2` BOM.
 A `cache-redis` directory still shows in the Maven Central listing; that is a 1.x leftover.
 
 ---
@@ -274,6 +274,10 @@ Consequences:
   pod's cache may keep serving old data. Do not rely on Redis eviction for correctness.
 - Alert on the cache error telemetry, not on application exceptions.
 
+Only failures of Redis itself are swallowed. An exception thrown by the loader passed to
+`computeIfAbsent` — which is the `@Cacheable` method body — is recorded in telemetry and
+**propagates** to the caller, and nothing is written to Redis for that key.
+
 This is the opposite of the Caffeine cache, which lets exceptions propagate.
 
 ---
@@ -315,10 +319,12 @@ when metrics are enabled:
 
 | Metric | Type | Tags |
 |---|---|---|
-| `cache.operation.duration` | Timer | `system.config`, `system.name.simple`, `system.name.canonical`, `origin` (`redis`), `operation`, `error.type` + configured `telemetry.metrics.tags` |
-| `cache.ratio` | Counter | the same, with `type` = `hit` \| `miss` instead of `error.type` |
+| `cache.operation.duration` | Timer | `system.config`, `system.name.simple`, `system.name.canonical`, `cache.origin` (`redis`), `cache.operation`, `error.type` + configured `telemetry.metrics.tags` |
+| `cache.requests` | Counter | the same, with `cache.result` = `hit` \| `miss` instead of `error.type` |
 
-`operation` is one of `GET`, `GET_MANY`, `GET_ALL`, `PUT`, `PUT_MANY`, `COMPUTE_IF_ABSENT`,
+2.0.0.RC1 named the counter `cache.ratio` with tags `origin` / `operation` / `type`; RC2 (#972)
+renamed them. Spans carry the same `cache.operation` / `cache.origin` attributes.
+`cache.operation` is one of `GET`, `GET_MANY`, `GET_ALL`, `PUT`, `PUT_MANY`, `COMPUTE_IF_ABSENT`,
 `COMPUTE_IF_ABSENT_MANY`, `INVALIDATE`, `INVALIDATE_MANY`, `INVALIDATE_ALL`.
 
 The Lettuce driver has its own `lettuce.telemetry.{logging,metrics}` section, separate from the

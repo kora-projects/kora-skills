@@ -20,7 +20,7 @@ package ${package};
  *     import io.koraframework.test.extension.junit5.mockito.MockitoStrictness;
  *
  * Build:
- *     testImplementation "org.mockito:mockito-core:5.23.0"
+ *     testImplementation "org.mockito:mockito-core:5.24.0"
  * An older mockito-core carries a Byte Buddy that rejects Kora 2.0's Java 25 class files with
  * "Java 25 (69) is not supported by the current version of Byte Buddy" — and when the mock is
  * created during graph build, that hides inside "Application graph failed to initialize with N

@@ -52,8 +52,8 @@ Transport dependencies differ, which matters if you audit the dependency tree:
 If your service must not ship OkHttp, that alone decides the exporter for you. Otherwise pick by
 what the collector exposes; OTLP/gRPC is the more compact wire format.
 
-Both are built against OpenTelemetry **1.65.0** (`gradle/libs.versions.toml`), with
-`opentelemetry-semconv` 1.43.0 and `opentelemetry-semconv-incubating` 1.37.0-alpha carried by
+Both are built against OpenTelemetry **1.66.0** (`gradle/libs.versions.toml`), with
+`opentelemetry-semconv` 1.44.0 and `opentelemetry-semconv-incubating` 1.44.0-alpha carried by
 `opentelemetry-common`.
 
 ### Using `opentelemetry-tracing` without an exporter
@@ -69,13 +69,13 @@ sampled — which is enough for `traceId=…` to appear in Logback output — bu
 
 | Component | Kind | Default |
 |---|---|---|
-| `OpentelemetryTracingConfig` | config | mapped from the `tracing` path |
-| `Resource` | component | built from `tracing.attributes` only |
+| `OpentelemetryTracingConfig` | `@DefaultComponent` | mapped from the `tracing` path |
+| `Resource` | `@DefaultComponent` | built from every `OpentelemetryTracingAttributesProvider`, then `tracing.attributes` (config wins) |
 | `IdGenerator` | `@DefaultComponent` | `IdGenerator.random()` |
 | `Supplier<SpanLimits>` | `@DefaultComponent` | `SpanLimits::getDefault` |
 | `Sampler` | `@DefaultComponent` | `Sampler.parentBased(Sampler.alwaysOn())` |
-| `LifecycleWrapper<TracerProvider>` | component | `SdkTracerProvider`, or `TracerProvider.noop()` when `tracing.enabled = false` |
-| `Tracer` | component | `tracerBuilder("kora").build()` |
+| `LifecycleWrapper<TracerProvider>` | `@DefaultComponent` | `SdkTracerProvider`, or `TracerProvider.noop()` when `tracing.enabled = false` |
+| `Tracer` | `@DefaultComponent` | `tracerBuilder("kora").build()` |
 | `KoraTracer` | `@DefaultComponent` | wraps the `Tracer` |
 
 Each exporter module adds, both as `@DefaultComponent`:
@@ -86,7 +86,9 @@ Each exporter module adds, both as `@DefaultComponent`:
 | `SpanProcessor` | `BatchSpanProcessor` over that exporter, or `SpanProcessor.composite()` under the same two conditions |
 
 Because they are `@DefaultComponent`, declaring your own `SpanExporter`, `SpanProcessor`, `Sampler`,
-`IdGenerator` or `Supplier<SpanLimits>` on the `@KoraApp` interface replaces the framework one.
+`IdGenerator`, `Supplier<SpanLimits>`, `Resource` or `TracerProvider` on the `@KoraApp` interface
+replaces the framework one. A replaced `Resource` no longer reads `tracing.attributes` or any
+`OpentelemetryTracingAttributesProvider` — your factory is the whole resource.
 
 ## The `tracing` section
 
@@ -95,10 +97,12 @@ Mapped from `OpentelemetryTracingConfig` (`@ConfigMapper`, path `tracing`).
 | Key | Type | Default | Meaning |
 |---|---|---|---|
 | `enabled` | boolean | **`true`** | Master switch. `false` → `TracerProvider.noop()` and both exporter components degrade to no-ops |
-| `attributes` | map | `{}` | OTLP **resource** attributes attached to every span the process exports |
+| `attributes` | map | `{}` | OTLP **resource** attributes attached to every span the process exports; applied after the `OpentelemetryTracingAttributesProvider` components, so these win on a key conflict |
 
-Tracing being on by default is the opposite of `logging.enabled` and `metrics.enabled`, which are
-both `false`. Writing `tracing.enabled = true` is a no-op; only `false` changes anything.
+Tracing being on by default is the opposite of the per-component `telemetry.logging.enabled` and
+`telemetry.metrics.enabled`, which are both `false`. (The global `metrics.enabled` of
+`MetricsModule` defaults to `true`, like `tracing.enabled`: both are kill switches.) Writing
+`tracing.enabled = true` is a no-op; only `false` changes anything.
 
 The whole `tracing` block is optional. `@ConfigMapper` defaults `mapNullAsEmptyObject` to `true`, so
 an absent section is mapped as an empty object and every default applies — including `enabled = true`
@@ -178,10 +182,30 @@ tracing.exporter.retryPolicy {
 
 ## Resource attributes
 
-`opentelemetryTracingResource(OpentelemetryTracingConfig)` walks `config.attributes()` and puts each
-entry on a fresh `Resource.builder()`, which is then handed to `SdkTracerProvider.setResource(...)`.
-The resource therefore contains **exactly** what you configured — nothing is added for you, so an
-empty `tracing.attributes` means your spans arrive with no service identity.
+`opentelemetryTracingResource(OpentelemetryTracingConfig, All<OpentelemetryTracingAttributesProvider>)`
+starts from an empty `Resource.builder()`, puts every provider's `attributes()` on it, then puts
+`config.attributes()` — last, so static configuration wins on a key conflict — and the result is
+handed to `SdkTracerProvider.setResource(...)`:
+
+```java
+@DefaultComponent
+default Resource opentelemetryTracingResource(OpentelemetryTracingConfig config, All<OpentelemetryTracingAttributesProvider> attributesProviders) {
+    var resource = Resource.builder();
+    for (var provider : attributesProviders) {
+        for (var attribute : provider.attributes().entrySet()) {
+            resource.put(attribute.getKey(), attribute.getValue());
+        }
+    }
+    // config attributes are applied last so static configuration wins on key conflicts
+    for (var attribute : config.attributes().entrySet()) {
+        resource.put(attribute.getKey(), attribute.getValue());
+    }
+    return resource.build();
+}
+```
+
+The resource therefore contains **exactly** those two sources — nothing is added for you, so with
+no provider and an empty `tracing.attributes` your spans arrive with no service identity.
 
 ```hocon
 tracing {
@@ -197,6 +221,23 @@ tracing {
 Use OpenTelemetry resource semantic-convention names (`service.name`, `service.namespace`,
 `service.version`, `service.instance.id`, `deployment.environment.name`). `service.name` is what
 every trace UI groups by.
+
+### `OpentelemetryTracingAttributesProvider`
+
+```java
+package io.koraframework.opentelemetry.tracing;
+
+public interface OpentelemetryTracingAttributesProvider {
+    Map<String, String> attributes();
+}
+```
+
+For values computed at startup — the pod name, a build version read from the jar manifest, a
+region from the environment. Register any number as components; all are injected through
+`All<OpentelemetryTracingAttributesProvider>`, and each `attributes()` is called once, while the
+graph builds the `Resource`. Templates:
+[`AppTracingAttributesProvider.java.template`](../assets/AppTracingAttributesProvider.java.template) /
+[`AppTracingAttributesProvider.kt.template`](../assets/AppTracingAttributesProvider.kt.template).
 
 Do not confuse this with per-module `…telemetry.tracing.attributes`, which is a
 `Map<String,String>` merged onto the **spans of that module only**, not onto the resource.
@@ -358,7 +399,9 @@ uninstrumented — no error, no degradation of tracing itself.
 
 ### Spans arrive but the service is unnamed
 
-`tracing.attributes."service.name"` is unset. The resource is built solely from that map.
+Neither `tracing.attributes."service.name"` nor any `OpentelemetryTracingAttributesProvider`
+supplies `service.name`. The resource is built solely from those two sources — or entirely by your
+own `Resource` component, if you replaced the default one.
 
 ### Export timeouts / dropped spans under load
 

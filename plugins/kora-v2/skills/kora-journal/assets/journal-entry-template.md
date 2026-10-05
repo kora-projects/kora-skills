@@ -210,8 +210,8 @@ imports the dependency was still wrong: the artifact `json-module` does not exis
 - `ru.tinkoff.kora.json.module.JsonModule` → `io.koraframework.json.common.JsonModule`
 - artifact `json-module` → `json-common`; BOM `ru.tinkoff.kora:kora-parent` → `io.koraframework:kora-bom`
 
-Verified against the framework source at tag `2.0.0.RC1`, not against `kora-docs` — that site
-documents 1.x on every branch.
+Verified against the framework source at tag `2.0.0.RC2`, not against the 1.x site
+`kora-projects.github.io/kora-docs`.
 
 ## Files Affected
 

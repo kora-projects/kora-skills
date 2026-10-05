@@ -16,7 +16,7 @@ import io.koraframework.json.common.annotation.Json
 /**
  * Declarative Kora 2.0 HTTP client for a User API (Kotlin / KSP).
  *
- * Build (gradle.properties: koraVersion=2.0.0.RC1):
+ * Build (gradle.properties: koraVersion=2.0.0.RC2):
  * ```
  * implementation(platform("io.koraframework:kora-bom:${property("koraVersion")}"))
  * ksp("io.koraframework:symbol-processors:${property("koraVersion")}")

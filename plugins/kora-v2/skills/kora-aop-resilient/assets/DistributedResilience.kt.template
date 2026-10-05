@@ -1,0 +1,89 @@
+// Redis-backed rate limiter and retry budget shared by every instance (Kora 2.0).
+// Dependency: implementation("io.koraframework:resilient-kora-distributed-redis-lettuce")
+// The class AND every annotated method must be `open`.
+// Replace `com.example.app` with your package.
+
+package com.example.app
+
+import io.koraframework.common.annotation.Component
+import io.koraframework.common.annotation.KoraApp
+import io.koraframework.common.annotation.Tag
+import io.koraframework.config.hocon.HoconConfigModule
+import io.koraframework.logging.logback.LogbackModule
+import io.koraframework.resilient.ResilientModule
+import io.koraframework.resilient.distributed.LettuceDistributedResilientModule
+import io.koraframework.resilient.distributed.ratelimiter.annotation.RateLimiterDistributedSpec
+import io.koraframework.resilient.distributed.retry.DistributedRetryBudgetClient
+import io.koraframework.resilient.distributed.retry.DistributedRetryBudgetFactory
+import io.koraframework.resilient.ratelimiter.RateLimiter
+import io.koraframework.resilient.ratelimiter.annotation.RateLimited
+import io.koraframework.resilient.retry.Retry
+import io.koraframework.resilient.retry.RetryBudgetFactory
+import io.koraframework.resilient.retry.annotation.RetrySpec
+import io.koraframework.resilient.retry.annotation.Retryable
+import java.time.Duration
+
+// LettuceDistributedResilientModule extends LettuceModule (config section `lettuce`) and supplies
+// DistributedRateLimiterClient + DistributedRetryBudgetClient. ResilientModule is still required.
+@KoraApp
+interface Application :
+    HoconConfigModule,
+    LogbackModule,
+    ResilientModule,
+    LettuceDistributedResilientModule {
+
+    // Not registered by any module: build it here. The tag scopes it to PartnerRetry only;
+    // without the tag it would replace the default budget of every retry.
+    @Tag(PartnerRetry::class)
+    fun partnerRetryBudget(client: DistributedRetryBudgetClient): RetryBudgetFactory =
+        DistributedRetryBudgetFactory(client, "orders-service:retrybudget", Duration.ofMinutes(10))
+}
+
+// Drop-in RateLimiter: @RateLimited, tryAcquire() and acquire() work as with @RateLimiterSpec.
+// Redis key: <keyPrefix>:PartnerApiRateLimiter — one quota for every instance, no per-user keys.
+@RateLimiterDistributedSpec("resilient.ratelimiter.partner-api")
+interface PartnerApiRateLimiter : RateLimiter
+
+@RetrySpec("resilient.retry.partner")
+interface PartnerRetry : Retry
+
+@Component
+open class PartnerClient(private val api: PartnerApi) {
+
+    // Over the limit: RateLimitExceededException, no waiting.
+    // Redis unreachable: the Lettuce exception propagates — the call is NOT let through.
+    @Retryable(PartnerRetry::class)
+    @RateLimited(PartnerApiRateLimiter::class)
+    open fun quote(sku: String): String = api.quote(sku)
+}
+
+// ---------------------------------------------------------------- placeholders
+
+interface PartnerApi {
+    fun quote(sku: String): String
+}
+
+@Component
+class PartnerApiClient : PartnerApi {
+    override fun quote(sku: String): String = sku
+}
+
+// Config (HOCON):
+//
+// lettuce {
+//   uri = ${REDIS_URL}             # REQUIRED — comma-separated URIs or forceClusterClient = true -> cluster
+// }
+//
+// resilient {
+//   ratelimiter.partner-api {
+//     limitForPeriod = 50           # REQUIRED
+//     limitRefreshPeriod = "1s"     # REQUIRED
+//     keyPrefix = "orders-service"  # REQUIRED — namespaces the Redis keys
+//     algorithm = TOKEN_BUCKET      # optional, default TOKEN_BUCKET; or FIXED_WINDOW. NOT `type`
+//   }
+//   retry.partner {
+//     delay = "100ms"
+//     attempts = 3
+//     retryBudget { ratio = 0.1, tokensMax = 100, tokensInitial = 10 }   # REQUIRED for the distributed factory too
+//   }                                                                   # minTokensPerSecond is ignored in Redis
+// }

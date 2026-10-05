@@ -9,7 +9,7 @@ metadata:
 
 # Kora Project Setup — Java
 
-> **Kora sub-skill — obey the [kora-v2 meta rules](../../SKILL.md) on every task:** **R0** ground the workspace on Kora 2.0 refs before starting (framework source at tag `2.0.0.RC1` + `kora-examples` at `migration/2.0`; `kora-docs` is 1.x only) · **R1** read this sub-skill before writing code · **R2** Kora 2.0 APIs only — no Spring/Micronaut/Quarkus, no Kora 1.x APIs, no invented annotations or config keys · **R3** journal any incorrect Kora usage. Add comments/Javadoc only if asked.
+> **Kora sub-skill — obey the [kora-v2 meta rules](../../SKILL.md) on every task:** **R0** ground the workspace on Kora 2.0 refs before starting (framework source at tag `2.0.0.RC2` + `kora-examples` at `migration/2.0` + Kora 2.0 docs at koraframework.io/v2, which trail the source; 1.x `kora-docs` pages are never an authority) · **R1** read this sub-skill before writing code · **R2** Kora 2.0 APIs only — no Spring/Micronaut/Quarkus, no Kora 1.x APIs, no invented annotations or config keys · **R3** journal any incorrect Kora usage. Add comments/Javadoc only if asked.
 
 Scaffold a minimal, compilable Kora 2.0 service in Java. Kora is a compile-time
 framework: its annotation processor generates `ApplicationGraph`, controllers,
@@ -20,10 +20,10 @@ skill gets that wiring right the first time.
 | | |
 |---|---|
 | **Group** | `io.koraframework` (everything under `experimental/` publishes as `io.koraframework.experimental`) |
-| **BOM** | `io.koraframework:kora-bom:2.0.0.RC1` — the only 2.0.x on Maven Central; plain `mavenCentral()` resolves it |
+| **BOM** | `io.koraframework:kora-bom:2.0.0.RC2` — on Maven Central; plain `mavenCentral()` resolves it |
 | **Processor** | `io.koraframework:annotation-processors` (also as `testAnnotationProcessor`) |
 | **JDK** | **25 or newer** — Kora 2.0 artifacts are compiled for JVM 25; the reference apps pin toolchain `25` |
-| **Gradle** | wrapper pins `9.5.1` |
+| **Gradle** | wrapper `9.8.0` — the version the framework itself builds with |
 
 ---
 
@@ -34,7 +34,7 @@ Smallest build that compiles and runs an HTTP endpoint.
 `gradle.properties`:
 
 ```properties
-koraVersion=2.0.0.RC1
+koraVersion=2.0.0.RC2
 junitVersion=6.1.3
 
 org.gradle.java.installations.auto-detect=true
@@ -396,6 +396,7 @@ the test graph is generated. Deeper testing → `kora-testing-junit-java`.
 | Custom ports ignored; app answers on 8080/8085 | Old port keys are unknown to 2.0 config and silently ignored | Use `httpServer.port` and `httpServer.system.port` |
 | `@KoraAppTest` finds no components | `testAnnotationProcessor` missing | Add `testAnnotationProcessor "io.koraframework:annotation-processors"` |
 | IDE shows red but `./gradlew classes` passes | IDE has not indexed `build/generated/` | Re-run `classes`, refresh/invalidate IDE caches |
+| Shadow fat jar: Flyway fails at startup with `NullPointerException` in `DryRunConfigurationExtensionStub.getOrResolveOutputStream` | `com.gradleup.shadow` 9.x keeps only the first `META-INF/services/*` copy unless duplicates are included, so `mergeServiceFiles()` merges nothing (observed empirically) | `shadowJar { mergeServiceFiles(); duplicatesStrategy = DuplicatesStrategy.INCLUDE }` — see [build reference](references/build-gradle-reference.md#fat-jar-with-shadow) |
 
 Full diagnosis table: [`references/troubleshooting-reference.md`](references/troubleshooting-reference.md).
 

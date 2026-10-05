@@ -10,7 +10,7 @@
         "Annotates each DTO type with @Json imported from io.koraframework.json.common.annotation",
         "Uses Java records (or Kotlin data classes) for the DTOs",
         "Adds annotationProcessor \"io.koraframework:annotation-processors\" and implementation \"io.koraframework:json-common\" (Kotlin: ksp \"io.koraframework:symbol-processors\")",
-        "Uses the platform \"io.koraframework:kora-bom\" at version 2.0.0.RC1 (koraVersion property) rather than pinning per-artifact versions",
+        "Uses the platform \"io.koraframework:kora-bom\" at version 2.0.0.RC2 (koraVersion property) rather than pinning per-artifact versions",
         "Notes that the @KoraApp interface must extend io.koraframework.json.common.JsonModule",
         "Does not use foreign @JsonProperty or field injection; uses constructor injection"
       ],
@@ -56,8 +56,8 @@
       ],
       "query": "Set up a fresh Gradle module that uses Kora 2.0 JSON. Which Kora version and which repositories do I declare?",
       "expected_behavior": [
-        "Pins koraVersion=2.0.0.RC1 — the Kora 2.0 release published on Maven Central",
-        "Uses plain mavenCentral(); no extra repository is needed for RC1",
+        "Pins koraVersion=2.0.0.RC2 — the released Kora 2.0 version on Maven Central",
+        "Uses plain mavenCentral(); no extra repository is needed for a released 2.0.0.RC2",
         "Declares platform(\"io.koraframework:kora-bom:$koraVersion\") and no per-artifact versions",
         "Adds io.koraframework:json-common plus annotation-processors (Java) or symbol-processors (Kotlin)",
         "If 2.0.0-SNAPSHOT is mentioned at all, labels it the master development line and pairs it with https://central.sonatype.com/repository/maven-snapshots"
@@ -65,8 +65,8 @@
       "anti_behavior": [
         "Uses 2.0.0-SNAPSHOT as the version for a new project",
         "Uses 2.0.0.alpha6 or claims Central only publishes an alpha",
-        "Adds a custom/snapshot repository for the RC1 release",
-        "Offers a leftover Central artifact such as kora-parent or cache-redis, which the RC1 BOM does not constrain"
+        "Adds a custom/snapshot repository for the 2.0.0.RC2 release",
+        "Offers a leftover Central artifact such as kora-parent or cache-redis, which the 2.0 BOM does not constrain"
       ],
       "tags": [
         "setup",
@@ -82,7 +82,7 @@
       "query": "Migrating to Kora 2.0: my code calls jsonWriter.toByteArrayUnchecked(dto), jsonWriter.toStringUnchecked(dto) and jsonReader.readUnchecked(bytes). These methods no longer resolve.",
       "expected_behavior": [
         "Maps toByteArrayUnchecked -> toByteArray, toStringUnchecked -> toString, readUnchecked -> read",
-        "States that the surviving methods declare no checked exception — in 2.0.0.RC1 no throws clause at all, and on the 2.0.0-SNAPSHOT line only the unchecked tools.jackson.core.JacksonException",
+        "States that the surviving methods declare no checked exception — only the unchecked tools.jackson.core.JacksonException",
         "Warns that a leftover try/catch (IOException) around toByteArray is now a Java compile error (\"exception IOException is never thrown in body of corresponding try statement\")",
         "Says to delete the now-unused import java.io.IOException"
       ],
@@ -104,7 +104,7 @@
       "query": "This Kora 2.0 Java interceptor does not compile:\n\n```java\ntry {\n    return HttpServerResponse.of(code, HttpBody.json(errorWriter.toByteArray(error)));\n} catch (IOException ex) {\n    return HttpServerResponse.of(500, HttpBody.plaintext(ex.getMessage()));\n}\n```\nWhat is wrong?",
       "expected_behavior": [
         "Identifies the error as \"exception IOException is never thrown in body of corresponding try statement\"",
-        "Explains that JsonWriter.toByteArray(@Nullable T) declares no checked exception in Kora 2.0 (in 2.0.0.RC1 no throws clause at all)",
+        "Explains that JsonWriter.toByteArray(@Nullable T) declares no checked exception in Kora 2.0 — only the unchecked tools.jackson.core.JacksonException",
         "Rewrites the snippet as a single unguarded return statement",
         "Removes the java.io.IOException import"
       ],
@@ -321,6 +321,52 @@
       "tags": [
         "troubleshooting",
         "di"
+      ]
+    },
+    {
+      "id": "kora-json-parse-error-messages",
+      "skills": [
+        "kora-json"
+      ],
+      "query": "Our Kora 2.0 HTTP endpoint receives an Order JSON. When clients send bad input we want to return a helpful 400. What do Kora's generated JSON readers throw, and what does the message look like for a wrong type, a missing field or an unknown sealed-type discriminator?",
+      "expected_behavior": [
+        "States that generated and built-in readers throw tools.jackson.core.exc.StreamReadException (unchecked), which a handler can map to 400",
+        "Describes the message shape \"Failed to read json <Type>[.<field>]: expected <what>, but got <actual> (at <JSON pointer>)\", with <root> for the top level",
+        "Gives the missing-field form \"Failed to read json <Type>: missing required field(s): a, b\" and the null form \"<Type>.<field>: required field must not be null\"",
+        "Gives the sealed-type forms: \"missing required discriminator field \\\"type\\\", expected one of [...]\" and \"unknown discriminator value \\\"x\\\" for field \\\"type\\\", expected one of [...]\"",
+        "Recommends not parsing the message text for control flow"
+      ],
+      "anti_behavior": [
+        "Quotes the old token-dump messages such as \"Expecting VALUE_STRING token, got ...\" as Kora's current output",
+        "Claims the reader throws a checked IOException or a Kora-specific JSON exception type",
+        "Claims defaultValue on @JsonDiscriminatorField also absorbs unknown discriminator values"
+      ],
+      "tags": [
+        "errors",
+        "sealed",
+        "regression"
+      ]
+    },
+    {
+      "id": "kora-json-single-value-type",
+      "skills": [
+        "kora-json"
+      ],
+      "query": "In Kora 2.0 I have a value type `record UserId(long id)` and want it to appear in JSON as a bare number (e.g. `\"owner\": 42`) wherever it is used in my @Json DTOs, like Jackson's @JsonCreator(DELEGATING) + @JsonValue. How?",
+      "expected_behavior": [
+        "Annotates a public static factory `@JsonReader public static UserId of(long v)` and a value method `@JsonWriter public long id()` (or a static `(UserId) -> long` @JsonWriter method) on the type",
+        "Explains that the processor then generates a delegating JsonReader/JsonWriter that reads/writes the long through JsonReader<Long>/JsonWriter<Long>",
+        "For Kotlin, places the @JsonReader factory in the companion object",
+        "Notes that a factory that is not public static is rejected (\"@JsonReader factory method must be public static\")",
+        "Does not write a hand-rolled custom JsonReader/JsonWriter module as the only option and does not use Jackson's @JsonCreator/@JsonValue"
+      ],
+      "anti_behavior": [
+        "Claims Kora cannot serialize a non-enum type as a single value",
+        "Uses @JsonValue or @JsonCreator from com.fasterxml or tools.jackson annotations"
+      ],
+      "tags": [
+        "dto",
+        "custom-mapper"
       ]
     }
   ]

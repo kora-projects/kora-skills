@@ -1,7 +1,7 @@
 // Kora 2.0 — declarative method logging with @Log and @Mdc.
 //
 // Requires, in build.gradle:
-//     koraBom platform("io.koraframework:kora-bom:$koraVersion")   // koraVersion=2.0.0.RC1
+//     koraBom platform("io.koraframework:kora-bom:$koraVersion")   // koraVersion=2.0.0.RC2
 //     annotationProcessor "io.koraframework:annotation-processors"
 //     implementation "io.koraframework:logging-logback"
 //
@@ -73,6 +73,6 @@ public class OrdersService {                                       // must NOT b
     }
 
     // To redact fields *inside* a logged object rather than dropping the whole argument,
-    // see references/logging-masking.md — in Java 2.0.0.RC1 that also needs a
+    // see references/logging-masking.md — in Java that also needs a
     // hand-declared MaskingRules<T> component.
 }

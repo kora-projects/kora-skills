@@ -7,7 +7,7 @@
       ],
       "query": "I have a Kora 2.0 Java service. Enable declarative method logging from scratch — what dependencies, processor and module do I need?",
       "expected_behavior": [
-        "Adds implementation \"io.koraframework:logging-logback\" versioned through the io.koraframework:kora-bom platform (koraVersion=2.0.0.RC1), without pinning a version on the individual artifact",
+        "Adds implementation \"io.koraframework:logging-logback\" versioned through the io.koraframework:kora-bom platform (koraVersion=2.0.0.RC2), without pinning a version on the individual artifact",
         "Adds the mandatory annotationProcessor \"io.koraframework:annotation-processors\", which contains logging-annotation-processor",
         "Extends io.koraframework.logging.logback.LogbackModule on the @KoraApp interface (it extends LoggingModule, which supplies the ILoggerFactory and the LoggingLevelApplier)",
         "Uses io.koraframework.logging.common.annotation.Log on a non-final class and method",
@@ -273,12 +273,12 @@
       "skills": [
         "kora-aop-logging"
       ],
-      "query": "I did the same @Mask setup in Java on Kora 2.0.0.RC1 and the build now fails resolving io.koraframework.logging.common.masking.MaskingRules<User>. What's missing?",
+      "query": "I did the same @Mask setup in Java on Kora 2.0.0.RC1 and the build now fails resolving io.koraframework.logging.common.masking.MaskingRules<User>. What's missing, and what changes on RC2?",
       "expected_behavior": [
-        "Identifies that logging-annotation-processor-2.0.0.RC1.jar registers only its KoraAspectFactory service and has no META-INF/services/javax.annotation.processing.Processor entry, so javac never runs the processor that would generate $User_MaskingRulesModule",
-        "Notes this is Java-only: the KSP artifact does register MaskingRulesSymbolProcessorProvider",
-        "Declares the MaskingRules<User> component by hand in a @Module, using the public MaskingRules.builder(User.class).mask(path, strategy).build() API",
-        "Explains that field-level @Mask then documents intent only, so the hand-written rules must be kept in step",
+        "Identifies that in RC1 logging-annotation-processor had no META-INF/services/javax.annotation.processing.Processor entry, so javac never ran the processor that generates $User_MaskingRulesModule",
+        "Says 2.0.0.RC2 (#921) registers LoggingAnnotationProcessor (isolating since #970), so Java generates $User_MaskingRulesModule like KSP does and the fix is upgrading, keeping annotationProcessor \"io.koraframework:annotation-processors\"",
+        "Offers a hand-written MaskingRules<User> @Module (MaskingRules.builder(User.class).mask(path, strategy).build()) only as the RC1 stop-gap, to be deleted after the upgrade",
+        "Warns that a leftover hand-written MaskingRules<User> overrides the generated @DefaultComponent and ignores later @Mask edits",
         "Keeps @Mask (+ @Json) on the logged parameter so the aspect still selects MaskedStructuredArgumentMapper",
         "Does not suggest adding declarative-logging-annotation-processor or forcing -processor on javac"
       ],
@@ -326,6 +326,51 @@
         "migration",
         "mdc",
         "advanced"
+      ]
+    },
+    {
+      "id": "kora-aop-logging-datamasker-http-body",
+      "skills": [
+        "kora-aop-logging"
+      ],
+      "query": "Our Kora 2.0 HTTP server logs request bodies at TRACE and I can see passwords and card numbers in the JSON bodies. I already use @Mask on my DTOs. How do I mask the logged bodies, keeping the last four digits of card.number?",
+      "expected_behavior": [
+        "Explains that @Mask / MaskingRules only apply to structured arguments such as @Log payloads, not to transport telemetry bodies, and that no DataMasker is registered by default",
+        "Registers a io.koraframework.logging.common.masking.raw.DataMasker component tagged @Tag(io.koraframework.http.server.common.telemetry.HttpServerTelemetry.class), built as new JsonDataMasker(MaskingPathRules.builder().mask(\"password\", new MaskingFull()).mask(\"card.number\", new MaskingKeepLast()).build())",
+        "Explains the HTTP body converter picks the masker by format() from the Content-Type (json for */json and *+json, xml for */xml and *+xml, form-urlencoded for application/x-www-form-urlencoded), so a FormUrlencodedDataMasker or XmlDataMasker is needed for those bodies",
+        "Explains rule syntax: a bare name matches at any depth, a dotted path is anchored at the payload root, * matches one segment, array elements add no segment; names match case-insensitively",
+        "Mentions fail-closed behaviour: a payload the scanner cannot parse is replaced from that point by <masked:unparseable>, and output is capped at 64 KiB by default with <masked:truncated>",
+        "Notes the masker is only seen by the transport whose tag it carries (HttpClientTelemetry for the client side)"
+      ],
+      "anti_behavior": [
+        "Claims @Mask on the DTO masks HTTP telemetry bodies",
+        "Invents a config key such as telemetry.logging.maskBody or mask"
+      ],
+      "tags": [
+        "masking",
+        "telemetry",
+        "advanced"
+      ]
+    },
+    {
+      "id": "kora-aop-logging-masking-layers",
+      "skills": [
+        "kora-aop-logging"
+      ],
+      "query": "Kora has @Mask, MaskingRules, DataMasker, maskHeaders and a JSON encoder maskField. Which one masks what, and how do they relate?",
+      "expected_behavior": [
+        "Describes @Mask / MaskingRules<T> as masking fields of a typed object while its JsonWriter writes a structured argument (@Log arguments and results)",
+        "Describes DataMasker (JsonDataMasker, XmlDataMasker, FormUrlencodedDataMasker) as a fail-closed soft parser over raw payload bytes, used for HTTP server/client bodies and Kafka consumer key/value, registered per transport by @Tag of its telemetry class",
+        "Describes maskHeaders / maskQueries as config name lists whose values are replaced by a MaskingStrategy tagged with the transport's telemetry class, defaulting to \"***\" — and that there is no mask config key",
+        "Describes <maskField> as a JsonRecordEncoder-only, field-name match on the final JSON record that cannot see inside string values",
+        "States the shared pieces: MaskingRules extends MaskingPathRules (same rule syntax) and all layers use the MaskingStrategy interface"
+      ],
+      "anti_behavior": [
+        "Presents the layers as alternatives that cover the same input"
+      ],
+      "tags": [
+        "masking",
+        "concepts"
       ]
     }
   ]

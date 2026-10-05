@@ -82,7 +82,7 @@ class CatalogNotFoundException(id: String) : RuntimeException("Catalog entry not
 //   }
 //   retry.payment       { delay = "100ms", attempts = 3, delayStep = "100ms" }
 //   timeout.payment     { duration = "5s" }
-//   ratelimiter.notifications { limitForPeriod = 100, limitRefreshPeriod = "1s" }
+//   ratelimiter.notifications { limitForPeriod = 100, limitRefreshPeriod = "1s" }   # type = TOKEN_BUCKET (default) or FIXED_WINDOW
 // }
 //
 // Named sections do NOT inherit `default` in Kora 2.0 — fill each one completely.

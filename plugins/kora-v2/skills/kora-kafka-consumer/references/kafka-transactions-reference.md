@@ -263,9 +263,9 @@ were later aborted. Nothing else about the listener changes — ordinary signatu
 - [Listener signatures](kafka-listener-reference.md)
 - [kora-kafka-producer](../../kora-kafka-producer/SKILL.md)
 
-**Source:** framework tag `2.0.0.RC1` —
-[TransactionalPublisher](https://github.com/kora-projects/kora/blob/2.0.0.RC1/kafka/kafka/src/main/java/io/koraframework/kafka/common/producer/TransactionalPublisher.java) ·
-[KafkaPublisherConfig](https://github.com/kora-projects/kora/blob/2.0.0.RC1/kafka/kafka/src/main/java/io/koraframework/kafka/common/producer/KafkaPublisherConfig.java);
+**Source:** framework tag `2.0.0.RC2` —
+[TransactionalPublisher](https://github.com/kora-projects/kora/blob/2.0.0.RC2/kafka/kafka/src/main/java/io/koraframework/kafka/common/producer/TransactionalPublisher.java) ·
+[KafkaPublisherConfig](https://github.com/kora-projects/kora/blob/2.0.0.RC2/kafka/kafka/src/main/java/io/koraframework/kafka/common/producer/KafkaPublisherConfig.java);
 migrated examples on `migration/2.0` —
 [kora-java-kafka](https://github.com/kora-projects/kora-examples/tree/migration/2.0/examples/java/kora-java-kafka) ·
 [kora-kotlin-kafka](https://github.com/kora-projects/kora-examples/tree/migration/2.0/examples/kotlin/kora-kotlin-kafka)

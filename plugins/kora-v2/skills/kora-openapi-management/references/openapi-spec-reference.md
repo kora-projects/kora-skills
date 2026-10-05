@@ -1,11 +1,10 @@
 # OpenAPI Spec Publishing Reference — Kora 2.0
 
-**Verified against** the Kora 2.0 framework source at tag `2.0.0.RC1`
+**Verified against** the Kora 2.0 framework source for `2.0.0.RC2`
 (`openapi/openapi-management/src/main/java/io/koraframework/openapi/management/`: `OpenApiManagementConfig`,
 `OpenApiManagementModule`, `OpenApiHttpServerHandler`, `ResourceUtils`, `CacheHttpServerResponse`) and
 the migrated `kora-java-crud` / `kora-kotlin-crud` examples plus the
 `kora-*-guide-openapi-http-server-app` guides on `kora-examples` branch `migration/2.0`.
-`openapi/openapi-management` is byte-identical between tag `2.0.0.RC1` and `master`.
 
 ## Contents
 

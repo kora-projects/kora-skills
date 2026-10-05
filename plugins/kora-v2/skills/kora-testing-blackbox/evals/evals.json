@@ -110,7 +110,7 @@
       ],
       "query": "Set up the Gradle dependencies for a Kora 2.0 black-box test module with Testcontainers and PostgreSQL.",
       "expected_behavior": [
-        "Pins Kora artifacts through platform(\"io.koraframework:kora-bom:$koraVersion\") with koraVersion = 2.0.0.RC1 from mavenCentral()",
+        "Pins Kora artifacts through platform(\"io.koraframework:kora-bom:$koraVersion\") with koraVersion = 2.0.0.RC2 from mavenCentral()",
         "Declares org.testcontainers:junit-jupiter, org.testcontainers:testcontainers and org.testcontainers:postgresql at 1.21.4, the version the migrated Kora 2.0 examples use",
         "Notes that kora-bom constrains only io.koraframework artifacts, so the Testcontainers version is the application's own choice",
         "Uses platform(\"org.junit:junit-bom:6.1.3\") for JUnit",

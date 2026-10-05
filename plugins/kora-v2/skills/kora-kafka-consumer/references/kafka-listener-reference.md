@@ -1,7 +1,7 @@
 # Kafka Listener Reference (Kora 2.0)
 
 Every accepted `@KafkaListener` method signature, derived from the annotation processor and KSP
-sources at tag `2.0.0.RC1` and from the processor tests that assert each shape.
+sources at tag `2.0.0.RC2` and from the processor tests that assert each shape.
 
 ## Contents
 
@@ -91,7 +91,7 @@ Each row names the processor test that compiles and exercises it.
 |---|---|---|
 | `void process(String value)` | `byte[]` | `KafkaListenerKeyAndValueTest#testProcessValue` |
 | `void process(String key, String value)` | `String` | `#testProcessKeyAndValue` |
-| `void process(String value, Headers headers)` | `byte[]` | generator unchanged since RC1; `#testProcessValueAndHeaders` was **added after RC1** |
+| `void process(String value, Headers headers)` | `byte[]` | `#testProcessValueAndHeaders` |
 | `void process(String key, String value, Headers headers)` | `String` | `#testProcessKeyAndValueAndHeaders` |
 | `void process(String value, RecordValueDeserializationException e)` | `byte[]` | `#testProcessValueAndValueException` |
 | `void process(String value, Exception e)` | `byte[]` | `#testProcessValueAndException` |
@@ -179,7 +179,7 @@ unbounded key wildcard means "give me the raw key bytes".
 - **`suspend` is accepted but useless — and broken in one shape.** Unlike the HTTP-server and
   repository processors, KSP does **not** reject a `suspend` listener: `KafkaHandlerGenerator.kt`
   checks `Modifier.SUSPEND` at lines 133 (batch) and 236 (key/value) and wraps the call in
-  `kotlinx.coroutines.runBlocking(Dispatchers.Unconfined)`. RC1 carries tests that compile it and assert success —
+  `kotlinx.coroutines.runBlocking(Dispatchers.Unconfined)`. The framework has tests that compile it and assert success —
   `KafkaListenerKeyAndValueTest#testProcessValueSuspend` and
   `KafkaListenerRecordsTest#testProcessRecordsSuspend`. Three reasons to write a plain `fun` anyway:
   1. `kotlinx-coroutines` appears in **no** `.gradle` or `.toml` file in the Kora 2.0 repository, so
@@ -192,13 +192,9 @@ unbounded key wildcard means "give me the raw key bytes".
      any coroutine builder and the generated Kotlin does not compile.
 
   Every migrated Kotlin example listener is a plain `fun`.
-- **RC1 limitation (Kotlin only):** `Headers` combined with an exception parameter generates code
-  that does not compile — `val headers = record.headers()` is emitted inside the generated `try`
-  block and read outside it. Fixed after RC1 on `master` (`8e1eec9a4`, backport of #845), which also
-  added `testProcessValueAndHeaders`, `testProcessKeyAndValueAndHeaders`,
-  `testProcessKeyValueHeaderAndException` and `testProcessKeyValueHeadersAndConsumer` to the KSP
-  test suite. Until a release carries the fix, take a `ConsumerRecord` and read `record.headers()`.
-  Kotlin `Headers` **without** an exception parameter works at RC1.
+- `Headers` combined with a deserialization-exception parameter works in Kotlin as in Java —
+  `fun process(key: String?, value: String?, headers: Headers, exception: Exception?)` is covered by
+  the KSP tests `testProcessKeyValueHeaderAndException` and `testProcessKeyValueHeadersAndConsumer`.
 
 ---
 
@@ -266,9 +262,9 @@ See the [serialization reference](kafka-serialization-reference.md).
 - [Offsets](kafka-offset-reference.md)
 - [Batch processing](kafka-batch-reference.md)
 
-**Source:** framework tag `2.0.0.RC1` —
-[kafka-annotation-processor](https://github.com/kora-projects/kora/tree/2.0.0.RC1/kafka/kafka-annotation-processor) ·
-[kafka-symbol-processor](https://github.com/kora-projects/kora/tree/2.0.0.RC1/kafka/kafka-symbol-processor);
+**Source:** framework tag `2.0.0.RC2` —
+[kafka-annotation-processor](https://github.com/kora-projects/kora/tree/2.0.0.RC2/kafka/kafka-annotation-processor) ·
+[kafka-symbol-processor](https://github.com/kora-projects/kora/tree/2.0.0.RC2/kafka/kafka-symbol-processor);
 migrated examples on `migration/2.0` —
 [kora-java-kafka](https://github.com/kora-projects/kora-examples/tree/migration/2.0/examples/java/kora-java-kafka) ·
 [kora-kotlin-kafka](https://github.com/kora-projects/kora-examples/tree/migration/2.0/examples/kotlin/kora-kotlin-kafka)

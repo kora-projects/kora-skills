@@ -8,7 +8,7 @@ metadata:
 
 # Kora Database Migration — Flyway and Liquibase
 
-> **Kora sub-skill — obey the [kora-v2 meta rules](../../SKILL.md) on every task:** **R0** ground the workspace on Kora 2.0 refs before starting (framework source at tag `2.0.0.RC1` + `kora-examples` at `migration/2.0`; `kora-docs` is 1.x only) · **R1** read this sub-skill before writing code · **R2** Kora 2.0 APIs only — no Spring/Micronaut/Quarkus, no Kora 1.x APIs, no invented annotations or config keys · **R3** journal any incorrect Kora usage. Add comments/Javadoc only if asked.
+> **Kora sub-skill — obey the [kora-v2 meta rules](../../SKILL.md) on every task:** **R0** ground the workspace on Kora 2.0 refs before starting (framework source at tag `2.0.0.RC2` + `kora-examples` at `migration/2.0` + Kora 2.0 docs at koraframework.io/v2, which trail the source; 1.x `kora-docs` pages are never an authority) · **R1** read this sub-skill before writing code · **R2** Kora 2.0 APIs only — no Spring/Micronaut/Quarkus, no Kora 1.x APIs, no invented annotations or config keys · **R3** journal any incorrect Kora usage. Add comments/Javadoc only if asked.
 
 | | Flyway | Liquibase |
 |---|---|---|
@@ -17,7 +17,7 @@ metadata:
 | **Config type** | `FlywayConfig` | `LiquibaseConfig` |
 | **Config section** | `flyway` | `liquibase` |
 | **Interceptor** | `FlywayJdbcDatabaseInterceptor` | `LiquibaseJdbcDatabaseInterceptor` |
-| **Third-party version** | `flyway-core` **13.3.0** | `liquibase-core` **5.0.3** |
+| **Third-party version** | `flyway-core` **13.9.0** | `liquibase-core` **5.0.4** |
 | **Extra artifact needed** | **Yes** — a per-database dialect (`org.flywaydb:flyway-database-postgresql`) | No — `liquibase-core` bundles the standard databases |
 | **Prerequisite** | `io.koraframework:database-jdbc` + `JdbcDatabaseModule` on `@KoraApp` | same |
 
@@ -60,7 +60,7 @@ explicit version.
 
 ```groovy
 dependencies {
-    koraBom platform("io.koraframework:kora-bom:$koraVersion")   // koraVersion=2.0.0.RC1
+    koraBom platform("io.koraframework:kora-bom:$koraVersion")   // koraVersion=2.0.0.RC2
     annotationProcessor "io.koraframework:annotation-processors"
 
     implementation "io.koraframework:database-jdbc"
@@ -68,7 +68,7 @@ dependencies {
     // Since Flyway 10 per-database support lives in separate artifacts and
     // database-flyway ships only flyway-core: without this the app dies at
     // startup with "FlywayException: Unsupported Database: PostgreSQL 16.2".
-    implementation "org.flywaydb:flyway-database-postgresql:13.3.0"
+    implementation "org.flywaydb:flyway-database-postgresql:13.9.0"
 
     runtimeOnly "org.postgresql:postgresql:42.7.13"
 }
@@ -84,7 +84,7 @@ dependencies {
 
     implementation("io.koraframework:database-jdbc")
     implementation("io.koraframework:database-flyway")
-    implementation("org.flywaydb:flyway-database-postgresql:13.3.0")
+    implementation("org.flywaydb:flyway-database-postgresql:13.9.0")
 
     runtimeOnly("org.postgresql:postgresql:42.7.13")
 }
@@ -92,7 +92,7 @@ dependencies {
 
 Pick the dialect artifact for your database (`flyway-database-postgresql`, `flyway-mysql`,
 `flyway-database-oracle`, …) and pin it to the same version as the `flyway-core` that
-`database-flyway` brings in — `13.3.0` for Kora `2.0.0.RC1`. Verify with
+`database-flyway` brings in — `13.9.0` for Kora `2.0.0.RC2`. Verify with
 `./gradlew dependencies --configuration runtimeClasspath | grep flyway`.
 
 **2. Plug both modules into `@KoraApp`.** `FlywayJdbcDatabaseModule` supplies only the interceptor;
@@ -237,7 +237,7 @@ Two asymmetries against Flyway that matter:
 - **There is no `liquibase.enabled` key.** `LiquibaseJdbcDatabaseInterceptor.afterInit` runs
   `update()` unconditionally. To stop in-app migration you must remove
   `LiquibaseJdbcDatabaseModule` from the `@KoraApp` interface — there is no config switch.
-- **No dialect artifact is needed.** `org.liquibase:liquibase-core` 5.0.3 aggregates
+- **No dialect artifact is needed.** `org.liquibase:liquibase-core` 5.0.4 aggregates
   `liquibase-standard`, which carries the mainstream database implementations; the framework's own
   Liquibase test migrates a real PostgreSQL with `liquibase-core` alone.
 
@@ -274,6 +274,19 @@ Changeset directives, contexts/labels, includes and rollback patterns —
 Plug in **exactly one**. Both interceptors attach to the same `JdbcDataSource` node and would both
 manage the same schema.
 
+**Tables owned by other Kora modules.** `io.koraframework:scheduling-db-scheduler` ships the schema
+of its `kora_scheduling_db_scheduler_jobs` table (the default `scheduling.dbScheduler.tableName`) as
+classpath resources: plain scripts `db/kora/scheduling-db-scheduler/schema/<database>.sql`
+(`postgresql`, `mysql`, `mariadb`, `mssql`, `oracle`, `hsql`) and an idempotent Liquibase changelog
+`db/kora/scheduling-db-scheduler/liquibase/changelog.yaml`. There are **no versioned Flyway
+migrations** to point `flyway.locations` at — copy the script for your database into your own
+migrations under the next free version (`V42__create_kora_scheduling_db_scheduler_jobs.sql`). With
+Liquibase, `include` the changelog from your master changelog; its `dbms`-guarded changesets are
+marked as ran when the table already exists, and they always create the default table name.
+Earlier 2.0 snapshots shipped `db/scheduling-db/flyway/<database>/V1__create_scheduled_tasks.sql`
+(table `scheduled_tasks`, colliding with an application `V1__`) and defaulted `tableName` to
+`kora_scheduling_db_jobs`; neither exists any more. Details: [kora-aop-scheduling-db](../kora-aop-scheduling-db/SKILL.md).
+
 ---
 
 ## 6. Out-of-process migrations (recommended for scaled services)
@@ -293,12 +306,12 @@ through the plugin.
 buildscript {
     dependencies {
         // the plugin runs in the Gradle JVM, so the dialect goes on the buildscript classpath
-        classpath "org.flywaydb:flyway-database-postgresql:13.3.0"
+        classpath "org.flywaydb:flyway-database-postgresql:13.9.0"
     }
 }
 
 plugins {
-    id "org.flywaydb.flyway" version "13.3.0"
+    id "org.flywaydb.flyway" version "13.9.0"
 }
 
 flyway {
@@ -332,14 +345,14 @@ spec:
       restartPolicy: Never
       containers:
         - name: flyway
-          image: flyway/flyway:13.3.0
+          image: flyway/flyway:13.9.0
           args: ["migrate"]
           env:
             - name: FLYWAY_URL
               valueFrom: { configMapKeyRef: { name: db-config, key: url } }
 ```
 
-The Liquibase equivalent is `liquibase/liquibase:5.0.3` with
+The Liquibase equivalent is `liquibase/liquibase:5.0.4` with
 `args: ["--changelog-file=db/changelog/db.changelog-master.xml", "update"]`, or the
 `org.liquibase.gradle` plugin (`3.1.0`) locally.
 
@@ -385,22 +398,25 @@ The Liquibase equivalent is `liquibase/liquibase:5.0.3` with
 - [kora-testing-junit-java](../kora-testing-junit-java/SKILL.md) · [kora-testing-junit-kotlin](../kora-testing-junit-kotlin/SKILL.md) — `@KoraAppTest` + Testcontainers with migrations
 - [kora-project-dependencies](../kora-project-dependencies/SKILL.md) — BOM, module coordinates, externally-versioned dependencies
 - [kora-di-runtime](../kora-di-runtime/SKILL.md) — `GraphInterceptor` and graph lifecycle
+- [kora-aop-scheduling-db](../kora-aop-scheduling-db/SKILL.md) — DB-backed scheduler whose job table (default `kora_scheduling_db_scheduler_jobs`) these tools create
 
 ## Source of truth
 
-Version-aligned authorities for Kora 2.0. The published documentation site describes Kora 1.x
-(`ru.tinkoff.kora`) on every branch, including pages served under a `/v2/` path — never resolve a
-2.0 migration question from it.
+Version-aligned authorities for Kora 2.0, in this order: framework source and tests, then the
+migrated examples, then the Kora 2.0 documentation. Pages of the 1.x documentation
+(`ru.tinkoff.kora`) are background only — never resolve a 2.0 question from them.
 
-- Framework source, tag `2.0.0.RC1`:
-  [database-flyway](https://github.com/kora-projects/kora/tree/2.0.0.RC1/database/database-flyway) ·
-  [database-liquibase](https://github.com/kora-projects/kora/tree/2.0.0.RC1/database/database-liquibase) ·
-  [database-jdbc](https://github.com/kora-projects/kora/tree/2.0.0.RC1/database/database-jdbc)
+- Framework source, tag `2.0.0.RC2`:
+  [database-flyway](https://github.com/kora-projects/kora/tree/2.0.0.RC2/database/database-flyway) ·
+  [database-liquibase](https://github.com/kora-projects/kora/tree/2.0.0.RC2/database/database-liquibase) ·
+  [database-jdbc](https://github.com/kora-projects/kora/tree/2.0.0.RC2/database/database-jdbc)
 - Migrated guide apps, branch `migration/2.0` (in-app Flyway):
   [kora-java-guide-database-jdbc-advanced-app](https://github.com/kora-projects/kora-examples/tree/migration/2.0/guides/java/kora-java-guide-database-jdbc-advanced-app) ·
   [kora-kotlin-guide-database-jdbc-advanced-app](https://github.com/kora-projects/kora-examples/tree/migration/2.0/guides/kotlin/kora-kotlin-guide-database-jdbc-advanced-app)
 - Migrated examples, branch `migration/2.0`:
   [kora-java-crud](https://github.com/kora-projects/kora-examples/tree/migration/2.0/examples/java/kora-java-crud) (Gradle-plugin strategy) ·
   [kora-java-petclinic](https://github.com/kora-projects/kora-examples/tree/migration/2.0/examples/java/kora-java-petclinic) (in-app module)
+- Kora 2.0 documentation: [Database migration](https://koraframework.io/v2/en/documentation/database-migration/)
+  (source wins where the two disagree — e.g. on the bundled Flyway version)
 - Third-party: [Flyway 13 docs](https://documentation.red-gate.com/flyway) ·
   [Liquibase docs](https://docs.liquibase.com/)

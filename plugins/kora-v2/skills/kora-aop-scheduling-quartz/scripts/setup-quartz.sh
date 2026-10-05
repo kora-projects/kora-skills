@@ -4,11 +4,11 @@
 #   - writes a QuartzJobs source file
 #   - writes / extends application.conf with the 2.0 `scheduling.quartz.*` keys
 #
-# Kora 2.0 facts baked in (verified against scheduling-quartz at tag 2.0.0.RC1):
+# Kora 2.0 facts baked in (verified against scheduling-quartz at 2.0.0.RC2 / master):
 #   module      io.koraframework.scheduling.quartz.QuartzModule
-#   annotations io.koraframework.scheduling.quartz.{ScheduleWithCron,ScheduleWithTrigger,
-#               DisallowConcurrentExecution,PersistJobDataAfterExecution}
-#   config      scheduling.quartz.properties / scheduling.quartz.waitForJobComplete
+#   annotations io.koraframework.scheduling.quartz.annotation.{ScheduleQuartzWithCron,
+#               ScheduleQuartzWithTrigger,DisallowConcurrentExecution,PersistJobDataAfterExecution}
+#   config      scheduling.quartz.properties / scheduling.quartz.shutdownWait
 #               scheduling.telemetry.{logging,metrics,tracing}.enabled
 #
 # Idempotent: re-running never duplicates a dependency, a source file or a config block.
@@ -152,8 +152,8 @@ if [ "$LANG_KIND" = "kotlin" ]; then
 package $PKG
 
 import io.koraframework.common.annotation.Component
-import io.koraframework.scheduling.quartz.DisallowConcurrentExecution
-import io.koraframework.scheduling.quartz.ScheduleWithCron
+import io.koraframework.scheduling.quartz.annotation.DisallowConcurrentExecution
+import io.koraframework.scheduling.quartz.annotation.ScheduleQuartzWithCron
 import org.slf4j.LoggerFactory
 
 /**
@@ -167,13 +167,13 @@ class QuartzJobs {
 
     /** Daily at 03:00; @DisallowConcurrentExecution stops overlapping runs. */
     @DisallowConcurrentExecution
-    @ScheduleWithCron("0 0 3 * * ?")
+    @ScheduleQuartzWithCron("0 0 3 * * ?")
     fun nightlyReport() {
         log.info("Generating nightly report")
     }
 
     /** Cron taken from \`jobs.hourly\` in application.conf. */
-    @ScheduleWithCron(config = "jobs.hourly")
+    @ScheduleQuartzWithCron(config = "jobs.hourly")
     fun hourlyCheck() {
         log.info("Running hourly check")
     }
@@ -189,8 +189,8 @@ else
 package $PKG;
 
 import io.koraframework.common.annotation.Component;
-import io.koraframework.scheduling.quartz.DisallowConcurrentExecution;
-import io.koraframework.scheduling.quartz.ScheduleWithCron;
+import io.koraframework.scheduling.quartz.annotation.DisallowConcurrentExecution;
+import io.koraframework.scheduling.quartz.annotation.ScheduleQuartzWithCron;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -207,13 +207,13 @@ public final class QuartzJobs {
 
     /** Daily at 03:00; @DisallowConcurrentExecution stops overlapping runs. */
     @DisallowConcurrentExecution
-    @ScheduleWithCron("0 0 3 * * ?")
+    @ScheduleQuartzWithCron("0 0 3 * * ?")
     void nightlyReport() {
         log.info("Generating nightly report");
     }
 
     /** Cron taken from \`jobs.hourly\` in application.conf. */
-    @ScheduleWithCron(config = "jobs.hourly")
+    @ScheduleQuartzWithCron(config = "jobs.hourly")
     void hourlyCheck() {
         log.info("Running hourly check");
     }
@@ -232,9 +232,9 @@ scheduling {
     properties {
       "org.quartz.threadPool.threadCount" = "10"
     }
-    # default true: shutdown blocks until running jobs finish.
-    # Quartz never interrupts a running job, so bound long job bodies yourself.
-    waitForJobComplete = true
+    # default 30s: on shutdown wait for running jobs, interrupt the ones still
+    # running, wait once more. Keep job runs shorter and stop on interrupt.
+    shutdownWait = 30s
   }
 
   telemetry {
@@ -286,8 +286,9 @@ if [ -f "$CONF_FILE" ]; then
         echo "    Kora 2.0 reads Quartz properties from 'scheduling.quartz.properties'."
         echo "    The stale block is ignored silently; move its contents."
     fi
-    # Resolve the enclosing HOCON path of every waitForJobComplete occurrence, so a nearby
-    # but unrelated `quartz { }` block does not mask a stale scheduling.waitForJobComplete.
+    # Resolve the enclosing HOCON path of every waitForJobComplete occurrence. The key is gone
+    # in every location: Kora 1.x read scheduling.waitForJobComplete, RC1 read
+    # scheduling.quartz.waitForJobComplete, and the current module reads scheduling.quartz.shutdownWait.
     STALE_WAIT="$(awk '
         { line = $0; sub(/#.*/, "", line) }
         match(line, /^[[:space:]]*[A-Za-z0-9_."-]+[[:space:]]*\{/) {
@@ -300,15 +301,14 @@ if [ -f "$CONF_FILE" ]; then
         line ~ /waitForJobComplete/ {
             path = ""
             for (i = 1; i <= depth; i++) path = path (i > 1 ? "." : "") stack[i]
-            full = (path == "" ? "" : path ".") "waitForJobComplete"
-            if (full !~ /quartz/ && line !~ /quartz/) print full
+            print (path == "" ? "" : path ".") "waitForJobComplete"
         }
         line ~ /}/ { if (depth > 0) depth-- }
     ' "$CONF_FILE")"
     if [ -n "$STALE_WAIT" ]; then
         echo "  ! stale shutdown key(s) in application.conf: $(tr '\n' ' ' <<<"$STALE_WAIT")"
-        echo "    Kora 1.x read 'scheduling.waitForJobComplete'; Kora 2.0 reads"
-        echo "    'scheduling.quartz.waitForJobComplete' (default true) and ignores the old key."
+        echo "    waitForJobComplete is no longer read (Kora 1.x and RC1 keys). Use"
+        echo "    'scheduling.quartz.shutdownWait' (default 30s; running jobs are interrupted after it)."
     fi
 fi
 
@@ -325,8 +325,8 @@ fi
 echo "  2. Review $JOBS_FILE"
 echo "  3. For a custom trigger, declare a Trigger tagged with your job class on the @KoraApp"
 if [ "$LANG_KIND" = "kotlin" ]; then
-    echo "     interface (@Tag(YourJob::class)) and use @ScheduleWithTrigger(YourJob::class)"
+    echo "     interface (@Tag(YourJob::class)) and use @ScheduleQuartzWithTrigger(YourJob::class)"
 else
-    echo "     interface (@Tag(YourJob.class)) and use @ScheduleWithTrigger(YourJob.class)"
+    echo "     interface (@Tag(YourJob.class)) and use @ScheduleQuartzWithTrigger(YourJob.class)"
 fi
 echo "     — the class tag is passed directly, the Kora 1.x nested @Tag form no longer compiles."

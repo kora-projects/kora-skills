@@ -1,0 +1,83 @@
+package com.example;
+
+import com.example.openapi.pet.api.PetApi;
+import com.example.openapi.pet.model.Pet;
+import io.koraframework.common.annotation.Component;
+import io.koraframework.http.client.common.exception.HttpClientResponseException;
+
+import java.util.Optional;
+
+/**
+ * Using a Kora 2.x OpenAPI HTTP client generated with {@code clientResponseMode = "SUCCESSFUL"}.
+ *
+ * <p>Each operation with a single 2xx response returns that 2xx record directly, so the payload is
+ * {@code petApi.getPetById(id).content()}. Declared error responses (non-2xx and {@code default})
+ * are thrown instead of returned: one {@link HttpClientResponseException} subclass per distinct
+ * error body type, nested in the generated {@code PetApi}. The spec's {@code Error} schema is
+ * generated as {@code ModelError}, hence {@code PetApiModelErrorHttpClientResponseException}; an
+ * error response without a body throws {@code PetApiNoContentHttpClientResponseException}.
+ *
+ * <p>Status code, headers and the raw body come from the base class ({@code getCode()},
+ * {@code getHeaders()}, {@code getBytes()}); the parsed error body is {@code getContent()}.
+ */
+@Component
+public final class PetService {
+
+    private final PetApi petApi;
+
+    public PetService(PetApi petApi) {
+        this.petApi = petApi;
+    }
+
+    /** Spec: 200 Pet, 404 Error. A 404 propagates as the typed exception. */
+    public Pet getPet(long petId) {
+        return petApi.getPetById(petId).content();
+    }
+
+    /** Several error statuses can share one exception type - branch on {@code getCode()}. */
+    public Optional<Pet> findPet(long petId) {
+        try {
+            return Optional.of(petApi.getPetById(petId).content());
+        } catch (PetApi.PetApiModelErrorHttpClientResponseException e) {
+            if (e.getCode() == 404) {
+                return Optional.empty();
+            }
+            throw e;
+        }
+    }
+
+    /** Spec: 200 Pet, 400 Error, default Error. The 400 and every undeclared status land in the same exception. */
+    public Pet createPet(Pet pet) {
+        try {
+            return petApi.addPet(pet).content();
+        } catch (PetApi.PetApiModelErrorHttpClientResponseException e) {
+            throw new IllegalArgumentException(
+                    "addPet failed with " + e.getCode() + ": " + e.getContent().message(), e);
+        }
+    }
+
+    /** Spec: 204 (no body), 404 (no body). */
+    public boolean deletePet(long petId) {
+        try {
+            petApi.deletePet(petId);
+            return true;
+        } catch (PetApi.PetApiNoContentHttpClientResponseException e) {
+            return false;
+        }
+    }
+
+    /**
+     * Catch the typed exception first. The base {@link HttpClientResponseException} is what an
+     * error body that fails to parse, or a status with no declared response and no {@code default},
+     * arrives as.
+     */
+    public Pet getPetOrFallback(long petId, Pet fallback) {
+        try {
+            return getPet(petId);
+        } catch (PetApi.PetApiModelErrorHttpClientResponseException e) {
+            return fallback;
+        } catch (HttpClientResponseException e) {
+            throw new IllegalStateException("petApi answered " + e.getCode(), e);
+        }
+    }
+}

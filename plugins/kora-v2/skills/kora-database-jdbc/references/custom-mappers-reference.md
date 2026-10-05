@@ -286,7 +286,12 @@ data class Task(
 
 ## PostgreSQL array mapper
 
-`List<T>` has no built-in column mapping — supply the mappers yourself.
+On PostgreSQL, `database-jdbc-postgres` already maps `List<T>`, `Set<T>`/`Collection<T>`
+parameters and arrays of `bool`, `int2`, `int4`, `int8`, `float4`, `float8`, `numeric`, `varchar`
+and `uuid` — tag the field or parameter `@Pg` and extend `PostgresJdbcDatabaseModule`
+([postgres-mappers-reference.md](postgres-mappers-reference.md)). `database-jdbc` alone has no
+`List<T>` column mapping, so hand-write the mappers for another database or an element type the
+PostgreSQL module does not cover (`List<LocalDate>`, enum arrays, …):
 
 ```java
 @Component
@@ -332,11 +337,13 @@ public final class LongListResultMapper implements JdbcResultColumnMapper<List<L
 
 ## JSONB mapping
 
-Declare a generic `@Module` once, tagged `@Json`, and annotate the payload types with `@Json`. The
-canonical module and the `::jsonb` cast are in
-[entity-mapping-reference.md](entity-mapping-reference.md#jsonb-mapping-postgresql).
+On PostgreSQL tag the field `@PgJsonb` (or `@PgJson`) from `database-jdbc-postgres` and annotate the
+payload type with `@Json` — see
+[postgres-mappers-reference.md](postgres-mappers-reference.md#json-and-jsonb-pgjson--pgjsonb) and
+[entity-mapping-reference.md](entity-mapping-reference.md#jsonb-mapping-postgresql). A hand-written
+generic `@Json`-tagged module is only needed without that artifact.
 
-The one 2.0 detail worth repeating: `JsonWriter.toString(value)` and `JsonReader.read(value)` no
+The one 2.0 detail worth repeating for a hand-written JSON mapper: `JsonWriter.toString(value)` and `JsonReader.read(value)` no
 longer declare checked exceptions and the `*Unchecked` variants were removed, so a `try/catch
 (IOException)` carried over from 1.x becomes `exception IOException is never thrown in the
 corresponding try block`.
@@ -381,7 +388,8 @@ Omitting `@Component` here fails the graph build with
 1. **Keep mappers stateless.** They are shared across every query that uses them.
 2. **Handle `null` explicitly** in both directions — column mappers receive and must produce nulls.
 3. **Prefer `@Nullable T` over `Optional<T>`** for single-row returns.
-4. **Prefer the generic `@Json` module** to a hand-written mapper per JSONB type.
+4. **Prefer `@PgJsonb` from `database-jdbc-postgres`** (or one generic tagged module elsewhere) to a
+   hand-written mapper per JSON type.
 5. **Pick one selection style per type.** `@Mapping` overrides by-type discovery; having both a
    `@Component` mapper and a `@Mapping` on every use is redundant and invites ambiguity.
 6. **Repeat `@Mapping`** rather than looking for an array attribute — the annotation is
@@ -392,5 +400,6 @@ Omitting `@Component` here fails the graph build with
 ## See also
 
 - [custom-mappers-advanced-reference.md](custom-mappers-advanced-reference.md) — construct vs inject, `@Component` rules, generic mapper modules
-- [entity-mapping-reference.md](entity-mapping-reference.md) — supported types, JSONB module
+- [postgres-mappers-reference.md](postgres-mappers-reference.md) — PostgreSQL arrays, `interval`, ranges, `json`/`jsonb`
+- [entity-mapping-reference.md](entity-mapping-reference.md) — supported types, JSONB
 - [repository-pattern-reference.md](repository-pattern-reference.md) — `@Repository`, `@Query`, macros

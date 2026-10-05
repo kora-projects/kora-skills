@@ -98,18 +98,28 @@ large application still compiles — do not be surprised by `ComponentHolder0`, 
 
 ## Entry Point
 
-`io.koraframework.application.graph.KoraApplication` exposes exactly one method:
+`io.koraframework.application.graph.KoraApplication` exposes two methods:
 
 ```java
-public static void run(Supplier<ApplicationGraphDraw> supplier)
+public static void run(Supplier<ApplicationGraphDraw> supplier)                     // = run(supplier, true)
+public static void run(Supplier<ApplicationGraphDraw> supplier, boolean keepAlive)
 ```
 
-It builds the draw, initialises it, logs `Application initialized in …ms`, registers a
-`kora-shutdown` JVM shutdown hook that calls `release()`, and then blocks until that hook completes.
-If initialisation throws, it logs `Application initializing failed with error` and exits with `-1`.
+It builds the draw, initialises it, logs `Application initialized in <n>ms (JVM running for <s>s)`,
+and registers a `kora-shutdown` JVM shutdown hook that calls `release()` and logs
+`Application released in <n>ms`. Both durations are wall-clock milliseconds. If initialisation
+throws, it logs `Application initializing failed with error` and exits with `-1`.
 
-There is no overload taking a config, a `String[]`, or anything else — `run(ApplicationGraph::graph)`
-is the whole API.
+`keepAlive` decides what the calling thread does next:
+
+- `true` (the one-argument form) — `run` blocks until the shutdown hook has finished releasing the
+  graph. This is what `main` wants.
+- `false` — `run` returns as soon as the graph is initialised and the hook is registered. Use it
+  when something else owns the calling thread (an embedding launcher, a CLI that does its work in
+  `main` after startup); release still happens in the shutdown hook on JVM exit.
+
+There is no overload taking a config or a `String[]` — `run(ApplicationGraph::graph)` is what an
+application's `main` calls.
 
 ## What to Connect via `extends`
 

@@ -8,7 +8,7 @@
       "query": "Set up a Kora SOAP client in Java from a WSDL in src/main/resources/wsdl for an external CustomerService. Give me the Gradle build file and the application graph.",
       "expected_behavior": [
         "Applies the com.github.bjornvester.wsdl2java Gradle plugin and sets wsdlDir, packageName, generatedSourceDir and useJakarta = true",
-        "Uses platform(\"io.koraframework:kora-bom:$koraVersion\") with koraVersion=2.0.0.RC1 from plain mavenCentral(), and never pins an individual io.koraframework artifact version",
+        "Uses platform(\"io.koraframework:kora-bom:$koraVersion\") with koraVersion=2.0.0.RC2 from plain mavenCentral(), and never pins an individual io.koraframework artifact version",
         "Declares annotationProcessor \"io.koraframework:annotation-processors\" and implementation \"io.koraframework:soap-client\"",
         "Adds an HTTP transport module (http-client-ok / http-client-apache / http-client-jdk) and a config module, and notes the generated client needs an HttpClient component",
         "Extends the @KoraApp interface with io.koraframework.soap.client.common.SoapClientModule plus the transport and config modules",
@@ -42,7 +42,7 @@
       "expected_behavior": [
         "Identifies that wsdl2java emits Java sources and KSP only sees them when the generated directory is on the Java source set",
         "Adds sourceSets.main { java.srcDir(layout.buildDirectory.dir(\"generated/sources/wsdl2java/java\")) }",
-        "Uses ksp(\"io.koraframework:symbol-processors:...\") with the kora-bom platform, Kotlin 2.4.10 and KSP 2.3.11",
+        "Uses ksp(\"io.koraframework:symbol-processors:...\") with the kora-bom platform, Kotlin 2.4.20 and KSP 2.3.12",
         "Keeps useJakarta.set(true)",
         "Suggests ./gradlew kspKotlin --console=plain to see the processor diagnostics",
         "Keeps the Java @WebService interface as the contract instead of re-declaring it in Kotlin"
@@ -150,7 +150,7 @@
       ],
       "query": "Migrate this Kora 1.x SOAP build file to 2.0: koraBom platform(\"ru.tinkoff.kora:kora-parent:1.2.16\"); annotationProcessor \"ru.tinkoff.kora:annotation-processors\"; annotationProcessor \"ru.tinkoff.kora:soap-client-annotation-processor\"; implementation \"ru.tinkoff.kora:json-module\"; implementation(\"ru.tinkoff.kora:soap-client\") { exclude group: \"jakarta.xml\"; exclude group: \"org.glassfish.jaxb\"; exclude group: \"com.sun.activation\" }",
       "expected_behavior": [
-        "Replaces the BOM with platform(\"io.koraframework:kora-bom:$koraVersion\") at koraVersion=2.0.0.RC1",
+        "Replaces the BOM with platform(\"io.koraframework:kora-bom:$koraVersion\") at koraVersion=2.0.0.RC2",
         "Keeps only annotationProcessor \"io.koraframework:annotation-processors\" and drops the separate soap-client-annotation-processor, which that artifact already aggregates",
         "Replaces implementation \"io.koraframework:soap-client\" without any exclude block, explaining that 2.0 soap-client declares jakarta.xml.ws-api, jakarta.xml.bind-api and org.glassfish.jaxb:jaxb-runtime as api dependencies on purpose",
         "Maps ru.tinkoff.kora:json-module to io.koraframework:json-common, and notes SOAP itself does not need it",
@@ -162,7 +162,7 @@
         "Emits io.koraframework:kora-parent or io.koraframework:json-module, neither of which exists",
         "Pins a version on an individual io.koraframework artifact instead of relying on the BOM",
         "Pins 2.0.0-SNAPSHOT or 2.0.0.alpha6 for a normal project",
-        "Adds a snapshot repository when mavenCentral() suffices for 2.0.0.RC1"
+        "Adds a snapshot repository when mavenCentral() suffices for 2.0.0.RC2"
       ],
       "tags": [
         "soap",
@@ -317,11 +317,11 @@
       ],
       "query": "Our Grafana dashboard for the SOAP client went blank after the Kora 2.0 upgrade. It queried kora_soap_client_requests_total with soap_service and status labels. What should it query now, and why is there no data?",
       "expected_behavior": [
-        "States that the SOAP client now reports a single Micrometer Timer named rpc.client.duration",
-        "Gives the real tags: rpc.system=soap, rpc.service, rpc.method, server.address, server.port, http.response.status_code, error.type, fault.code, system.config, system.name.simple, system.name.canonical",
+        "States that the SOAP client now reports a single Micrometer Timer named rpc.client.call.duration (RC1 called it rpc.client.duration)",
+        "Gives the real tags: rpc.system.name=soap, rpc.service, rpc.method, server.address, server.port, http.response.status_code, error.type, soap.fault.code, system.config, system.name.simple, system.name.canonical",
         "Explains the blank dashboard has two causes: the metric was renamed, and telemetry.metrics.enabled now defaults to false",
         "Notes that a MeterRegistry must be on the graph (MetricsModule from io.koraframework:micrometer-module) or metrics stay off regardless of the flag",
-        "Suggests alerting on error_type != \"\" or fault_code != \"\" rather than a status label",
+        "Suggests alerting on error_type != \"\" or soap_fault_code != \"\" rather than a status label",
         "Mentions the span name is SOAP <service> <method> with SpanKind.CLIENT"
       ],
       "anti_behavior": [

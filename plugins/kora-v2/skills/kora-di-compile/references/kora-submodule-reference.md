@@ -53,7 +53,7 @@ Fix:
 ```
 my-app/
 ├── settings.gradle
-├── gradle.properties            # koraVersion=2.0.0.RC1
+├── gradle.properties            # koraVersion=2.0.0.RC2
 ├── build.gradle                 # shared subprojects { } configuration
 ├── common/
 │   └── src/main/java/com/example/common/CommonModule.java   // @KoraSubmodule
@@ -84,7 +84,7 @@ include ":app"
 ### gradle.properties
 
 ```properties
-koraVersion=2.0.0.RC1
+koraVersion=2.0.0.RC2
 
 org.gradle.parallel=true
 org.gradle.caching=true
@@ -95,7 +95,7 @@ org.gradle.caching=true
 ```groovy
 subprojects {
     repositories {
-        mavenCentral()   // io.koraframework:kora-bom:2.0.0.RC1 is on Maven Central
+        mavenCentral()   // io.koraframework:kora-bom:2.0.0.RC2 is on Maven Central
     }
 
     configurations {
@@ -251,8 +251,8 @@ repeat them.
 ```kotlin
 // root build.gradle.kts
 plugins {
-    kotlin("jvm") version "2.4.10" apply false
-    id("com.google.devtools.ksp") version "2.3.11" apply false
+    kotlin("jvm") version "2.4.20" apply false
+    id("com.google.devtools.ksp") version "2.3.12" apply false
 }
 
 subprojects {

@@ -104,11 +104,14 @@
         "Declares HttpServerPrincipalExtractor<String, PrincipalWithScopes> — the second type argument becomes PrincipalWithScopes for oauth2/openIdConnect schemes",
         "Uses io.koraframework.http.common.auth.PrincipalWithScopes and implements Collection<String> scopes()",
         "Binds one extractor per scheme with @Tag(ApiSecurity.<SchemeName>.class), noting that per-scope interceptor tags like OAuth_PetsRead do not each need their own extractor",
-        "States that the generated interceptor checks scopes().contains(...) itself and answers 401 — not 403 — when a scope is missing",
-        "For 403, does the check in the delegate against Principal.current() and throws HttpServerResponseException.of(403, ...)",
+        "States that the generated interceptor checks scopes().contains(...) itself and answers 403 Forbidden when the extractor returned a principal but a required scope is missing, and 401 Unauthorized when no alternative authenticated",
+        "Keeps HttpServerResponseException.of(403, ...) from the delegate (after Principal.current()) only for rules the contract cannot express, such as roles or ownership",
         "Does not invent a Kora @Scope, @Secured or @PreAuthorize annotation"
       ],
-      "tags": ["openapi", "oauth", "advanced"]
+      "tags": ["openapi", "oauth", "advanced"],
+      "anti_behavior": [
+        "Claims the generated security interceptor never returns 403 and tells the user to re-implement the contract's scope check in every delegate"
+      ]
     },
     {
       "id": "kora-http-server-auth-401-body-shaping",

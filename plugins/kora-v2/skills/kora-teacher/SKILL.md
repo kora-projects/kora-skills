@@ -1,6 +1,6 @@
 ---
 name: kora-teacher
-description: "Teach Kora 2.0 (io.koraframework) to a newcomer — guided curriculum, lesson plans and concept explanations, grounded in the framework source at tag 2.0.0.RC1 and the migrated example apps on kora-examples branch migration/2.0. Covers the beginner spine (helloworld, getting-started, dependency injection, config, JSON, HTTP, JDBC, testing) and the unlearning a Kora 1.x user needs: synchronous contracts on virtual threads instead of suspend/reactive/CompletionStage, no request Context, telemetry off by default, and why a green build is not proof of a working service. Use when someone is new to Kora, asks for a tutorial, course or walkthrough, or asks a foundational question such as \"what is @KoraApp\" or \"how does compile-time DI work\". Kora 2.0 has no documentation site — never send a learner to kora-docs for a 2.0 answer."
+description: "Teach Kora 2.0 (io.koraframework) to a newcomer — guided curriculum, lesson plans and concept explanations, grounded in the framework source at tag 2.0.0.RC2 and the migrated example apps on kora-examples branch migration/2.0. Covers the beginner spine (helloworld, getting-started, dependency injection, config, JSON, HTTP, JDBC, testing) and the unlearning a Kora 1.x user needs: synchronous contracts on virtual threads instead of suspend/reactive/CompletionStage, no request Context, telemetry off by default, and why a green build is not proof of a working service. Use when someone is new to Kora, asks for a tutorial, course or walkthrough, or asks a foundational question such as \"what is @KoraApp\" or \"how does compile-time DI work\". The 2.0 docs at koraframework.io/v2 are reading material, verified against the source; the 1.x kora-docs site is never a 2.0 answer."
 license: Apache-2.0
 metadata:
   kora-version: "2.x"
@@ -8,9 +8,9 @@ metadata:
 
 # Kora Teacher — learning Kora 2.0 from scratch
 
-> **Kora sub-skill — obey the [kora-v2 meta rules](../../SKILL.md) on every task:** **R0** ground the workspace on Kora 2.0 refs before starting (framework source at tag `2.0.0.RC1` + `kora-examples` at `migration/2.0`; `kora-docs` is 1.x only) · **R1** read this sub-skill before writing code · **R2** Kora 2.0 APIs only — no Spring/Micronaut/Quarkus, no Kora 1.x APIs, no invented annotations or config keys · **R3** journal any incorrect Kora usage. Add comments/Javadoc only if asked.
+> **Kora sub-skill — obey the [kora-v2 meta rules](../../SKILL.md) on every task:** **R0** ground the workspace on Kora 2.0 refs before starting (framework source at tag `2.0.0.RC2` + `kora-examples` at `migration/2.0` + Kora 2.0 docs at koraframework.io/v2, which trail the source; 1.x `kora-docs` pages are never an authority) · **R1** read this sub-skill before writing code · **R2** Kora 2.0 APIs only — no Spring/Micronaut/Quarkus, no Kora 1.x APIs, no invented annotations or config keys · **R3** journal any incorrect Kora usage. Add comments/Javadoc only if asked.
 
-**Version:** Kora 2.0 (`io.koraframework`, `2.0.0.RC1` on Maven Central) | **Java:** 25 | **Kotlin:** 2.4.10 + KSP 2.3.11 | **Gradle:** 9.5.1
+**Version:** Kora 2.0 (`io.koraframework`, `2.0.0.RC2`) | **Java:** 25 | **Kotlin:** 2.4.20 + KSP 2.3.12 | **Gradle:** 9.8.0
 
 **Purpose:** turn someone who does not know Kora into someone who can ship a Kora 2.0 service —
 teaching only what is demonstrated by the framework source or by a migrated example that the
@@ -35,38 +35,43 @@ corrections, so this skill has a stricter grounding rule than the rest of the pa
 ```
 1. This file + references/            → the lesson plan and the pedagogy
 2. skills/<domain>/SKILL.md           → the vetted explanation of one domain
-3. .kora-agent/kora-examples-2.0/     → the executable curriculum: migrated apps the learner runs
-4. .kora-agent/kora-source-2.0/       → the framework source: the final authority
+3. .kora-agent/kora-docs-2.0/         → Kora 2.0 docs: prose and diagrams, verified before taught
+4. .kora-agent/kora-examples-2.0/     → the executable curriculum: migrated apps the learner runs
+5. .kora-agent/kora-source-2.0/       → the framework source: the final authority
 ```
 
-Levels 3 and 4 are put on disk by **R0** in the [meta-skill](../../SKILL.md). Do not start a first
-lesson until both directories exist, or until you have told the learner they are missing and that
-you are therefore teaching without the ability to verify.
+Levels 3–5 are put on disk by **R0** in the [meta-skill](../../SKILL.md). Do not start a first
+lesson until the examples and the source exist, or until you have told the learner they are missing
+and that you are therefore teaching without the ability to verify. When the docs and the source
+disagree, teach the source and show the learner the disagreement.
 
 **Never invent, never analogise.** If a behaviour is not in a sub-skill, a reference here, or the
 grounded checkouts, say "I need to check that" and go read the source — in front of the learner.
 Reading the source together is a lesson in itself; guessing teaches them to guess.
 
-### ⚠ There is no Kora 2.0 documentation site
+### Kora 2.0 docs — good reading, not an authority
 
-`kora-docs` documents Kora **1.x** on every branch that exists, including `feature/kora-2.0`: its
-`docs/v2` tree is a byte-identical copy of the 1.x pages, mentions `ru.tinkoff.kora` in 134 files
-and `io.koraframework` in none, and still ships pages for `database-r2dbc` and `database-vertx`,
-integrations that 2.0 removed.
+Kora 2.0 is documented at <https://koraframework.io/v2/en/> (Russian: <https://koraframework.io/v2/ru/>):
+a module reference under `documentation/` and step-by-step `guides/` that match the guide apps in
+`kora-examples`. Send a learner there to read around a lesson — it is written for 2.0 and explains
+intent better than source does.
 
-Sending a beginner there is worse than sending them nowhere: everything reads authoritative and
-every import is wrong. Use it only as **1.x conceptual background**, said out loud as such.
+It is not the final word. The docs trail the framework, and a page can still describe behaviour a
+later commit changed. Any config key, default or signature a lesson depends on is checked in the
+source before it is taught. Never send a learner to `kora-projects.github.io/kora-docs` or to a
+`docs/v1` page for a 2.0 answer: those are Kora **1.x** and every import there is wrong.
 
-The same trap hides one level deeper. In the migrated `kora-examples` the **code** is 2.0 and the
-**prose is not** — the per-app `README.md` files still link to the 1.x documentation site and still
-name modules that no longer exist (the S3 guide app's README advertises `MinioS3ClientModule`,
-while its `build.gradle` actually uses `io.koraframework:s3-client-aws` and
-`io.koraframework.experimental:s3-client-kora`). Teach from the sources and the build files of an
+The same trap hides in the migrated `kora-examples`: the **code** is 2.0 and the **prose is not
+always** — most per-app `README.md` files still link to the 1.x documentation site, and the guides
+index `guides/java/README.md` still advertises `MinioS3ClientModule`, while the S3 guide app's
+`build.gradle` actually uses `io.koraframework:s3-client-aws` and
+`io.koraframework.experimental:s3-client-kora`. Teach from the sources and the build files of an
 example app, not from its README.
 
 **Where to send a learner who wants to look something up themselves:**
 
-- Framework source, tag `2.0.0.RC1`: <https://github.com/kora-projects/kora/tree/2.0.0.RC1>
+- Kora 2.0 docs: <https://koraframework.io/v2/en/> — for reading; check what matters in source
+- Framework source, tag `2.0.0.RC2`: <https://github.com/kora-projects/kora/tree/2.0.0.RC2>
 - Migrated examples and guide apps: <https://github.com/kora-projects/kora-examples/tree/migration/2.0>
 - Their own `build/generated/` after a compile — the most under-used source of truth in Kora.
 
@@ -153,6 +158,8 @@ Kotlin is the same shape; the entry point is a top-level function
    first compile has not made a mistake — show them why.
 3. `KoraApplication.run(ApplicationGraph::graph)` takes a `Supplier<ApplicationGraphDraw>`. The
    graph is *drawn* first, then initialised; startup failures surface at init, before traffic.
+   The overload `run(supplier, keepAlive)` with `keepAlive = true` also blocks the calling thread
+   until the shutdown hook has released the graph — useful when nothing else keeps the JVM alive.
 4. `@Component` marks a class for the graph. Dependencies arrive through **the constructor** —
    there is no field injection and no `@Autowired` equivalent to look for.
 5. There is no reflection anywhere in that chain. Open `build/generated/` and show them the plain
@@ -207,7 +214,7 @@ headlines, because teaching any of them the old way produces code that cannot wo
   is wrong.
 - **Resilience is typed, not string-named.** `@Retry("name")` became `@Retryable(SomeSpec.class)`.
 - **Coordinates changed wholesale**: group `io.koraframework`, BOM `io.koraframework:kora-bom`,
-  version `2.0.0.RC1` from plain `mavenCentral()`, Java 25 floor. `ru.tinkoff.kora:kora-parent`
+  version `2.0.0.RC2`, Java 25 floor. `ru.tinkoff.kora:kora-parent`
   does not resolve.
 - **Some integrations were removed outright**: R2DBC, Vert.x SQL, `http-client-async`,
   `s3-client-minio`. JDBC on virtual threads is the only relational path.
@@ -270,7 +277,11 @@ they learn the map too.
 | JSON DTOs | [`kora-json`](../kora-json/SKILL.md) |
 | Repositories and transactions | [`kora-database-jdbc`](../kora-database-jdbc/SKILL.md) · [`kora-database-migration`](../kora-database-migration/SKILL.md) |
 | Tests | [`kora-testing-junit-java`](../kora-testing-junit-java/SKILL.md) · [`kora-testing-junit-kotlin`](../kora-testing-junit-kotlin/SKILL.md) · [`kora-testing-blackbox`](../kora-testing-blackbox/SKILL.md) |
-| Metrics, tracing, logs | [`kora-telemetry-metrics`](../kora-telemetry-metrics/SKILL.md) · [`kora-telemetry-tracing`](../kora-telemetry-tracing/SKILL.md) · [`kora-telemetry-logging`](../kora-telemetry-logging/SKILL.md) |
+| Metrics, tracing, logs (incl. JSON logs and masking secrets in them) | [`kora-telemetry-metrics`](../kora-telemetry-metrics/SKILL.md) · [`kora-telemetry-tracing`](../kora-telemetry-tracing/SKILL.md) · [`kora-telemetry-logging`](../kora-telemetry-logging/SKILL.md) · [`kora-aop-logging`](../kora-aop-logging/SKILL.md) |
+| PostgreSQL arrays, ranges, `interval`, `json` / `jsonb` | [`kora-database-jdbc`](../kora-database-jdbc/references/postgres-mappers-reference.md) |
+| Retries, circuit breakers, rate limits, retry budgets (local or Redis-backed) | [`kora-aop-resilient`](../kora-aop-resilient/SKILL.md) |
+| Scheduled jobs — in-process, Quartz, or one-per-cluster in the database | [`kora-aop-scheduling-jdk`](../kora-aop-scheduling-jdk/SKILL.md) · [`kora-aop-scheduling-quartz`](../kora-aop-scheduling-quartz/SKILL.md) · [`kora-aop-scheduling-db`](../kora-aop-scheduling-db/SKILL.md) |
+| DTO mapping — MapStruct (Java), Konvert (Kotlin) | [`kora-mapstruct`](../kora-mapstruct/SKILL.md) |
 | Anything else | the routing tables in the [meta-skill](../../SKILL.md) §3 |
 
 Record any Kora mistake made during a lesson — yours or theirs — with
